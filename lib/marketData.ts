@@ -92,6 +92,32 @@ export const PRODUCT_TICKERS: Record<string, {
   'nordea-esg-global':      { yahoo: 'LU0348926287.F',  tradingView: 'NORDEA:LU0348926287' },
   'cohen-steers-reits':     { yahoo: 'LU0209137388.F',  tradingView: 'COHENSTEERS:LU0209137388' },
   'janus-henderson-reits':  { yahoo: 'LU0088927925.F',  tradingView: 'JANUSHENDERSON:LU0088927925' },
+
+  // ── ETFs Diversificats (FASE 5) ──────────────────────────────────────────
+  'ishares-msci-world-etf':      { yahoo: 'IWDA.AS',  fmp: 'IWDA',  alphaVantage: 'IWDA.AS', tradingView: 'EURONEXT:IWDA',   exchange: 'EURONEXT' },
+  'vanguard-ftse-all-world-etf': { yahoo: 'VWRL.AS',  fmp: 'VWRL',  alphaVantage: 'VWRL.AS', tradingView: 'EURONEXT:VWRL',   exchange: 'EURONEXT' },
+  'spdr-sp500-etf':              { yahoo: 'SPY5.DE',  fmp: 'SPY5',  alphaVantage: 'SPY.US',  tradingView: 'XETR:SPY5',       exchange: 'XETR'     },
+  'ishares-msci-em-etf':         { yahoo: 'EMIM.AS',  fmp: 'EMIM',  alphaVantage: 'EMIM.AS', tradingView: 'EURONEXT:EMIM',   exchange: 'EURONEXT' },
+  'ishares-global-agg-bond-etf': { yahoo: 'AGGH.AS',  fmp: 'AGGH',  alphaVantage: 'AGGH.AS', tradingView: 'EURONEXT:AGGH',   exchange: 'EURONEXT' },
+  'amundi-msci-world-sri-etf':   { yahoo: 'WSRI.PA',  fmp: 'WSRI',  alphaVantage: 'WSRI.PA', tradingView: 'EURONEXT:WSRI',   exchange: 'EURONEXT' },
+  'ishares-core-europe-etf':     { yahoo: 'IMEU.AS',  fmp: 'IMEU',  alphaVantage: 'IMEU.AS', tradingView: 'EURONEXT:IMEU',   exchange: 'EURONEXT' },
+  'xtrackers-msci-world-etf':    { yahoo: 'XMWO.DE',  fmp: 'XMWO',  alphaVantage: 'XMWO.DE', tradingView: 'XETR:XMWO',       exchange: 'XETR'     },
+  'vanguard-euro-gov-bond-etf':  { yahoo: 'VGEA.AS',  fmp: 'VGEA',  alphaVantage: 'VGEA.AS', tradingView: 'EURONEXT:VGEA',   exchange: 'EURONEXT' },
+  'ishares-hy-bond-etf':         { yahoo: 'IHYG.AS',  fmp: 'IHYG',  alphaVantage: 'IHYG.AS', tradingView: 'EURONEXT:IHYG',   exchange: 'EURONEXT' },
+
+  // ── Mixtos (FASE 5) ──────────────────────────────────────────────────────
+  'flossbach-multiple-opp':   { yahoo: 'LU0323578657.F', tradingView: 'FLOSSBACH:LU0323578657' },
+  'nordea-stable-return':     { yahoo: 'LU0141799501.F', tradingView: 'NORDEA:LU0141799501'    },
+  'jpmorgan-global-income':   { yahoo: 'LU0861555025.F', tradingView: 'JPMORGAN:LU0861555025'  },
+  'dws-kaldemorgen':          { yahoo: 'LU0599946893.F', tradingView: 'DWS:LU0599946893'       },
+
+  // ── RF / RV addicionals (FASE 5) ─────────────────────────────────────────
+  'pimco-high-yield':            { yahoo: 'IE0034235016.IR', tradingView: 'PIMCO:IE0034235016'        },
+  'pimco-em-bond':               { yahoo: 'IE00B11XZ871.IR', tradingView: 'PIMCO:PIMCOEM'             },
+  'capital-group-world-growth':  { yahoo: 'LU1295551144.F',  tradingView: 'CAPITALGROUP:LU1295551144' },
+  'comgest-growth-world':        { yahoo: 'IE0033535182.IR', tradingView: 'COMGEST:IE0033535182'       },
+  'brown-advisory-us-equity':    { yahoo: 'IE00BF5CZM90.IR', tradingView: 'BROWNADVISORY:IE00BF5CZM90'},
+  'comgest-growth-europe':       { yahoo: 'IE0004766014.IR', tradingView: 'COMGEST:IE0004766014'       },
 };
 
 // Tickers de benchmarks per TradingView
@@ -507,32 +533,50 @@ function getPeriodMs(period: '1y' | '2y' | '5y'): number {
 }
 
 function estimateReturnByProduct(productId: string): number {
-  if (productId.includes('monetari'))    return 3.0;
-  if (productId.includes('rf-curta'))    return 2.5;
-  if (productId.includes('rf-global') || productId.includes('rf-europa')) return 3.5;
-  if (productId.includes('emergents'))   return 9.0;
-  if (productId.includes('small-caps'))  return 10.0;
-  if (productId.includes('tecnologia'))  return 12.0;
-  if (productId.includes('energia'))     return 7.0;
-  if (productId.includes('salut') || productId.includes('healthcare')) return 8.0;
-  if (productId.includes('dividend'))    return 6.0;
-  if (productId.includes('esg'))         return 7.5;
-  if (productId.includes('reits') || productId.includes('immobiliari')) return 6.5;
-  return 8.0; // renda variable global per defecte
+  // Prioritzem dades reals del producte si existeixen
+  try {
+    const { FINANCIAL_PRODUCTS } = require('./products');
+    const p = FINANCIAL_PRODUCTS.find((x: { id: string; historicalReturn5Y?: number }) => x.id === productId);
+    if (p?.historicalReturn5Y != null) return p.historicalReturn5Y;
+  } catch { /* fallback */ }
+
+  // Fallback per classe d'actiu
+  if (productId.includes('monetari'))                                    return 3.0;
+  if (productId.includes('rf-curta'))                                    return 2.5;
+  if (productId.includes('rf-global') || productId.includes('rf-europa'))return 3.5;
+  if (productId.includes('mixtos') || productId.includes('stable'))      return 4.5;
+  if (productId.includes('high-yield') || productId.includes('hy'))      return 5.0;
+  if (productId.includes('emergents'))                                   return 9.0;
+  if (productId.includes('small-caps'))                                  return 10.0;
+  if (productId.includes('tecnologia') || productId.includes('tech'))    return 12.0;
+  if (productId.includes('energia'))                                     return 7.0;
+  if (productId.includes('salut') || productId.includes('healthcare'))   return 8.0;
+  if (productId.includes('dividend'))                                    return 6.0;
+  if (productId.includes('esg') || productId.includes('sri'))            return 7.5;
+  if (productId.includes('reits') || productId.includes('immobiliari'))  return 6.5;
+  return 8.0;
 }
 
 function estimateVolByProduct(productId: string): number {
-  if (productId.includes('monetari'))    return 0.5;
-  if (productId.includes('rf-curta'))    return 2.0;
-  if (productId.includes('rf-global') || productId.includes('rf-europa')) return 5.0;
-  if (productId.includes('emergents'))   return 20.0;
-  if (productId.includes('small-caps'))  return 18.0;
-  if (productId.includes('tecnologia'))  return 22.0;
-  if (productId.includes('energia'))     return 25.0;
-  if (productId.includes('salut') || productId.includes('healthcare')) return 14.0;
-  if (productId.includes('dividend'))    return 10.0;
-  if (productId.includes('esg'))         return 13.0;
-  if (productId.includes('reits') || productId.includes('immobiliari')) return 15.0;
+  try {
+    const { FINANCIAL_PRODUCTS } = require('./products');
+    const p = FINANCIAL_PRODUCTS.find((x: { id: string; historicalVolatility?: number }) => x.id === productId);
+    if (p?.historicalVolatility != null) return p.historicalVolatility;
+  } catch { /* fallback */ }
+
+  if (productId.includes('monetari'))                                    return 0.5;
+  if (productId.includes('rf-curta'))                                    return 2.0;
+  if (productId.includes('rf-global') || productId.includes('rf-europa'))return 5.0;
+  if (productId.includes('mixtos') || productId.includes('stable'))      return 7.0;
+  if (productId.includes('high-yield') || productId.includes('hy'))      return 9.0;
+  if (productId.includes('emergents'))                                   return 20.0;
+  if (productId.includes('small-caps'))                                  return 18.0;
+  if (productId.includes('tecnologia') || productId.includes('tech'))    return 22.0;
+  if (productId.includes('energia'))                                     return 25.0;
+  if (productId.includes('salut') || productId.includes('healthcare'))   return 14.0;
+  if (productId.includes('dividend'))                                    return 10.0;
+  if (productId.includes('esg') || productId.includes('sri'))            return 13.0;
+  if (productId.includes('reits') || productId.includes('immobiliari'))  return 15.0;
   return 15.0;
 }
 
