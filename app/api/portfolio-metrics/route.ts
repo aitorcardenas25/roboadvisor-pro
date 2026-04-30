@@ -97,6 +97,8 @@ export async function POST(req: NextRequest) {
         worstAcceptableLoss:  questionnaire.worstAcceptableLoss,
         esgPreference:        questionnaire.esgPreference as never,
         liquidityNeed:        questionnaire.liquidityNeed as never,
+        incomeStability:      (questionnaire as Record<string, unknown>).incomeStability  as never ?? 'estable',
+        crisisExperience:     (questionnaire as Record<string, unknown>).crisisExperience as never ?? 'no-vaig-invertir',
       };
 
       report = generateReport(
