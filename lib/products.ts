@@ -1634,15 +1634,6 @@ export const FINANCIAL_PRODUCTS: FinancialProduct[] = [
     tags: ['etf', 'espanya', 'ibex35', 'dividends'], historicalReturn5Y: 10.5, historicalVolatility: 18.0, maxDrawdownEstimate: -37.0, yieldEstimate: 4.2, inceptionYear: 2009, aum: 950, morningstarCategory: 'RV Espanya', morningstarRating: 3, sfdrArticle: 6, mifidRiskIndicator: 6,
   },
   {
-    id: 'bestinver-bolsa', name: 'Bestinver Bolsa', isin: 'ES0114488003',
-    manager: 'Bestinver', category: 'RV Espanya', assetClass: 'renda-variable-espanya',
-    region: 'Espanya', managementType: 'activa', benchmark: 'IBEX 35', risk: 5,
-    recommendedProfiles: ['dinamic', 'agressiu'], ter: 1.20, currency: 'EUR',
-    dataStatus: 'partial',
-    justification: 'Fons de renda variable espanyola de Bestinver amb gestió value de referència a Espanya. Enfocament en companies infravalorades.',
-    tags: ['espanya', 'value', 'bestinver', 'actiu'], historicalReturn5Y: 9.8, historicalVolatility: 17.5, maxDrawdownEstimate: -38.0, inceptionYear: 1992, aum: 450, morningstarCategory: 'RV Espanya', morningstarRating: 3, sfdrArticle: 6, mifidRiskIndicator: 6,
-  },
-  {
     id: 'cobas-seleccion', name: 'Cobas Selección', isin: 'ES0119199000',
     manager: 'Cobas AM', category: 'RV Global Value', assetClass: 'renda-variable-global',
     region: 'Global', managementType: 'activa', benchmark: 'MSCI World', risk: 5,
