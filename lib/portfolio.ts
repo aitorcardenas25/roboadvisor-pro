@@ -54,6 +54,16 @@ export interface PortfolioCharacteristics {
   managementStyle: string;
 }
 
+// ─── COMPLEXITAT SEGONS IMPORT MENSUAL ────────────────────────────────────────
+
+type ComplexityTier = 'simple' | 'medium' | 'full';
+
+function getComplexityTier(monthlyContribution: number): ComplexityTier {
+  if (monthlyContribution < 300) return 'simple'; // 3-4 fons
+  if (monthlyContribution < 700) return 'medium'; // 5-7 fons
+  return 'full';                                   // 8-12 fons
+}
+
 // ─── CARTERES PER PERFIL ──────────────────────────────────────────────────────
 
 export function buildPortfolio(
@@ -61,36 +71,55 @@ export function buildPortfolio(
   questionnaire: InvestorQuestionnaire
 ): Portfolio {
   const investableAmount = questionnaire.currentSavings * (questionnaire.percentageToInvest / 100);
+  const tier = getComplexityTier(questionnaire.monthlyContribution);
 
   switch (profile) {
     case 'conservador':
-      return buildConservadorPortfolio(investableAmount, questionnaire);
+      return buildConservadorPortfolio(investableAmount, questionnaire, tier);
     case 'moderat':
-      return buildModeratPortfolio(investableAmount, questionnaire);
+      return buildModeratPortfolio(investableAmount, questionnaire, tier);
     case 'dinamic':
-      return buildDinamicPortfolio(investableAmount, questionnaire);
+      return buildDinamicPortfolio(investableAmount, questionnaire, tier);
     case 'agressiu':
-      return buildAgressiuPortfolio(investableAmount, questionnaire);
+      return buildAgressiuPortfolio(investableAmount, questionnaire, tier);
   }
 }
 
 // ─── CARTERA CONSERVADORA ─────────────────────────────────────────────────────
 
+const CONSERVADOR_SIMPLE = [
+  { productId: 'amundi-monetari-eur',   weight: 35, rationale: 'Base monetària: preservació del capital i liquiditat immediata.' },
+  { productId: 'pimco-rf-curta',        weight: 40, rationale: 'Renda fixa curta durada: baix risc i rendibilitat superior al monetari.' },
+  { productId: 'fidelity-dividend',     weight: 25, rationale: 'Complement de renda variable via dividends estables i defensius.' },
+];
+
+const CONSERVADOR_MEDIUM = [
+  { productId: 'amundi-monetari-eur',   weight: 20, rationale: 'Preservació del capital i liquiditat immediata.' },
+  { productId: 'pimco-rf-curta',        weight: 25, rationale: 'Renda fixa curta durada per reduir sensibilitat als tipus.' },
+  { productId: 'vanguard-rf-curta-eur', weight: 20, rationale: 'Component indexat de deute públic europeu de baix cost.' },
+  { productId: 'pimco-rf-global',       weight: 20, rationale: 'Diversificació global de renda fixa amb gestió activa.' },
+  { productId: 'fidelity-dividend',     weight: 15, rationale: 'Exposició a renda variable via dividends estables.' },
+];
+
+const CONSERVADOR_FULL = [
+  { productId: 'amundi-monetari-eur',   weight: 20, rationale: 'Preservació del capital i liquiditat immediata.' },
+  { productId: 'bnp-monetari-eur',      weight: 10, rationale: 'Diversificació del component monetari entre gestores.' },
+  { productId: 'pimco-rf-curta',        weight: 20, rationale: 'Renda fixa curta durada per reduir sensibilitat als tipus.' },
+  { productId: 'vanguard-rf-curta-eur', weight: 15, rationale: 'Component indexat de deute públic europeu de baix cost.' },
+  { productId: 'pimco-rf-global',       weight: 15, rationale: 'Diversificació global de renda fixa amb gestió activa.' },
+  { productId: 'fidelity-dividend',     weight: 10, rationale: 'Exposició mínima a renda variable via dividends estables.' },
+  { productId: 'vanguard-global-index', weight:  5, rationale: 'Complement de renda variable global a cost mínim.' },
+  { productId: 'cohen-steers-reits',    weight:  5, rationale: 'Diversificació via immobiliari per correlació baixa.' },
+];
+
 function buildConservadorPortfolio(
   amount: number,
-  q: InvestorQuestionnaire
+  q: InvestorQuestionnaire,
+  tier: ComplexityTier
 ): Portfolio {
-
-  const rawAllocations = [
-    { productId: 'amundi-monetari-eur',  weight: 20, rationale: 'Preservació del capital i liquiditat immediata.' },
-    { productId: 'bnp-monetari-eur',     weight: 10, rationale: 'Diversificació del component monetari entre gestores.' },
-    { productId: 'pimco-rf-curta',       weight: 20, rationale: 'Renda fixa curta durada per reduir sensibilitat als tipus.' },
-    { productId: 'vanguard-rf-curta-eur',weight: 15, rationale: 'Component indexat de deute públic europeu de baix cost.' },
-    { productId: 'pimco-rf-global',      weight: 15, rationale: 'Diversificació global de renda fixa amb gestió activa.' },
-    { productId: 'fidelity-dividend',    weight: 10, rationale: 'Exposició mínima a renda variable via dividends estables.' },
-    { productId: 'vanguard-global-index',weight:  5, rationale: 'Complement de renda variable global a cost mínim.' },
-    { productId: 'cohen-steers-reits',   weight:  5, rationale: 'Diversificació via immobiliari per correlació baixa.' },
-  ];
+  const rawAllocations = tier === 'simple' ? CONSERVADOR_SIMPLE
+                       : tier === 'medium' ? CONSERVADOR_MEDIUM
+                       : CONSERVADOR_FULL;
 
   const allocations = buildAllocations(rawAllocations, amount);
 
@@ -123,12 +152,24 @@ function buildConservadorPortfolio(
 
 function buildModeratPortfolio(
   amount: number,
-  q: InvestorQuestionnaire
+  q: InvestorQuestionnaire,
+  tier: ComplexityTier
 ): Portfolio {
-
   const useESG = q.esgPreference === 'important' || q.esgPreference === 'essencial';
 
-  const rawAllocations = [
+  const rawAllocations = tier === 'simple' ? [
+    { productId: 'pimco-rf-global',       weight: 20, rationale: 'Renda fixa global activa com a component estabilitzador.' },
+    { productId: 'vanguard-global-index', weight: 50, rationale: 'Core de renda variable global indexada, màxima diversificació.' },
+    { productId: 'vanguard-usa-index',    weight: 15, rationale: 'Exposició al mercat nord-americà via S&P 500 indexat.' },
+    { productId: 'fidelity-dividend',     weight: 15, rationale: 'Generació d\'ingressos i menor volatilitat via dividends.' },
+  ] : tier === 'medium' ? [
+    { productId: 'vanguard-rf-curta-eur', weight: 10, rationale: 'Estabilitat i reduïda sensibilitat als tipus d\'interès.' },
+    { productId: 'pimco-rf-global',       weight: 15, rationale: 'Diversificació de renda fixa global activa.' },
+    { productId: 'vanguard-global-index', weight: 30, rationale: 'Core de renda variable global indexada.' },
+    { productId: 'vanguard-usa-index',    weight: 15, rationale: 'Exposició al mercat nord-americà indexat.' },
+    { productId: 'fidelity-europa',       weight: 15, rationale: 'Exposició activa a empreses europees de qualitat.' },
+    { productId: 'fidelity-dividend',     weight: 15, rationale: 'Generació d\'ingressos via dividends.' },
+  ] : [
     { productId: 'vanguard-rf-curta-eur',  weight: 10, rationale: 'Estabilitat i reduïda sensibilitat als tipus d\'interès.' },
     { productId: 'pimco-rf-global',         weight: 15, rationale: 'Diversificació de renda fixa global activa.' },
     { productId: 'nordea-rf-europa',        weight:  5, rationale: 'Component d\'alt rendiment europeu com a plus de rendibilitat.' },
@@ -178,12 +219,25 @@ function buildModeratPortfolio(
 
 function buildDinamicPortfolio(
   amount: number,
-  q: InvestorQuestionnaire
+  q: InvestorQuestionnaire,
+  tier: ComplexityTier
 ): Portfolio {
-
   const useESG = q.esgPreference === 'important' || q.esgPreference === 'essencial';
 
-  const rawAllocations = [
+  const rawAllocations = tier === 'simple' ? [
+    { productId: 'vanguard-global-index', weight: 45, rationale: 'Core global indexat. Base diversificada i de baix cost.' },
+    { productId: 'vanguard-usa-index',    weight: 30, rationale: 'Sobreponderació EUA: motor del cicle econòmic global.' },
+    { productId: 'gqg-emergents',         weight: 15, rationale: 'Emergents per potencial de creixement a llarg termini.' },
+    { productId: 'pimco-rf-global',       weight: 10, rationale: 'Renda fixa residual per amortir volatilitat en caigudes.' },
+  ] : tier === 'medium' ? [
+    { productId: 'vanguard-global-index',   weight: 30, rationale: 'Core global indexat.' },
+    { productId: 'fundsmith-equity',         weight: 15, rationale: 'Gestió activa global de qualitat.' },
+    { productId: 'vanguard-usa-index',       weight: 20, rationale: 'Sobreponderació EUA.' },
+    { productId: 'fidelity-europa',          weight: 10, rationale: 'Europa valor i diversificació geogràfica.' },
+    { productId: 'gqg-emergents',            weight: 10, rationale: 'Emergents per potencial de creixement.' },
+    { productId: 'lonvia-small-caps-europa', weight:  5, rationale: 'Small caps europees: prima de risc addicional.' },
+    { productId: 'pimco-rf-global',          weight: 10, rationale: 'Renda fixa per amortir volatilitat.' },
+  ] : [
     { productId: 'vanguard-global-index',   weight: 25, rationale: 'Core global indexat. Base de la cartera per màxima diversificació.' },
     { productId: 'fundsmith-equity',         weight: 10, rationale: 'Gestió activa global de qualitat. Complement de convicció.' },
     { productId: 'vanguard-usa-index',       weight: 15, rationale: 'Sobreponderar EUA per pes en el cicle econòmic actual.' },
@@ -234,10 +288,23 @@ function buildDinamicPortfolio(
 
 function buildAgressiuPortfolio(
   amount: number,
-  q: InvestorQuestionnaire
+  q: InvestorQuestionnaire,
+  tier: ComplexityTier
 ): Portfolio {
-
-  const rawAllocations = [
+  const rawAllocations = tier === 'simple' ? [
+    { productId: 'msif-global-opp',      weight: 35, rationale: 'Core de creixement global de qualitat màxima convicció.' },
+    { productId: 'baillie-gifford-usa',  weight: 35, rationale: 'Creixement nord-americà transformador a llarg termini.' },
+    { productId: 'polar-capital-tech',   weight: 20, rationale: 'Tecnologia global: motor de creixement estructural.' },
+    { productId: 'gqg-emergents',        weight: 10, rationale: 'Emergents globals de qualitat amb gran potencial.' },
+  ] : tier === 'medium' ? [
+    { productId: 'msif-global-opp',          weight: 20, rationale: 'Core de creixement global de qualitat màxima convicció.' },
+    { productId: 'baillie-gifford-usa',       weight: 20, rationale: 'Creixement nord-americà transformador a llarg termini.' },
+    { productId: 'vanguard-global-index',     weight: 15, rationale: 'Ancoratge indexat global per estabilitzar el core.' },
+    { productId: 'gqg-emergents',             weight: 15, rationale: 'Emergents globals de qualitat amb gran potencial.' },
+    { productId: 'polar-capital-tech',        weight: 15, rationale: 'Tecnologia global: motor de creixement estructural.' },
+    { productId: 'hermes-small-caps-global',  weight: 10, rationale: 'Small caps globals: prima de risc elevada a llarg termini.' },
+    { productId: 'polar-capital-healthcare',  weight:  5, rationale: 'Salut/biotech: creixement secular i menor correlació.' },
+  ] : [
     { productId: 'msif-global-opp',          weight: 15, rationale: 'Core de creixement global de qualitat màxima convicció.' },
     { productId: 'baillie-gifford-usa',       weight: 15, rationale: 'Creixement nord-americà transformador a llarg termini.' },
     { productId: 'vanguard-global-index',     weight: 10, rationale: 'Ancoratge indexat global per estabilitzar el core.' },

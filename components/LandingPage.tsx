@@ -34,8 +34,8 @@ const TOOLS = [
     icon:  '📈',
     title: 'Seguiment d\'Accions',
     desc:  'Signals d\'oportunitat, risc i anàlisi tècnica/fonamental.',
-    badge: 'Públic',
-    badgeColor: 'text-emerald-400 bg-emerald-400/10 border-emerald-400/20',
+    badge: 'Clients',
+    badgeColor: 'text-[#c9a84c] bg-[#c9a84c]/10 border-[#c9a84c]/20',
     accent: '#f59e0b',
   },
   {
@@ -111,7 +111,8 @@ const ITEM: Variants = {
 };
 
 export default function LandingPage({ onNavigate }: Props) {
-  const [loaded, setLoaded] = useState(false);
+  const [loaded, setLoaded]   = useState(false);
+  const [menuOpen, setMenuOpen] = useState(false);
 
   useEffect(() => {
     const t = setTimeout(() => setLoaded(true), 200);
@@ -160,7 +161,7 @@ export default function LandingPage({ onNavigate }: Props) {
             </div>
           </div>
 
-          {/* Nav */}
+          {/* Nav desktop */}
           <nav className="hidden md:flex items-center gap-6">
             {NAV_LINKS.map(link => (
               <Link key={link.href} href={link.href}
@@ -175,10 +176,48 @@ export default function LandingPage({ onNavigate }: Props) {
                 transition={{ duration: 2, repeat: Infinity }}
                 className="w-1.5 h-1.5 rounded-full bg-emerald-400"
               />
-              <span className="text-emerald-400 text-xs uppercase tracking-widest">Sistema actiu</span>
+              <span className="text-emerald-400 text-xs uppercase tracking-widest hidden lg:inline">Sistema actiu</span>
             </div>
           </nav>
+
+          {/* Hamburger mòbil */}
+          <button
+            onClick={() => setMenuOpen(v => !v)}
+            className="md:hidden p-2 text-white/50 hover:text-white transition-colors"
+            aria-label="Menu">
+            <div className="w-5 space-y-1.5">
+              <div className={`h-px bg-current transition-all duration-300 ${menuOpen ? 'rotate-45 translate-y-2' : ''}`} />
+              <div className={`h-px bg-current transition-all duration-300 ${menuOpen ? 'opacity-0' : ''}`} />
+              <div className={`h-px bg-current transition-all duration-300 ${menuOpen ? '-rotate-45 -translate-y-2' : ''}`} />
+            </div>
+          </button>
         </motion.header>
+
+        {/* Nav mòbil */}
+        {menuOpen && (
+          <motion.div
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: 'auto' }}
+            exit={{ opacity: 0, height: 0 }}
+            className="relative z-20 glass-dark border-b border-white/10 px-6 py-4 md:hidden">
+            <div className="flex flex-col gap-4">
+              {NAV_LINKS.map(link => (
+                <Link key={link.href} href={link.href}
+                  onClick={() => setMenuOpen(false)}
+                  className="text-white/50 hover:text-[#c9a84c] text-sm uppercase tracking-widest transition-colors">
+                  {link.label}
+                </Link>
+              ))}
+              <div className="pt-2 border-t border-white/10">
+                <button
+                  onClick={() => { setMenuOpen(false); onNavigate('admin'); }}
+                  className="text-white/30 text-xs uppercase tracking-widest hover:text-white/60 transition-colors">
+                  Àrea Admin
+                </button>
+              </div>
+            </div>
+          </motion.div>
+        )}
 
         {/* ── Hero ───────────────────────────────────────────────────────────── */}
         <div className="flex-1 flex flex-col items-center justify-center px-6 text-center pt-6 pb-0">
@@ -210,10 +249,10 @@ export default function LandingPage({ onNavigate }: Props) {
             animate={{ opacity: loaded ? 1 : 0, y: loaded ? 0 : 40 }}
             transition={{ duration: 1, delay: 0.4, ease: [0.22, 1, 0.36, 1] }}
             className="mb-6">
-            <h1 className="text-7xl md:text-9xl font-black text-white leading-none tracking-tighter">
+            <h1 className="text-5xl sm:text-7xl md:text-9xl font-black text-white leading-none tracking-tighter">
               FACTOR
             </h1>
-            <h1 className="text-7xl md:text-9xl font-black leading-none tracking-tighter text-shimmer">
+            <h1 className="text-5xl sm:text-7xl md:text-9xl font-black leading-none tracking-tighter text-shimmer">
               OTC
             </h1>
             <motion.div

@@ -16,6 +16,11 @@ export default withAuth(
       return NextResponse.redirect(new URL('/acces-restringit', req.url));
     }
 
+    // Accions: requereixen rol authorized o admin
+    if (pathname.startsWith('/accions') && role !== 'authorized' && role !== 'admin') {
+      return NextResponse.redirect(new URL('/acces-restringit', req.url));
+    }
+
     return NextResponse.next();
   },
   {
@@ -42,11 +47,18 @@ export default withAuth(
         // Resta de /admin/*: requereix token
         if (pathname.startsWith('/admin/')) return !!token;
 
-        // /cartera/*: requereix token
+        // /cartera: requereix token (pública mostra teaser)
         if (pathname.startsWith('/cartera')) return !!token;
+
+        // /accions: requereix token (pública mostra teaser)
+        if (pathname.startsWith('/accions')) return !!token;
 
         // /api/portfolios: requereix token
         if (pathname.startsWith('/api/portfolios')) return !!token;
+
+        // /api/stocks: requereix token
+        if (pathname.startsWith('/api/stocks')) return !!token;
+        if (pathname.startsWith('/api/market-data')) return !!token;
 
         return true;
       },
@@ -58,7 +70,13 @@ export const config = {
   matcher: [
     '/admin/:path*',
     '/cartera/:path*',
+    '/accions/:path*',
+    '/accions',
     '/api/admin/:path*',
     '/api/portfolios/:path*',
+    '/api/stocks/:path*',
+    '/api/stocks',
+    '/api/market-data/:path*',
+    '/api/market-data',
   ],
 };

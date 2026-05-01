@@ -1,14 +1,25 @@
 // app/api/market-data/route.ts
 // Endpoint llegat per compatibilitat + nova delegació al servei.
 import { NextRequest, NextResponse } from 'next/server';
+import { getServerSession } from 'next-auth';
+import { authOptions }      from '@/lib/authOptions';
 
 export async function GET(req: NextRequest) {
+  const session = await getServerSession(authOptions);
+  const role = (session?.user as { role?: string })?.role;
+  if (role !== 'authorized' && role !== 'admin') {
+    return NextResponse.json({ error: 'No autoritzat.' }, { status: 403 });
+  }
+
   const { searchParams } = req.nextUrl;
   const ticker  = searchParams.get('ticker');
   const period  = searchParams.get('period') ?? '5y';
   const source  = searchParams.get('source') ?? 'yahoo';
 
   if (!ticker) return NextResponse.json({ error: 'ticker requerit' }, { status: 400 });
+  if (!/^[A-Z0-9.\-^=]{1,20}$/i.test(ticker)) {
+    return NextResponse.json({ error: 'ticker no vàlid' }, { status: 400 });
+  }
 
   try {
     // FMP (server-side, amb API key)
