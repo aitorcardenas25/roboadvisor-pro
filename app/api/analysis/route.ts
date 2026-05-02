@@ -101,27 +101,69 @@ async function fetchStockOHLCV(symbol: string, timeframe: string): Promise<OHLCV
   const tf = TF_YAHOO[timeframe] ?? TF_YAHOO['1d'];
   const ttl = timeframe === '15m' ? 60 : timeframe === '1h' ? 300 : 3600;
   return cached(`stock-ohlcv:${symbol}:${timeframe}`, ttl, async () => {
-    const url = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(symbol)}?interval=${tf.interval}&range=${tf.range}`;
-    const res = await yahooFetch(url);
-    if (!res.ok) throw new Error(`Yahoo ${res.status}`);
-    const json = await res.json();
-    const result = json?.chart?.result?.[0];
-    if (!result) throw new Error('Yahoo: no data');
-    const ts: number[]    = result.timestamp ?? [];
-    const q                = result.indicators.quote[0];
-    const opens: number[] = q.open ?? [];
-    const highs: number[] = q.high ?? [];
-    const lows: number[]  = q.low  ?? [];
-    const closes: number[]= q.close ?? [];
-    const vols: number[]  = q.volume ?? [];
-    const candles: OHLCV[] = ts
-      .map((t, i) => ({ time: t, open: opens[i], high: highs[i], low: lows[i], close: closes[i], volume: vols[i] ?? 0 }))
-      .filter(c => c.open != null && c.close != null && c.close > 0);
+    // ── Try Yahoo Finance ────────────────────────────────────────────────────
+    try {
+      const url = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(symbol)}?interval=${tf.interval}&range=${tf.range}`;
+      const res = await yahooFetch(url);
+      if (res.ok) {
+        const json = await res.json();
+        const result = json?.chart?.result?.[0];
+        if (result) {
+          const ts: number[]    = result.timestamp ?? [];
+          const q                = result.indicators.quote[0];
+          const opens: number[] = q.open ?? [];
+          const highs: number[] = q.high ?? [];
+          const lows: number[]  = q.low  ?? [];
+          const closes: number[]= q.close ?? [];
+          const vols: number[]  = q.volume ?? [];
+          const candles: OHLCV[] = ts
+            .map((t, i) => ({ time: t, open: opens[i], high: highs[i], low: lows[i], close: closes[i], volume: vols[i] ?? 0 }))
+            .filter(c => c.open != null && c.close != null && c.close > 0);
+          if (candles.length >= 10) {
+            if (timeframe === '4h') return resample4h(candles);
+            return candles;
+          }
+        }
+      }
+    } catch { /* fall through to Stooq */ }
 
-    // Resample 1h → 4h if needed
-    if (timeframe === '4h') return resample4h(candles);
-    return candles;
+    // ── Fallback: Stooq (daily only, no auth needed) ─────────────────────────
+    if (timeframe === '1d') return fetchStooqOHLCV(symbol);
+
+    throw new Error('Dades no disponibles. Prova el temporitzador 1d o cripto.');
   });
+}
+
+async function fetchStooqOHLCV(symbol: string): Promise<OHLCV[]> {
+  const stooqSym = symbol.toLowerCase().replace('^', '').replace('.', '-');
+  // Stooq symbol: AAPL → aapl.us, MSFT → msft.us, etc.
+  const sym = stooqSym.includes('.') ? stooqSym : `${stooqSym}.us`;
+  const url = `https://stooq.com/q/d/l/?s=${sym}&i=d`;
+  const res = await fetch(url, {
+    headers: { 'User-Agent': YAHOO_UA, 'Accept': 'text/csv' },
+    cache: 'no-store',
+  });
+  if (!res.ok) throw new Error(`Stooq ${res.status}`);
+  const text = await res.text();
+  const lines = text.trim().split('\n').slice(1); // skip header
+  const candles: OHLCV[] = lines
+    .map(line => {
+      const [date, open, high, low, close, volume] = line.split(',');
+      if (!date || !close) return null;
+      const t = Math.floor(new Date(date.trim()).getTime() / 1000);
+      return {
+        time:   t,
+        open:   parseFloat(open),
+        high:   parseFloat(high),
+        low:    parseFloat(low),
+        close:  parseFloat(close),
+        volume: parseFloat(volume ?? '0') || 0,
+      };
+    })
+    .filter((c): c is OHLCV => c !== null && isFinite(c.close) && c.close > 0)
+    .sort((a, b) => a.time - b.time);
+  if (candles.length < 10) throw new Error('Stooq: dades insuficients');
+  return candles;
 }
 
 function resample4h(candles: OHLCV[]): OHLCV[] {

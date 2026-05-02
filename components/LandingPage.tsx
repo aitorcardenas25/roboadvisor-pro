@@ -171,9 +171,9 @@ export default function LandingPage({ onNavigate }: Props) {
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: loaded ? 1 : 0, y: loaded ? 0 : 10 }}
             transition={{ duration: 0.5, delay: 0.15 }}
-            className="mb-5 inline-flex items-center gap-2 border border-white/10 rounded-full px-4 py-1.5 bg-white/3">
+            className="mb-8 inline-flex items-center gap-2 border border-white/10 rounded-full px-4 py-1.5 bg-white/3">
             <span className="text-white/40 text-xs uppercase tracking-[0.25em]">
-              Factor OTC · Plataforma d&apos;inversió
+              Plataforma d&apos;inversió professional
             </span>
           </motion.div>
 
@@ -182,13 +182,18 @@ export default function LandingPage({ onNavigate }: Props) {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: loaded ? 1 : 0, y: loaded ? 0 : 20 }}
             transition={{ duration: 0.6, delay: 0.25 }}
-            className="mb-5">
-            <h1 className="text-4xl sm:text-5xl md:text-6xl font-black text-white leading-tight tracking-tight">
-              Decisions d&apos;inversió
+            className="mb-6">
+            <h1 className="text-6xl sm:text-8xl md:text-9xl font-black text-white leading-none tracking-tighter">
+              FACTOR
             </h1>
-            <h1 className="text-4xl sm:text-5xl md:text-6xl font-black leading-tight tracking-tight text-shimmer">
-              amb precisió institucional.
+            <h1 className="text-6xl sm:text-8xl md:text-9xl font-black leading-none tracking-tighter text-shimmer">
+              OTC
             </h1>
+            <div className="mt-4 flex items-center justify-center gap-4">
+              <div className="h-px w-16 bg-gradient-to-r from-transparent to-[#c9a84c]/40" />
+              <span className="text-white/30 text-xs uppercase tracking-[0.5em]">RoboAdvisor Pro</span>
+              <div className="h-px w-16 bg-gradient-to-l from-transparent to-[#c9a84c]/40" />
+            </div>
           </motion.div>
 
           {/* Subtitle */}
@@ -197,8 +202,9 @@ export default function LandingPage({ onNavigate }: Props) {
             animate={{ opacity: loaded ? 1 : 0, y: loaded ? 0 : 10 }}
             transition={{ duration: 0.5, delay: 0.4 }}
             className="text-white/40 text-base md:text-lg max-w-xl leading-relaxed mb-10 font-light">
-            Estratègies personalitzades basades en teoria moderna de carteres,
-            anàlisi tècnica i fonamental en temps real.
+            Estratègies d&apos;inversió personalitzades basades en teoria moderna de carteres.
+            <br />
+            <span className="text-white/25">Precisió institucional. Accessibilitat digital.</span>
           </motion.p>
 
           {/* CTAs */}
