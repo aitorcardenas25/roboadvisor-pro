@@ -230,7 +230,7 @@ function WatchlistTab() {
           list.map(async s => {
             try {
               const r = await fetch(`/api/stocks/${s.symbol}`);
-              if (r.ok) return (await r.json()) as StockWithQuote;
+              if (r.ok) return { ...s, ...(await r.json()) } as StockWithQuote;
             } catch { /* ok */ }
             return s;
           })

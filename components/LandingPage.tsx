@@ -1,10 +1,9 @@
 'use client';
 
 import { useEffect, useState, useRef } from 'react';
-import { motion, useInView, type Variants } from 'framer-motion';
+import { motion, useInView } from 'framer-motion';
 import Link from 'next/link';
 import { AppView } from '@/app/page';
-import ThreeBackground from './ThreeBackground';
 
 interface Props {
   onNavigate: (view: AppView) => void;
@@ -18,7 +17,6 @@ const TOOLS = [
     desc:  'Compara fins a 5 fons per rendibilitat, volatilitat, TER i risc.',
     badge: 'Públic',
     badgeColor: 'text-emerald-400 bg-emerald-400/10 border-emerald-400/20',
-    accent: '#10b981',
   },
   {
     href:  '/noticies',
@@ -27,25 +25,22 @@ const TOOLS = [
     desc:  'Articles financers per categories: mercats, macro, fons i ETFs.',
     badge: 'Públic',
     badgeColor: 'text-emerald-400 bg-emerald-400/10 border-emerald-400/20',
-    accent: '#3b82f6',
   },
   {
     href:  '/accions',
     iconPath: 'M3 17l6-6 4 4 8-8',
     title: "Seguiment d'Accions",
-    desc:  "Signals d'oportunitat, risc i anàlisi tècnica/fonamental.",
+    desc:  "Senyals tècnics, fonamentals i anàlisi de gràfics en temps real.",
     badge: 'Clients',
     badgeColor: 'text-[#c9a84c] bg-[#c9a84c]/10 border-[#c9a84c]/20',
-    accent: '#f59e0b',
   },
   {
     href:  '/cartera',
     iconPath: 'M21 13.255A23.931 23.931 0 0112 15c-3.183 0-6.22-.62-9-1.745M16 6V4a2 2 0 00-2-2h-4a2 2 0 00-2 2v2m4 6h.01M5 20h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z',
     title: 'Carteres Model',
-    desc:  "Carteres model amb distribució d'actius i evolució simulada.",
+    desc:  "Distribució d'actius òptima amb simulació Monte Carlo.",
     badge: 'Clients',
     badgeColor: 'text-[#c9a84c] bg-[#c9a84c]/10 border-[#c9a84c]/20',
-    accent: '#c9a84c',
   },
 ];
 
@@ -56,148 +51,104 @@ const NAV_LINKS = [
 ];
 
 const STATS = [
-  { target: 158, suffix: '',    label: 'Fons i ETFs',        sub: 'Base de dades validada'  },
-  { target: 10000, suffix: '+', label: 'Sim. Monte Carlo',   sub: 'Per perfil inversor'     },
-  { target: 5,   suffix: '',    label: 'Perfils inversor',   sub: 'Conservador → Agressiu'  },
-  { target: 14,  suffix: '+',   label: 'Senyals actives',    sub: 'Accions en vigilància'   },
+  { value: '158',    label: 'Fons i ETFs',       sub: 'Base de dades validada'  },
+  { value: '10.000+',label: 'Sim. Monte Carlo',  sub: 'Per perfil inversor'     },
+  { value: '5',      label: 'Perfils inversor',  sub: 'Conservador → Agressiu'  },
+  { value: '14+',    label: 'Senyals actives',   sub: 'Accions en vigilància'   },
 ];
 
-function useCountUp(target: number, duration = 1800, start = false) {
-  const [count, setCount] = useState(0);
-  useEffect(() => {
-    if (!start) return;
-    let startTime: number | null = null;
-    const step = (timestamp: number) => {
-      if (!startTime) startTime = timestamp;
-      const progress = Math.min((timestamp - startTime) / duration, 1);
-      const eased    = 1 - Math.pow(1 - progress, 3);
-      setCount(Math.floor(eased * target));
-      if (progress < 1) requestAnimationFrame(step);
-    };
-    requestAnimationFrame(step);
-  }, [start, target, duration]);
-  return count;
-}
-
-function StatItem({ target, suffix, label, sub, delay }: {
-  target: number; suffix: string; label: string; sub: string; delay: number;
-}) {
+function StatItem({ value, label, sub, delay }: { value: string; label: string; sub: string; delay: number }) {
   const ref    = useRef(null);
   const inView = useInView(ref, { once: true, margin: '-60px' });
-  const count  = useCountUp(target, 1600 + delay * 200, inView);
   return (
     <motion.div
       ref={ref}
-      initial={{ opacity: 0, y: 20 }}
+      initial={{ opacity: 0, y: 16 }}
       animate={inView ? { opacity: 1, y: 0 } : {}}
-      transition={{ duration: 0.6, delay: delay * 0.12 }}
-      className="group text-center">
-      <div className="text-3xl md:text-4xl font-black text-white mb-1 group-hover:text-[#c9a84c] transition-colors duration-500 tabular-nums">
-        {count}{suffix}
-      </div>
-      <div className="text-white/50 text-xs uppercase tracking-widest mb-0.5">{label}</div>
+      transition={{ duration: 0.5, delay: delay * 0.1 }}
+      className="text-center">
+      <div className="text-2xl md:text-3xl font-black text-[#c9a84c] mb-0.5 tabular-nums">{value}</div>
+      <div className="text-white/60 text-xs uppercase tracking-widest mb-0.5">{label}</div>
       <div className="text-white/25 text-xs">{sub}</div>
     </motion.div>
   );
 }
 
-const CONTAINER: Variants = {
-  hidden: {},
-  show:   { transition: { staggerChildren: 0.1 } },
-};
-const ITEM: Variants = {
-  hidden: { opacity: 0, y: 24 },
-  show:   { opacity: 1, y: 0, transition: { duration: 0.6, ease: [0.22, 1, 0.36, 1] as [number,number,number,number] } },
-};
-
 export default function LandingPage({ onNavigate }: Props) {
-  const [loaded, setLoaded]   = useState(false);
+  const [loaded, setLoaded]     = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
 
   useEffect(() => {
-    const t = setTimeout(() => setLoaded(true), 200);
+    const t = setTimeout(() => setLoaded(true), 100);
     return () => clearTimeout(t);
   }, []);
 
   return (
-    <div className="relative min-h-screen overflow-hidden bg-[#0a0f0d]">
-      <ThreeBackground />
+    <div className="relative min-h-screen bg-[#070c0a]">
 
-      {/* Gradient overlay layers */}
-      <div className="absolute inset-0 bg-gradient-to-b from-[#0a0f0d]/50 via-transparent to-[#0a0f0d] pointer-events-none z-10" />
-      <div className="absolute inset-0 bg-gradient-to-r from-[#0a0f0d]/30 via-transparent to-[#0a0f0d]/30 pointer-events-none z-10" />
+      {/* Background: subtle radial + horizontal lines */}
+      <div className="absolute inset-0 pointer-events-none">
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_80%_50%_at_50%_-10%,rgba(201,168,76,0.07),transparent)]" />
+        <div className="absolute inset-0"
+          style={{
+            backgroundImage: 'repeating-linear-gradient(0deg,transparent,transparent 79px,rgba(255,255,255,0.025) 80px)',
+          }}
+        />
+      </div>
 
-      {/* Grid pattern subtil */}
-      <div className="absolute inset-0 z-10 pointer-events-none opacity-40"
-        style={{
-          backgroundImage: `
-            linear-gradient(rgba(201,168,76,0.025) 1px, transparent 1px),
-            linear-gradient(90deg, rgba(201,168,76,0.025) 1px, transparent 1px)
-          `,
-          backgroundSize: '80px 80px',
-        }}
-      />
-
-      <div className="relative z-20 min-h-screen flex flex-col">
+      <div className="relative min-h-screen flex flex-col">
 
         {/* ── Header ─────────────────────────────────────────────────────────── */}
         <motion.header
-          initial={{ opacity: 0, y: -24 }}
-          animate={{ opacity: loaded ? 1 : 0, y: loaded ? 0 : -24 }}
-          transition={{ duration: 0.8, ease: [0.22, 1, 0.36, 1] }}
-          className="flex items-center justify-between px-8 py-6 glass-dark">
+          initial={{ opacity: 0 }}
+          animate={{ opacity: loaded ? 1 : 0 }}
+          transition={{ duration: 0.4 }}
+          className="flex items-center justify-between px-6 md:px-10 h-14 border-b border-white/8 bg-[#070c0a]/80 backdrop-blur sticky top-0 z-30">
 
           {/* Logo */}
-          <div className="flex items-center gap-2.5">
-            <div className="w-7 h-7 bg-[#c9a84c]/10 border border-[#c9a84c]/40 rounded flex items-center justify-center">
-              <span className="text-[#c9a84c] font-black text-sm leading-none">F</span>
+          <div className="flex items-center gap-2">
+            <div className="w-6 h-6 bg-[#c9a84c]/15 border border-[#c9a84c]/40 rounded flex items-center justify-center">
+              <span className="text-[#c9a84c] font-black text-xs leading-none">F</span>
             </div>
-            <div className="flex items-baseline gap-1">
-              <span className="text-white font-black text-base tracking-tight">FACTOR</span>
-              <span className="text-[#c9a84c]/70 font-light text-sm tracking-widest">OTC</span>
-            </div>
+            <span className="text-white font-bold text-sm tracking-tight">FACTOR</span>
+            <span className="text-[#c9a84c]/60 font-light text-sm tracking-wider">OTC</span>
           </div>
 
           {/* Nav desktop */}
-          <nav className="hidden md:flex items-center gap-6">
+          <nav className="hidden md:flex items-center gap-7">
             {NAV_LINKS.map(link => (
               <Link key={link.href} href={link.href}
-                className="text-white/40 hover:text-[#c9a84c] text-xs uppercase tracking-widest transition-all duration-300 hover:tracking-[0.35em]">
+                className="text-white/40 hover:text-white text-xs uppercase tracking-widest transition-colors duration-200">
                 {link.label}
               </Link>
             ))}
             <div className="w-px h-4 bg-white/15" />
-            <div className="flex items-center gap-2 px-3 py-1.5 rounded-full border border-emerald-500/20 bg-emerald-500/5">
+            <div className="flex items-center gap-1.5">
               <div className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
-              <span className="text-emerald-400 text-xs uppercase tracking-widest hidden lg:inline">Sistema actiu</span>
+              <span className="text-emerald-400/70 text-xs">Sistema actiu</span>
             </div>
           </nav>
 
           {/* Hamburger mòbil */}
           <button
             onClick={() => setMenuOpen(v => !v)}
-            className="md:hidden p-2 text-white/50 hover:text-white transition-colors"
+            className="md:hidden p-2 text-white/40 hover:text-white"
             aria-label="Menu">
-            <div className="w-5 space-y-1.5">
-              <div className={`h-px bg-current transition-all duration-300 ${menuOpen ? 'rotate-45 translate-y-2' : ''}`} />
-              <div className={`h-px bg-current transition-all duration-300 ${menuOpen ? 'opacity-0' : ''}`} />
-              <div className={`h-px bg-current transition-all duration-300 ${menuOpen ? '-rotate-45 -translate-y-2' : ''}`} />
-            </div>
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+                d={menuOpen ? 'M6 18L18 6M6 6l12 12' : 'M4 6h16M4 12h16M4 18h16'} />
+            </svg>
           </button>
         </motion.header>
 
         {/* Nav mòbil */}
         {menuOpen && (
-          <motion.div
-            initial={{ opacity: 0, height: 0 }}
-            animate={{ opacity: 1, height: 'auto' }}
-            exit={{ opacity: 0, height: 0 }}
-            className="relative z-20 glass-dark border-b border-white/10 px-6 py-4 md:hidden">
+          <div className="border-b border-white/10 bg-[#070c0a] px-6 py-4 md:hidden z-20">
             <div className="flex flex-col gap-4">
               {NAV_LINKS.map(link => (
                 <Link key={link.href} href={link.href}
                   onClick={() => setMenuOpen(false)}
-                  className="text-white/50 hover:text-[#c9a84c] text-sm uppercase tracking-widest transition-colors">
+                  className="text-white/50 hover:text-white text-sm uppercase tracking-widest transition-colors">
                   {link.label}
                 </Link>
               ))}
@@ -209,176 +160,122 @@ export default function LandingPage({ onNavigate }: Props) {
                 </button>
               </div>
             </div>
-          </motion.div>
+          </div>
         )}
 
         {/* ── Hero ───────────────────────────────────────────────────────────── */}
-        <div className="flex-1 flex flex-col items-center justify-center px-6 text-center pt-6 pb-0">
+        <div className="flex-1 flex flex-col items-center justify-center px-6 text-center pt-16 pb-8">
 
-          {/* Badge */}
+          {/* Label */}
           <motion.div
-            initial={{ opacity: 0, scale: 0.85 }}
-            animate={{ opacity: loaded ? 1 : 0, scale: loaded ? 1 : 0.85 }}
-            transition={{ duration: 0.7, delay: 0.3, ease: [0.22, 1, 0.36, 1] }}
-            className="mb-8 inline-flex items-center gap-3 border border-[#c9a84c]/30 rounded-full px-5 py-2 bg-[#c9a84c]/5 backdrop-blur-sm">
-            <div className="w-1 h-1 rounded-full bg-[#c9a84c]" />
-            <span className="text-[#c9a84c] text-xs uppercase tracking-[0.3em] font-medium">
-              Plataforma d&apos;inversió professional
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: loaded ? 1 : 0, y: loaded ? 0 : 10 }}
+            transition={{ duration: 0.5, delay: 0.15 }}
+            className="mb-5 inline-flex items-center gap-2 border border-white/10 rounded-full px-4 py-1.5 bg-white/3">
+            <span className="text-white/40 text-xs uppercase tracking-[0.25em]">
+              Factor OTC · Plataforma d&apos;inversió
             </span>
-            <div className="w-1 h-1 rounded-full bg-[#c9a84c]" />
           </motion.div>
 
-          {/* Títol */}
+          {/* Heading */}
           <motion.div
-            initial={{ opacity: 0, y: 40 }}
-            animate={{ opacity: loaded ? 1 : 0, y: loaded ? 0 : 40 }}
-            transition={{ duration: 1, delay: 0.4, ease: [0.22, 1, 0.36, 1] }}
-            className="mb-6">
-            <h1 className="text-5xl sm:text-6xl md:text-7xl font-black text-white leading-none tracking-tighter">
-              FACTOR
-            </h1>
-            <h1 className="text-5xl sm:text-6xl md:text-7xl font-black leading-none tracking-tighter text-shimmer">
-              OTC
-            </h1>
-            <motion.div
-              initial={{ scaleX: 0 }}
-              animate={{ scaleX: loaded ? 1 : 0 }}
-              transition={{ duration: 0.8, delay: 0.9, ease: [0.22, 1, 0.36, 1] }}
-              className="mt-5 flex items-center justify-center gap-4">
-              <div className="h-px w-20 bg-gradient-to-r from-transparent to-[#c9a84c]/50" />
-              <span className="text-white/40 text-xs uppercase tracking-[0.5em]">RoboAdvisor Pro</span>
-              <div className="h-px w-20 bg-gradient-to-l from-transparent to-[#c9a84c]/50" />
-            </motion.div>
-          </motion.div>
-
-          {/* Subtítol */}
-          <motion.p
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: loaded ? 1 : 0, y: loaded ? 0 : 20 }}
-            transition={{ duration: 0.8, delay: 0.7, ease: [0.22, 1, 0.36, 1] }}
-            className="text-white/40 text-lg md:text-xl max-w-2xl leading-relaxed mb-12 font-light">
-            Estratègies d&apos;inversió personalitzades basades en teoria moderna de carteres.
-            <br />
-            <span className="text-white/25">Precisió institucional. Accessibilitat digital.</span>
+            transition={{ duration: 0.6, delay: 0.25 }}
+            className="mb-5">
+            <h1 className="text-4xl sm:text-5xl md:text-6xl font-black text-white leading-tight tracking-tight">
+              Decisions d&apos;inversió
+            </h1>
+            <h1 className="text-4xl sm:text-5xl md:text-6xl font-black leading-tight tracking-tight text-shimmer">
+              amb precisió institucional.
+            </h1>
+          </motion.div>
+
+          {/* Subtitle */}
+          <motion.p
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: loaded ? 1 : 0, y: loaded ? 0 : 10 }}
+            transition={{ duration: 0.5, delay: 0.4 }}
+            className="text-white/40 text-base md:text-lg max-w-xl leading-relaxed mb-10 font-light">
+            Estratègies personalitzades basades en teoria moderna de carteres,
+            anàlisi tècnica i fonamental en temps real.
           </motion.p>
 
-          {/* CTA */}
+          {/* CTAs */}
+          <motion.div
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: loaded ? 1 : 0, y: loaded ? 0 : 10 }}
+            transition={{ duration: 0.5, delay: 0.5 }}
+            className="flex flex-col sm:flex-row gap-3 items-center mb-16">
+
+            <button
+              onClick={() => onNavigate('roboadvisor')}
+              className="px-8 py-3 bg-[#c9a84c] text-[#0d1f1a] font-semibold text-sm tracking-wide rounded-sm hover:bg-[#e8d5a3] transition-colors duration-200 flex items-center gap-2">
+              RoboAdvisor Automàtic
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7l5 5m0 0l-5 5m5-5H6" />
+              </svg>
+            </button>
+
+            <button
+              onClick={() => onNavigate('admin')}
+              className="px-8 py-3 border border-white/15 text-white/50 hover:text-white hover:border-white/30 font-medium text-sm tracking-wide rounded-sm transition-colors duration-200 flex items-center gap-2">
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+              </svg>
+              Àrea Admin
+            </button>
+          </motion.div>
+
+          {/* Tool cards */}
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: loaded ? 1 : 0, y: loaded ? 0 : 20 }}
-            transition={{ duration: 0.8, delay: 0.9 }}
-            className="flex flex-col sm:flex-row gap-4 items-center mb-16">
+            transition={{ duration: 0.6, delay: 0.65 }}
+            className="w-full max-w-4xl mb-6">
 
-            <motion.button
-              whileHover={{ scale: 1.03, y: -2 }}
-              whileTap={{ scale: 0.97 }}
-              onClick={() => onNavigate('roboadvisor')}
-              className="btn-glow relative px-10 py-4 bg-[#c9a84c] overflow-hidden group">
-              <motion.div
-                className="absolute inset-0 bg-white/10"
-                initial={{ x: '-100%' }}
-                whileHover={{ x: '100%' }}
-                transition={{ duration: 0.5 }}
-              />
-              <span className="relative text-[#0d1f1a] font-bold text-sm uppercase tracking-[0.2em] flex items-center gap-3">
-                RoboAdvisor Automàtic
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7l5 5m0 0l-5 5m5-5H6" />
-                </svg>
-              </span>
-            </motion.button>
+            <p className="text-white/15 text-xs uppercase tracking-[0.4em] mb-4 text-left">Eines disponibles</p>
 
-            <motion.button
-              whileHover={{ scale: 1.03, y: -2 }}
-              whileTap={{ scale: 0.97 }}
-              onClick={() => onNavigate('admin')}
-              className="px-10 py-4 border border-white/15 hover:border-[#c9a84c]/40 transition-all duration-400 group relative overflow-hidden">
-              <motion.div
-                className="absolute inset-0 bg-[#c9a84c]/5"
-                initial={{ opacity: 0 }}
-                whileHover={{ opacity: 1 }}
-                transition={{ duration: 0.3 }}
-              />
-              <span className="relative text-white/50 group-hover:text-[#c9a84c] font-medium text-sm uppercase tracking-[0.2em] flex items-center gap-3 transition-colors duration-300">
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
-                </svg>
-                Àrea Admin
-              </span>
-            </motion.button>
-          </motion.div>
-
-          {/* Feature cards */}
-          <motion.div
-            variants={CONTAINER}
-            initial="hidden"
-            animate={loaded ? 'show' : 'hidden'}
-            transition={{ delayChildren: 1.1 }}
-            className="w-full max-w-5xl px-4 mb-14">
-
-            <motion.p
-              variants={ITEM}
-              className="text-white/15 text-xs uppercase tracking-[0.4em] mb-5">
-              Eines disponibles
-            </motion.p>
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-              {TOOLS.map((tool) => (
-                <motion.div key={tool.href} variants={ITEM}>
-                  <Link href={tool.href}
-                    className="block h-full glass border border-white/8 rounded-xl p-4 card-hover group text-left"
-                    style={{ '--hover-accent': tool.accent } as React.CSSProperties}>
-                    <div className="flex items-start justify-between mb-3">
-                      <div className="w-8 h-8 rounded-lg bg-white/5 flex items-center justify-center">
-                        <svg className="w-4 h-4 text-white/50 group-hover:text-[#c9a84c] transition-colors duration-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d={tool.iconPath} />
-                        </svg>
-                      </div>
-                      <span className={`text-[10px] px-2 py-0.5 rounded-full border font-medium ${tool.badgeColor}`}>
-                        {tool.badge}
-                      </span>
-                    </div>
-                    <h3 className="text-white font-semibold text-sm mb-1.5 group-hover:text-[#e8d5a3] transition-colors duration-300">
-                      {tool.title}
-                    </h3>
-                    <p className="text-white/30 text-xs leading-relaxed group-hover:text-white/45 transition-colors duration-300">
-                      {tool.desc}
-                    </p>
-                    <div className="mt-3 flex items-center gap-1 text-[10px] text-white/20 group-hover:text-[#c9a84c]/60 transition-colors duration-300">
-                      <span>Accedir</span>
-                      <svg className="w-3 h-3 group-hover:translate-x-0.5 transition-transform duration-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-2">
+              {TOOLS.map(tool => (
+                <Link key={tool.href} href={tool.href}
+                  className="group block border border-white/8 rounded-lg p-4 text-left bg-white/2 hover:bg-white/5 hover:border-white/15 transition-all duration-200">
+                  <div className="flex items-start justify-between mb-3">
+                    <div className="w-7 h-7 rounded bg-white/5 flex items-center justify-center">
+                      <svg className="w-3.5 h-3.5 text-white/35 group-hover:text-[#c9a84c] transition-colors duration-200" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d={tool.iconPath} />
                       </svg>
                     </div>
-                  </Link>
-                </motion.div>
+                    <span className={`text-[9px] px-1.5 py-0.5 rounded border font-medium ${tool.badgeColor}`}>
+                      {tool.badge}
+                    </span>
+                  </div>
+                  <h3 className="text-white/70 font-medium text-xs mb-1 group-hover:text-white transition-colors duration-200 leading-snug">
+                    {tool.title}
+                  </h3>
+                  <p className="text-white/25 text-[11px] leading-relaxed group-hover:text-white/35 transition-colors duration-200">
+                    {tool.desc}
+                  </p>
+                </Link>
               ))}
             </div>
           </motion.div>
         </div>
 
-        {/* ── Stats ──────────────────────────────────────────────────────────── */}
-        <div className="relative z-20 px-8 pb-10">
-          <div className="max-w-4xl mx-auto border-t border-white/8 pt-8">
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-8">
-              {STATS.map((s, i) => (
-                <StatItem key={i} {...s} delay={i} />
-              ))}
-            </div>
+        {/* ── Stats bar ──────────────────────────────────────────────────────── */}
+        <div className="border-t border-white/8 px-8 py-8">
+          <div className="max-w-3xl mx-auto grid grid-cols-2 md:grid-cols-4 gap-6">
+            {STATS.map((s, i) => <StatItem key={i} {...s} delay={i} />)}
           </div>
         </div>
 
         {/* ── Footer ─────────────────────────────────────────────────────────── */}
-        <motion.footer
-          initial={{ opacity: 0 }}
-          animate={{ opacity: loaded ? 1 : 0 }}
-          transition={{ duration: 1, delay: 1.5 }}
-          className="relative z-20 text-center pb-4 px-8">
+        <div className="border-t border-white/5 text-center py-4 px-8">
           <p className="text-white/15 text-xs">
             Eina de suport a la decisió · No constitueix assessorament financer regulat ·
             No executa operacions reals · © {new Date().getFullYear()} Factor OTC
           </p>
-        </motion.footer>
+        </div>
       </div>
     </div>
   );
