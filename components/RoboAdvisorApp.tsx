@@ -1282,38 +1282,12 @@ export default function RoboAdvisorApp({ onBack }: Props) {
             monteCarlo={monteCarlo} report={report}
             historical={historical}
           />
-          {/* ── BOTONS FINALS ────────────────────────────────────────────────── */}
-<motion.div
-  className="flex flex-col items-center gap-4 pt-4"
-  initial={{ opacity: 0, y: 20 }}
-  animate={{ opacity: 1, y: 0 }}
-  transition={{ delay: 0.6 }}>
-
-  {/* Botó PDF */}
-  <PDFButton
-    questionnaire={q} scoring={scoring}
-    portfolio={portfolio} metrics={metrics}
-    monteCarlo={monteCarlo} report={report}
-    historical={historical}
-  />
-
-  {/* Botó Email — NOU */}
-  <EmailButton
-    questionnaire={q} scoring={scoring}
-    portfolio={portfolio} metrics={metrics}
-    monteCarlo={monteCarlo} report={report}
-    historical={historical}
-  />
-
-  {/* Botó reset */}
-  <motion.button
-    onClick={reset}
-    whileHover={{ scale: 1.02 }}
-    whileTap={{ scale: 0.98 }}
-    className="px-6 py-2 rounded-xl border border-gray-300 text-gray-600 text-sm hover:bg-gray-50 transition-all">
-    ↩ Nova consulta
-  </motion.button>
-</motion.div>
+          <EmailButton
+            questionnaire={q} scoring={scoring}
+            portfolio={portfolio} metrics={metrics}
+            monteCarlo={monteCarlo} report={report}
+            historical={historical}
+          />
           <motion.button
             onClick={reset}
             whileHover={{ scale: 1.02 }}
