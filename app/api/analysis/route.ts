@@ -35,19 +35,30 @@ let _yfCrumb: { crumb: string; cookie: string; expiry: number } | null = null;
 async function getYahooCrumb(): Promise<{ crumb: string; cookie: string } | null> {
   if (_yfCrumb && Date.now() < _yfCrumb.expiry) return _yfCrumb;
   try {
-    const r1 = await fetch('https://fc.yahoo.com/', {
-      headers: { 'User-Agent': YAHOO_UA, 'Accept': '*/*' },
+    const r1 = await fetch('https://finance.yahoo.com/', {
+      headers: {
+        'User-Agent': YAHOO_UA,
+        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+        'Accept-Language': 'en-US,en;q=0.9',
+      },
       redirect: 'follow',
     });
-    const rawCookie = r1.headers.get('set-cookie') ?? '';
-    const cookie = rawCookie.split(',').map(s => s.trim().split(';')[0]).join('; ');
-    const r2 = await fetch('https://query2.finance.yahoo.com/v1/test/getcrumb', {
+    // getSetCookie() returns array in Node 18+; fall back to comma-split
+    const h = r1.headers as unknown as { getSetCookie?: () => string[] };
+    const cookieArr: string[] =
+      typeof h.getSetCookie === 'function'
+        ? h.getSetCookie()
+        : (r1.headers.get('set-cookie') ?? '').split(/,(?=\s*[A-Za-z_][^=]+=)/).filter(Boolean);
+    const cookie = cookieArr.map(c => c.split(';')[0].trim()).filter(Boolean).join('; ');
+    if (!cookie) return null;
+
+    const r2 = await fetch('https://query1.finance.yahoo.com/v1/test/getcrumb', {
       headers: { ...YAHOO_HEADERS, 'Cookie': cookie },
     });
     if (!r2.ok) return null;
     const crumb = (await r2.text()).trim();
-    if (!crumb || crumb === 'Unauthorized') return null;
-    _yfCrumb = { crumb, cookie, expiry: Date.now() + 55 * 60 * 1000 };
+    if (!crumb || crumb.startsWith('<') || crumb === 'Unauthorized') return null;
+    _yfCrumb = { crumb, cookie, expiry: Date.now() + 50 * 60 * 1000 };
     return _yfCrumb;
   } catch { return null; }
 }
