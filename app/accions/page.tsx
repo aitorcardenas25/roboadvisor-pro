@@ -1,33 +1,231 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
+import dynamic from 'next/dynamic';
 import Link from 'next/link';
+import type { MarketAnalysis } from '@/lib/technicalAnalysis';
+import SignalPanel from '@/components/trading/SignalPanel';
+import type { TrackedStock, StockSignal } from '@/lib/stockTracker';
+import { SIGNAL_META } from '@/lib/stockTracker';
+import type { Quote } from '@/services/quotes';
 import {
   LineChart, Line, XAxis, YAxis, CartesianGrid,
   Tooltip, ResponsiveContainer,
 } from 'recharts';
-import type { TrackedStock, StockSignal } from '@/lib/stockTracker';
-import { SIGNAL_META } from '@/lib/stockTracker';
-import type { Quote } from '@/services/quotes';
+
+// Lazy-load chart to avoid SSR issues with DOM APIs
+const CandlestickChart = dynamic(() => import('@/components/trading/CandlestickChart'), { ssr: false });
+
+// ─── Types ────────────────────────────────────────────────────────────────────
 
 interface StockWithQuote extends TrackedStock { quote?: Quote }
-
 const SIGNAL_ORDER: StockSignal[] = ['oportunitat', 'vigilancia', 'neutral', 'risc-elevat'];
 
-export default function AccionsPage() {
-  const [stocks, setStocks]       = useState<StockWithQuote[]>([]);
-  const [selected, setSelected]   = useState<StockWithQuote | null>(null);
-  const [history, setHistory]     = useState<{ date: string; close: number }[]>([]);
-  const [loading, setLoading]     = useState(true);
+const TIMEFRAMES = ['15m', '1h', '4h', '1d'] as const;
+type Timeframe = typeof TIMEFRAMES[number];
+
+const CRYPTO_EXAMPLES = ['BTC/USDT', 'ETH/USDT', 'SOL/USDT', 'BNB/USDT'];
+const STOCK_EXAMPLES  = ['AAPL', 'NVDA', 'MSFT', 'TSLA', 'AMZN', 'META'];
+
+// ─── Nav ──────────────────────────────────────────────────────────────────────
+
+function Nav() {
+  return (
+    <nav className="border-b border-white/10 px-6 py-4 sticky top-0 z-20 bg-[#0a0f0d]/90 backdrop-blur">
+      <div className="max-w-7xl mx-auto flex items-center justify-between">
+        <Link href="/" className="flex items-center gap-2">
+          <span className="text-white font-black text-lg tracking-wider">FACTOR</span>
+          <span className="text-[#c9a84c] font-light text-lg tracking-widest">OTC</span>
+        </Link>
+        <div className="flex items-center gap-6 text-sm">
+          <Link href="/noticies"   className="text-white/50 hover:text-white transition-colors">Notícies</Link>
+          <Link href="/comparador" className="text-white/50 hover:text-white transition-colors">Comparador</Link>
+          <Link href="/accions"    className="text-[#c9a84c] font-medium">Accions</Link>
+          <Link href="/admin"      className="text-white/30 hover:text-white/60 transition-colors text-xs uppercase tracking-widest">Admin</Link>
+        </div>
+      </div>
+    </nav>
+  );
+}
+
+// ─── Analysis tab ─────────────────────────────────────────────────────────────
+
+function AnalysisTab() {
+  const [assetType, setAssetType] = useState<'stock' | 'crypto'>('stock');
+  const [symbol, setSymbol]       = useState('');
+  const [timeframe, setTimeframe] = useState<Timeframe>('1d');
+  const [loading, setLoading]     = useState(false);
+  const [result, setResult]       = useState<MarketAnalysis | null>(null);
+  const [error, setError]         = useState<string | null>(null);
+
+  const runAnalysis = useCallback(async (sym?: string) => {
+    const s = (sym ?? symbol).trim().toUpperCase();
+    if (!s) return;
+    setLoading(true);
+    setError(null);
+    setResult(null);
+    try {
+      const res = await fetch(`/api/analysis?symbol=${encodeURIComponent(s)}&asset_type=${assetType}&timeframe=${timeframe}`);
+      const data = await res.json();
+      if (!res.ok) { setError(data.error ?? 'Error desconegut'); return; }
+      setResult(data as MarketAnalysis);
+    } catch (e) {
+      setError(String(e));
+    } finally {
+      setLoading(false);
+    }
+  }, [symbol, assetType, timeframe]);
+
+  const handleQuick = (sym: string) => {
+    setSymbol(sym);
+    runAnalysis(sym);
+  };
+
+  return (
+    <div className="space-y-6">
+      {/* Search bar */}
+      <div className="bg-white/3 border border-white/8 rounded-2xl p-5">
+        {/* Asset type toggle */}
+        <div className="flex gap-2 mb-4">
+          {(['stock', 'crypto'] as const).map(t => (
+            <button key={t} onClick={() => setAssetType(t)}
+              className={`px-4 py-2 rounded-xl text-sm font-medium transition-all ${assetType === t ? 'bg-[#c9a84c] text-[#0d1f1a]' : 'bg-white/5 text-white/50 hover:bg-white/10'}`}>
+              {t === 'stock' ? '📊 Accions' : '₿ Cripto'}
+            </button>
+          ))}
+        </div>
+
+        <div className="flex gap-2">
+          <input
+            type="text"
+            value={symbol}
+            onChange={e => setSymbol(e.target.value.toUpperCase())}
+            onKeyDown={e => e.key === 'Enter' && runAnalysis()}
+            placeholder={assetType === 'stock' ? 'AAPL, NVDA, TSLA...' : 'BTC/USDT, ETH/USDT...'}
+            className="flex-1 bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-white placeholder-white/30 text-sm focus:outline-none focus:border-[#c9a84c]/50"
+          />
+          {/* Timeframe */}
+          <div className="flex gap-1">
+            {TIMEFRAMES.map(tf => (
+              <button key={tf} onClick={() => setTimeframe(tf)}
+                className={`px-3 py-2 rounded-xl text-xs font-mono transition-all ${timeframe === tf ? 'bg-[#c9a84c]/20 text-[#c9a84c] border border-[#c9a84c]/30' : 'bg-white/5 text-white/40 hover:bg-white/10'}`}>
+                {tf}
+              </button>
+            ))}
+          </div>
+          <button
+            onClick={() => runAnalysis()}
+            disabled={loading || !symbol}
+            className="px-5 py-2.5 bg-[#c9a84c] text-[#0d1f1a] rounded-xl text-sm font-bold hover:bg-[#d4b560] transition-colors disabled:opacity-40">
+            {loading ? '...' : 'Analitzar'}
+          </button>
+        </div>
+
+        {/* Quick picks */}
+        <div className="mt-3 flex flex-wrap gap-2">
+          {(assetType === 'stock' ? STOCK_EXAMPLES : CRYPTO_EXAMPLES).map(s => (
+            <button key={s} onClick={() => handleQuick(s)}
+              className="px-3 py-1 text-xs bg-white/5 text-white/40 hover:text-white/70 rounded-lg border border-white/8 hover:border-white/20 transition-all font-mono">
+              {s}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* Error */}
+      {error && (
+        <div className="bg-red-500/10 border border-red-500/20 rounded-xl px-5 py-4 text-red-400 text-sm">
+          {error}
+        </div>
+      )}
+
+      {/* Loading skeleton */}
+      {loading && (
+        <div className="space-y-4">
+          <div className="bg-white/3 border border-white/8 rounded-2xl h-[360px] animate-pulse" />
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+            {[...Array(3)].map((_, i) => <div key={i} className="bg-white/3 border border-white/8 rounded-2xl h-48 animate-pulse" />)}
+          </div>
+        </div>
+      )}
+
+      {/* Results */}
+      {result && !loading && (
+        <div className="space-y-4">
+          {/* Title bar */}
+          <div className="flex items-center justify-between">
+            <div>
+              <span className="text-white font-black text-2xl">{result.symbol}</span>
+              <span className="text-white/40 text-sm ml-3">{result.timeframe} · {result.asset_type === 'crypto' ? 'Cripto' : 'Acció'}</span>
+            </div>
+            {result.candles.length > 0 && (
+              <span className="text-[#c9a84c] font-mono font-bold text-lg">
+                {formatPrice(result.candles[result.candles.length - 1].close)}
+              </span>
+            )}
+          </div>
+
+          {/* Candlestick chart */}
+          <div className="bg-white/3 border border-white/8 rounded-2xl p-4">
+            <CandlestickChart
+              candles={result.candles}
+              ema20={result.indicators.ema20}
+              ema50={result.indicators.ema50}
+              ema200={result.indicators.ema200}
+              support={result.indicators.support}
+              resistance={result.indicators.resistance}
+            />
+          </div>
+
+          {/* Panels */}
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+            <div className="lg:col-span-3">
+              <SignalPanel
+                signal={result.signal}
+                fundamental={result.fundamental}
+                combined={result.combined}
+                rsi={result.indicators.rsi}
+                macd={result.indicators.macd}
+                atr={result.indicators.atr}
+                support={result.indicators.support}
+                resistance={result.indicators.resistance}
+              />
+            </div>
+          </div>
+
+          {/* Disclaimer */}
+          <div className="bg-amber-400/5 border border-amber-400/15 rounded-xl px-4 py-3">
+            <p className="text-amber-400/60 text-xs leading-relaxed">
+              ⚠️ Anàlisi tècnica i fonamental amb finalitat informativa i educativa. No constitueix recomanació d'inversió. Consulta sempre un assessor financer autoritzat.
+            </p>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function formatPrice(n: number): string {
+  if (n >= 1000) return n.toLocaleString('ca-ES', { maximumFractionDigits: 2 });
+  if (n >= 1) return n.toFixed(4);
+  return n.toFixed(6);
+}
+
+// ─── Watchlist tab (existing functionality) ───────────────────────────────────
+
+function WatchlistTab() {
+  const [stocks, setStocks]         = useState<StockWithQuote[]>([]);
+  const [selected, setSelected]     = useState<StockWithQuote | null>(null);
+  const [history, setHistory]       = useState<{ date: string; close: number }[]>([]);
+  const [loading, setLoading]       = useState(true);
   const [loadingChart, setLoadingChart] = useState(false);
-  const [filter, setFilter]       = useState<StockSignal | 'all'>('all');
+  const [filter, setFilter]         = useState<StockSignal | 'all'>('all');
 
   useEffect(() => {
     fetch('/api/stocks')
       .then(r => r.json())
       .then(async data => {
         const list: TrackedStock[] = data.stocks ?? [];
-        // Quotes en paral·lel (millor esforç)
         const withQuotes = await Promise.all(
           list.map(async s => {
             try {
@@ -38,9 +236,9 @@ export default function AccionsPage() {
           })
         );
         setStocks(withQuotes);
-        setLoading(false);
       })
-      .catch(() => setLoading(false));
+      .catch(() => {})
+      .finally(() => setLoading(false));
   }, []);
 
   const selectStock = async (s: StockWithQuote) => {
@@ -61,95 +259,58 @@ export default function AccionsPage() {
     : stocks.filter(s => s.signal === filter);
 
   return (
-    <div className="min-h-screen bg-[#0a0f0d]">
-      {/* Nav */}
-      <nav className="border-b border-white/10 px-6 py-4">
-        <div className="max-w-6xl mx-auto flex items-center justify-between">
-          <Link href="/" className="flex items-center gap-2">
-            <span className="text-white font-black text-lg tracking-wider">FACTOR</span>
-            <span className="text-[#c9a84c] font-light text-lg tracking-widest">OTC</span>
-          </Link>
-          <div className="flex items-center gap-6 text-sm">
-            <Link href="/noticies"   className="text-white/50 hover:text-white transition-colors">Notícies</Link>
-            <Link href="/comparador" className="text-white/50 hover:text-white transition-colors">Comparador</Link>
-            <Link href="/accions"    className="text-[#c9a84c] font-medium">Accions</Link>
-            <Link href="/admin"      className="text-white/30 hover:text-white/60 transition-colors text-xs uppercase tracking-widest">Admin</Link>
-          </div>
+    <div>
+      {/* Signal filter */}
+      <div className="flex flex-wrap gap-2 mb-6">
+        <button onClick={() => setFilter('all')}
+          className={`px-4 py-2 rounded-full text-sm font-medium transition-all ${filter === 'all' ? 'bg-[#c9a84c] text-[#0d1f1a]' : 'bg-white/5 text-white/60 hover:bg-white/10 border border-white/10'}`}>
+          Totes ({stocks.length})
+        </button>
+        {SIGNAL_ORDER.map(sig => {
+          const m = SIGNAL_META[sig];
+          const cnt = stocks.filter(s => s.signal === sig).length;
+          return (
+            <button key={sig} onClick={() => setFilter(sig)}
+              className={`px-4 py-2 rounded-full text-sm font-medium transition-all border ${filter === sig ? 'border-transparent' : 'border-white/10 bg-white/5 text-white/60 hover:bg-white/10'}`}
+              style={filter === sig ? { backgroundColor: m.color + '30', color: m.color, borderColor: m.color + '50' } : {}}>
+              {m.icon} {m.label} ({cnt})
+            </button>
+          );
+        })}
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div className="lg:col-span-1 space-y-3">
+          {loading ? (
+            [...Array(5)].map((_, i) => <div key={i} className="bg-white/5 rounded-xl h-24 animate-pulse" />)
+          ) : filtered.length === 0 ? (
+            <p className="text-white/30 text-sm text-center py-8">Cap acció en aquesta categoria.</p>
+          ) : (
+            filtered.map(s => (
+              <WatchlistCard key={s.id} stock={s} selected={selected?.id === s.id} onClick={() => selectStock(s)} />
+            ))
+          )}
         </div>
-      </nav>
-
-      <main className="max-w-6xl mx-auto px-6 py-12">
-        {/* Header */}
-        <div className="mb-8">
-          <p className="text-[#c9a84c] text-xs uppercase tracking-[0.3em] mb-2">Factor OTC</p>
-          <h1 className="text-white font-black text-4xl mb-2">Seguiment d'Accions</h1>
-          <p className="text-white/40 text-sm">Anàlisi informativa. Les senyals no constitueixen recomanació d'inversió.</p>
-        </div>
-
-        {/* Disclaimer */}
-        <div className="mb-8 bg-yellow-400/5 border border-yellow-400/20 rounded-xl px-5 py-3">
-          <p className="text-yellow-400/80 text-xs leading-relaxed">
-            ⚠️ <strong>Avís important:</strong> Les senyals mostrades (Oportunitat, Vigilància, Risc elevat) són opinions informatives elaborades per l'equip de Factor OTC amb finalitat exclusivament educativa. No constitueixen assessorament financer regulat ni recomanació de compra o venda. Sempre consulta un assessor financer autoritzat.
-          </p>
-        </div>
-
-        {/* Signal filter */}
-        <div className="flex flex-wrap gap-2 mb-8">
-          <button onClick={() => setFilter('all')}
-            className={`px-4 py-2 rounded-full text-sm font-medium transition-all ${filter === 'all' ? 'bg-[#c9a84c] text-[#0d1f1a]' : 'bg-white/5 text-white/60 hover:bg-white/10 border border-white/10'}`}>
-            Totes ({stocks.length})
-          </button>
-          {SIGNAL_ORDER.map(sig => {
-            const m   = SIGNAL_META[sig];
-            const cnt = stocks.filter(s => s.signal === sig).length;
-            return (
-              <button key={sig} onClick={() => setFilter(sig)}
-                className={`px-4 py-2 rounded-full text-sm font-medium transition-all border ${filter === sig ? 'border-transparent' : 'border-white/10 bg-white/5 text-white/60 hover:bg-white/10'}`}
-                style={filter === sig ? { backgroundColor: m.color + '30', color: m.color, borderColor: m.color + '50' } : {}}>
-                {m.icon} {m.label} ({cnt})
-              </button>
-            );
-          })}
-        </div>
-
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* Stock list */}
-          <div className="lg:col-span-1 space-y-3">
-            {loading ? (
-              [...Array(5)].map((_, i) => <div key={i} className="bg-white/5 rounded-xl h-24 animate-pulse" />)
-            ) : filtered.length === 0 ? (
-              <p className="text-white/30 text-sm text-center py-8">Cap acció en aquesta categoria.</p>
-            ) : (
-              filtered.map(s => <StockCard key={s.id} stock={s} selected={selected?.id === s.id} onClick={() => selectStock(s)} />)
-            )}
-          </div>
-
-          {/* Detail panel */}
-          <div className="lg:col-span-2">
-            {!selected ? (
-              <div className="h-full flex items-center justify-center border border-white/10 rounded-2xl bg-white/3 min-h-[400px]">
-                <div className="text-center">
-                  <p className="text-4xl mb-3">📈</p>
-                  <p className="text-white/40 text-sm">Selecciona una acció per veure l'anàlisi</p>
-                </div>
+        <div className="lg:col-span-2">
+          {!selected ? (
+            <div className="h-full flex items-center justify-center border border-white/10 rounded-2xl bg-white/3 min-h-[400px]">
+              <div className="text-center">
+                <p className="text-4xl mb-3">📈</p>
+                <p className="text-white/40 text-sm">Selecciona una acció per veure l'anàlisi</p>
               </div>
-            ) : (
-              <StockDetail stock={selected} history={history} loadingChart={loadingChart} />
-            )}
-          </div>
+            </div>
+          ) : (
+            <WatchlistDetail stock={selected} history={history} loadingChart={loadingChart} />
+          )}
         </div>
-      </main>
+      </div>
     </div>
   );
 }
 
-// ── StockCard ─────────────────────────────────────────────────────────────────
-
-function StockCard({ stock, selected, onClick }: { stock: StockWithQuote; selected: boolean; onClick: () => void }) {
-  const m      = SIGNAL_META[stock.signal];
-  const quote  = stock.quote;
-  const change = quote?.changePercent ?? 0;
-
+function WatchlistCard({ stock, selected, onClick }: { stock: StockWithQuote; selected: boolean; onClick: () => void }) {
+  const m = SIGNAL_META[stock.signal];
+  const change = stock.quote?.changePercent ?? 0;
   return (
     <button onClick={onClick} className={`w-full text-left p-4 rounded-xl border transition-all ${selected ? 'border-[#c9a84c]/50 bg-[#c9a84c]/5' : 'border-white/10 bg-white/5 hover:border-white/20'}`}>
       <div className="flex items-start justify-between gap-2">
@@ -161,124 +322,104 @@ function StockCard({ stock, selected, onClick }: { stock: StockWithQuote; select
             </span>
           </div>
           <p className="text-white/50 text-xs truncate">{stock.name}</p>
-          <p className="text-white/30 text-xs">{stock.sector}</p>
+          {stock.sector && <p className="text-white/30 text-xs">{stock.sector}</p>}
         </div>
-        <div className="text-right flex-shrink-0">
-          {quote ? (
-            <>
-              <p className="text-white text-sm font-mono font-semibold">{quote.price.toFixed(2)} {quote.currency}</p>
-              <p className={`text-xs font-mono ${change >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
-                {change >= 0 ? '+' : ''}{change.toFixed(2)}%
-              </p>
-            </>
-          ) : (
-            <p className="text-white/20 text-xs">—</p>
-          )}
-        </div>
+        {stock.quote && (
+          <div className="text-right">
+            <p className="text-white font-mono text-sm">{stock.quote.price?.toFixed(2)}</p>
+            <p className={`text-xs font-mono ${change >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+              {change >= 0 ? '+' : ''}{change.toFixed(2)}%
+            </p>
+          </div>
+        )}
       </div>
     </button>
   );
 }
 
-// ── StockDetail ───────────────────────────────────────────────────────────────
-
-function StockDetail({ stock, history, loadingChart }: { stock: StockWithQuote; history: { date: string; close: number }[]; loadingChart: boolean }) {
-  const m     = SIGNAL_META[stock.signal];
-  const quote = stock.quote;
-
+function WatchlistDetail({ stock, history, loadingChart }: { stock: StockWithQuote; history: { date: string; close: number }[]; loadingChart: boolean }) {
+  const m = SIGNAL_META[stock.signal];
   return (
-    <div className="bg-white/5 border border-white/10 rounded-2xl p-6 space-y-6">
-      {/* Header */}
-      <div className="flex items-start justify-between gap-4 flex-wrap">
+    <div className="border border-white/10 rounded-2xl bg-white/3 p-6 space-y-4">
+      <div className="flex items-start justify-between">
         <div>
-          <div className="flex items-center gap-3 mb-1">
-            <h2 className="text-white font-black text-2xl">{stock.symbol}</h2>
-            <span className="px-3 py-1 rounded-full text-sm font-bold" style={{ color: m.color, backgroundColor: m.color + '20' }}>
-              {m.icon} {m.label}
-            </span>
-          </div>
-          <p className="text-white/60 text-sm">{stock.name}</p>
-          <p className="text-white/30 text-xs">{stock.sector} · {stock.region}</p>
+          <h2 className="text-white font-black text-2xl">{stock.symbol}</h2>
+          <p className="text-white/50 text-sm">{stock.name}</p>
         </div>
-        {quote && (
-          <div className="text-right">
-            <p className="text-white font-black text-3xl font-mono">{quote.price.toFixed(2)} <span className="text-white/40 text-base font-normal">{quote.currency}</span></p>
-            <p className={`text-lg font-mono font-bold ${(quote.changePercent ?? 0) >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
-              {(quote.changePercent ?? 0) >= 0 ? '+' : ''}{(quote.changePercent ?? 0).toFixed(2)}%
-              <span className="text-sm font-normal ml-1">({(quote.change ?? 0) >= 0 ? '+' : ''}{(quote.change ?? 0).toFixed(2)})</span>
-            </p>
-            {quote.source === 'simulated' && <p className="text-white/20 text-xs mt-0.5">Preu simulat</p>}
-          </div>
-        )}
+        <span className="px-3 py-1.5 rounded-xl text-sm font-bold" style={{ color: m.color, backgroundColor: m.color + '20' }}>
+          {m.icon} {m.label}
+        </span>
       </div>
-
-      {/* Quote stats */}
-      {quote && (
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-          {[
-            ['Obertura',    quote.open?.toFixed(2)   ?? '—'],
-            ['Màxim dia',   quote.high?.toFixed(2)   ?? '—'],
-            ['Mínim dia',   quote.low?.toFixed(2)    ?? '—'],
-            ['Volum',       quote.volume ? (quote.volume / 1e6).toFixed(1) + 'M' : '—'],
-            ['Màx 52s',     quote.week52High?.toFixed(2)  ?? '—'],
-            ['Mín 52s',     quote.week52Low?.toFixed(2)   ?? '—'],
-            ['Cap. Mkt',    quote.marketCap ? (quote.marketCap / 1e9).toFixed(1) + 'B' : '—'],
-            ['P/E',         quote.pe?.toFixed(1) ?? '—'],
-          ].map(([label, val]) => (
-            <div key={label} className="bg-white/5 rounded-lg p-2.5">
-              <p className="text-white/40 text-xs mb-0.5">{label}</p>
-              <p className="text-white text-sm font-mono font-semibold">{val}</p>
-            </div>
-          ))}
+      {stock.quote && (
+        <div className="flex gap-6">
+          <div><p className="text-white/40 text-xs uppercase">Preu</p><p className="text-white font-mono font-bold text-xl">{stock.quote.price?.toFixed(2)}</p></div>
+          <div><p className="text-white/40 text-xs uppercase">Canvi 1d</p><p className={`font-mono font-bold text-lg ${(stock.quote.changePercent ?? 0) >= 0 ? 'text-green-400' : 'text-red-400'}`}>{(stock.quote.changePercent ?? 0) >= 0 ? '+' : ''}{(stock.quote.changePercent ?? 0).toFixed(2)}%</p></div>
         </div>
       )}
-
-      {/* Chart */}
+      {stock.signalNote && (
+        <div>
+          <p className="text-white/40 text-xs mb-1">Senyal</p>
+          <p className="text-white/70 text-sm leading-relaxed">{stock.signalNote}</p>
+        </div>
+      )}
+      {stock.technicalNote && (
+        <div>
+          <p className="text-white/40 text-xs mb-1">Tècnic</p>
+          <p className="text-white/60 text-sm leading-relaxed">{stock.technicalNote}</p>
+        </div>
+      )}
       <div>
-        <p className="text-white/40 text-xs uppercase tracking-widest mb-3">Evolució 12 mesos</p>
+        <p className="text-white/40 text-xs mb-3">Evolució (1 any)</p>
         {loadingChart ? (
-          <div className="h-40 bg-white/5 rounded-xl animate-pulse" />
+          <div className="h-[200px] bg-white/5 rounded-xl animate-pulse" />
         ) : history.length > 0 ? (
-          <ResponsiveContainer width="100%" height={160}>
-            <LineChart data={history} margin={{ top: 4, right: 4, left: -20, bottom: 0 }}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#ffffff08" />
-              <XAxis dataKey="date" tick={{ fontSize: 9, fill: '#9ca3af' }} />
-              <YAxis tick={{ fontSize: 9, fill: '#9ca3af' }} domain={['auto', 'auto']} />
-              <Tooltip
-                contentStyle={{ background: '#0d1f1a', border: '1px solid #ffffff20', borderRadius: 8, fontSize: 11 }}
-                formatter={(v: number) => [v.toFixed(2), 'Preu']}
-              />
-              <Line type="monotone" dataKey="close" stroke="#c9a84c" strokeWidth={2} dot={false} />
+          <ResponsiveContainer width="100%" height={200}>
+            <LineChart data={history}>
+              <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
+              <XAxis dataKey="date" tick={{ fill: 'rgba(255,255,255,0.3)', fontSize: 10 }} />
+              <YAxis tick={{ fill: 'rgba(255,255,255,0.3)', fontSize: 10 }} domain={['auto', 'auto']} />
+              <Tooltip contentStyle={{ background: '#0d1f1a', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 8, color: '#fff' }} />
+              <Line type="monotone" dataKey="close" stroke="#c9a84c" strokeWidth={1.5} dot={false} />
             </LineChart>
           </ResponsiveContainer>
         ) : (
-          <div className="h-40 flex items-center justify-center text-white/20 text-sm border border-white/5 rounded-xl">
-            Dades no disponibles
-          </div>
+          <p className="text-white/30 text-sm text-center py-8">Sense dades de preu disponibles.</p>
         )}
       </div>
+    </div>
+  );
+}
 
-      {/* Signal note */}
-      <div className="rounded-xl p-4" style={{ backgroundColor: m.color + '10', borderLeft: `3px solid ${m.color}` }}>
-        <p className="text-xs uppercase tracking-widest mb-2" style={{ color: m.color }}>Senyal · {m.label}</p>
-        <p className="text-white/80 text-sm leading-relaxed">{stock.signalNote || '—'}</p>
-      </div>
+// ─── Page ─────────────────────────────────────────────────────────────────────
 
-      {/* Analysis */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-        {stock.fundamentalNote && (
-          <div className="bg-white/5 rounded-xl p-4">
-            <p className="text-white/40 text-xs uppercase tracking-widest mb-2">🔬 Anàlisi fonamental</p>
-            <p className="text-white/70 text-sm leading-relaxed">{stock.fundamentalNote}</p>
-          </div>
-        )}
-        {stock.technicalNote && (
-          <div className="bg-white/5 rounded-xl p-4">
-            <p className="text-white/40 text-xs uppercase tracking-widest mb-2">📊 Anàlisi tècnica</p>
-            <p className="text-white/70 text-sm leading-relaxed">{stock.technicalNote}</p>
-          </div>
-        )}
-      </div>
+export default function AccionsPage() {
+  const [tab, setTab] = useState<'analysis' | 'watchlist'>('analysis');
+
+  return (
+    <div className="min-h-screen bg-[#0a0f0d]">
+      <Nav />
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 py-10">
+        {/* Header */}
+        <div className="mb-6">
+          <p className="text-[#c9a84c] text-xs uppercase tracking-[0.3em] mb-2">Factor OTC — Zona clients</p>
+          <h1 className="text-white font-black text-4xl mb-1">Anàlisi de Mercats</h1>
+          <p className="text-white/40 text-sm">Tècnica · Fonamental · Combinada</p>
+        </div>
+
+        {/* Tabs */}
+        <div className="flex gap-1 mb-8 bg-white/3 rounded-xl p-1 w-fit border border-white/8">
+          <button onClick={() => setTab('analysis')}
+            className={`px-5 py-2 rounded-lg text-sm font-medium transition-all ${tab === 'analysis' ? 'bg-[#c9a84c] text-[#0d1f1a]' : 'text-white/50 hover:text-white'}`}>
+            Anàlisi tècnica
+          </button>
+          <button onClick={() => setTab('watchlist')}
+            className={`px-5 py-2 rounded-lg text-sm font-medium transition-all ${tab === 'watchlist' ? 'bg-[#c9a84c] text-[#0d1f1a]' : 'text-white/50 hover:text-white'}`}>
+            Seguiment d'accions
+          </button>
+        </div>
+
+        {tab === 'analysis' ? <AnalysisTab /> : <WatchlistTab />}
+      </main>
     </div>
   );
 }
