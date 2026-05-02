@@ -25,15 +25,15 @@ interface Stats {
 
 type Section = 'dashboard' | 'funds' | 'reports' | 'news' | 'newsletter' | 'stocks' | 'portfolios' | 'config';
 
-const NAV_ITEMS: { id: Section; icon: string; label: string }[] = [
-  { id: 'dashboard',  icon: '📊', label: 'Dashboard'        },
-  { id: 'funds',      icon: '💼', label: 'Gestió de Fons'   },
-  { id: 'reports',    icon: '📄', label: 'Historial Informes'},
-  { id: 'news',       icon: '📰', label: 'Notícies'         },
-  { id: 'newsletter', icon: '📧', label: 'Newsletter'        },
-  { id: 'stocks',      icon: '📈', label: 'Accions'          },
-  { id: 'portfolios', icon: '🗂', label: 'Carteres Model'   },
-  { id: 'config',     icon: '⚙️', label: 'Configuració'     },
+const NAV_ITEMS: { id: Section; iconPath: string; label: string }[] = [
+  { id: 'dashboard',  iconPath: 'M4 5a1 1 0 011-1h4a1 1 0 011 1v4a1 1 0 01-1 1H5a1 1 0 01-1-1V5zm10 0a1 1 0 011-1h4a1 1 0 011 1v4a1 1 0 01-1 1h-4a1 1 0 01-1-1V5zM4 15a1 1 0 011-1h4a1 1 0 011 1v4a1 1 0 01-1 1H5a1 1 0 01-1-1v-4zm10 0a1 1 0 011-1h4a1 1 0 011 1v4a1 1 0 01-1 1h-4a1 1 0 01-1-1v-4z', label: 'Dashboard'         },
+  { id: 'funds',      iconPath: 'M21 13.255A23.931 23.931 0 0112 15c-3.183 0-6.22-.62-9-1.745M16 6V4a2 2 0 00-2-2h-4a2 2 0 00-2 2v2m4 6h.01M5 20h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z', label: 'Gestió de Fons'    },
+  { id: 'reports',    iconPath: 'M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z', label: 'Historial Informes' },
+  { id: 'news',       iconPath: 'M19 20H5a2 2 0 01-2-2V6a2 2 0 012-2h10l6 6v8a2 2 0 01-2 2zM9 13h6M9 17h3', label: 'Notícies'          },
+  { id: 'newsletter', iconPath: 'M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z', label: 'Newsletter'         },
+  { id: 'stocks',     iconPath: 'M3 17l6-6 4 4 8-8',                                                                                                                                                                                                          label: 'Accions'           },
+  { id: 'portfolios', iconPath: 'M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z',                                                                                                                                                 label: 'Carteres Model'    },
+  { id: 'config',     iconPath: 'M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065zM15 12a3 3 0 11-6 0 3 3 0 016 0z', label: 'Configuració'      },
 ];
 
 export default function AdminDashboard({ onLogout }: Props) {
@@ -66,12 +66,12 @@ export default function AdminDashboard({ onLogout }: Props) {
                 animate={{ opacity: 1 }}
                 exit={{ opacity: 0 }}
                 className="flex items-center gap-2">
-                <div className="w-5 h-5 border border-[#c9a84c]/60 rotate-45 flex items-center justify-center flex-shrink-0">
-                  <div className="w-2 h-2 bg-[#c9a84c]" />
+                <div className="w-5 h-5 bg-[#c9a84c]/10 border border-[#c9a84c]/40 rounded flex items-center justify-center flex-shrink-0">
+                  <span className="text-[#c9a84c] font-black text-xs leading-none">F</span>
                 </div>
                 <div>
                   <span className="text-white font-black text-sm">FACTOR</span>
-                  <span className="text-[#c9a84c] text-sm ml-1">OTC</span>
+                  <span className="text-[#c9a84c]/70 text-sm ml-1">OTC</span>
                 </div>
               </motion.div>
             )}
@@ -102,7 +102,9 @@ export default function AdminDashboard({ onLogout }: Props) {
                   ? 'bg-[#c9a84c]/20 text-[#c9a84c] border border-[#c9a84c]/30'
                   : 'text-white/50 hover:text-white hover:bg-white/5'
               }`}>
-              <span className="text-base flex-shrink-0">{item.icon}</span>
+              <svg className="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d={item.iconPath} />
+              </svg>
               <AnimatePresence>
                 {!collapsed && (
                   <motion.span
@@ -132,7 +134,9 @@ export default function AdminDashboard({ onLogout }: Props) {
             whileHover={{ x: 2 }}
             title={collapsed ? 'Tancar sessió' : undefined}
             className="w-full text-left flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-white/30 hover:text-red-400 hover:bg-red-500/10 transition-all">
-            <span className="flex-shrink-0">🚪</span>
+            <svg className="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+            </svg>
             <AnimatePresence>
               {!collapsed && (
                 <motion.span

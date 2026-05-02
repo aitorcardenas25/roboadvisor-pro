@@ -13,7 +13,7 @@ interface Props {
 const TOOLS = [
   {
     href:  '/comparador',
-    icon:  '⚖️',
+    iconPath: 'M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z',
     title: 'Comparador de Fons',
     desc:  'Compara fins a 5 fons per rendibilitat, volatilitat, TER i risc.',
     badge: 'Públic',
@@ -22,7 +22,7 @@ const TOOLS = [
   },
   {
     href:  '/noticies',
-    icon:  '📰',
+    iconPath: 'M19 20H5a2 2 0 01-2-2V6a2 2 0 012-2h10l6 6v8a2 2 0 01-2 2zM9 13h6M9 17h3',
     title: 'Notícies de Mercat',
     desc:  'Articles financers per categories: mercats, macro, fons i ETFs.',
     badge: 'Públic',
@@ -31,18 +31,18 @@ const TOOLS = [
   },
   {
     href:  '/accions',
-    icon:  '📈',
-    title: 'Seguiment d\'Accions',
-    desc:  'Signals d\'oportunitat, risc i anàlisi tècnica/fonamental.',
+    iconPath: 'M3 17l6-6 4 4 8-8',
+    title: "Seguiment d'Accions",
+    desc:  "Signals d'oportunitat, risc i anàlisi tècnica/fonamental.",
     badge: 'Clients',
     badgeColor: 'text-[#c9a84c] bg-[#c9a84c]/10 border-[#c9a84c]/20',
     accent: '#f59e0b',
   },
   {
     href:  '/cartera',
-    icon:  '🗂',
+    iconPath: 'M21 13.255A23.931 23.931 0 0112 15c-3.183 0-6.22-.62-9-1.745M16 6V4a2 2 0 00-2-2h-4a2 2 0 00-2 2v2m4 6h.01M5 20h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z',
     title: 'Carteres Model',
-    desc:  'Carteres model amb distribució d\'actius i evolució simulada.',
+    desc:  "Carteres model amb distribució d'actius i evolució simulada.",
     badge: 'Clients',
     badgeColor: 'text-[#c9a84c] bg-[#c9a84c]/10 border-[#c9a84c]/20',
     accent: '#c9a84c',
@@ -56,10 +56,10 @@ const NAV_LINKS = [
 ];
 
 const STATS = [
-  { target: 100, suffix: '+',   label: 'Fons analitzats',    sub: 'Base de dades validada'  },
-  { target: 1000, suffix: '',   label: 'Sim. Monte Carlo',   sub: 'Per escenari'            },
-  { target: 4,   suffix: '',    label: 'Perfils inversor',   sub: 'Conservador → Agressiu'  },
-  { target: 6,   suffix: '',    label: 'Senyals actives',    sub: 'Accions en vigilància'   },
+  { target: 158, suffix: '',    label: 'Fons i ETFs',        sub: 'Base de dades validada'  },
+  { target: 10000, suffix: '+', label: 'Sim. Monte Carlo',   sub: 'Per perfil inversor'     },
+  { target: 5,   suffix: '',    label: 'Perfils inversor',   sub: 'Conservador → Agressiu'  },
+  { target: 14,  suffix: '+',   label: 'Senyals actives',    sub: 'Accions en vigilància'   },
 ];
 
 function useCountUp(target: number, duration = 1800, start = false) {
@@ -120,7 +120,7 @@ export default function LandingPage({ onNavigate }: Props) {
   }, []);
 
   return (
-    <div className="relative min-h-screen overflow-hidden bg-[#0a0f0d] scanlines">
+    <div className="relative min-h-screen overflow-hidden bg-[#0a0f0d]">
       <ThreeBackground />
 
       {/* Gradient overlay layers */}
@@ -148,16 +148,13 @@ export default function LandingPage({ onNavigate }: Props) {
           className="flex items-center justify-between px-8 py-6 glass-dark">
 
           {/* Logo */}
-          <div className="flex items-center gap-3 group">
-            <motion.div
-              animate={{ rotate: [0, 90, 0] }}
-              transition={{ duration: 8, repeat: Infinity, ease: 'easeInOut' }}
-              className="w-8 h-8 border border-[#c9a84c]/60 rotate-45 flex items-center justify-center">
-              <div className="w-3 h-3 bg-[#c9a84c]" />
-            </motion.div>
-            <div>
-              <span className="text-white font-black text-lg tracking-tight">FACTOR</span>
-              <span className="text-[#c9a84c] font-light text-lg tracking-widest ml-1">OTC</span>
+          <div className="flex items-center gap-2.5">
+            <div className="w-7 h-7 bg-[#c9a84c]/10 border border-[#c9a84c]/40 rounded flex items-center justify-center">
+              <span className="text-[#c9a84c] font-black text-sm leading-none">F</span>
+            </div>
+            <div className="flex items-baseline gap-1">
+              <span className="text-white font-black text-base tracking-tight">FACTOR</span>
+              <span className="text-[#c9a84c]/70 font-light text-sm tracking-widest">OTC</span>
             </div>
           </div>
 
@@ -171,11 +168,7 @@ export default function LandingPage({ onNavigate }: Props) {
             ))}
             <div className="w-px h-4 bg-white/15" />
             <div className="flex items-center gap-2 px-3 py-1.5 rounded-full border border-emerald-500/20 bg-emerald-500/5">
-              <motion.div
-                animate={{ scale: [1, 1.4, 1], opacity: [1, 0.6, 1] }}
-                transition={{ duration: 2, repeat: Infinity }}
-                className="w-1.5 h-1.5 rounded-full bg-emerald-400"
-              />
+              <div className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
               <span className="text-emerald-400 text-xs uppercase tracking-widest hidden lg:inline">Sistema actiu</span>
             </div>
           </nav>
@@ -227,20 +220,12 @@ export default function LandingPage({ onNavigate }: Props) {
             initial={{ opacity: 0, scale: 0.85 }}
             animate={{ opacity: loaded ? 1 : 0, scale: loaded ? 1 : 0.85 }}
             transition={{ duration: 0.7, delay: 0.3, ease: [0.22, 1, 0.36, 1] }}
-            className="mb-8 inline-flex items-center gap-3 border border-[#c9a84c]/30 rounded-full px-5 py-2 bg-[#c9a84c]/5 backdrop-blur-sm glow-gold">
-            <motion.div
-              animate={{ scale: [1, 1.5, 1] }}
-              transition={{ duration: 2.5, repeat: Infinity }}
-              className="w-1 h-1 rounded-full bg-[#c9a84c]"
-            />
+            className="mb-8 inline-flex items-center gap-3 border border-[#c9a84c]/30 rounded-full px-5 py-2 bg-[#c9a84c]/5 backdrop-blur-sm">
+            <div className="w-1 h-1 rounded-full bg-[#c9a84c]" />
             <span className="text-[#c9a84c] text-xs uppercase tracking-[0.3em] font-medium">
               Plataforma d&apos;inversió professional
             </span>
-            <motion.div
-              animate={{ scale: [1, 1.5, 1] }}
-              transition={{ duration: 2.5, repeat: Infinity, delay: 1.25 }}
-              className="w-1 h-1 rounded-full bg-[#c9a84c]"
-            />
+            <div className="w-1 h-1 rounded-full bg-[#c9a84c]" />
           </motion.div>
 
           {/* Títol */}
@@ -249,10 +234,10 @@ export default function LandingPage({ onNavigate }: Props) {
             animate={{ opacity: loaded ? 1 : 0, y: loaded ? 0 : 40 }}
             transition={{ duration: 1, delay: 0.4, ease: [0.22, 1, 0.36, 1] }}
             className="mb-6">
-            <h1 className="text-5xl sm:text-7xl md:text-9xl font-black text-white leading-none tracking-tighter">
+            <h1 className="text-5xl sm:text-6xl md:text-7xl font-black text-white leading-none tracking-tighter">
               FACTOR
             </h1>
-            <h1 className="text-5xl sm:text-7xl md:text-9xl font-black leading-none tracking-tighter text-shimmer">
+            <h1 className="text-5xl sm:text-6xl md:text-7xl font-black leading-none tracking-tighter text-shimmer">
               OTC
             </h1>
             <motion.div
@@ -297,12 +282,9 @@ export default function LandingPage({ onNavigate }: Props) {
               />
               <span className="relative text-[#0d1f1a] font-bold text-sm uppercase tracking-[0.2em] flex items-center gap-3">
                 RoboAdvisor Automàtic
-                <motion.svg
-                  animate={{ x: [0, 4, 0] }}
-                  transition={{ duration: 1.5, repeat: Infinity }}
-                  className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7l5 5m0 0l-5 5m5-5H6" />
-                </motion.svg>
+                </svg>
               </span>
             </motion.button>
 
@@ -347,12 +329,11 @@ export default function LandingPage({ onNavigate }: Props) {
                     className="block h-full glass border border-white/8 rounded-xl p-4 card-hover group text-left"
                     style={{ '--hover-accent': tool.accent } as React.CSSProperties}>
                     <div className="flex items-start justify-between mb-3">
-                      <motion.span
-                        whileHover={{ scale: 1.2, rotate: 5 }}
-                        transition={{ type: 'spring', stiffness: 400 }}
-                        className="text-2xl select-none">
-                        {tool.icon}
-                      </motion.span>
+                      <div className="w-8 h-8 rounded-lg bg-white/5 flex items-center justify-center">
+                        <svg className="w-4 h-4 text-white/50 group-hover:text-[#c9a84c] transition-colors duration-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d={tool.iconPath} />
+                        </svg>
+                      </div>
                       <span className={`text-[10px] px-2 py-0.5 rounded-full border font-medium ${tool.badgeColor}`}>
                         {tool.badge}
                       </span>

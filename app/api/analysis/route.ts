@@ -19,10 +19,57 @@ function cached<T>(key: string, ttl: number, fn: () => Promise<T>): Promise<T> {
   return fn().then(data => { cache.set(key, { ts: Date.now(), data }); return data; });
 }
 
+const YAHOO_UA = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36';
+
 const YAHOO_HEADERS = {
-  'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+  'User-Agent': YAHOO_UA,
   'Accept': 'application/json',
+  'Accept-Language': 'en-US,en;q=0.9',
+  'Referer': 'https://finance.yahoo.com/',
+  'Origin': 'https://finance.yahoo.com',
 };
+
+// Yahoo Finance cookie+crumb (needed to avoid 429)
+let _yfCrumb: { crumb: string; cookie: string; expiry: number } | null = null;
+
+async function getYahooCrumb(): Promise<{ crumb: string; cookie: string } | null> {
+  if (_yfCrumb && Date.now() < _yfCrumb.expiry) return _yfCrumb;
+  try {
+    const r1 = await fetch('https://fc.yahoo.com/', {
+      headers: { 'User-Agent': YAHOO_UA, 'Accept': '*/*' },
+      redirect: 'follow',
+    });
+    const rawCookie = r1.headers.get('set-cookie') ?? '';
+    const cookie = rawCookie.split(',').map(s => s.trim().split(';')[0]).join('; ');
+    const r2 = await fetch('https://query2.finance.yahoo.com/v1/test/getcrumb', {
+      headers: { ...YAHOO_HEADERS, 'Cookie': cookie },
+    });
+    if (!r2.ok) return null;
+    const crumb = (await r2.text()).trim();
+    if (!crumb || crumb === 'Unauthorized') return null;
+    _yfCrumb = { crumb, cookie, expiry: Date.now() + 55 * 60 * 1000 };
+    return _yfCrumb;
+  } catch { return null; }
+}
+
+async function yahooFetch(url: string): Promise<Response> {
+  const auth = await getYahooCrumb();
+  const sep = url.includes('?') ? '&' : '?';
+  const base = auth ? `${url}${sep}crumb=${encodeURIComponent(auth.crumb)}` : url;
+  const headers: Record<string, string> = { ...YAHOO_HEADERS };
+  if (auth?.cookie) headers['Cookie'] = auth.cookie;
+
+  const urls = [
+    base,
+    base.replace('query1.finance.yahoo.com', 'query2.finance.yahoo.com'),
+  ];
+  for (const u of urls) {
+    const res = await fetch(u, { headers, cache: 'no-store' });
+    if (res.ok) return res;
+    if (res.status !== 429 && res.status !== 503) return res;
+  }
+  throw new Error('Yahoo unavailable');
+}
 
 // ─── Timeframe mappings ───────────────────────────────────────────────────────
 
@@ -43,15 +90,9 @@ async function fetchStockOHLCV(symbol: string, timeframe: string): Promise<OHLCV
   const tf = TF_YAHOO[timeframe] ?? TF_YAHOO['1d'];
   const ttl = timeframe === '15m' ? 60 : timeframe === '1h' ? 300 : 3600;
   return cached(`stock-ohlcv:${symbol}:${timeframe}`, ttl, async () => {
-    const path = `/v8/finance/chart/${encodeURIComponent(symbol)}?interval=${tf.interval}&range=${tf.range}`;
-    const hosts = ['https://query1.finance.yahoo.com', 'https://query2.finance.yahoo.com'];
-    let res: Response | null = null;
-    for (const host of hosts) {
-      res = await fetch(host + path, { headers: YAHOO_HEADERS, cache: 'no-store' });
-      if (res.ok) break;
-      if (res.status !== 429 && res.status !== 503) break;
-    }
-    if (!res || !res.ok) throw new Error(`Yahoo ${res?.status ?? 'unavailable'}`);
+    const url = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(symbol)}?interval=${tf.interval}&range=${tf.range}`;
+    const res = await yahooFetch(url);
+    if (!res.ok) throw new Error(`Yahoo ${res.status}`);
     const json = await res.json();
     const result = json?.chart?.result?.[0];
     if (!result) throw new Error('Yahoo: no data');
@@ -131,14 +172,9 @@ function getPEThresholds(sector: string): { peBull: number; peBear: number; fwdB
 
 async function fetchStockFundamentals(symbol: string): Promise<FundamentalAnalysis> {
   return cached(`fund-stock:${symbol}`, 6 * 3600, async () => {
-    const path = `/v11/finance/quoteSummary/${encodeURIComponent(symbol)}?modules=summaryDetail,financialData,defaultKeyStatistics,price,assetProfile`;
-    const hosts = ['https://query1.finance.yahoo.com', 'https://query2.finance.yahoo.com'];
-    let res: Response | null = null;
-    for (const host of hosts) {
-      res = await fetch(host + path, { headers: YAHOO_HEADERS, cache: 'no-store' });
-      if (res.ok || (res.status !== 429 && res.status !== 503)) break;
-    }
-    if (!res || !res.ok) return insufficientData();
+    const url = `https://query1.finance.yahoo.com/v11/finance/quoteSummary/${encodeURIComponent(symbol)}?modules=summaryDetail,financialData,defaultKeyStatistics,price,assetProfile`;
+    const res = await yahooFetch(url);
+    if (!res.ok) return insufficientData();
     const json = await res.json();
     const r = json?.quoteSummary?.result?.[0];
     if (!r) return insufficientData();

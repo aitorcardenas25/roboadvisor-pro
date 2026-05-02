@@ -117,25 +117,6 @@ body {
 }
 .btn-glow:hover::before { opacity: 1; }
 
-/* Fintech scanline (overlay molt subtil) */
-.scanlines {
-  position: relative;
-  overflow: hidden;
-}
-.scanlines::after {
-  content: '';
-  position: absolute;
-  inset: 0;
-  background: repeating-linear-gradient(
-    0deg,
-    transparent,
-    transparent 2px,
-    rgba(0,0,0,0.015) 2px,
-    rgba(0,0,0,0.015) 4px
-  );
-  pointer-events: none;
-  z-index: 1;
-}
 
 /* Gradient de text or */
 .text-gold-gradient {
