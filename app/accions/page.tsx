@@ -308,24 +308,68 @@ function WatchlistTab() {
   );
 }
 
+function StockLogo({ symbol, name }: { symbol: string; name: string }) {
+  const domain = TICKER_DOMAINS[symbol] ?? null;
+  const initials = symbol.slice(0, 2).toUpperCase();
+
+  if (!domain) {
+    return (
+      <div className="w-9 h-9 rounded-xl bg-white/10 flex items-center justify-center flex-shrink-0">
+        <span className="text-xs font-black text-white/60">{initials}</span>
+      </div>
+    );
+  }
+
+  return (
+    <div className="w-9 h-9 rounded-xl bg-white/10 overflow-hidden flex items-center justify-center flex-shrink-0">
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img
+        src={`https://logo.clearbit.com/${domain}`}
+        alt={name}
+        width={36}
+        height={36}
+        className="w-full h-full object-contain p-1"
+        onError={e => {
+          const el = e.currentTarget;
+          el.style.display = 'none';
+          const parent = el.parentElement;
+          if (parent) {
+            parent.innerHTML = `<span class="text-xs font-black text-white/60">${initials}</span>`;
+          }
+        }}
+      />
+    </div>
+  );
+}
+
+// Mapeig ticker → domini per Clearbit Logo API
+const TICKER_DOMAINS: Record<string, string> = {
+  AAPL: 'apple.com', MSFT: 'microsoft.com', NVDA: 'nvidia.com', GOOGL: 'google.com',
+  AMZN: 'amazon.com', META: 'meta.com', TSLA: 'tesla.com', ASML: 'asml.com',
+  SAP: 'sap.com', LVMH: 'lvmh.com', SIE: 'siemens.com', BAS: 'basf.com',
+  NESN: 'nestle.com', ROG: 'roche.com', NOVN: 'novartis.com', AZN: 'astrazeneca.com',
+  HSBA: 'hsbc.com', LLOY: 'lloydsbank.com', BP: 'bp.com', SHEL: 'shell.com',
+  INTU: 'intuit.com', CRM: 'salesforce.com', ADBE: 'adobe.com', ORCL: 'oracle.com',
+};
+
 function WatchlistCard({ stock, selected, onClick }: { stock: StockWithQuote; selected: boolean; onClick: () => void }) {
   const m = SIGNAL_META[stock.signal];
   const change = stock.quote?.changePercent ?? 0;
   return (
     <button onClick={onClick} className={`w-full text-left p-4 rounded-xl border transition-all ${selected ? 'border-[#c9a84c]/50 bg-[#c9a84c]/5' : 'border-white/10 bg-white/5 hover:border-white/20'}`}>
-      <div className="flex items-start justify-between gap-2">
+      <div className="flex items-center gap-3">
+        <StockLogo symbol={stock.symbol} name={stock.name} />
         <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-2 mb-1">
+          <div className="flex items-center gap-2 mb-0.5">
             <span className="text-white font-bold text-sm">{stock.symbol}</span>
             <span className="text-xs px-2 py-0.5 rounded-full font-medium" style={{ color: m.color, backgroundColor: m.color + '20' }}>
               {m.icon} {m.label}
             </span>
           </div>
           <p className="text-white/50 text-xs truncate">{stock.name}</p>
-          {stock.sector && <p className="text-white/30 text-xs">{stock.sector}</p>}
         </div>
         {stock.quote && (
-          <div className="text-right">
+          <div className="text-right flex-shrink-0">
             <p className="text-white font-mono text-sm">{stock.quote.price?.toFixed(2)}</p>
             <p className={`text-xs font-mono ${change >= 0 ? 'text-green-400' : 'text-red-400'}`}>
               {change >= 0 ? '+' : ''}{change.toFixed(2)}%
