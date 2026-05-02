@@ -74,7 +74,7 @@ export default function CandlestickChart({ candles, ema20, ema50, ema200, suppor
       s.setData(
         candles
           .map((c, i) => ({ time: c.time as UTCTimestamp, value: values[i] }))
-          .filter(p => !isNaN(p.value))
+          .filter(p => p.value != null && isFinite(p.value))
       );
     };
     addLine(ema20,  '#f59e0b');

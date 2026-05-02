@@ -43,9 +43,15 @@ async function fetchStockOHLCV(symbol: string, timeframe: string): Promise<OHLCV
   const tf = TF_YAHOO[timeframe] ?? TF_YAHOO['1d'];
   const ttl = timeframe === '15m' ? 60 : timeframe === '1h' ? 300 : 3600;
   return cached(`stock-ohlcv:${symbol}:${timeframe}`, ttl, async () => {
-    const url = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(symbol)}?interval=${tf.interval}&range=${tf.range}`;
-    const res = await fetch(url, { headers: YAHOO_HEADERS, cache: 'no-store' });
-    if (!res.ok) throw new Error(`Yahoo ${res.status}`);
+    const path = `/v8/finance/chart/${encodeURIComponent(symbol)}?interval=${tf.interval}&range=${tf.range}`;
+    const hosts = ['https://query1.finance.yahoo.com', 'https://query2.finance.yahoo.com'];
+    let res: Response | null = null;
+    for (const host of hosts) {
+      res = await fetch(host + path, { headers: YAHOO_HEADERS, cache: 'no-store' });
+      if (res.ok) break;
+      if (res.status !== 429 && res.status !== 503) break;
+    }
+    if (!res || !res.ok) throw new Error(`Yahoo ${res?.status ?? 'unavailable'}`);
     const json = await res.json();
     const result = json?.chart?.result?.[0];
     if (!result) throw new Error('Yahoo: no data');
@@ -125,9 +131,14 @@ function getPEThresholds(sector: string): { peBull: number; peBear: number; fwdB
 
 async function fetchStockFundamentals(symbol: string): Promise<FundamentalAnalysis> {
   return cached(`fund-stock:${symbol}`, 6 * 3600, async () => {
-    const url = `https://query1.finance.yahoo.com/v11/finance/quoteSummary/${encodeURIComponent(symbol)}?modules=summaryDetail,financialData,defaultKeyStatistics,price,assetProfile`;
-    const res = await fetch(url, { headers: YAHOO_HEADERS, cache: 'no-store' });
-    if (!res.ok) return insufficientData();
+    const path = `/v11/finance/quoteSummary/${encodeURIComponent(symbol)}?modules=summaryDetail,financialData,defaultKeyStatistics,price,assetProfile`;
+    const hosts = ['https://query1.finance.yahoo.com', 'https://query2.finance.yahoo.com'];
+    let res: Response | null = null;
+    for (const host of hosts) {
+      res = await fetch(host + path, { headers: YAHOO_HEADERS, cache: 'no-store' });
+      if (res.ok || (res.status !== 429 && res.status !== 503)) break;
+    }
+    if (!res || !res.ok) return insufficientData();
     const json = await res.json();
     const r = json?.quoteSummary?.result?.[0];
     if (!r) return insufficientData();
