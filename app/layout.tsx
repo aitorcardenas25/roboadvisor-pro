@@ -34,6 +34,24 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html lang="ca" className={inter.variable}>
       <body className="font-sans antialiased">
         <SessionProviderWrapper>{children}</SessionProviderWrapper>
+        <script dangerouslySetInnerHTML={{ __html: `
+          if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.register('/sw.js').then(reg => {
+              reg.addEventListener('updatefound', () => {
+                const newWorker = reg.installing;
+                if (!newWorker) return;
+                newWorker.addEventListener('statechange', () => {
+                  if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+                    newWorker.postMessage({ type: 'SKIP_WAITING' });
+                    navigator.serviceWorker.addEventListener('controllerchange', () => {
+                      window.location.reload();
+                    }, { once: true });
+                  }
+                });
+              });
+            });
+          }
+        `}} />
       </body>
     </html>
   );

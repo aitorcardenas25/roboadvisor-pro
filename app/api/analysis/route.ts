@@ -125,45 +125,56 @@ async function fetchStockOHLCV(symbol: string, timeframe: string): Promise<OHLCV
           }
         }
       }
-    } catch { /* fall through to Stooq */ }
+    } catch { /* fall through to v7 fallback */ }
 
-    // ── Fallback: Stooq (daily only, no auth needed) ─────────────────────────
-    if (timeframe === '1d') return fetchStooqOHLCV(symbol);
+    // ── Fallback: Yahoo v7 (different endpoint, no crumb required) ──────────
+    if (timeframe === '1d') return fetchYahooV7OHLCV(symbol);
 
     throw new Error('Dades no disponibles. Prova el temporitzador 1d o cripto.');
   });
 }
 
-async function fetchStooqOHLCV(symbol: string): Promise<OHLCV[]> {
-  const stooqSym = symbol.toLowerCase().replace('^', '').replace('.', '-');
-  // Stooq symbol: AAPL → aapl.us, MSFT → msft.us, etc.
-  const sym = stooqSym.includes('.') ? stooqSym : `${stooqSym}.us`;
-  const url = `https://stooq.com/q/d/l/?s=${sym}&i=d`;
-  const res = await fetch(url, {
-    headers: { 'User-Agent': YAHOO_UA, 'Accept': 'text/csv' },
-    cache: 'no-store',
-  });
-  if (!res.ok) throw new Error(`Stooq ${res.status}`);
-  const text = await res.text();
-  const lines = text.trim().split('\n').slice(1); // skip header
-  const candles: OHLCV[] = lines
-    .map(line => {
-      const [date, open, high, low, close, volume] = line.split(',');
-      if (!date || !close) return null;
-      const t = Math.floor(new Date(date.trim()).getTime() / 1000);
-      return {
-        time:   t,
-        open:   parseFloat(open),
-        high:   parseFloat(high),
-        low:    parseFloat(low),
-        close:  parseFloat(close),
-        volume: parseFloat(volume ?? '0') || 0,
-      };
-    })
-    .filter((c): c is OHLCV => c !== null && isFinite(c.close) && c.close > 0)
-    .sort((a, b) => a.time - b.time);
-  if (candles.length < 10) throw new Error('Stooq: dades insuficients');
-  return candles;
+async function fetchYahooV7OHLCV(symbol: string): Promise<OHLCV[]> {
+  const endpoints = [
+    `https://query1.finance.yahoo.com/v7/finance/chart/${encodeURIComponent(symbol)}?interval=1d&range=180d`,
+    `https://query2.finance.yahoo.com/v7/finance/chart/${encodeURIComponent(symbol)}?interval=1d&range=180d`,
+    // bare v8 without crumb as last resort
+    `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(symbol)}?interval=1d&range=180d`,
+  ];
+  const minimalHeaders = {
+    'User-Agent': YAHOO_UA,
+    'Accept': 'application/json',
+    'Accept-Language': 'en-US,en;q=0.9',
+  };
+  for (const url of endpoints) {
+    try {
+      const res = await fetch(url, { headers: minimalHeaders, cache: 'no-store' });
+      if (!res.ok) continue;
+      const json = await res.json();
+      const result = json?.chart?.result?.[0];
+      if (!result) continue;
+      const ts: number[]     = result.timestamp ?? [];
+      const q                 = result.indicators.quote[0];
+      const opens: number[]  = q.open   ?? [];
+      const highs: number[]  = q.high   ?? [];
+      const lows: number[]   = q.low    ?? [];
+      const closes: number[] = q.close  ?? [];
+      const vols: number[]   = q.volume ?? [];
+      const candles: OHLCV[] = ts
+        .map((t, i) => ({
+          time:   t,
+          open:   opens[i],
+          high:   highs[i],
+          low:    lows[i],
+          close:  closes[i],
+          volume: vols[i] ?? 0,
+        }))
+        .filter(c => c.open != null && c.close != null && c.close > 0)
+        .sort((a, b) => a.time - b.time);
+      if (candles.length >= 10) return candles;
+    } catch { continue; }
+  }
+  throw new Error('Yahoo no disponible. Torna-ho a intentar en uns minuts.');
 }
 
 function resample4h(candles: OHLCV[]): OHLCV[] {
