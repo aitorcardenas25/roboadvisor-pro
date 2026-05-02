@@ -71,10 +71,11 @@ export async function POST(req: NextRequest) {
 
     if (error) {
       console.error('[send-report] Resend error:', error);
-      return NextResponse.json(
-        { error: `Error enviant l'email: ${error.message}` },
-        { status: 500 }
-      );
+      const msg = error.message ?? '';
+      const userMsg = msg.includes('testing emails') || msg.includes('verify a domain')
+        ? 'Mode test actiu: Resend només permet enviar al teu propi email fins que verifiquis un domini a resend.com/domains.'
+        : `Error enviant l'email: ${msg}`;
+      return NextResponse.json({ error: userMsg }, { status: 500 });
     }
 
     // Guardar al registre d'informes

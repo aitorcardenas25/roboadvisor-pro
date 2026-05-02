@@ -1987,7 +1987,7 @@ export const FINANCIAL_PRODUCTS: FinancialProduct[] = [
     tags: ['etf', 'japo', 'nikkei', 'asia'], historicalReturn5Y: 10.2, historicalVolatility: 16.5, maxDrawdownEstimate: -30.0, inceptionYear: 2009, aum: 3200, morningstarCategory: 'RV Japó', morningstarRating: 4, sfdrArticle: 6, mifidRiskIndicator: 5,
   },
   {
-    id: 'xtrackers-msci-japan-etf', name: 'Xtrackers MSCI Japan UCITS ETF', isin: 'IE00BJ0KDQ92',
+    id: 'xtrackers-msci-japan-etf-acc', name: 'Xtrackers MSCI Japan UCITS ETF', isin: 'IE00BJ0KDQ92',
     manager: 'DWS', category: 'RV Japó', assetClass: 'renda-variable-global',
     region: 'Japó', managementType: 'indexada', benchmark: 'MSCI Japan', risk: 5,
     recommendedProfiles: ['dinamic', 'agressiu'], ter: 0.09, currency: 'USD',
@@ -2251,7 +2251,7 @@ export const FINANCIAL_PRODUCTS: FinancialProduct[] = [
     tags: ['mixt', 'flexible', 'valor', 'flossbach'], historicalReturn5Y: 8.5, historicalVolatility: 11.0, maxDrawdownEstimate: -20.0, inceptionYear: 2003, aum: 15000, morningstarCategory: 'Mixt Flexible Global', morningstarRating: 5, sfdrArticle: 8, mifidRiskIndicator: 4,
   },
   {
-    id: 'carmignac-patrimoine', name: 'Carmignac Patrimoine A', isin: 'FR0010135103',
+    id: 'carmignac-patrimoine-a', name: 'Carmignac Patrimoine A', isin: 'FR0010135103',
     manager: 'Carmignac', category: 'Mixt Flexible', assetClass: 'mixtos',
     region: 'Global', managementType: 'activa', benchmark: '50% MSCI ACWI / 50% ICE BofA Global Gov Bond', risk: 3,
     recommendedProfiles: ['moderat', 'dinamic'], ter: 1.50, currency: 'EUR',
@@ -2369,7 +2369,7 @@ export const FINANCIAL_PRODUCTS: FinancialProduct[] = [
     tags: ['etf', 'eurostoxx', 'eurozona', 'bluechip'], historicalReturn5Y: 10.2, historicalVolatility: 16.0, maxDrawdownEstimate: -33.0, yieldEstimate: 2.5, inceptionYear: 2001, aum: 5500, morningstarCategory: 'RV Eurozona', morningstarRating: 4, sfdrArticle: 6, mifidRiskIndicator: 5,
   },
   {
-    id: 'comgest-growth-europe', name: 'Comgest Growth Europe', isin: 'IE0004766675',
+    id: 'comgest-growth-europe-eur', name: 'Comgest Growth Europe', isin: 'IE0004766675',
     manager: 'Comgest', category: 'RV Europa Qualitat', assetClass: 'renda-variable-europa',
     region: 'Europa', managementType: 'activa', benchmark: 'MSCI Europe', risk: 5,
     recommendedProfiles: ['dinamic', 'agressiu'], ter: 1.45, currency: 'EUR',
@@ -2387,7 +2387,7 @@ export const FINANCIAL_PRODUCTS: FinancialProduct[] = [
     tags: ['etf', 'sp500', 'usa', 'vanguard', 'core', 'baix-cost'], historicalReturn5Y: 14.8, historicalVolatility: 16.0, maxDrawdownEstimate: -34.0, inceptionYear: 2012, aum: 45000, morningstarCategory: 'RV EUA', morningstarRating: 5, sfdrArticle: 6, mifidRiskIndicator: 5,
   },
   {
-    id: 'invesco-nasdaq-100-etf', name: 'Invesco EQQQ NASDAQ-100 UCITS ETF', isin: 'IE0032077012',
+    id: 'invesco-eqqq-nasdaq-100-etf', name: 'Invesco EQQQ NASDAQ-100 UCITS ETF', isin: 'IE0032077012',
     manager: 'Invesco', category: 'RV EUA NASDAQ-100', assetClass: 'renda-variable-usa',
     region: 'EUA', managementType: 'indexada', benchmark: 'NASDAQ-100', risk: 5,
     recommendedProfiles: ['dinamic', 'agressiu'], ter: 0.20, currency: 'USD',
