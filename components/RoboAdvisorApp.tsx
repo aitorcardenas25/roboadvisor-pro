@@ -40,6 +40,90 @@ const PDFButton = dynamic(
   { ssr: false }
 );
 
+// ─── SUB-COMPONENTS (fora del component principal per evitar pèrdua de focus) ──
+
+const INPUT_CLS = "w-full rounded-lg border border-gray-200 px-3 py-2 text-sm text-gray-800 focus:outline-none focus:ring-2 focus:ring-[#c9a84c] bg-white transition-all duration-200";
+
+function Field({ label, hint, children }: { label: string; hint?: string; children: React.ReactNode }) {
+  return (
+    <div>
+      <label className="block text-sm font-medium text-gray-700 mb-1">{label}</label>
+      {hint && <p className="text-xs text-gray-400 mb-1">{hint}</p>}
+      {children}
+    </div>
+  );
+}
+
+function RadioCard({ selected, onClick, label, desc }: { selected: boolean; onClick: () => void; label: string; desc: string }) {
+  return (
+    <motion.button
+      onClick={onClick}
+      whileHover={{ scale: 1.01 }}
+      whileTap={{ scale: 0.99 }}
+      className={`w-full text-left px-4 py-3 rounded-xl border transition-all ${
+        selected ? 'border-[#c9a84c] bg-amber-50 shadow-sm' : 'border-gray-200 bg-white hover:border-gray-300'
+      }`}>
+      <span className="font-medium text-sm text-gray-800">{label}</span>
+      <span className="ml-2 text-xs text-gray-500">{desc}</span>
+    </motion.button>
+  );
+}
+
+function MiniStat({ label, value, good }: { label: string; value: string; good: boolean }) {
+  return (
+    <motion.div initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} transition={{ duration: 0.4 }}>
+      <p className={`text-lg font-bold ${good ? 'text-emerald-700' : 'text-amber-600'}`}>{value}</p>
+      <p className="text-xs text-gray-600">{label}</p>
+    </motion.div>
+  );
+}
+
+const KPI_COLORS: Record<string, string> = {
+  blue: 'bg-blue-50 border-blue-200', green: 'bg-emerald-50 border-emerald-200',
+  amber: 'bg-amber-50 border-amber-200', purple: 'bg-purple-50 border-purple-200',
+};
+
+function KpiCard({ label, value, sub, icon, color }: { label: string; value: string; sub?: string; icon: string; color: string }) {
+  return (
+    <div className={`rounded-xl p-4 border ${KPI_COLORS[color] ?? KPI_COLORS.blue}`}>
+      <div className="flex items-center gap-2 mb-1">
+        <span className="text-lg">{icon}</span>
+        <span className="text-xs text-gray-500">{label}</span>
+      </div>
+      <p className="text-xl font-bold text-gray-800">{value}</p>
+      {sub && <p className="text-xs text-gray-400 mt-0.5">{sub}</p>}
+    </div>
+  );
+}
+
+function Card({ title, badge, children }: { title: string; badge?: string; children: React.ReactNode }) {
+  return (
+    <motion.div
+      className="bg-white rounded-2xl border border-gray-200 p-5 shadow-sm"
+      initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
+      whileHover={{ boxShadow: '0 4px 20px rgba(0,0,0,0.06)' }}>
+      <div className="flex items-center justify-between mb-4">
+        <h3 className="font-semibold text-gray-800">{title}</h3>
+        {badge && <span className="text-xs px-2 py-0.5 rounded-full bg-yellow-100 text-yellow-700">{badge}</span>}
+      </div>
+      {children}
+    </motion.div>
+  );
+}
+
+function CompareRow({ label, portfolio: p, benchmark: b, positive }: { label: string; portfolio: string; benchmark: string; positive: boolean }) {
+  return (
+    <div className="flex items-center justify-between py-2 border-b border-gray-100 last:border-0">
+      <span className="text-sm text-gray-600">{label}</span>
+      <div className="flex gap-4">
+        <span className={`text-sm font-bold ${positive ? 'text-emerald-600' : 'text-red-500'}`}>{p}</span>
+        <span className="text-sm text-gray-400">{b}</span>
+      </div>
+    </div>
+  );
+}
+
 // ─── CONSTANTS ────────────────────────────────────────────────────────────────
 
 const PROFILE_COLORS = {
@@ -75,6 +159,8 @@ const DEFAULT_Q: InvestorQuestionnaire = {
   worstAcceptableLoss:  10,
   esgPreference:        'no-importa',
   liquidityNeed:        'potser-3-anys',
+  incomeStability:      'estable',
+  crisisExperience:     'no-vaig-invertir',
 };
 
 interface Props {
@@ -152,109 +238,6 @@ export default function RoboAdvisorApp({ onBack }: Props) {
 
   // ─── SUBCOMPONENTS ──────────────────────────────────────────────────────────
 
-  const inputCls = "w-full rounded-lg border border-gray-200 px-3 py-2 text-sm text-gray-800 focus:outline-none focus:ring-2 focus:ring-[#c9a84c] bg-white transition-all duration-200";
-
-  const Field = ({ label, hint, children }: {
-    label: string; hint?: string; children: React.ReactNode;
-  }) => (
-    <div>
-      <label className="block text-sm font-medium text-gray-700 mb-1">{label}</label>
-      {hint && <p className="text-xs text-gray-400 mb-1">{hint}</p>}
-      {children}
-    </div>
-  );
-
-  const RadioCard = ({ selected, onClick, label, desc }: {
-    selected: boolean; onClick: () => void; label: string; desc: string;
-  }) => (
-    <motion.button
-      onClick={onClick}
-      whileHover={{ scale: 1.01 }}
-      whileTap={{ scale: 0.99 }}
-      className={`w-full text-left px-4 py-3 rounded-xl border transition-all ${
-        selected
-          ? 'border-[#c9a84c] bg-amber-50 shadow-sm'
-          : 'border-gray-200 bg-white hover:border-gray-300'
-      }`}>
-      {selected && (
-        <motion.div
-          layoutId="radioSelected"
-          className="absolute inset-0 rounded-xl border-2 border-[#c9a84c] -z-10"
-          transition={{ type: 'spring', stiffness: 400, damping: 30 }}
-        />
-      )}
-      <span className="font-medium text-sm text-gray-800">{label}</span>
-      <span className="ml-2 text-xs text-gray-500">{desc}</span>
-    </motion.button>
-  );
-
-  const MiniStat = ({ label, value, good }: {
-    label: string; value: string; good: boolean;
-  }) => (
-    <motion.div
-      initial={{ opacity: 0, scale: 0.9 }}
-      animate={{ opacity: 1, scale: 1 }}
-      transition={{ duration: 0.4 }}>
-      <p className={`text-lg font-bold ${good ? 'text-emerald-700' : 'text-amber-600'}`}>
-        {value}
-      </p>
-      <p className="text-xs text-gray-600">{label}</p>
-    </motion.div>
-  );
-
-  const KpiCard = ({ label, value, sub, icon, color }: {
-    label: string; value: string; sub?: string; icon: string; color: string;
-  }) => {
-    const colors: Record<string, string> = {
-      blue:   'bg-blue-50 border-blue-200',
-      green:  'bg-emerald-50 border-emerald-200',
-      amber:  'bg-amber-50 border-amber-200',
-      purple: 'bg-purple-50 border-purple-200',
-    };
-    return (
-      <div className={`rounded-xl p-4 border ${colors[color] ?? colors.blue}`}>
-        <div className="flex items-center gap-2 mb-1">
-          <span className="text-lg">{icon}</span>
-          <span className="text-xs text-gray-500">{label}</span>
-        </div>
-        <p className="text-xl font-bold text-gray-800">{value}</p>
-        {sub && <p className="text-xs text-gray-400 mt-0.5">{sub}</p>}
-      </div>
-    );
-  };
-
-  const Card = ({ title, badge, children }: {
-    title: string; badge?: string; children: React.ReactNode;
-  }) => (
-    <motion.div
-      className="bg-white rounded-2xl border border-gray-200 p-5 shadow-sm"
-      initial={{ opacity: 0, y: 16 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
-      whileHover={{ boxShadow: '0 4px 20px rgba(0,0,0,0.06)' }}>
-      <div className="flex items-center justify-between mb-4">
-        <h3 className="font-semibold text-gray-800">{title}</h3>
-        {badge && (
-          <span className="text-xs px-2 py-0.5 rounded-full bg-yellow-100 text-yellow-700">
-            {badge}
-          </span>
-        )}
-      </div>
-      {children}
-    </motion.div>
-  );
-
-  const CompareRow = ({ label, portfolio: p, benchmark: b, positive }: {
-    label: string; portfolio: string; benchmark: string; positive: boolean;
-  }) => (
-    <div className="flex items-center justify-between py-2 border-b border-gray-100 last:border-0">
-      <span className="text-sm text-gray-600">{label}</span>
-      <div className="flex gap-4">
-        <span className={`text-sm font-bold ${positive ? 'text-emerald-600' : 'text-red-500'}`}>{p}</span>
-        <span className="text-sm text-gray-400">{b}</span>
-      </div>
-    </div>
-  );
   // ─── STEPS ───────────────────────────────────────────────────────────────────
 
   const renderStep1 = () => (
@@ -280,13 +263,13 @@ export default function RoboAdvisorApp({ onBack }: Props) {
             <input type="text" value={q.clientName}
               placeholder="Ex: Joan Garcia Martínez"
               onChange={e => update('clientName', e.target.value)}
-              className={inputCls} />
+              className={INPUT_CLS} />
           </Field>
           <Field label="Email (opcional)" hint="Per rebre l'informe per correu">
             <input type="email" value={q.clientEmail ?? ''}
               placeholder="Ex: joan@email.com"
               onChange={e => update('clientEmail', e.target.value)}
-              className={inputCls} />
+              className={INPUT_CLS} />
           </Field>
         </div>
       </motion.div>
@@ -309,7 +292,7 @@ export default function RoboAdvisorApp({ onBack }: Props) {
             <Field label={f.label} hint={f.hint}>
               <input type="number" value={f.value} min={f.min} max={f.max}
                 onChange={e => update(f.field as keyof InvestorQuestionnaire, num(e.target.value))}
-                className={inputCls} />
+                className={INPUT_CLS} />
             </Field>
           </motion.div>
         ))}
@@ -354,7 +337,7 @@ export default function RoboAdvisorApp({ onBack }: Props) {
         <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.05 }}>
           <Field label="Objectiu financer principal">
             <select value={q.financialGoal}
-              onChange={e => update('financialGoal', e.target.value)} className={inputCls}>
+              onChange={e => update('financialGoal', e.target.value)} className={INPUT_CLS}>
               <option value="preservar-capital">Preservar el capital</option>
               <option value="fons-emergencia">Crear fons d'emergència</option>
               <option value="generar-ingressos">Generar ingressos passius</option>
@@ -380,7 +363,7 @@ export default function RoboAdvisorApp({ onBack }: Props) {
             <Field label={f.label}>
               <input type="number" value={f.value} min={f.min} max={f.max}
                 onChange={e => update(f.field as keyof InvestorQuestionnaire, num(e.target.value))}
-                className={inputCls} />
+                className={INPUT_CLS} />
             </Field>
           </motion.div>
         ))}
@@ -450,6 +433,27 @@ export default function RoboAdvisorApp({ onBack }: Props) {
           ))}
         </div>
       </Field>
+      <Field label="Estabilitat dels teus ingressos" hint="Afecta la teva capacitat real d'assumir risc">
+        <div className="grid grid-cols-1 gap-2 mt-1">
+          {[
+            { val: 'molt-estable', label: '🏛️ Molt estable',     desc: 'Funcionari o contracte indefinit sòlid' },
+            { val: 'estable',      label: '✅ Estable',           desc: 'Treballador assalariat fix' },
+            { val: 'variable',     label: '📊 Variable',          desc: 'Comissions, freelance o autònom estable' },
+            { val: 'irregular',    label: '⚡ Irregular',          desc: 'Ingressos molt variables o temporals' },
+            { val: 'pensionista',  label: '🎖️ Pensió / rendes',   desc: 'Ingressos fixos de jubilació o rendes' },
+          ].map((opt, i) => (
+            <motion.div key={opt.val}
+              initial={{ opacity: 0, x: -10 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ delay: i * 0.06 }}>
+              <RadioCard
+                selected={q.incomeStability === opt.val}
+                onClick={() => update('incomeStability', opt.val)}
+                label={opt.label} desc={opt.desc} />
+            </motion.div>
+          ))}
+        </div>
+      </Field>
     </div>
   );
 
@@ -497,6 +501,27 @@ export default function RoboAdvisorApp({ onBack }: Props) {
               <RadioCard
                 selected={q.reactionToDrops === opt.val}
                 onClick={() => update('reactionToDrops', opt.val)}
+                label={opt.label} desc={opt.desc} />
+            </motion.div>
+          ))}
+        </div>
+      </Field>
+      <Field label="Experiència en mercats en crisi (2008, 2020)" hint="Indica com vas actuar o com creus que actuaries">
+        <div className="grid grid-cols-1 gap-2 mt-1">
+          {[
+            { val: 'no-vaig-invertir',  label: '🔰 No hi era invertit',     desc: 'No tenia inversions en aquell moment' },
+            { val: 'vaig-aguantar',     label: '⏸️ Vaig aguantar',           desc: 'Vaig mantenir la inversió sense vendre' },
+            { val: 'vaig-vendre-part',  label: '⚠️ Vaig vendre una part',    desc: 'Vaig reduir l\'exposició per prudència' },
+            { val: 'vaig-vendre-tot',   label: '🚨 Vaig vendre-ho tot',      desc: 'No podia suportar les pèrdues' },
+            { val: 'vaig-comprar-mes',  label: '📈 Vaig aprofitar per comprar',desc: 'Les caigudes em generen oportunitats' },
+          ].map((opt, i) => (
+            <motion.div key={opt.val}
+              initial={{ opacity: 0, x: -10 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ delay: i * 0.06 }}>
+              <RadioCard
+                selected={q.crisisExperience === opt.val}
+                onClick={() => update('crisisExperience', opt.val)}
                 label={opt.label} desc={opt.desc} />
             </motion.div>
           ))}

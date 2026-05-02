@@ -3,10 +3,14 @@
 
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import FundsManager  from './FundsManager';
-import ReportsHistory from './ReportsHistory';
-import AdminConfig   from './AdminConfig';
-import AdminStats    from './AdminStats';
+import FundsManager       from './FundsManager';
+import ReportsHistory     from './ReportsHistory';
+import AdminConfig        from './AdminConfig';
+import AdminStats         from './AdminStats';
+import NewsletterManager  from './NewsletterManager';
+import NewsManager          from './NewsManager';
+import StockTrackerManager  from './StockTrackerManager';
+import AdminPortfolios       from './AdminPortfolios';
 
 interface Props {
   onLogout: () => void;
@@ -19,13 +23,17 @@ interface Stats {
   byRisk: { risk: number; count: number }[];
 }
 
-type Section = 'dashboard' | 'funds' | 'reports' | 'config';
+type Section = 'dashboard' | 'funds' | 'reports' | 'news' | 'newsletter' | 'stocks' | 'portfolios' | 'config';
 
 const NAV_ITEMS: { id: Section; icon: string; label: string }[] = [
-  { id: 'dashboard', icon: '📊', label: 'Dashboard'        },
-  { id: 'funds',     icon: '💼', label: 'Gestió de Fons'   },
-  { id: 'reports',   icon: '📄', label: 'Historial Informes'},
-  { id: 'config',    icon: '⚙️', label: 'Configuració'     },
+  { id: 'dashboard',  icon: '📊', label: 'Dashboard'        },
+  { id: 'funds',      icon: '💼', label: 'Gestió de Fons'   },
+  { id: 'reports',    icon: '📄', label: 'Historial Informes'},
+  { id: 'news',       icon: '📰', label: 'Notícies'         },
+  { id: 'newsletter', icon: '📧', label: 'Newsletter'        },
+  { id: 'stocks',      icon: '📈', label: 'Accions'          },
+  { id: 'portfolios', icon: '🗂', label: 'Carteres Model'   },
+  { id: 'config',     icon: '⚙️', label: 'Configuració'     },
 ];
 
 export default function AdminDashboard({ onLogout }: Props) {
@@ -160,9 +168,13 @@ export default function AdminDashboard({ onLogout }: Props) {
                 onNavigate={setActiveSection}
               />
             )}
-            {activeSection === 'funds'   && <FundsManager />}
-            {activeSection === 'reports' && <ReportsHistory />}
-            {activeSection === 'config'  && <AdminConfig />}
+            {activeSection === 'funds'      && <FundsManager />}
+            {activeSection === 'reports'    && <ReportsHistory />}
+            {activeSection === 'news'       && <NewsManager />}
+            {activeSection === 'newsletter' && <NewsletterManager />}
+            {activeSection === 'stocks'      && <StockTrackerManager />}
+            {activeSection === 'portfolios' && <AdminPortfolios />}
+            {activeSection === 'config'     && <AdminConfig />}
 
           </motion.div>
         </AnimatePresence>

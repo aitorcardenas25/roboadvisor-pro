@@ -38,6 +38,10 @@ export interface InvestorQuestionnaire {
   // Preferències
   esgPreference: ESGPreference;
   liquidityNeed: LiquidityNeed;
+
+  // Noves dimensions de profunditat
+  incomeStability:  IncomeStability;
+  crisisExperience: CrisisExperience;
 }
 
 export type FinancialGoal =
@@ -93,6 +97,20 @@ export type LiquidityNeed =
   | 'potser-6-mesos'
   | 'necessito-ja';
 
+export type IncomeStability =
+  | 'molt-estable'
+  | 'estable'
+  | 'variable'
+  | 'irregular'
+  | 'pensionista';
+
+export type CrisisExperience =
+  | 'no-vaig-invertir'
+  | 'vaig-aguantar'
+  | 'vaig-vendre-part'
+  | 'vaig-vendre-tot'
+  | 'vaig-comprar-mes';
+
 // ─── SCORING RESULT ───────────────────────────────────────────────────────────
 
 export interface ScoringResult {
@@ -107,14 +125,18 @@ export interface ScoringResult {
 }
 
 export interface ScoreBreakdown {
-  horizonScore:       number;
-  knowledgeScore:     number;
-  experienceScore:    number;
-  toleranceScore:     number;
-  reactionScore:      number;
-  goalScore:          number;
-  liquidityScore:     number;
+  horizonScore:         number;
+  knowledgeScore:       number;
+  experienceScore:      number;
+  toleranceScore:       number;
+  reactionScore:        number;
+  goalScore:            number;
+  liquidityScore:       number;
   financialHealthScore: number;
+  ageScore:             number;
+  worstLossScore:       number;
+  incomeScore:          number;
+  crisisScore:          number;
 }
 
 export interface FinancialDiagnostics {
@@ -195,26 +217,31 @@ export function validateQuestionnaire(q: InvestorQuestionnaire): ValidationResul
 // ─── SCORING ENGINE ───────────────────────────────────────────────────────────
 
 export function calculateScore(q: InvestorQuestionnaire): ScoringResult {
-  const horizonScore       = scoreHorizon(q.investmentHorizon);
-  const knowledgeScore     = scoreKnowledge(q.financialKnowledge);
-  const experienceScore    = scoreExperience(q.investmentExperience);
-  const toleranceScore     = scoreLossTolerance(q.lossTolerance);
-  const reactionScore      = scoreReaction(q.reactionToDrops);
-  const goalScore          = scoreGoal(q.financialGoal);
-  const liquidityScore     = scoreLiquidity(q.liquidityNeed);
-  const diagnostics        = calculateDiagnostics(q);
+  const horizonScore         = scoreHorizon(q.investmentHorizon);
+  const knowledgeScore       = scoreKnowledge(q.financialKnowledge);
+  const experienceScore      = scoreExperience(q.investmentExperience);
+  const toleranceScore       = scoreLossTolerance(q.lossTolerance);
+  const reactionScore        = scoreReaction(q.reactionToDrops);
+  const goalScore            = scoreGoal(q.financialGoal);
+  const liquidityScore       = scoreLiquidity(q.liquidityNeed);
+  const diagnostics          = calculateDiagnostics(q);
   const financialHealthScore = scoreFinancialHealth(diagnostics);
+  const ageScore             = scoreAge(q.age);
+  const worstLossScore       = scoreWorstAcceptableLoss(q.worstAcceptableLoss);
+  const incomeScore          = scoreIncomeStability(q.incomeStability ?? 'estable');
+  const crisisScore          = scoreCrisisExperience(q.crisisExperience ?? 'no-vaig-invertir');
 
   const totalScore =
     horizonScore + knowledgeScore + experienceScore +
     toleranceScore + reactionScore + goalScore +
-    liquidityScore + financialHealthScore;
+    liquidityScore + financialHealthScore +
+    ageScore + worstLossScore + incomeScore + crisisScore;
 
-  const maxScore       = 115;
+  const maxScore        = 160;
   const scorePercentage = Math.round((totalScore / maxScore) * 100);
-  const profile        = determineProfile(scorePercentage, q);
-  const warnings       = generateWarnings(q, diagnostics);
-  const strengths      = generateStrengths(q, diagnostics);
+  const profile         = determineProfile(scorePercentage, q);
+  const warnings        = generateWarnings(q, diagnostics);
+  const strengths       = generateStrengths(q, diagnostics);
 
   return {
     profile, totalScore, maxScore, scorePercentage,
@@ -222,6 +249,7 @@ export function calculateScore(q: InvestorQuestionnaire): ScoringResult {
       horizonScore, knowledgeScore, experienceScore,
       toleranceScore, reactionScore, goalScore,
       liquidityScore, financialHealthScore,
+      ageScore, worstLossScore, incomeScore, crisisScore,
     },
     diagnostics, warnings, strengths,
   };
@@ -287,6 +315,40 @@ function scoreLiquidity(need: LiquidityNeed): number {
   return scores[need] ?? 5;
 }
 
+function scoreAge(age: number): number {
+  if (age <= 28) return 10;
+  if (age <= 35) return 9;
+  if (age <= 42) return 7;
+  if (age <= 50) return 5;
+  if (age <= 58) return 3;
+  if (age <= 65) return 2;
+  return 1;
+}
+
+function scoreWorstAcceptableLoss(loss: number): number {
+  if (loss >= 40) return 15;
+  if (loss >= 25) return 12;
+  if (loss >= 15) return 8;
+  if (loss >= 8)  return 5;
+  if (loss >= 3)  return 2;
+  return 0;
+}
+
+function scoreIncomeStability(s: IncomeStability): number {
+  const scores: Record<IncomeStability, number> = {
+    'molt-estable': 10, 'estable': 8, 'variable': 5, 'irregular': 2, 'pensionista': 3,
+  };
+  return scores[s] ?? 5;
+}
+
+function scoreCrisisExperience(e: CrisisExperience): number {
+  const scores: Record<CrisisExperience, number> = {
+    'vaig-comprar-mes': 12, 'vaig-aguantar': 8, 'no-vaig-invertir': 4,
+    'vaig-vendre-part': 2, 'vaig-vendre-tot': 0,
+  };
+  return scores[e] ?? 4;
+}
+
 function scoreFinancialHealth(d: FinancialDiagnostics): number {
   let score = 5;
   if (d.savingsRate >= 30)       score += 3;
@@ -347,16 +409,33 @@ function calculateFeasibility(q: InvestorQuestionnaire, investableAmount: number
 // ─── PROFILE DETERMINATION ────────────────────────────────────────────────────
 
 function determineProfile(scorePercentage: number, q: InvestorQuestionnaire): InvestorProfile {
-  if (
-    q.lossTolerance === 'no-accepto-perdues' ||
-    q.liquidityNeed === 'necessito-ja' ||
-    q.reactionToDrops === 'vendre-tot'
-  ) return 'conservador';
-  if (q.investmentHorizon <= 2) return 'conservador';
-  if (q.investmentHorizon <= 4 && scorePercentage > 60) return 'moderat';
-  if (scorePercentage >= 75) return 'agressiu';
-  if (scorePercentage >= 55) return 'dinamic';
-  if (scorePercentage >= 35) return 'moderat';
+  // Hard overrides cap a conservador
+  if (q.lossTolerance === 'no-accepto-perdues') return 'conservador';
+  if (q.liquidityNeed === 'necessito-ja')        return 'conservador';
+  if (q.reactionToDrops === 'vendre-tot')        return 'conservador';
+  if (q.worstAcceptableLoss <= 3)                return 'conservador';
+  if (q.investmentHorizon <= 2)                  return 'conservador';
+  if (q.crisisExperience === 'vaig-vendre-tot')  return 'conservador';
+
+  // Cap a moderat per horitzó curt o alta necessitat de liquiditat
+  if (q.investmentHorizon <= 4)                  return scorePercentage >= 50 ? 'moderat' : 'conservador';
+  if (q.liquidityNeed === 'potser-6-mesos')       return scorePercentage >= 60 ? 'moderat' : 'conservador';
+
+  // Cap per edat avançada
+  if (q.age >= 70) return scorePercentage >= 65 ? 'moderat' : 'conservador';
+  if (q.age >= 62) {
+    if (scorePercentage >= 72) return 'dinamic';
+    if (scorePercentage >= 50) return 'moderat';
+    return 'conservador';
+  }
+
+  // Cap per pèrdua màxima acceptable baixa
+  if (q.worstAcceptableLoss < 10 && scorePercentage >= 75) return 'dinamic';
+
+  // Classificació estàndard per puntuació
+  if (scorePercentage >= 72) return 'agressiu';
+  if (scorePercentage >= 52) return 'dinamic';
+  if (scorePercentage >= 32) return 'moderat';
   return 'conservador';
 }
 

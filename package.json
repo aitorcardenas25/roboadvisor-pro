@@ -16,6 +16,7 @@
     "framer-motion": "^12.38.0",
     "html-to-image": "^1.11.13",
     "jsonwebtoken": "^9.0.3",
+    "lightweight-charts": "^5.2.0",
     "next": "15.1.0",
     "next-auth": "^4.24.14",
     "react": "^19.0.0",
