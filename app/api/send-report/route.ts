@@ -1,6 +1,7 @@
 // app/api/send-report/route.ts
 import { NextRequest, NextResponse } from 'next/server';
 import { Resend } from 'resend';
+import { saveReport } from '@/lib/reportRegistry';
 
 function getResend() {
   const key = process.env.RESEND_API_KEY;
@@ -12,11 +13,15 @@ export async function POST(req: NextRequest) {
   try {
     const formData = await req.formData();
     const pdfBlob  = formData.get('pdf')        as Blob   | null;
-    const email    = formData.get('email')       as string | null;
-    const name     = formData.get('name')        as string | null;
-    const profile  = formData.get('profile')     as string | null;
-    const score    = formData.get('score')       as string | null;
-    const date     = formData.get('date')        as string | null;
+    const email    = formData.get('email')         as string | null;
+    const name     = formData.get('name')          as string | null;
+    const profile  = formData.get('profile')       as string | null;
+    const score    = formData.get('score')         as string | null;
+    const date     = formData.get('date')          as string | null;
+    const monthly  = formData.get('monthlyAmount') as string | null;
+    const invest   = formData.get('investable')    as string | null;
+    const horizon  = formData.get('horizon')       as string | null;
+    const portfolio= formData.get('portfolio')     as string | null;
 
     // ── Validació ────────────────────────────────────────────────────────────
     if (!email || !pdfBlob) {
@@ -71,6 +76,21 @@ export async function POST(req: NextRequest) {
         { status: 500 }
       );
     }
+
+    // Guardar al registre d'informes
+    saveReport({
+      clientName:    clientName,
+      clientEmail:   email,
+      profile:       profileLabel,
+      score:         parseInt(scoreValue) || 0,
+      monthlyAmount: parseFloat(monthly ?? '0') || 0,
+      investable:    parseFloat(invest  ?? '0') || 0,
+      horizon:       parseInt(horizon   ?? '10') || 10,
+      portfolio:     portfolio ? portfolio.split(',').map(s => s.trim()) : [],
+      pdfGenerated:  true,
+      emailSent:     true,
+      date:          reportDate,
+    });
 
     return NextResponse.json({
       success:  true,

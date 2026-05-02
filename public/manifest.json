@@ -1,0 +1,20 @@
+{
+  "name": "Factor OTC — RoboAdvisor",
+  "short_name": "Factor OTC",
+  "description": "Eina de suport a la decisió d'inversió",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#0a0f0d",
+  "theme_color": "#c9a84c",
+  "orientation": "portrait-primary",
+  "categories": ["finance", "business"],
+  "lang": "ca",
+  "icons": [
+    { "src": "/icons/icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any maskable" }
+  ],
+  "shortcuts": [
+    { "name": "Cartera",  "url": "/cartera",  "description": "La teva cartera personalitzada" },
+    { "name": "Accions",  "url": "/accions",  "description": "Anàlisi de mercats" },
+    { "name": "Notícies", "url": "/noticies", "description": "Notícies financeres" }
+  ]
+}

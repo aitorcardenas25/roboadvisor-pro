@@ -1976,6 +1976,530 @@ export const FINANCIAL_PRODUCTS: FinancialProduct[] = [
     justification: 'ETF del sector salut de l\'S&P 500. Exposició al sector sanitari americà, el més gran del món. Component defensiu dins d\'RV.',
     tags: ['etf', 'salut', 'usa', 'sector'], historicalReturn5Y: 11.5, historicalVolatility: 13.0, maxDrawdownEstimate: -24.0, inceptionYear: 2009, aum: 2100, morningstarCategory: 'Temàtic Salut', morningstarRating: 4, sfdrArticle: 6, mifidRiskIndicator: 5,
   },
+
+  // ─── JAPÓ ────────────────────────────────────────────────────────────────────
+  {
+    id: 'ishares-nikkei-225-etf', name: 'iShares Nikkei 225 UCITS ETF', isin: 'IE00B52MJY50',
+    manager: 'BlackRock', category: 'RV Japó', assetClass: 'renda-variable-global',
+    region: 'Japó', managementType: 'indexada', benchmark: 'Nikkei 225', risk: 5,
+    recommendedProfiles: ['dinamic', 'agressiu'], ter: 0.48, currency: 'JPY',
+    dataStatus: 'validated', justification: 'Accés directe al Nikkei 225, les 225 majors empreses japoneses. Diversificació geogràfica Àsia-Pacífic.',
+    tags: ['etf', 'japo', 'nikkei', 'asia'], historicalReturn5Y: 10.2, historicalVolatility: 16.5, maxDrawdownEstimate: -30.0, inceptionYear: 2009, aum: 3200, morningstarCategory: 'RV Japó', morningstarRating: 4, sfdrArticle: 6, mifidRiskIndicator: 5,
+  },
+  {
+    id: 'xtrackers-msci-japan-etf', name: 'Xtrackers MSCI Japan UCITS ETF', isin: 'IE00BJ0KDQ92',
+    manager: 'DWS', category: 'RV Japó', assetClass: 'renda-variable-global',
+    region: 'Japó', managementType: 'indexada', benchmark: 'MSCI Japan', risk: 5,
+    recommendedProfiles: ['dinamic', 'agressiu'], ter: 0.09, currency: 'USD',
+    dataStatus: 'validated', justification: 'ETF MSCI Japan de molt baix cost (TER 0,09%). Cobertura de divisa disponible. Excel·lent per diversificació en JPY.',
+    tags: ['etf', 'japo', 'msci', 'baix-cost'], historicalReturn5Y: 9.8, historicalVolatility: 15.8, maxDrawdownEstimate: -28.0, inceptionYear: 2015, aum: 4500, morningstarCategory: 'RV Japó', morningstarRating: 4, sfdrArticle: 6, mifidRiskIndicator: 5,
+  },
+  {
+    id: 'fidelity-japan-fund', name: 'Fidelity Funds Japan Fund', isin: 'LU0048578727',
+    manager: 'Fidelity', category: 'RV Japó Actiu', assetClass: 'renda-variable-global',
+    region: 'Japó', managementType: 'activa', benchmark: 'TOPIX', risk: 5,
+    recommendedProfiles: ['dinamic', 'agressiu'], ter: 1.50, currency: 'JPY',
+    dataStatus: 'validated', justification: 'Gestió activa japonesa de Fidelity. Selecció bottom-up de valors amb potencial de reforma corporativa.',
+    tags: ['japo', 'actiu', 'fidelity', 'topix'], historicalReturn5Y: 8.5, historicalVolatility: 17.0, maxDrawdownEstimate: -32.0, inceptionYear: 1990, aum: 1800, morningstarCategory: 'RV Japó', morningstarRating: 3, sfdrArticle: 6, mifidRiskIndicator: 5,
+  },
+
+  // ─── XINA / ÀSIA ─────────────────────────────────────────────────────────────
+  {
+    id: 'ishares-china-large-cap-etf', name: 'iShares China Large Cap UCITS ETF', isin: 'IE00B02KXK85',
+    manager: 'BlackRock', category: 'RV Xina', assetClass: 'renda-variable-emergents',
+    region: 'Xina', managementType: 'indexada', benchmark: 'FTSE China 50', risk: 5,
+    recommendedProfiles: ['agressiu'], ter: 0.74, currency: 'USD',
+    dataStatus: 'validated', justification: 'Exposició a les 50 majors empreses xineses cotitzades a Hong Kong. Alta volatilitat però potencial de creixement estructural.',
+    tags: ['etf', 'xina', 'emergents', 'asia'], historicalReturn5Y: 2.1, historicalVolatility: 28.0, maxDrawdownEstimate: -50.0, inceptionYear: 2004, aum: 2800, morningstarCategory: 'RV Xina', morningstarRating: 3, sfdrArticle: 6, mifidRiskIndicator: 6,
+  },
+  {
+    id: 'amundi-msci-china-etf', name: 'Amundi MSCI China UCITS ETF', isin: 'LU1681043912',
+    manager: 'Amundi', category: 'RV Xina', assetClass: 'renda-variable-emergents',
+    region: 'Xina', managementType: 'indexada', benchmark: 'MSCI China', risk: 5,
+    recommendedProfiles: ['agressiu'], ter: 0.20, currency: 'USD',
+    dataStatus: 'validated', justification: 'ETF MSCI China baix cost. Inclou A-shares, H-shares i ADRs. Diversificació àmplia dins el mercat xinès.',
+    tags: ['etf', 'xina', 'amundi', 'baix-cost'], historicalReturn5Y: 1.5, historicalVolatility: 26.0, maxDrawdownEstimate: -48.0, inceptionYear: 2018, aum: 1200, morningstarCategory: 'RV Xina', morningstarRating: 3, sfdrArticle: 6, mifidRiskIndicator: 6,
+  },
+  {
+    id: 'xtrackers-asia-ex-japan-etf', name: 'Xtrackers MSCI Asia ex Japan UCITS ETF', isin: 'IE00BJ0KDR00',
+    manager: 'DWS', category: 'RV Àsia ex-Japó', assetClass: 'renda-variable-emergents',
+    region: 'Àsia-Pacífic', managementType: 'indexada', benchmark: 'MSCI AC Asia ex Japan', risk: 5,
+    recommendedProfiles: ['dinamic', 'agressiu'], ter: 0.20, currency: 'USD',
+    dataStatus: 'validated', justification: 'Exposició diversificada a Àsia ex-Japó: Xina, Corea, Taiwan, Índia, ASEAN. Captació del creixement asiàtic sense Japó.',
+    tags: ['etf', 'asia', 'emergents', 'diversificat'], historicalReturn5Y: 7.2, historicalVolatility: 19.0, maxDrawdownEstimate: -38.0, inceptionYear: 2015, aum: 2100, morningstarCategory: 'RV Àsia-Pacífic ex-Japó', morningstarRating: 4, sfdrArticle: 6, mifidRiskIndicator: 5,
+  },
+
+  // ─── ÍNDIA ────────────────────────────────────────────────────────────────────
+  {
+    id: 'ishares-msci-india-etf', name: 'iShares MSCI India UCITS ETF', isin: 'IE00BZCQB185',
+    manager: 'BlackRock', category: 'RV Índia', assetClass: 'renda-variable-emergents',
+    region: 'Índia', managementType: 'indexada', benchmark: 'MSCI India', risk: 5,
+    recommendedProfiles: ['agressiu'], ter: 0.65, currency: 'USD',
+    dataStatus: 'validated', justification: 'Accés al mercat indi, la 5a economia mundial. Creixement demogràfic i digitalització com a motors estructurals.',
+    tags: ['etf', 'india', 'emergents', 'creixement'], historicalReturn5Y: 14.5, historicalVolatility: 22.0, maxDrawdownEstimate: -38.0, inceptionYear: 2019, aum: 1800, morningstarCategory: 'RV Índia', morningstarRating: 5, sfdrArticle: 6, mifidRiskIndicator: 6,
+  },
+
+  // ─── UK ───────────────────────────────────────────────────────────────────────
+  {
+    id: 'ishares-core-ftse-100-etf', name: 'iShares Core FTSE 100 UCITS ETF', isin: 'IE0031442068',
+    manager: 'BlackRock', category: 'RV UK', assetClass: 'renda-variable-europa',
+    region: 'Regne Unit', managementType: 'indexada', benchmark: 'FTSE 100', risk: 4,
+    recommendedProfiles: ['moderat', 'dinamic', 'agressiu'], ter: 0.07, currency: 'GBP',
+    dataStatus: 'validated', justification: 'ETF FTSE 100 ultra baix cost. Exposició a les 100 majors empreses britàniques, moltes globals. Alt dividend yield (~3,5%).',
+    tags: ['etf', 'uk', 'ftse100', 'dividends', 'baix-cost'], historicalReturn5Y: 6.8, historicalVolatility: 14.5, maxDrawdownEstimate: -26.0, yieldEstimate: 3.5, inceptionYear: 2000, aum: 12000, morningstarCategory: 'RV UK', morningstarRating: 4, sfdrArticle: 6, mifidRiskIndicator: 4,
+  },
+  {
+    id: 'liontrust-special-situations', name: 'Liontrust Special Situations Fund', isin: 'GB0030932637',
+    manager: 'Liontrust', category: 'RV UK Small&Mid', assetClass: 'small-caps-europa',
+    region: 'Regne Unit', managementType: 'activa', benchmark: 'FTSE All-Share', risk: 5,
+    recommendedProfiles: ['dinamic', 'agressiu'], ter: 0.83, currency: 'GBP',
+    dataStatus: 'validated', justification: 'Un dels millors fons UK actius. Enfocament en empreses amb avantatge competitiu sostenible. Consistència histórica notable.',
+    tags: ['uk', 'small-mid', 'actiu', 'liontrust'], historicalReturn5Y: 9.2, historicalVolatility: 18.5, maxDrawdownEstimate: -35.0, inceptionYear: 2005, aum: 4200, morningstarCategory: 'RV UK Small & Mid Cap', morningstarRating: 5, sfdrArticle: 8, mifidRiskIndicator: 5,
+  },
+  {
+    id: 'vanguard-ftse-uk-all-share-etf', name: 'Vanguard FTSE UK All Share Index Unit Trust', isin: 'GB00B3X7QG63',
+    manager: 'Vanguard', category: 'RV UK Total Market', assetClass: 'renda-variable-europa',
+    region: 'Regne Unit', managementType: 'indexada', benchmark: 'FTSE UK All Share', risk: 5,
+    recommendedProfiles: ['moderat', 'dinamic', 'agressiu'], ter: 0.06, currency: 'GBP',
+    dataStatus: 'validated', justification: 'Fons índex de tot el mercat britànic al menor cost possible. Cobertura de ~600 empreses UK.',
+    tags: ['uk', 'vanguard', 'indexat', 'total-market'], historicalReturn5Y: 6.5, historicalVolatility: 14.0, maxDrawdownEstimate: -25.0, yieldEstimate: 3.2, inceptionYear: 2009, aum: 6800, morningstarCategory: 'RV UK', morningstarRating: 4, sfdrArticle: 6, mifidRiskIndicator: 5,
+  },
+
+  // ─── AMÈRICA LLATINA / BRIC ──────────────────────────────────────────────────
+  {
+    id: 'ishares-msci-brazil-etf', name: 'iShares MSCI Brazil UCITS ETF', isin: 'IE00B0M63516',
+    manager: 'BlackRock', category: 'RV Brasil', assetClass: 'renda-variable-emergents',
+    region: 'Amèrica Llatina', managementType: 'indexada', benchmark: 'MSCI Brazil', risk: 5,
+    recommendedProfiles: ['agressiu'], ter: 0.74, currency: 'USD',
+    dataStatus: 'validated', justification: 'Accés al mercat brasiler: recursos naturals, financer i consum. Alt risc però diversificació geogràfica única.',
+    tags: ['etf', 'brasil', 'emergents', 'latam'], historicalReturn5Y: 5.0, historicalVolatility: 30.0, maxDrawdownEstimate: -55.0, inceptionYear: 2005, aum: 900, morningstarCategory: 'RV Amèrica Llatina', morningstarRating: 3, sfdrArticle: 6, mifidRiskIndicator: 6,
+  },
+  {
+    id: 'ishares-msci-latam-etf', name: 'iShares MSCI EM Latin America UCITS ETF', isin: 'IE00B27YCK28',
+    manager: 'BlackRock', category: 'RV Amèrica Llatina', assetClass: 'renda-variable-emergents',
+    region: 'Amèrica Llatina', managementType: 'indexada', benchmark: 'MSCI EM Latin America', risk: 5,
+    recommendedProfiles: ['agressiu'], ter: 0.74, currency: 'USD',
+    dataStatus: 'validated', justification: 'ETF diversificat LATAM: Brasil, Mèxic, Xile, Colòmbia. Exposició a mercats emergents americans.',
+    tags: ['etf', 'latam', 'emergents', 'diversificat'], historicalReturn5Y: 4.5, historicalVolatility: 27.0, maxDrawdownEstimate: -50.0, inceptionYear: 2007, aum: 750, morningstarCategory: 'RV Amèrica Llatina', morningstarRating: 3, sfdrArticle: 6, mifidRiskIndicator: 6,
+  },
+
+  // ─── RENDA FIXA USA / TREASURY ───────────────────────────────────────────────
+  {
+    id: 'ishares-us-treasury-7-10-etf', name: 'iShares USD Treasury Bond 7-10yr UCITS ETF', isin: 'IE00B1FZS798',
+    manager: 'BlackRock', category: 'RF Govern USA', assetClass: 'renda-fixa-global',
+    region: 'EUA', managementType: 'indexada', benchmark: 'ICE US Treasury 7-10 Year', risk: 3,
+    recommendedProfiles: ['conservador', 'moderat'], ter: 0.07, currency: 'USD',
+    dataStatus: 'validated', justification: 'Bons del tresor americà 7-10 anys. Actiu refugi global, correlació negativa amb RV. Denomat en USD.',
+    tags: ['etf', 'treasury', 'usa', 'govern', 'refugi'], historicalReturn5Y: 0.5, historicalVolatility: 7.5, maxDrawdownEstimate: -18.0, yieldEstimate: 4.3, durationYears: 8.5, inceptionYear: 2009, aum: 8500, morningstarCategory: 'RF Govern USD', morningstarRating: 4, sfdrArticle: 6, mifidRiskIndicator: 3,
+  },
+  {
+    id: 'ishares-us-treasury-0-1-etf', name: 'iShares USD Treasury Bond 0-1yr UCITS ETF', isin: 'IE00BGSF1X88',
+    manager: 'BlackRock', category: 'RF Curt Termini USA', assetClass: 'renda-fixa-curta',
+    region: 'EUA', managementType: 'indexada', benchmark: 'ICE US Treasury 0-1 Year', risk: 2,
+    recommendedProfiles: ['conservador', 'moderat'], ter: 0.07, currency: 'USD',
+    dataStatus: 'validated', justification: 'T-bills americans de menys d\'un any. Màxima liquiditat i seguretat. Yield atractiu amb risc de tipus mínim.',
+    tags: ['etf', 'treasury', 'curt-termini', 'liquiditat'], historicalReturn5Y: 3.0, historicalVolatility: 0.5, maxDrawdownEstimate: -0.5, yieldEstimate: 4.8, durationYears: 0.4, inceptionYear: 2019, aum: 5200, morningstarCategory: 'RF Govern USD curt termini', morningstarRating: 5, sfdrArticle: 6, mifidRiskIndicator: 2,
+  },
+  {
+    id: 'vanguard-usd-corporate-bond-etf', name: 'Vanguard USD Corporate Bond UCITS ETF', isin: 'IE00BZ163K21',
+    manager: 'Vanguard', category: 'RF Corporativa USD', assetClass: 'renda-fixa-global',
+    region: 'EUA', managementType: 'indexada', benchmark: 'Bloomberg USD Corporate Float Adjusted', risk: 3,
+    recommendedProfiles: ['conservador', 'moderat'], ter: 0.09, currency: 'USD',
+    dataStatus: 'validated', justification: 'Bons corporatius investment grade en USD. Diversificació en >4.000 emissions. Yield superior als Treasury.',
+    tags: ['etf', 'corporatiu', 'usa', 'investment-grade'], historicalReturn5Y: 1.2, historicalVolatility: 8.0, maxDrawdownEstimate: -15.0, yieldEstimate: 5.1, durationYears: 6.8, inceptionYear: 2016, aum: 7200, morningstarCategory: 'RF Corporativa USD', morningstarRating: 4, sfdrArticle: 6, mifidRiskIndicator: 3,
+  },
+
+  // ─── RENDA FIXA GLOBAL ───────────────────────────────────────────────────────
+  {
+    id: 'pimco-global-bond-esg', name: 'PIMCO GIS Global Bond ESG Fund', isin: 'IE00BFRT3504',
+    manager: 'PIMCO', category: 'RF Global ESG', assetClass: 'renda-fixa-global',
+    region: 'Global', managementType: 'activa', benchmark: 'Bloomberg Global Aggregate (EUR Hedged)', risk: 3,
+    recommendedProfiles: ['conservador', 'moderat'], ter: 0.55, currency: 'EUR',
+    dataStatus: 'validated', justification: 'PIMCO aplica criteris ESG a la seva gestió activa de renda fixa global. Cobert en EUR. Historial sòlid en control de risc.',
+    tags: ['rf', 'global', 'esg', 'pimco', 'cobert-eur'], historicalReturn5Y: 0.8, historicalVolatility: 5.5, maxDrawdownEstimate: -10.0, yieldEstimate: 4.0, durationYears: 6.2, inceptionYear: 2019, aum: 2100, morningstarCategory: 'RF Global', morningstarRating: 4, sfdrArticle: 8, mifidRiskIndicator: 3,
+  },
+  {
+    id: 'templeton-global-bond', name: 'Templeton Global Bond Fund', isin: 'LU0152980495',
+    manager: 'Franklin Templeton', category: 'RF Global Macro', assetClass: 'renda-fixa-global',
+    region: 'Global', managementType: 'activa', benchmark: 'Bloomberg Global Aggregate', risk: 4,
+    recommendedProfiles: ['moderat', 'dinamic'], ter: 0.78, currency: 'USD',
+    dataStatus: 'validated', justification: 'Gestió macro global de RF amb flexibilitat de divises. Enfocament en tipus d\'interès i valor relatiu entre governs.',
+    tags: ['rf', 'global', 'macro', 'templeton'], historicalReturn5Y: 2.5, historicalVolatility: 8.0, maxDrawdownEstimate: -14.0, yieldEstimate: 5.2, durationYears: 4.5, inceptionYear: 1986, aum: 3400, morningstarCategory: 'RF Global', morningstarRating: 3, sfdrArticle: 6, mifidRiskIndicator: 4,
+  },
+
+  // ─── HIGH YIELD ───────────────────────────────────────────────────────────────
+  {
+    id: 'ishares-eur-high-yield-etf', name: 'iShares EUR High Yield Corporate Bond UCITS ETF', isin: 'IE00B66F4759',
+    manager: 'BlackRock', category: 'RF Alt Rendiment EUR', assetClass: 'renda-fixa-alt-rendiment',
+    region: 'Europa', managementType: 'indexada', benchmark: 'Markit iBoxx EUR Liquid HY', risk: 4,
+    recommendedProfiles: ['moderat', 'dinamic'], ter: 0.50, currency: 'EUR',
+    dataStatus: 'validated', justification: 'Bons high yield europeus. Yield atractiu (~6-7%) amb risc de crèdit moderat. Component de carry en carteres mixtes.',
+    tags: ['etf', 'high-yield', 'europa', 'credit'], historicalReturn5Y: 3.8, historicalVolatility: 10.0, maxDrawdownEstimate: -22.0, yieldEstimate: 6.5, durationYears: 3.2, inceptionYear: 2010, aum: 4200, morningstarCategory: 'RF Alt Rendiment EUR', morningstarRating: 4, sfdrArticle: 6, mifidRiskIndicator: 4,
+  },
+  {
+    id: 'pimco-gis-us-high-yield', name: 'PIMCO GIS US High Yield Bond Fund', isin: 'IE0002460760',
+    manager: 'PIMCO', category: 'RF Alt Rendiment USD', assetClass: 'renda-fixa-alt-rendiment',
+    region: 'EUA', managementType: 'activa', benchmark: 'ICE BofA US High Yield', risk: 4,
+    recommendedProfiles: ['moderat', 'dinamic'], ter: 0.72, currency: 'USD',
+    dataStatus: 'validated', justification: 'Gestió activa HY americana de PIMCO. Selecció rigorosa per evitar defaults. Yield superior a l\'índex passiu.',
+    tags: ['rf', 'high-yield', 'usa', 'pimco', 'actiu'], historicalReturn5Y: 4.5, historicalVolatility: 11.0, maxDrawdownEstimate: -25.0, yieldEstimate: 7.2, durationYears: 3.8, inceptionYear: 2001, aum: 5600, morningstarCategory: 'RF Alt Rendiment USD', morningstarRating: 4, sfdrArticle: 6, mifidRiskIndicator: 4,
+  },
+
+  // ─── INFLACIÓ ─────────────────────────────────────────────────────────────────
+  {
+    id: 'ishares-euro-inflation-etf', name: 'iShares EUR Govt Bond Climate UCITS ETF', isin: 'IE00BD8PGZ49',
+    manager: 'BlackRock', category: 'RF Inflació EUR', assetClass: 'renda-fixa-europa',
+    region: 'Europa', managementType: 'indexada', benchmark: 'Bloomberg Euro Govt Climate', risk: 3,
+    recommendedProfiles: ['conservador', 'moderat'], ter: 0.09, currency: 'EUR',
+    dataStatus: 'validated', justification: 'Bons governamentals EUR amb integració climàtica. Protecció vs inflació europea. Complement natural per a carteres conservadores.',
+    tags: ['etf', 'inflacio', 'governs', 'europa', 'esg'], historicalReturn5Y: -0.5, historicalVolatility: 7.0, maxDrawdownEstimate: -16.0, yieldEstimate: 3.2, durationYears: 8.0, inceptionYear: 2020, aum: 1500, morningstarCategory: 'RF Governs EUR', morningstarRating: 3, sfdrArticle: 8, mifidRiskIndicator: 3,
+  },
+  {
+    id: 'ishares-tips-etf', name: 'iShares USD TIPS UCITS ETF', isin: 'IE00B1FZSC47',
+    manager: 'BlackRock', category: 'RF Inflació USA', assetClass: 'renda-fixa-global',
+    region: 'EUA', managementType: 'indexada', benchmark: 'Bloomberg US TIPS', risk: 3,
+    recommendedProfiles: ['conservador', 'moderat'], ter: 0.10, currency: 'USD',
+    dataStatus: 'validated', justification: 'Treasury Inflation Protected Securities (TIPS). Bons del tresor USA indexats a la inflació CPI. Cobertura directa vs inflació americana.',
+    tags: ['etf', 'tips', 'inflacio', 'usa', 'refugi'], historicalReturn5Y: 1.0, historicalVolatility: 5.5, maxDrawdownEstimate: -14.0, yieldEstimate: 4.5, durationYears: 7.0, inceptionYear: 2010, aum: 6800, morningstarCategory: 'RF Inflació USD', morningstarRating: 4, sfdrArticle: 6, mifidRiskIndicator: 3,
+  },
+
+  // ─── OR / MATÈRIES PRIMERES ──────────────────────────────────────────────────
+  {
+    id: 'ishares-physical-gold-etf', name: 'iShares Physical Gold ETC', isin: 'IE00B4ND3602',
+    manager: 'BlackRock', category: 'Or Físic', assetClass: 'etfs-diversificats',
+    region: 'Global', managementType: 'passiva', benchmark: 'Or Spot (USD/oz)', risk: 4,
+    recommendedProfiles: ['moderat', 'dinamic', 'agressiu'], ter: 0.12, currency: 'USD',
+    dataStatus: 'validated', justification: 'ETC d\'or físic custodiat. Cobertura vs inflació, deflació i incertesa geopolítica. Diversificació real en carteres.',
+    tags: ['or', 'or-fisic', 'commodities', 'refugi'], historicalReturn5Y: 12.5, historicalVolatility: 15.5, maxDrawdownEstimate: -20.0, inceptionYear: 2011, aum: 15000, morningstarCategory: 'Commodities Or', morningstarRating: 4, sfdrArticle: 6, mifidRiskIndicator: 4,
+  },
+  {
+    id: 'invesco-bloomberg-commodity-etf', name: 'Invesco Bloomberg Commodity UCITS ETF', isin: 'IE00BD6FTQ80',
+    manager: 'Invesco', category: 'Matèries Primeres Diversificades', assetClass: 'etfs-diversificats',
+    region: 'Global', managementType: 'passiva', benchmark: 'Bloomberg Commodity', risk: 5,
+    recommendedProfiles: ['dinamic', 'agressiu'], ter: 0.19, currency: 'USD',
+    dataStatus: 'validated', justification: 'Exposició diversificada a matèries primeres: energia, metalls, agricultura. Cobertura inflació i diversificació real.',
+    tags: ['etf', 'commodities', 'inflacio', 'diversificat'], historicalReturn5Y: 6.0, historicalVolatility: 18.0, maxDrawdownEstimate: -38.0, inceptionYear: 2018, aum: 2400, morningstarCategory: 'Commodities', morningstarRating: 3, sfdrArticle: 6, mifidRiskIndicator: 5,
+  },
+  {
+    id: 'xtrackers-silver-etc', name: 'Xtrackers Physical Silver ETC', isin: 'DE000A1E0HR8',
+    manager: 'DWS', category: 'Plata Física', assetClass: 'etfs-diversificats',
+    region: 'Global', managementType: 'passiva', benchmark: 'Plata Spot (USD/oz)', risk: 5,
+    recommendedProfiles: ['agressiu'], ter: 0.45, currency: 'USD',
+    dataStatus: 'validated', justification: 'ETC de plata física. Alta volatilitat però component industrial i refugi. Beta elevada vs or.',
+    tags: ['plata', 'etc', 'commodities', 'metalls'], historicalReturn5Y: 8.0, historicalVolatility: 28.0, maxDrawdownEstimate: -55.0, inceptionYear: 2007, aum: 1200, morningstarCategory: 'Commodities Metalls Preciosos', morningstarRating: 3, sfdrArticle: 6, mifidRiskIndicator: 6,
+  },
+
+  // ─── INFRAESTRUCTURES ────────────────────────────────────────────────────────
+  {
+    id: 'first-sentier-global-infra', name: 'First Sentier Global Listed Infrastructure Fund', isin: 'IE00B2PDR286',
+    manager: 'First Sentier Investors', category: 'Infraestructures Globals', assetClass: 'immobiliari-reits',
+    region: 'Global', managementType: 'activa', benchmark: 'FTSE Global Core Infrastructure 50/50', risk: 4,
+    recommendedProfiles: ['moderat', 'dinamic'], ter: 0.85, currency: 'USD',
+    dataStatus: 'validated', justification: 'Accions d\'infraestructures cotitzades globals: autopistes, aeroports, utilities, satèl·lits. Ingressos estables i protecció inflació.',
+    tags: ['infraestructures', 'global', 'actiu', 'dividends'], historicalReturn5Y: 7.5, historicalVolatility: 13.0, maxDrawdownEstimate: -28.0, yieldEstimate: 3.5, inceptionYear: 2007, aum: 3800, morningstarCategory: 'Temàtic Infraestructures', morningstarRating: 5, sfdrArticle: 8, mifidRiskIndicator: 4,
+  },
+  {
+    id: 'bnp-sr-infra-etf', name: 'BNP Paribas Easy ECPI Global ESG Infrastructure UCITS ETF', isin: 'LU1291109616',
+    manager: 'BNP Paribas AM', category: 'Infraestructures ESG', assetClass: 'immobiliari-reits',
+    region: 'Global', managementType: 'passiva', benchmark: 'ECPI Global ESG Infrastructure', risk: 4,
+    recommendedProfiles: ['moderat', 'dinamic'], ter: 0.30, currency: 'EUR',
+    dataStatus: 'validated', justification: 'ETF d\'infraestructures ESG. Preu baix per la categoria. Utilities renovables, transport sostenible.',
+    tags: ['etf', 'infraestructures', 'esg', 'bnp'], historicalReturn5Y: 6.8, historicalVolatility: 13.5, maxDrawdownEstimate: -26.0, yieldEstimate: 3.0, inceptionYear: 2016, aum: 520, morningstarCategory: 'Temàtic Infraestructures', morningstarRating: 3, sfdrArticle: 8, mifidRiskIndicator: 4,
+  },
+
+  // ─── RETORN ABSOLUT / FLEXIBLE ───────────────────────────────────────────────
+  {
+    id: 'blackrock-bss-americas', name: 'BGF Americas Diversified Equity Absolute Return Fund', isin: 'LU0827882614',
+    manager: 'BlackRock', category: 'Retorn Absolut RV', assetClass: 'mixtos',
+    region: 'EUA', managementType: 'activa', benchmark: 'Cash + 5%', risk: 4,
+    recommendedProfiles: ['moderat', 'dinamic'], ter: 1.25, currency: 'USD',
+    dataStatus: 'partial', justification: 'Fons long/short de renda variable americana. Busca retorn positiu en qualsevol entorn de mercat.',
+    tags: ['retorn-absolut', 'long-short', 'americas'], historicalReturn5Y: 5.5, historicalVolatility: 8.5, maxDrawdownEstimate: -12.0, inceptionYear: 2012, aum: 850, morningstarCategory: 'Retorn Absolut RV', morningstarRating: 3, sfdrArticle: 6, mifidRiskIndicator: 4,
+  },
+  {
+    id: 'janus-henderson-absolute-return', name: 'Janus Henderson Absolute Return Fund', isin: 'GB00B5VWXV38',
+    manager: 'Janus Henderson', category: 'Retorn Absolut', assetClass: 'mixtos',
+    region: 'Global', managementType: 'activa', benchmark: 'SONIA + 2%', risk: 3,
+    recommendedProfiles: ['conservador', 'moderat'], ter: 1.02, currency: 'GBP',
+    dataStatus: 'validated', justification: 'Estratègia long/short UK/global. Historial de retorn positiu en mercats baixistes. Descorrelació amb RV tradicional.',
+    tags: ['retorn-absolut', 'long-short', 'baix-risc'], historicalReturn5Y: 3.2, historicalVolatility: 5.0, maxDrawdownEstimate: -8.0, inceptionYear: 2009, aum: 1600, morningstarCategory: 'Retorn Absolut', morningstarRating: 4, sfdrArticle: 6, mifidRiskIndicator: 3,
+  },
+
+  // ─── MIXTOS GLOBALS ───────────────────────────────────────────────────────────
+  {
+    id: 'vanguard-lifestrategy-60', name: 'Vanguard LifeStrategy 60% Equity Fund', isin: 'IE00BGCZ0933',
+    manager: 'Vanguard', category: 'Mixt Flexible 60/40', assetClass: 'mixtos',
+    region: 'Global', managementType: 'indexada', benchmark: 'Composite 60% MSCI / 40% BBG Aggregate', risk: 3,
+    recommendedProfiles: ['moderat'], ter: 0.25, currency: 'EUR',
+    dataStatus: 'validated', justification: 'El "60/40" de Vanguard a un cost extremadament baix. Cartera completa en un sol fons. Rebalanceig automàtic. Referència de la gestió passiva.',
+    tags: ['mixt', 'indexat', 'vanguard', 'baix-cost', '60-40'], historicalReturn5Y: 7.2, historicalVolatility: 10.5, maxDrawdownEstimate: -22.0, inceptionYear: 2015, aum: 4500, morningstarCategory: 'Mixt Moderat Global', morningstarRating: 5, sfdrArticle: 8, mifidRiskIndicator: 3,
+  },
+  {
+    id: 'vanguard-lifestrategy-80', name: 'Vanguard LifeStrategy 80% Equity Fund', isin: 'IE00BGCZ0B51',
+    manager: 'Vanguard', category: 'Mixt Flexible 80/20', assetClass: 'mixtos',
+    region: 'Global', managementType: 'indexada', benchmark: 'Composite 80% MSCI / 20% BBG Aggregate', risk: 4,
+    recommendedProfiles: ['dinamic'], ter: 0.25, currency: 'EUR',
+    dataStatus: 'validated', justification: 'LifeStrategy 80/20: orientat a creixement però amb 20% RF estabilitzador. Cost ultra baix. Idoni per perfils dinàmics que volen simplicitat.',
+    tags: ['mixt', 'indexat', 'vanguard', 'baix-cost', '80-20'], historicalReturn5Y: 9.0, historicalVolatility: 13.0, maxDrawdownEstimate: -28.0, inceptionYear: 2015, aum: 3800, morningstarCategory: 'Mixt Agressiu Global', morningstarRating: 5, sfdrArticle: 8, mifidRiskIndicator: 4,
+  },
+  {
+    id: 'flossbach-triple-opportunity', name: 'Flossbach von Storch Multiple Opportunities', isin: 'LU0323578657',
+    manager: 'Flossbach von Storch', category: 'Mixt Flexible', assetClass: 'mixtos',
+    region: 'Global', managementType: 'activa', benchmark: 'Sense benchmark formal', risk: 4,
+    recommendedProfiles: ['dinamic', 'agressiu'], ter: 1.02, currency: 'EUR',
+    dataStatus: 'validated', justification: 'Un dels millors fons mixtos europeus. Enfocament de valor amb flexibilitat total d\'actius. Historial de 20 anys consistent.',
+    tags: ['mixt', 'flexible', 'valor', 'flossbach'], historicalReturn5Y: 8.5, historicalVolatility: 11.0, maxDrawdownEstimate: -20.0, inceptionYear: 2003, aum: 15000, morningstarCategory: 'Mixt Flexible Global', morningstarRating: 5, sfdrArticle: 8, mifidRiskIndicator: 4,
+  },
+  {
+    id: 'carmignac-patrimoine', name: 'Carmignac Patrimoine A', isin: 'FR0010135103',
+    manager: 'Carmignac', category: 'Mixt Flexible', assetClass: 'mixtos',
+    region: 'Global', managementType: 'activa', benchmark: '50% MSCI ACWI / 50% ICE BofA Global Gov Bond', risk: 3,
+    recommendedProfiles: ['moderat', 'dinamic'], ter: 1.50, currency: 'EUR',
+    dataStatus: 'validated', justification: 'Icona de la gestió activa francesa. 35 anys d\'historial. Gestió flexible entre RV i RF amb visió macro. Component de capital preservation.',
+    tags: ['mixt', 'flexible', 'carmignac', 'macro'], historicalReturn5Y: 2.8, historicalVolatility: 9.0, maxDrawdownEstimate: -18.0, inceptionYear: 1989, aum: 5500, morningstarCategory: 'Mixt Moderat Global', morningstarRating: 3, sfdrArticle: 8, mifidRiskIndicator: 3,
+  },
+
+  // ─── SECTOR: FINANCES ────────────────────────────────────────────────────────
+  {
+    id: 'ishares-msci-world-financials', name: 'iShares MSCI World Financials Sector UCITS ETF', isin: 'IE00BYXVGZ48',
+    manager: 'BlackRock', category: 'RV Sector Finances', assetClass: 'renda-variable-global',
+    region: 'Global', managementType: 'indexada', benchmark: 'MSCI World Financials', risk: 5,
+    recommendedProfiles: ['dinamic', 'agressiu'], ter: 0.25, currency: 'USD',
+    dataStatus: 'validated', justification: 'ETF sector financer global. Bancs, asseguradores, gestores. Beneficiat per entorns de tipus alts.',
+    tags: ['etf', 'finances', 'sector', 'bancs'], historicalReturn5Y: 10.5, historicalVolatility: 18.0, maxDrawdownEstimate: -38.0, yieldEstimate: 2.8, inceptionYear: 2015, aum: 1200, morningstarCategory: 'Temàtic Finances', morningstarRating: 4, sfdrArticle: 6, mifidRiskIndicator: 5,
+  },
+
+  // ─── SECTOR: CONSUM ──────────────────────────────────────────────────────────
+  {
+    id: 'ishares-global-consumer-staples', name: 'iShares Global Consumer Staples UCITS ETF', isin: 'IE00B40B8R38',
+    manager: 'BlackRock', category: 'RV Consum Bàsic', assetClass: 'renda-variable-global',
+    region: 'Global', managementType: 'indexada', benchmark: 'S&P Global 1200 Consumer Staples', risk: 4,
+    recommendedProfiles: ['moderat', 'dinamic'], ter: 0.46, currency: 'USD',
+    dataStatus: 'validated', justification: 'Empreses de consum defensiu global: Nestlé, P&G, Coca-Cola. Resistent en recessió. Alt dividend yield.',
+    tags: ['etf', 'consum', 'defensiu', 'dividends'], historicalReturn5Y: 8.2, historicalVolatility: 12.0, maxDrawdownEstimate: -20.0, yieldEstimate: 2.5, inceptionYear: 2006, aum: 2500, morningstarCategory: 'Temàtic Consum Bàsic', morningstarRating: 4, sfdrArticle: 6, mifidRiskIndicator: 4,
+  },
+  {
+    id: 'bnp-consumer-discretionary', name: 'BNP Paribas Easy S&P Global Consumer Discretionary UCITS ETF', isin: 'LU1291101959',
+    manager: 'BNP Paribas AM', category: 'RV Consum Discrecional', assetClass: 'renda-variable-global',
+    region: 'Global', managementType: 'passiva', benchmark: 'S&P Global 1200 Consumer Discretionary', risk: 5,
+    recommendedProfiles: ['dinamic', 'agressiu'], ter: 0.30, currency: 'EUR',
+    dataStatus: 'validated', justification: 'Consum discrecional global: vehicles, luxe, retail, oci. Cíclica i correlacionada amb el creixement econòmic.',
+    tags: ['etf', 'consum-discrecional', 'ciclica', 'bnp'], historicalReturn5Y: 9.0, historicalVolatility: 18.0, maxDrawdownEstimate: -35.0, inceptionYear: 2016, aum: 380, morningstarCategory: 'Temàtic Consum Discrecional', morningstarRating: 3, sfdrArticle: 6, mifidRiskIndicator: 5,
+  },
+
+  // ─── SECTOR: INDUSTRIALS ─────────────────────────────────────────────────────
+  {
+    id: 'ishares-global-industrials', name: 'iShares Global Industrials UCITS ETF', isin: 'IE00B42WWV65',
+    manager: 'BlackRock', category: 'RV Industrials', assetClass: 'renda-variable-global',
+    region: 'Global', managementType: 'indexada', benchmark: 'S&P Global 1200 Industrials', risk: 5,
+    recommendedProfiles: ['dinamic', 'agressiu'], ter: 0.46, currency: 'USD',
+    dataStatus: 'validated', justification: 'Sector industrial global: aeroespacial, defensa, maquinària, transport. Beneficiat per reindustrialització i despesa en defensa.',
+    tags: ['etf', 'industrials', 'sector', 'defensa'], historicalReturn5Y: 10.8, historicalVolatility: 16.0, maxDrawdownEstimate: -30.0, yieldEstimate: 1.5, inceptionYear: 2006, aum: 980, morningstarCategory: 'Temàtic Industrials', morningstarRating: 4, sfdrArticle: 6, mifidRiskIndicator: 5,
+  },
+
+  // ─── MONETARIS ADDICIONALS ────────────────────────────────────────────────────
+  {
+    id: 'amundi-euro-liquidity-etf', name: 'Amundi ETF Govies 0-6 Months Euro Investment Grade UCITS ETF', isin: 'FR0010754200',
+    manager: 'Amundi', category: 'Monetari EUR ETF', assetClass: 'monetari',
+    region: 'Eurozona', managementType: 'passiva', benchmark: 'MTS Short-Term Government 0-6M', risk: 1,
+    recommendedProfiles: ['conservador', 'moderat'], ter: 0.14, currency: 'EUR',
+    dataStatus: 'validated', justification: 'ETF del mercat monetari europeu. Bons governamentals EUR 0-6 mesos. Alternativa a depòsits. Yield proper a l\'Euribor O/N.',
+    tags: ['etf', 'monetari', 'liquiditat', 'governs-curt'], historicalReturn5Y: 1.5, historicalVolatility: 0.3, maxDrawdownEstimate: -0.2, yieldEstimate: 3.4, durationYears: 0.25, inceptionYear: 2009, aum: 5200, morningstarCategory: 'Monetari EUR', morningstarRating: 5, sfdrArticle: 6, mifidRiskIndicator: 1,
+  },
+  {
+    id: 'blackrock-iq-money-market', name: 'BlackRock ICS EUR Liquidity Fund', isin: 'IE00B44QSK78',
+    manager: 'BlackRock', category: 'Monetari EUR Institucional', assetClass: 'monetari',
+    region: 'Eurozona', managementType: 'activa', benchmark: '€STR', risk: 1,
+    recommendedProfiles: ['conservador'], ter: 0.10, currency: 'EUR',
+    dataStatus: 'validated', justification: 'Fons de mercat monetari institucional EUR de BlackRock. Rating AAA. Per a liquiditat de curt termini al rendiment del mercat interbancari.',
+    tags: ['monetari', 'liquiditat', 'aaa', 'institucional'], historicalReturn5Y: 1.8, historicalVolatility: 0.1, maxDrawdownEstimate: -0.1, yieldEstimate: 3.5, durationYears: 0.1, inceptionYear: 2009, aum: 25000, morningstarCategory: 'Monetari EUR', morningstarRating: 5, sfdrArticle: 6, mifidRiskIndicator: 1,
+  },
+
+  // ─── NÒRDICS ──────────────────────────────────────────────────────────────────
+  {
+    id: 'nordea-nordic-stars', name: 'Nordea 1 Nordic Stars Equity Fund', isin: 'LU1011701627',
+    manager: 'Nordea', category: 'RV Nòrdica ESG', assetClass: 'renda-variable-europa',
+    region: 'Escandinàvia', managementType: 'activa', benchmark: 'MSCI Nordic Countries', risk: 5,
+    recommendedProfiles: ['dinamic', 'agressiu'], ter: 1.40, currency: 'EUR',
+    dataStatus: 'validated', justification: 'Empreses nòrdiques (Suècia, Noruega, Dinamarca, Finlàndia) amb criteris ESG estrictes. Mercat menys seguit amb oportunitats de valor.',
+    tags: ['nordic', 'esg', 'nordea', 'escandinavia'], historicalReturn5Y: 9.8, historicalVolatility: 17.0, maxDrawdownEstimate: -32.0, inceptionYear: 2014, aum: 890, morningstarCategory: 'RV Europa Nord', morningstarRating: 4, sfdrArticle: 9, mifidRiskIndicator: 5,
+  },
+
+  // ─── ESPANYA ADDICIONAL ──────────────────────────────────────────────────────
+  {
+    id: 'lyxor-ibex-35-etf', name: 'Lyxor IBEX 35 UCITS ETF', isin: 'FR0010251744',
+    manager: 'Amundi (Lyxor)', category: 'RV Espanya ETF', assetClass: 'renda-variable-espanya',
+    region: 'Espanya', managementType: 'indexada', benchmark: 'IBEX 35', risk: 5,
+    recommendedProfiles: ['dinamic', 'agressiu'], ter: 0.30, currency: 'EUR',
+    dataStatus: 'validated', justification: 'ETF que replica l\'IBEX 35 de forma sintètica. Accés liquid i eficient al mercat espanyol. Alt dividend yield (~4%).',
+    tags: ['etf', 'ibex35', 'espanya', 'dividends'], historicalReturn5Y: 7.5, historicalVolatility: 19.0, maxDrawdownEstimate: -40.0, yieldEstimate: 4.0, inceptionYear: 2006, aum: 1200, morningstarCategory: 'RV Espanya', morningstarRating: 3, sfdrArticle: 6, mifidRiskIndicator: 5,
+  },
+  {
+    id: 'metavalor-fi', name: 'Metavalor FI', isin: 'ES0163284006',
+    manager: 'Metagestión', category: 'RV Espanya Valor', assetClass: 'renda-variable-espanya',
+    region: 'Espanya', managementType: 'activa', benchmark: 'IBEX 35', risk: 5,
+    recommendedProfiles: ['dinamic', 'agressiu'], ter: 1.35, currency: 'EUR',
+    dataStatus: 'validated', justification: 'Fons de value investing espanyol amb llarg historial. Enfocament en empreses infravalorades del mercat domèstic.',
+    tags: ['espanya', 'value', 'ibex', 'actiu'], historicalReturn5Y: 6.8, historicalVolatility: 20.0, maxDrawdownEstimate: -42.0, inceptionYear: 1994, aum: 280, morningstarCategory: 'RV Espanya', morningstarRating: 3, sfdrArticle: 6, mifidRiskIndicator: 5,
+  },
+  {
+    id: 'magallanes-iberian', name: 'Magallanes Iberian Equity FI', isin: 'ES0182769002',
+    manager: 'Magallanes Value Investors', category: 'RV Ibèrica Valor', assetClass: 'renda-variable-espanya',
+    region: 'Espanya/Portugal', managementType: 'activa', benchmark: 'MSCI Iberia', risk: 5,
+    recommendedProfiles: ['dinamic', 'agressiu'], ter: 1.56, currency: 'EUR',
+    dataStatus: 'validated', justification: 'Top fons value ibèric. Gestió rigorosa per Iván Martín. Cartera concentrada d\'empreses ibèriques infravalorades. Track record excel·lent.',
+    tags: ['espanya', 'portugal', 'value', 'magallanes'], historicalReturn5Y: 10.5, historicalVolatility: 19.5, maxDrawdownEstimate: -38.0, inceptionYear: 2015, aum: 520, morningstarCategory: 'RV Ibèria', morningstarRating: 5, sfdrArticle: 6, mifidRiskIndicator: 5,
+  },
+
+  // ─── EUROPA ADDICIONAL ───────────────────────────────────────────────────────
+  {
+    id: 'vanguard-ftse-europe-etf', name: 'Vanguard FTSE Developed Europe UCITS ETF', isin: 'IE00B945VV12',
+    manager: 'Vanguard', category: 'RV Europa Developed', assetClass: 'renda-variable-europa',
+    region: 'Europa', managementType: 'indexada', benchmark: 'FTSE Developed Europe', risk: 5,
+    recommendedProfiles: ['moderat', 'dinamic', 'agressiu'], ter: 0.10, currency: 'EUR',
+    dataStatus: 'validated', justification: 'ETF Europa total market de Vanguard. Cobreix >1.300 empreses europees. Cost 0,10%. Alternativa barata a fons Europa actius.',
+    tags: ['etf', 'europa', 'vanguard', 'baix-cost', 'total-market'], historicalReturn5Y: 9.5, historicalVolatility: 15.5, maxDrawdownEstimate: -30.0, yieldEstimate: 2.8, inceptionYear: 2013, aum: 7800, morningstarCategory: 'RV Europa', morningstarRating: 5, sfdrArticle: 8, mifidRiskIndicator: 5,
+  },
+  {
+    id: 'ubs-euro-stoxx-50-etf', name: 'UBS ETF (LU) Euro Stoxx 50 UCITS ETF', isin: 'LU0136234068',
+    manager: 'UBS AM', category: 'RV Eurozona', assetClass: 'renda-variable-europa',
+    region: 'Eurozona', managementType: 'indexada', benchmark: 'Euro Stoxx 50', risk: 5,
+    recommendedProfiles: ['moderat', 'dinamic', 'agressiu'], ter: 0.15, currency: 'EUR',
+    dataStatus: 'validated', justification: 'Les 50 majors empreses de l\'Eurozona. Referència bàsica europea. Alta liquiditat i eficiència fiscal per a inversors EUR.',
+    tags: ['etf', 'eurostoxx', 'eurozona', 'bluechip'], historicalReturn5Y: 10.2, historicalVolatility: 16.0, maxDrawdownEstimate: -33.0, yieldEstimate: 2.5, inceptionYear: 2001, aum: 5500, morningstarCategory: 'RV Eurozona', morningstarRating: 4, sfdrArticle: 6, mifidRiskIndicator: 5,
+  },
+  {
+    id: 'comgest-growth-europe', name: 'Comgest Growth Europe', isin: 'IE0004766675',
+    manager: 'Comgest', category: 'RV Europa Qualitat', assetClass: 'renda-variable-europa',
+    region: 'Europa', managementType: 'activa', benchmark: 'MSCI Europe', risk: 5,
+    recommendedProfiles: ['dinamic', 'agressiu'], ter: 1.45, currency: 'EUR',
+    dataStatus: 'validated', justification: 'Comgest és referència en Quality Growth europeu. Cartera concentrada d\'empreses amb avantatge competitiu durable. Consistència excepcional.',
+    tags: ['europa', 'qualitat', 'growth', 'comgest'], historicalReturn5Y: 11.5, historicalVolatility: 16.5, maxDrawdownEstimate: -30.0, inceptionYear: 1991, aum: 4200, morningstarCategory: 'RV Europa', morningstarRating: 5, sfdrArticle: 8, mifidRiskIndicator: 5,
+  },
+
+  // ─── EUA ADDICIONAL ──────────────────────────────────────────────────────────
+  {
+    id: 'vanguard-s-p-500-etf', name: 'Vanguard S&P 500 UCITS ETF', isin: 'IE00B3XXRP09',
+    manager: 'Vanguard', category: 'RV EUA S&P 500', assetClass: 'renda-variable-usa',
+    region: 'EUA', managementType: 'indexada', benchmark: 'S&P 500', risk: 5,
+    recommendedProfiles: ['moderat', 'dinamic', 'agressiu'], ter: 0.07, currency: 'USD',
+    dataStatus: 'validated', justification: 'El fons d\'índex de referència mundial. S&P 500 al menor cost. Historial de 30 anys. Per a qualsevol cartera com a core US.',
+    tags: ['etf', 'sp500', 'usa', 'vanguard', 'core', 'baix-cost'], historicalReturn5Y: 14.8, historicalVolatility: 16.0, maxDrawdownEstimate: -34.0, inceptionYear: 2012, aum: 45000, morningstarCategory: 'RV EUA', morningstarRating: 5, sfdrArticle: 6, mifidRiskIndicator: 5,
+  },
+  {
+    id: 'invesco-nasdaq-100-etf', name: 'Invesco EQQQ NASDAQ-100 UCITS ETF', isin: 'IE0032077012',
+    manager: 'Invesco', category: 'RV EUA NASDAQ-100', assetClass: 'renda-variable-usa',
+    region: 'EUA', managementType: 'indexada', benchmark: 'NASDAQ-100', risk: 5,
+    recommendedProfiles: ['dinamic', 'agressiu'], ter: 0.20, currency: 'USD',
+    dataStatus: 'validated', justification: 'Les 100 majors empreses no financeres del NASDAQ. Concentrat en tech/growth. Màxima exposició a innovació americana.',
+    tags: ['etf', 'nasdaq', 'tech', 'growth', 'usa'], historicalReturn5Y: 18.5, historicalVolatility: 21.0, maxDrawdownEstimate: -35.0, inceptionYear: 2002, aum: 22000, morningstarCategory: 'RV EUA Grans Growth', morningstarRating: 5, sfdrArticle: 6, mifidRiskIndicator: 6,
+  },
+  {
+    id: 'ishares-russell-2000-etf', name: 'iShares Russell 2000 UCITS ETF', isin: 'IE00B3F81G20',
+    manager: 'BlackRock', category: 'RV EUA Small Cap', assetClass: 'renda-variable-usa',
+    region: 'EUA', managementType: 'indexada', benchmark: 'Russell 2000', risk: 5,
+    recommendedProfiles: ['dinamic', 'agressiu'], ter: 0.35, currency: 'USD',
+    dataStatus: 'validated', justification: 'Small caps americanes. Potencial de retorn superior en cicles positius. Volatilitat elevada però diversificació vs large caps.',
+    tags: ['etf', 'small-cap', 'usa', 'russell'], historicalReturn5Y: 9.5, historicalVolatility: 22.0, maxDrawdownEstimate: -42.0, inceptionYear: 2010, aum: 4500, morningstarCategory: 'RV EUA Small Cap', morningstarRating: 4, sfdrArticle: 6, mifidRiskIndicator: 6,
+  },
+  {
+    id: 'dodge-cox-us-stock-fund', name: 'Dodge & Cox Worldwide US Stock Fund', isin: 'IE00B5170Q58',
+    manager: 'Dodge & Cox', category: 'RV EUA Valor', assetClass: 'renda-variable-usa',
+    region: 'EUA', managementType: 'activa', benchmark: 'S&P 500', risk: 5,
+    recommendedProfiles: ['dinamic', 'agressiu'], ter: 0.60, currency: 'USD',
+    dataStatus: 'validated', justification: 'Llegenda del value investing americà. TER molt baix per fons actiu. Cartera concentrada de 60-80 valors infravalorats. 90 anys d\'historial.',
+    tags: ['usa', 'value', 'actiu', 'dodge-cox', 'baix-cost'], historicalReturn5Y: 13.5, historicalVolatility: 17.5, maxDrawdownEstimate: -36.0, inceptionYear: 2009, aum: 8500, morningstarCategory: 'RV EUA Grans Value', morningstarRating: 5, sfdrArticle: 6, mifidRiskIndicator: 5,
+  },
+
+  // ─── TEMÀTICS INNOVACIÓ ──────────────────────────────────────────────────────
+  {
+    id: 'ark-innovation-ucits', name: 'ARK Innovation UCITS ETF', isin: 'IE0003UVYC20',
+    manager: 'ARK Invest', category: 'Innovació Disruptiva', assetClass: 'tecnologia',
+    region: 'Global', managementType: 'activa', benchmark: 'S&P 500', risk: 5,
+    recommendedProfiles: ['agressiu'], ter: 0.75, currency: 'USD',
+    dataStatus: 'partial', justification: 'Exposició a innovació disruptiva: IA, robòtica, genòmica, blockchain. Molt alta volatilitat. Adequat com a satèl·lit petit en carteres agressives.',
+    tags: ['innovacio', 'disruptiu', 'ark', 'tech', 'ai'], historicalReturn5Y: -5.0, historicalVolatility: 45.0, maxDrawdownEstimate: -75.0, inceptionYear: 2022, aum: 180, morningstarCategory: 'Temàtic Tecnologia', morningstarRating: 2, sfdrArticle: 6, mifidRiskIndicator: 7,
+  },
+  {
+    id: 'ishares-automation-robotics', name: 'iShares Automation & Robotics UCITS ETF', isin: 'IE00BYZK4552',
+    manager: 'BlackRock', category: 'Robòtica i IA', assetClass: 'tecnologia',
+    region: 'Global', managementType: 'passiva', benchmark: 'STOXX Global Automation & Robotics', risk: 5,
+    recommendedProfiles: ['dinamic', 'agressiu'], ter: 0.40, currency: 'USD',
+    dataStatus: 'validated', justification: 'Empreses de robòtica, automatització i IA. Tendència secular a llarg termini. Component temàtic de creixement.',
+    tags: ['etf', 'robotica', 'ai', 'automatitzacio', 'tematic'], historicalReturn5Y: 9.5, historicalVolatility: 22.0, maxDrawdownEstimate: -40.0, inceptionYear: 2016, aum: 3200, morningstarCategory: 'Temàtic Tecnologia', morningstarRating: 4, sfdrArticle: 6, mifidRiskIndicator: 6,
+  },
+  {
+    id: 'wts-cyber-security-etf', name: 'WisdomTree Cybersecurity UCITS ETF', isin: 'IE00BLPK3577',
+    manager: 'WisdomTree', category: 'Ciberseguretat', assetClass: 'tecnologia',
+    region: 'Global', managementType: 'passiva', benchmark: 'Nasdaq CTA Cybersecurity', risk: 5,
+    recommendedProfiles: ['dinamic', 'agressiu'], ter: 0.45, currency: 'USD',
+    dataStatus: 'validated', justification: 'Mercat de ciberseguretat en creixement estructural. Demanda creixent per digitalització i amenaces. Component temàtic amb cas d\'inversió clar.',
+    tags: ['etf', 'ciberseguretat', 'tech', 'tematic'], historicalReturn5Y: 8.0, historicalVolatility: 25.0, maxDrawdownEstimate: -45.0, inceptionYear: 2021, aum: 420, morningstarCategory: 'Temàtic Tecnologia', morningstarRating: 3, sfdrArticle: 6, mifidRiskIndicator: 6,
+  },
+
+  // ─── IMMOBILIARI ADDICIONAL ──────────────────────────────────────────────────
+  {
+    id: 'ishares-developed-world-property-etf', name: 'iShares Developed World Property Yield UCITS ETF', isin: 'IE00B1FZS350',
+    manager: 'BlackRock', category: 'REITs Globals', assetClass: 'immobiliari-reits',
+    region: 'Global', managementType: 'indexada', benchmark: 'FTSE EPRA/NAREIT Developed', risk: 5,
+    recommendedProfiles: ['moderat', 'dinamic'], ter: 0.59, currency: 'USD',
+    dataStatus: 'validated', justification: 'REITs globals (USA, Japó, Austràlia, Europa). Dividend yield ~3-4%. Diversificació immobiliària real sense propietat directa.',
+    tags: ['etf', 'reits', 'global', 'dividends', 'immobiliari'], historicalReturn5Y: 5.5, historicalVolatility: 16.0, maxDrawdownEstimate: -36.0, yieldEstimate: 3.5, inceptionYear: 2007, aum: 2800, morningstarCategory: 'Immobiliari Indirecte Global', morningstarRating: 3, sfdrArticle: 6, mifidRiskIndicator: 5,
+  },
+  {
+    id: 'amundi-ftse-epra-europe-etf', name: 'Amundi FTSE EPRA Europe Real Estate UCITS ETF', isin: 'LU1681038672',
+    manager: 'Amundi', category: 'REITs Europa', assetClass: 'immobiliari-reits',
+    region: 'Europa', managementType: 'indexada', benchmark: 'FTSE EPRA Nareit Developed Europe', risk: 5,
+    recommendedProfiles: ['moderat', 'dinamic'], ter: 0.25, currency: 'EUR',
+    dataStatus: 'validated', justification: 'REITs europeus a baix cost. Exposició a immobiliàries cotitzades europees: logística, residencial, oficines, retail.',
+    tags: ['etf', 'reits', 'europa', 'amundi', 'baix-cost'], historicalReturn5Y: 3.2, historicalVolatility: 18.0, maxDrawdownEstimate: -45.0, yieldEstimate: 3.8, inceptionYear: 2018, aum: 680, morningstarCategory: 'Immobiliari Indirecte Europa', morningstarRating: 3, sfdrArticle: 8, mifidRiskIndicator: 5,
+  },
+
+  // ─── EMERGENTS RF ─────────────────────────────────────────────────────────────
+  {
+    id: 'ishares-jp-morgan-em-bonds', name: 'iShares JP Morgan EM Bond UCITS ETF', isin: 'IE00B2NPKV68',
+    manager: 'BlackRock', category: 'RF Emergents USD', assetClass: 'renda-fixa-emergents',
+    region: 'Emergents', managementType: 'indexada', benchmark: 'JPMorgan EMBI Global Core', risk: 4,
+    recommendedProfiles: ['moderat', 'dinamic'], ter: 0.45, currency: 'USD',
+    dataStatus: 'validated', justification: 'Bons sobirania emergents en USD. Yield ~7%. Diversificació geogràfica: Àsia, LATAM, MENA, Europa de l\'Est.',
+    tags: ['etf', 'rf', 'emergents', 'sobirania', 'hard-currency'], historicalReturn5Y: 3.5, historicalVolatility: 12.0, maxDrawdownEstimate: -28.0, yieldEstimate: 7.0, durationYears: 7.5, inceptionYear: 2008, aum: 5800, morningstarCategory: 'RF Emergents Hard Currency', morningstarRating: 4, sfdrArticle: 6, mifidRiskIndicator: 4,
+  },
+
+  // ─── DIVIDENDS ADDICIONALS ────────────────────────────────────────────────────
+  {
+    id: 'vanguard-dividend-appreciation', name: 'Vanguard Dividend Appreciation UCITS ETF', isin: 'IE000RBCDOB3',
+    manager: 'Vanguard', category: 'RV Creixement Dividends', assetClass: 'dividends-income',
+    region: 'EUA', managementType: 'indexada', benchmark: 'S&P US Dividend Growers', risk: 4,
+    recommendedProfiles: ['moderat', 'dinamic'], ter: 0.10, currency: 'USD',
+    dataStatus: 'validated', justification: 'Empreses americanes que han incrementat dividends consecutivament >10 anys. Qualitat i disciplina financera. Lower vol vs S&P 500.',
+    tags: ['etf', 'dividends', 'creixement', 'usa', 'vanguard'], historicalReturn5Y: 11.5, historicalVolatility: 14.0, maxDrawdownEstimate: -28.0, yieldEstimate: 1.8, inceptionYear: 2021, aum: 2500, morningstarCategory: 'RV EUA Dividends', morningstarRating: 5, sfdrArticle: 8, mifidRiskIndicator: 4,
+  },
+  {
+    id: 'spdr-s-and-p-global-dividend', name: 'SPDR S&P Global Dividend Aristocrats UCITS ETF', isin: 'IE00B9CQXS71',
+    manager: 'State Street', category: 'RV Dividend Aristocrats', assetClass: 'dividends-income',
+    region: 'Global', managementType: 'passiva', benchmark: 'S&P Global Dividend Aristocrats', risk: 4,
+    recommendedProfiles: ['conservador', 'moderat', 'dinamic'], ter: 0.45, currency: 'USD',
+    dataStatus: 'validated', justification: 'Dividend Aristocrats globals: empreses que han incrementat dividends >7 anys consecutius. Alta qualitat i rendiment ingressos ~4%.',
+    tags: ['etf', 'dividend-aristocrats', 'global', 'income'], historicalReturn5Y: 8.0, historicalVolatility: 13.5, maxDrawdownEstimate: -24.0, yieldEstimate: 4.0, inceptionYear: 2013, aum: 1800, morningstarCategory: 'RV Global Dividends', morningstarRating: 4, sfdrArticle: 6, mifidRiskIndicator: 4,
+  },
+
+  // ─── ESG ADDICIONALS ─────────────────────────────────────────────────────────
+  {
+    id: 'ubs-msci-world-sri-etf', name: 'UBS ETF MSCI World Socially Responsible UCITS ETF', isin: 'LU0629459743',
+    manager: 'UBS AM', category: 'RV Global SRI', assetClass: 'esg',
+    region: 'Global', managementType: 'indexada', benchmark: 'MSCI World SRI', risk: 5,
+    recommendedProfiles: ['moderat', 'dinamic', 'agressiu'], ter: 0.22, currency: 'USD',
+    dataStatus: 'validated', justification: 'MSCI World filtrat amb criteris ESG estrictes (SRI). Exclou tabac, armes, carbó. Per a inversors amb valors. Tracking molt proper al World estàndard.',
+    tags: ['etf', 'sri', 'esg', 'global', 'ubs'], historicalReturn5Y: 13.0, historicalVolatility: 16.5, maxDrawdownEstimate: -33.0, inceptionYear: 2011, aum: 6800, morningstarCategory: 'RV Global ESG', morningstarRating: 5, sfdrArticle: 8, mifidRiskIndicator: 5,
+  },
+  {
+    id: 'msif-em-leaders-esg', name: 'Morgan Stanley EM Leaders Equity Fund', isin: 'LU1378878070',
+    manager: 'Morgan Stanley IM', category: 'RV Emergents ESG', assetClass: 'esg',
+    region: 'Emergents', managementType: 'activa', benchmark: 'MSCI EM ESG Leaders', risk: 5,
+    recommendedProfiles: ['dinamic', 'agressiu'], ter: 1.05, currency: 'USD',
+    dataStatus: 'validated', justification: 'Líderes ESG en mercats emergents. Combina potencial de creixement d\'EM amb filtres de sostenibilitat. Redueix riscos de governança.',
+    tags: ['emergents', 'esg', 'leaders', 'msim'], historicalReturn5Y: 8.0, historicalVolatility: 18.0, maxDrawdownEstimate: -35.0, inceptionYear: 2016, aum: 950, morningstarCategory: 'RV Emergents ESG', morningstarRating: 4, sfdrArticle: 8, mifidRiskIndicator: 5,
+  },
 ];
 
 // ─── HELPERS ──────────────────────────────────────────────────────────────────
