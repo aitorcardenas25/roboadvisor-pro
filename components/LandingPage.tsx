@@ -105,14 +105,15 @@ export default function LandingPage({ onNavigate }: Props) {
   }, []);
 
   return (
-    <div className="relative min-h-screen bg-[#070c0a]">
+    <div className="relative min-h-screen bg-[#080e0b]">
 
-      {/* Background: subtle radial + horizontal lines */}
+      {/* Background: green radial bottom-left + gold top center + grid */}
       <div className="absolute inset-0 pointer-events-none">
-        <div className="absolute inset-0 bg-[radial-gradient(ellipse_80%_50%_at_50%_-10%,rgba(201,168,76,0.07),transparent)]" />
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_70%_45%_at_50%_-5%,rgba(201,168,76,0.08),transparent)]" />
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_50%_60%_at_-10%_100%,rgba(26,58,42,0.55),transparent)]" />
         <div className="absolute inset-0"
           style={{
-            backgroundImage: 'repeating-linear-gradient(0deg,transparent,transparent 79px,rgba(255,255,255,0.025) 80px)',
+            backgroundImage: 'repeating-linear-gradient(0deg,transparent,transparent 79px,rgba(45,106,79,0.04) 80px)',
           }}
         />
       </div>
@@ -124,29 +125,30 @@ export default function LandingPage({ onNavigate }: Props) {
           initial={{ opacity: 0 }}
           animate={{ opacity: loaded ? 1 : 0 }}
           transition={{ duration: 0.4 }}
-          className="flex items-center justify-between px-6 md:px-10 h-14 border-b border-white/8 bg-[#070c0a]/80 backdrop-blur sticky top-0 z-30">
+          className="flex items-center justify-between px-6 md:px-10 h-14 border-b border-[#1a3a2a]/80 bg-[#080e0b]/85 backdrop-blur sticky top-0 z-30"
+          style={{ boxShadow: '0 1px 0 rgba(26,58,42,0.4)' }}>
 
           {/* Logo */}
           <div className="flex items-center gap-2">
-            <div className="w-6 h-6 bg-[#c9a84c]/15 border border-[#c9a84c]/40 rounded flex items-center justify-center">
+            <div className="w-6 h-6 bg-[#1a3a2a] border border-[#2d6a4f]/60 rounded flex items-center justify-center">
               <span className="text-[#c9a84c] font-black text-xs leading-none">F</span>
             </div>
             <span className="text-white font-bold text-sm tracking-tight">FACTOR</span>
-            <span className="text-[#c9a84c]/60 font-light text-sm tracking-wider">OTC</span>
+            <span className="text-[#2d6a4f] font-light text-sm tracking-wider">OTC</span>
           </div>
 
           {/* Nav desktop */}
           <nav className="hidden md:flex items-center gap-7">
             {NAV_LINKS.map(link => (
               <Link key={link.href} href={link.href}
-                className="text-white/40 hover:text-white text-xs uppercase tracking-widest transition-colors duration-200">
+                className="text-[#2d6a4f]/80 hover:text-[#c9a84c] text-xs uppercase tracking-widest transition-colors duration-200">
                 {link.label}
               </Link>
             ))}
-            <div className="w-px h-4 bg-white/15" />
+            <div className="w-px h-4 bg-[#1a3a2a]" />
             <div className="flex items-center gap-1.5">
-              <div className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
-              <span className="text-emerald-400/70 text-xs">Sistema actiu</span>
+              <div className="w-1.5 h-1.5 rounded-full bg-[#2d6a4f]" />
+              <span className="text-[#2d6a4f] text-xs">Sistema actiu</span>
             </div>
           </nav>
 
@@ -164,7 +166,7 @@ export default function LandingPage({ onNavigate }: Props) {
 
         {/* Nav mòbil */}
         {menuOpen && (
-          <div className="border-b border-white/10 bg-[#070c0a] px-6 py-4 md:hidden z-20">
+          <div className="border-b border-[#1a3a2a]/60 bg-[#080e0b] px-6 py-4 md:hidden z-20">
             <div className="flex flex-col gap-4">
               {NAV_LINKS.map(link => (
                 <Link key={link.href} href={link.href}
@@ -289,7 +291,7 @@ export default function LandingPage({ onNavigate }: Props) {
 
             <button
               onClick={() => onNavigate('roboadvisor')}
-              className="px-8 py-3 bg-[#c9a84c] text-[#0d1f1a] font-semibold text-sm tracking-wide rounded-sm hover:bg-[#e8d5a3] transition-colors duration-200 flex items-center gap-2">
+              className="px-8 py-3 bg-[#1a3a2a] border border-[#2d6a4f]/50 text-[#c9a84c] font-semibold text-sm tracking-wide rounded-sm hover:bg-[#1f4432] hover:border-[#2d6a4f] transition-colors duration-200 flex items-center gap-2">
               RoboAdvisor Automàtic
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7l5 5m0 0l-5 5m5-5H6" />
@@ -298,7 +300,7 @@ export default function LandingPage({ onNavigate }: Props) {
 
             <button
               onClick={() => onNavigate('admin')}
-              className="px-8 py-3 border border-white/15 text-white/50 hover:text-white hover:border-white/30 font-medium text-sm tracking-wide rounded-sm transition-colors duration-200 flex items-center gap-2">
+              className="px-8 py-3 border border-[#1a3a2a] text-[#2d6a4f] hover:text-[#c9a84c] hover:border-[#2d6a4f]/60 font-medium text-sm tracking-wide rounded-sm transition-colors duration-200 flex items-center gap-2">
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
               </svg>
@@ -313,7 +315,7 @@ export default function LandingPage({ onNavigate }: Props) {
             transition={{ duration: 0.6, delay: 0.65 }}
             className="w-full max-w-4xl mb-6">
 
-            <p className="text-white/15 text-xs uppercase tracking-[0.4em] mb-4 text-left">Eines disponibles</p>
+            <p className="text-[#2d6a4f]/70 text-xs uppercase tracking-[0.4em] mb-4 text-left">Eines disponibles</p>
 
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-2">
               {TOOLS.map(tool => (
@@ -343,15 +345,15 @@ export default function LandingPage({ onNavigate }: Props) {
         </div>
 
         {/* ── Stats bar ──────────────────────────────────────────────────────── */}
-        <div className="border-t border-white/8 px-8 py-8 relative">
-          <div className="absolute inset-x-0 -top-px h-px bg-gradient-to-r from-transparent via-[#c9a84c]/20 to-transparent" />
+        <div className="border-t border-[#1a3a2a]/80 px-8 py-8 relative" style={{ background: 'linear-gradient(to bottom, rgba(26,58,42,0.15), transparent)' }}>
+          <div className="absolute inset-x-0 -top-px h-px bg-gradient-to-r from-transparent via-[#2d6a4f]/30 to-transparent" />
           <div className="max-w-3xl mx-auto grid grid-cols-2 md:grid-cols-4 gap-6">
             {STATS.map((s, i) => <StatItem key={i} {...s} delay={i} />)}
           </div>
         </div>
 
         {/* ── Footer ─────────────────────────────────────────────────────────── */}
-        <div className="border-t border-white/5 text-center py-4 px-8">
+        <div className="border-t border-[#1a3a2a]/50 text-center py-4 px-8">
           <p className="text-white/15 text-xs">
             Eina de suport a la decisió · No constitueix assessorament financer regulat ·
             No executa operacions reals · © {new Date().getFullYear()} Factor OTC

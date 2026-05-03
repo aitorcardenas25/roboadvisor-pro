@@ -31,17 +31,21 @@ const STOCK_EXAMPLES  = ['AAPL', 'NVDA', 'MSFT', 'TSLA', 'AMZN', 'META'];
 
 function Nav() {
   return (
-    <nav className="border-b border-white/10 px-6 py-4 sticky top-0 z-20 bg-[#0a0f0d]/90 backdrop-blur">
+    <nav className="border-b border-[#1a3a2a]/70 px-6 py-4 sticky top-0 z-20 bg-[#080e0b]/92 backdrop-blur"
+      style={{ boxShadow: '0 1px 0 rgba(26,58,42,0.3)' }}>
       <div className="max-w-7xl mx-auto flex items-center justify-between">
         <Link href="/" className="flex items-center gap-2">
-          <span className="text-white font-black text-lg tracking-wider">FACTOR</span>
-          <span className="text-[#c9a84c] font-light text-lg tracking-widest">OTC</span>
+          <div className="w-5 h-5 bg-[#1a3a2a] border border-[#2d6a4f]/50 rounded flex items-center justify-center">
+            <span className="text-[#c9a84c] font-black text-[10px] leading-none">F</span>
+          </div>
+          <span className="text-white font-black text-sm tracking-wider">FACTOR</span>
+          <span className="text-[#2d6a4f] font-light text-sm tracking-widest">OTC</span>
         </Link>
         <div className="flex items-center gap-6 text-sm">
-          <Link href="/noticies"   className="text-white/50 hover:text-white transition-colors">Notícies</Link>
-          <Link href="/comparador" className="text-white/50 hover:text-white transition-colors">Comparador</Link>
-          <Link href="/accions"    className="text-[#c9a84c] font-medium">Accions</Link>
-          <Link href="/admin"      className="text-white/30 hover:text-white/60 transition-colors text-xs uppercase tracking-widest">Admin</Link>
+          <Link href="/noticies"   className="text-[#2d6a4f]/70 hover:text-[#c9a84c] transition-colors text-xs uppercase tracking-widest">Notícies</Link>
+          <Link href="/comparador" className="text-[#2d6a4f]/70 hover:text-[#c9a84c] transition-colors text-xs uppercase tracking-widest">Comparador</Link>
+          <Link href="/accions"    className="text-[#c9a84c] font-semibold text-xs uppercase tracking-widest">Accions</Link>
+          <Link href="/admin"      className="text-[#1a3a2a] hover:text-[#2d6a4f] transition-colors text-xs uppercase tracking-widest border border-[#1a3a2a] hover:border-[#2d6a4f]/40 px-2 py-0.5 rounded">Admin</Link>
         </div>
       </div>
     </nav>
@@ -505,7 +509,7 @@ function WatchlistDetail({ stock, history, loadingChart }: { stock: StockWithQuo
             { label: 'Var. 1any', value: totalEvo !== null ? `${totalEvo >= 0 ? '+' : ''}${totalEvo.toFixed(1)}%` : '—',
               color: totalEvo !== null ? (totalEvo >= 0 ? 'text-green-400' : 'text-red-400') : '' },
           ].map(({ label, value, color }) => (
-            <div key={label} className="bg-[#0a0f0d] px-3 py-2.5">
+            <div key={label} className="bg-[#080e0b] px-3 py-2.5">
               <p className="text-white/30 text-[9px] uppercase tracking-widest mb-0.5">{label}</p>
               <p className={`font-mono text-xs font-semibold ${color ?? 'text-white/70'}`}>{value}</p>
             </div>
@@ -590,7 +594,7 @@ export default function AccionsPage() {
   const [tab, setTab] = useState<'analysis' | 'watchlist'>('analysis');
 
   return (
-    <div className="min-h-screen bg-[#0a0f0d]">
+    <div className="min-h-screen bg-[#080e0b]">
       <Nav />
       <main className="max-w-7xl mx-auto px-4 sm:px-6 py-10">
         {/* Header */}
