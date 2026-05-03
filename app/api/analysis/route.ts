@@ -19,6 +19,8 @@ function cached<T>(key: string, ttl: number, fn: () => Promise<T>): Promise<T> {
   return fn().then(data => { cache.set(key, { ts: Date.now(), data }); return data; });
 }
 
+import { fetchOHLCV as yahooFetchOHLCV } from '@/lib/yahooFinance';
+
 const YAHOO_UA = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36';
 
 const YAHOO_HEADERS = {
@@ -26,58 +28,18 @@ const YAHOO_HEADERS = {
   'Accept': 'application/json',
   'Accept-Language': 'en-US,en;q=0.9',
   'Referer': 'https://finance.yahoo.com/',
-  'Origin': 'https://finance.yahoo.com',
 };
 
-// Yahoo Finance cookie+crumb (needed to avoid 429)
-let _yfCrumb: { crumb: string; cookie: string; expiry: number } | null = null;
-
-async function getYahooCrumb(): Promise<{ crumb: string; cookie: string } | null> {
-  if (_yfCrumb && Date.now() < _yfCrumb.expiry) return _yfCrumb;
-  try {
-    const r1 = await fetch('https://finance.yahoo.com/', {
-      headers: {
-        'User-Agent': YAHOO_UA,
-        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
-        'Accept-Language': 'en-US,en;q=0.9',
-      },
-      redirect: 'follow',
-    });
-    // getSetCookie() returns array in Node 18+; fall back to comma-split
-    const h = r1.headers as unknown as { getSetCookie?: () => string[] };
-    const cookieArr: string[] =
-      typeof h.getSetCookie === 'function'
-        ? h.getSetCookie()
-        : (r1.headers.get('set-cookie') ?? '').split(/,(?=\s*[A-Za-z_][^=]+=)/).filter(Boolean);
-    const cookie = cookieArr.map(c => c.split(';')[0].trim()).filter(Boolean).join('; ');
-    if (!cookie) return null;
-
-    const r2 = await fetch('https://query1.finance.yahoo.com/v1/test/getcrumb', {
-      headers: { ...YAHOO_HEADERS, 'Cookie': cookie },
-    });
-    if (!r2.ok) return null;
-    const crumb = (await r2.text()).trim();
-    if (!crumb || crumb.startsWith('<') || crumb === 'Unauthorized') return null;
-    _yfCrumb = { crumb, cookie, expiry: Date.now() + 50 * 60 * 1000 };
-    return _yfCrumb;
-  } catch { return null; }
-}
-
+// Yahoo fetch helper for fundamentals (keeps existing crumb logic)
 async function yahooFetch(url: string): Promise<Response> {
-  const auth = await getYahooCrumb();
-  const sep = url.includes('?') ? '&' : '?';
-  const base = auth ? `${url}${sep}crumb=${encodeURIComponent(auth.crumb)}` : url;
   const headers: Record<string, string> = { ...YAHOO_HEADERS };
-  if (auth?.cookie) headers['Cookie'] = auth.cookie;
-
-  const urls = [
-    base,
-    base.replace('query1.finance.yahoo.com', 'query2.finance.yahoo.com'),
-  ];
+  const urls = [url, url.replace('query1.', 'query2.')];
   for (const u of urls) {
-    const res = await fetch(u, { headers, cache: 'no-store' });
-    if (res.ok) return res;
-    if (res.status !== 429 && res.status !== 503) return res;
+    try {
+      const res = await fetch(u, { headers, cache: 'no-store' });
+      if (res.ok) return res;
+      if (res.status !== 429 && res.status !== 503) return res;
+    } catch { continue; }
   }
   throw new Error('Yahoo unavailable');
 }
@@ -98,83 +60,13 @@ const TF_BINANCE: Record<string, string> = {
 // ─── Fetch OHLCV ─────────────────────────────────────────────────────────────
 
 async function fetchStockOHLCV(symbol: string, timeframe: string): Promise<OHLCV[]> {
-  const tf = TF_YAHOO[timeframe] ?? TF_YAHOO['1d'];
+  const tf  = TF_YAHOO[timeframe] ?? TF_YAHOO['1d'];
   const ttl = timeframe === '15m' ? 60 : timeframe === '1h' ? 300 : 3600;
   return cached(`stock-ohlcv:${symbol}:${timeframe}`, ttl, async () => {
-    // ── Try Yahoo Finance ────────────────────────────────────────────────────
-    try {
-      const url = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(symbol)}?interval=${tf.interval}&range=${tf.range}`;
-      const res = await yahooFetch(url);
-      if (res.ok) {
-        const json = await res.json();
-        const result = json?.chart?.result?.[0];
-        if (result) {
-          const ts: number[]    = result.timestamp ?? [];
-          const q                = result.indicators.quote[0];
-          const opens: number[] = q.open ?? [];
-          const highs: number[] = q.high ?? [];
-          const lows: number[]  = q.low  ?? [];
-          const closes: number[]= q.close ?? [];
-          const vols: number[]  = q.volume ?? [];
-          const candles: OHLCV[] = ts
-            .map((t, i) => ({ time: t, open: opens[i], high: highs[i], low: lows[i], close: closes[i], volume: vols[i] ?? 0 }))
-            .filter(c => c.open != null && c.close != null && c.close > 0);
-          if (candles.length >= 10) {
-            if (timeframe === '4h') return resample4h(candles);
-            return candles;
-          }
-        }
-      }
-    } catch { /* fall through to v7 fallback */ }
-
-    // ── Fallback: Yahoo v7 (different endpoint, no crumb required) ──────────
-    if (timeframe === '1d') return fetchYahooV7OHLCV(symbol);
-
-    throw new Error('Dades no disponibles. Prova el temporitzador 1d o cripto.');
+    const { candles } = await yahooFetchOHLCV(symbol, tf.interval, tf.range);
+    if (timeframe === '4h') return resample4h(candles);
+    return candles;
   });
-}
-
-async function fetchYahooV7OHLCV(symbol: string): Promise<OHLCV[]> {
-  const endpoints = [
-    `https://query1.finance.yahoo.com/v7/finance/chart/${encodeURIComponent(symbol)}?interval=1d&range=180d`,
-    `https://query2.finance.yahoo.com/v7/finance/chart/${encodeURIComponent(symbol)}?interval=1d&range=180d`,
-    // bare v8 without crumb as last resort
-    `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(symbol)}?interval=1d&range=180d`,
-  ];
-  const minimalHeaders = {
-    'User-Agent': YAHOO_UA,
-    'Accept': 'application/json',
-    'Accept-Language': 'en-US,en;q=0.9',
-  };
-  for (const url of endpoints) {
-    try {
-      const res = await fetch(url, { headers: minimalHeaders, cache: 'no-store' });
-      if (!res.ok) continue;
-      const json = await res.json();
-      const result = json?.chart?.result?.[0];
-      if (!result) continue;
-      const ts: number[]     = result.timestamp ?? [];
-      const q                 = result.indicators.quote[0];
-      const opens: number[]  = q.open   ?? [];
-      const highs: number[]  = q.high   ?? [];
-      const lows: number[]   = q.low    ?? [];
-      const closes: number[] = q.close  ?? [];
-      const vols: number[]   = q.volume ?? [];
-      const candles: OHLCV[] = ts
-        .map((t, i) => ({
-          time:   t,
-          open:   opens[i],
-          high:   highs[i],
-          low:    lows[i],
-          close:  closes[i],
-          volume: vols[i] ?? 0,
-        }))
-        .filter(c => c.open != null && c.close != null && c.close > 0)
-        .sort((a, b) => a.time - b.time);
-      if (candles.length >= 10) return candles;
-    } catch { continue; }
-  }
-  throw new Error('Yahoo no disponible. Torna-ho a intentar en uns minuts.');
 }
 
 function resample4h(candles: OHLCV[]): OHLCV[] {
