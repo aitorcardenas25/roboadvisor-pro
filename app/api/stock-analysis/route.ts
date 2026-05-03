@@ -2,17 +2,24 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/authOptions';
 import { generateStockReport, type StockReportData } from '@/lib/stockReport';
+import { getYahooCrumb } from '@/lib/yahooFinance';
 
 const TICKER_RE = /^[A-Z0-9.\-\^]{1,15}$/i;
 
 const UA = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 Chrome/124 Safari/537.36';
-const BASE_H = { 'User-Agent': UA, 'Accept': 'application/json', 'Accept-Language': 'en-US,en;q=0.9' };
+const BASE_H = { 'User-Agent': UA, 'Accept': 'application/json', 'Accept-Language': 'en-US,en;q=0.9', 'Accept-Encoding': 'gzip, deflate, br' };
 
-async function yahooGet(url: string): Promise<Response | null> {
-  const urls = [url, url.replace('query1.', 'query2.')];
+async function yahooGet(url: string, crumbData?: { crumb: string; cookie: string } | null): Promise<Response | null> {
+  const headers: Record<string, string> = { ...BASE_H };
+  if (crumbData?.cookie) headers['Cookie'] = crumbData.cookie;
+
+  // Build URL variants: original + query2 fallback, each with and without crumb
+  const base  = crumbData ? `${url}&crumb=${encodeURIComponent(crumbData.crumb)}` : url;
+  const urls  = [base, base.replace('query1.', 'query2.'), url, url.replace('query1.', 'query2.')];
+
   for (const u of urls) {
     try {
-      const r = await fetch(u, { headers: BASE_H, cache: 'no-store' });
+      const r = await fetch(u, { headers, cache: 'no-store' });
       if (r.ok) return r;
     } catch { continue; }
   }
@@ -35,8 +42,9 @@ async function fetchStockData(ticker: string): Promise<StockReportData> {
   const qsUrl = `https://query1.finance.yahoo.com/v11/finance/quoteSummary/${sym}?modules=${mods}`;
   const chUrl = `https://query1.finance.yahoo.com/v7/finance/chart/${sym}?interval=1d&range=1y`;
 
-  // Fetch in parallel
-  const [qsRes, chRes] = await Promise.all([yahooGet(qsUrl), yahooGet(chUrl)]);
+  // Get crumb/cookie first, then fetch in parallel
+  const crumbData = await getYahooCrumb();
+  const [qsRes, chRes] = await Promise.all([yahooGet(qsUrl, crumbData), yahooGet(chUrl, crumbData)]);
 
   let base: StockReportData = {
     ticker: ticker.toUpperCase(),
