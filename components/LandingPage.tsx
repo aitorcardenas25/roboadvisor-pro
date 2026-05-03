@@ -50,6 +50,27 @@ const NAV_LINKS = [
   { label: 'Accions',    href: '/accions'     },
 ];
 
+// Decorative candlestick data for hero illustration
+const HERO_CANDLES = [
+  { o: 145, h: 150, l: 143, c: 148 }, { o: 148, h: 149, l: 141, c: 143 },
+  { o: 143, h: 153, l: 142, c: 151 }, { o: 151, h: 156, l: 149, c: 154 },
+  { o: 154, h: 155, l: 147, c: 149 }, { o: 149, h: 161, l: 148, c: 158 },
+  { o: 158, h: 161, l: 153, c: 155 }, { o: 155, h: 165, l: 154, c: 163 },
+  { o: 163, h: 165, l: 157, c: 159 }, { o: 159, h: 169, l: 158, c: 167 },
+  { o: 167, h: 173, l: 165, c: 171 }, { o: 171, h: 173, l: 166, c: 168 },
+  { o: 168, h: 177, l: 167, c: 175 }, { o: 175, h: 177, l: 170, c: 172 },
+  { o: 172, h: 180, l: 170, c: 178 }, { o: 178, h: 183, l: 176, c: 181 },
+  { o: 181, h: 183, l: 174, c: 176 }, { o: 176, h: 185, l: 174, c: 183 },
+  { o: 183, h: 189, l: 181, c: 187 }, { o: 187, h: 190, l: 183, c: 185 },
+];
+
+const HERO_TICKERS = [
+  { symbol: 'S&P 500', price: '5,847.3', change: 0.42 },
+  { symbol: 'NVDA',    price: '$875.40',  change: 2.34 },
+  { symbol: 'BTC/USD', price: '$67,420',  change: 1.87 },
+  { symbol: 'EUR/USD', price: '1.0823',   change: -0.11 },
+];
+
 const STATS = [
   { value: '158',    label: 'Fons i ETFs',       sub: 'Base de dades validada'  },
   { value: '10.000+',label: 'Sim. Monte Carlo',  sub: 'Per perfil inversor'     },
@@ -164,7 +185,59 @@ export default function LandingPage({ onNavigate }: Props) {
         )}
 
         {/* ── Hero ───────────────────────────────────────────────────────────── */}
-        <div className="flex-1 flex flex-col items-center justify-center px-6 text-center pt-16 pb-8">
+        <div className="flex-1 flex flex-col items-center justify-center px-6 text-center pt-16 pb-8 relative overflow-hidden">
+
+          {/* Decorative chart panel — desktop right */}
+          <div className="absolute right-0 top-0 bottom-0 w-[400px] pointer-events-none hidden xl:flex flex-col justify-center items-end pr-8 gap-3">
+            {/* Candlestick SVG */}
+            <div className="relative w-full flex justify-end">
+              <svg width="340" height="200" viewBox="0 0 340 200" className="opacity-[0.18]">
+                {/* Horizontal grid */}
+                {[50, 100, 150].map(y => (
+                  <line key={y} x1="0" y1={y} x2="340" y2={y} stroke="white" strokeOpacity="0.2" strokeWidth="0.5" strokeDasharray="4 4" />
+                ))}
+                {/* EMA line */}
+                <polyline
+                  points="0,168 34,162 68,152 102,138 136,130 170,115 204,98 238,82 272,65 306,50 340,38"
+                  stroke="#c9a84c" strokeWidth="1.5" fill="none" strokeOpacity="0.8"
+                />
+                {/* Candles */}
+                {HERO_CANDLES.map((c, i) => {
+                  const MIN = 138, RANGE = 54, H = 190;
+                  const py = (p: number) => H - ((p - MIN) / RANGE) * H;
+                  const bull = c.c >= c.o;
+                  const bodyTop = py(Math.max(c.o, c.c));
+                  const bodyH = Math.max(Math.abs(py(c.o) - py(c.c)), 1.5);
+                  const cx = i * 17 + 5;
+                  const color = bull ? '#10b981' : '#ef4444';
+                  return (
+                    <g key={i}>
+                      <line x1={cx} y1={py(c.h)} x2={cx} y2={py(c.l)} stroke={color} strokeWidth={1} opacity={0.9} />
+                      <rect x={cx - 4} y={bodyTop} width={8} height={bodyH} fill={color} rx={1} opacity={0.9} />
+                    </g>
+                  );
+                })}
+              </svg>
+              {/* Latest price badge */}
+              <div className="absolute top-2 right-0 border border-[#c9a84c]/25 rounded-lg px-3 py-1.5 bg-[#0d1f1a]/80 backdrop-blur-sm">
+                <span className="text-[#c9a84c] font-mono text-xs font-bold">$185.40</span>
+                <span className="text-green-400 text-xs ml-2 font-mono">+1.87%</span>
+              </div>
+            </div>
+
+            {/* Ticker cards */}
+            {HERO_TICKERS.map(t => (
+              <div key={t.symbol}
+                className="flex items-center gap-3 border border-white/8 rounded-lg px-4 py-2 bg-white/[0.025] backdrop-blur-sm w-[200px]"
+                style={{ boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.04)' }}>
+                <span className="text-white/35 text-[10px] font-mono tracking-widest flex-1">{t.symbol}</span>
+                <span className="text-white/80 font-mono text-xs">{t.price}</span>
+                <span className={`text-[10px] font-mono font-semibold ${t.change >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+                  {t.change >= 0 ? '+' : ''}{t.change.toFixed(2)}%
+                </span>
+              </div>
+            ))}
+          </div>
 
           {/* Label */}
           <motion.div
@@ -245,7 +318,8 @@ export default function LandingPage({ onNavigate }: Props) {
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-2">
               {TOOLS.map(tool => (
                 <Link key={tool.href} href={tool.href}
-                  className="group block border border-white/8 rounded-lg p-4 text-left bg-white/2 hover:bg-white/5 hover:border-white/15 transition-all duration-200">
+                  className="group block border border-white/8 rounded-lg p-4 text-left bg-white/2 hover:bg-white/5 hover:border-[#c9a84c]/20 transition-all duration-200"
+                  style={{ boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.03)' }}>
                   <div className="flex items-start justify-between mb-3">
                     <div className="w-7 h-7 rounded bg-white/5 flex items-center justify-center">
                       <svg className="w-3.5 h-3.5 text-white/35 group-hover:text-[#c9a84c] transition-colors duration-200" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -269,7 +343,8 @@ export default function LandingPage({ onNavigate }: Props) {
         </div>
 
         {/* ── Stats bar ──────────────────────────────────────────────────────── */}
-        <div className="border-t border-white/8 px-8 py-8">
+        <div className="border-t border-white/8 px-8 py-8 relative">
+          <div className="absolute inset-x-0 -top-px h-px bg-gradient-to-r from-transparent via-[#c9a84c]/20 to-transparent" />
           <div className="max-w-3xl mx-auto grid grid-cols-2 md:grid-cols-4 gap-6">
             {STATS.map((s, i) => <StatItem key={i} {...s} delay={i} />)}
           </div>
