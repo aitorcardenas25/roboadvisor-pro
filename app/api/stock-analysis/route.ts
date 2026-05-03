@@ -7,15 +7,29 @@ import { getYahooCrumb } from '@/lib/yahooFinance';
 const TICKER_RE = /^[A-Z0-9.\-\^]{1,15}$/i;
 
 const UA = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 Chrome/124 Safari/537.36';
-const BASE_H = { 'User-Agent': UA, 'Accept': 'application/json', 'Accept-Language': 'en-US,en;q=0.9', 'Accept-Encoding': 'gzip, deflate, br' };
+const BASE_H: Record<string, string> = {
+  'User-Agent':      UA,
+  'Accept':          'application/json',
+  'Accept-Language': 'en-US,en;q=0.9',
+  'Accept-Encoding': 'gzip, deflate, br',
+  'Referer':         'https://finance.yahoo.com/',
+  'Origin':          'https://finance.yahoo.com',
+};
 
 async function yahooGet(url: string, crumbData?: { crumb: string; cookie: string } | null): Promise<Response | null> {
   const headers: Record<string, string> = { ...BASE_H };
   if (crumbData?.cookie) headers['Cookie'] = crumbData.cookie;
 
-  // Build URL variants: original + query2 fallback, each with and without crumb
-  const base  = crumbData ? `${url}&crumb=${encodeURIComponent(crumbData.crumb)}` : url;
-  const urls  = [base, base.replace('query1.', 'query2.'), url, url.replace('query1.', 'query2.')];
+  // Build URL variants trying: crumb+cookie, no-crumb+cookie, bare — on both query1 and query2
+  const withCrumb = (crumbData?.crumb)
+    ? `${url}&crumb=${encodeURIComponent(crumbData.crumb)}` : null;
+  const urls: string[] = [
+    ...(withCrumb ? [withCrumb, withCrumb.replace('query1.', 'query2.')] : []),
+    url,
+    url.replace('query1.', 'query2.'),
+    url.replace('/v7/', '/v8/'),
+    url.replace('query1.', 'query2.').replace('/v7/', '/v8/'),
+  ];
 
   for (const u of urls) {
     try {
@@ -140,8 +154,9 @@ async function fetchStockData(ticker: string): Promise<StockReportData> {
 
   if (base.price === 0) {
     throw new Error(
-      `No s'han trobat dades per a "${ticker}". ` +
-      `Comprova que el ticker és vàlid (ex: AAPL, MSFT, NVDA, SAN.MC).`
+      `Yahoo Finance no ha retornat dades per a "${ticker}". ` +
+      `Pot ser per límit de peticions (429) — espera 30 segons i torna-ho a intentar. ` +
+      `Si el problema persisteix, comprova que el ticker és vàlid (ex: AAPL, MSFT, NVDA, ASML, SAN.MC).`
     );
   }
 

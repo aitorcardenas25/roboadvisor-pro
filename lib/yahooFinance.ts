@@ -37,7 +37,7 @@ let _crumb: { crumb: string; cookie: string; expiry: number } | null = null;
 export async function getYahooCrumb(): Promise<{ crumb: string; cookie: string } | null> {
   if (_crumb && Date.now() < _crumb.expiry) return _crumb;
   try {
-    // fc.yahoo.com sets cookies without Cloudflare challenge
+    // fc.yahoo.com sets A3 cookie even on 404, bypassing Cloudflare
     const r1 = await fetch('https://fc.yahoo.com', {
       headers: { ...BASE_HEADERS, Accept: 'text/html,application/xhtml+xml,*/*' },
       redirect: 'follow',
@@ -49,13 +49,14 @@ export async function getYahooCrumb(): Promise<{ crumb: string; cookie: string }
     const cookie = cookieArr.map(c => c.split(';')[0].trim()).filter(Boolean).join('; ');
     if (!cookie) return null;
 
+    // Crumb fetch is best-effort — if rate-limited, proceed with cookie only
     const r2 = await fetch('https://query2.finance.yahoo.com/v1/test/getcrumb', {
       headers: { ...BASE_HEADERS, Cookie: cookie },
     });
-    if (!r2.ok) return null;
-    const crumb = (await r2.text()).trim();
-    if (!crumb || crumb.startsWith('<') || crumb === 'Unauthorized') return null;
-    _crumb = { crumb, cookie, expiry: Date.now() + 45 * 60 * 1000 };
+    const crumbText = r2.ok ? (await r2.text()).trim() : '';
+    const crumb = (crumbText && !crumbText.startsWith('<') && crumbText !== 'Unauthorized' && crumbText !== 'Too Many Requests')
+      ? crumbText : '';
+    _crumb = { crumb, cookie, expiry: Date.now() + 30 * 60 * 1000 };
     return _crumb;
   } catch { return null; }
 }
