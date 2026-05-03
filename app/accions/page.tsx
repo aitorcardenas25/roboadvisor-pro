@@ -9,8 +9,8 @@ import type { TrackedStock, StockSignal } from '@/lib/stockTracker';
 import { SIGNAL_META } from '@/lib/stockTracker';
 import type { Quote } from '@/services/quotes';
 import {
-  LineChart, Line, XAxis, YAxis, CartesianGrid,
-  Tooltip, ResponsiveContainer,
+  AreaChart, Area, XAxis, YAxis, CartesianGrid,
+  Tooltip, ResponsiveContainer, ReferenceLine,
 } from 'recharts';
 
 // Lazy-load chart to avoid SSR issues with DOM APIs
@@ -46,6 +46,15 @@ function Nav() {
       </div>
     </nav>
   );
+}
+
+// ─── Helpers ──────────────────────────────────────────────────────────────────
+
+function formatVolume(v: number): string {
+  if (v >= 1e9) return `${(v / 1e9).toFixed(1)}B`;
+  if (v >= 1e6) return `${(v / 1e6).toFixed(1)}M`;
+  if (v >= 1e3) return `${(v / 1e3).toFixed(0)}K`;
+  return String(v);
 }
 
 // ─── Analysis tab ─────────────────────────────────────────────────────────────
@@ -152,18 +161,44 @@ function AnalysisTab() {
       {/* Results */}
       {result && !loading && (
         <div className="space-y-4">
-          {/* Title bar */}
-          <div className="flex items-center justify-between">
-            <div>
-              <span className="text-white font-black text-2xl">{result.symbol}</span>
-              <span className="text-white/40 text-sm ml-3">{result.timeframe} · {result.asset_type === 'crypto' ? 'Cripto' : 'Acció'}</span>
-            </div>
-            {result.candles.length > 0 && (
-              <span className="text-[#c9a84c] font-mono font-bold text-lg">
-                {formatPrice(result.candles[result.candles.length - 1].close)}
-              </span>
-            )}
-          </div>
+          {/* Title bar + price stats */}
+          {(() => {
+            const last    = result.candles[result.candles.length - 1];
+            const prev    = result.candles[result.candles.length - 2];
+            const chg     = last && prev ? ((last.close - prev.close) / prev.close) * 100 : null;
+            const isUp    = (chg ?? 0) >= 0;
+            const dayHigh = last?.high ?? 0;
+            const dayLow  = last?.low  ?? 0;
+            return (
+              <div className="bg-white/3 border border-white/8 rounded-2xl px-5 py-4">
+                <div className="flex items-start justify-between mb-3">
+                  <div>
+                    <span className="text-white font-black text-2xl tracking-tight">{result.symbol}</span>
+                    <span className="text-white/30 text-xs ml-3 font-mono">{result.timeframe} · {result.asset_type === 'crypto' ? 'Cripto' : 'Acció'}</span>
+                  </div>
+                  {last && (
+                    <div className="text-right">
+                      <p className="text-[#c9a84c] font-mono font-black text-xl leading-none">{formatPrice(last.close)}</p>
+                      {chg !== null && (
+                        <p className={`text-sm font-mono font-semibold mt-0.5 ${isUp ? 'text-green-400' : 'text-red-400'}`}>
+                          {isUp ? '+' : ''}{chg.toFixed(2)}%
+                        </p>
+                      )}
+                    </div>
+                  )}
+                </div>
+                {last && (
+                  <div className="flex gap-5 text-xs font-mono text-white/35">
+                    {dayHigh > 0 && <span>H <span className="text-white/55">{formatPrice(dayHigh)}</span></span>}
+                    {dayLow  > 0 && <span>L <span className="text-white/55">{formatPrice(dayLow)}</span></span>}
+                    {(result.indicators.support ?? 0) > 0    && <span>Sup <span className="text-green-400/60">{formatPrice(result.indicators.support ?? 0)}</span></span>}
+                    {(result.indicators.resistance ?? 0) > 0 && <span>Res <span className="text-red-400/60">{formatPrice(result.indicators.resistance ?? 0)}</span></span>}
+                    {last.volume > 0 && <span className="ml-auto">Vol <span className="text-white/55">{formatVolume(last.volume)}</span></span>}
+                  </div>
+                )}
+              </div>
+            );
+          })()}
 
           {/* Candlestick chart */}
           <div className="bg-white/3 border border-white/8 rounded-2xl p-4">
@@ -355,81 +390,196 @@ const TICKER_DOMAINS: Record<string, string> = {
 function WatchlistCard({ stock, selected, onClick }: { stock: StockWithQuote; selected: boolean; onClick: () => void }) {
   const m = SIGNAL_META[stock.signal];
   const change = stock.quote?.changePercent ?? 0;
+  const isUp = change >= 0;
   return (
-    <button onClick={onClick} className={`w-full text-left p-4 rounded-xl border transition-all ${selected ? 'border-[#c9a84c]/50 bg-[#c9a84c]/5' : 'border-white/10 bg-white/5 hover:border-white/20'}`}>
+    <button onClick={onClick}
+      className={`w-full text-left p-3.5 rounded-xl border transition-all duration-200 ${
+        selected
+          ? 'border-[#c9a84c]/40 bg-[#c9a84c]/5 shadow-[0_0_20px_rgba(201,168,76,0.06)]'
+          : 'border-white/8 bg-white/[0.025] hover:border-white/15 hover:bg-white/5'
+      }`}>
       <div className="flex items-center gap-3">
         <StockLogo symbol={stock.symbol} name={stock.name} />
         <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-2 mb-0.5">
-            <span className="text-white font-bold text-sm">{stock.symbol}</span>
-            <span className="text-xs px-2 py-0.5 rounded-full font-medium" style={{ color: m.color, backgroundColor: m.color + '20' }}>
-              {m.icon} {m.label}
+          <div className="flex items-center gap-1.5 mb-0.5">
+            <span className="text-white font-bold text-sm tracking-tight">{stock.symbol}</span>
+            <span className="text-[9px] px-1.5 py-0.5 rounded-full font-semibold"
+              style={{ color: m.color, backgroundColor: m.color + '18', border: `1px solid ${m.color}30` }}>
+              {m.label}
             </span>
           </div>
-          <p className="text-white/50 text-xs truncate">{stock.name}</p>
+          <p className="text-white/40 text-[11px] truncate leading-none">{stock.name}</p>
         </div>
-        {stock.quote && (
-          <div className="text-right flex-shrink-0">
-            <p className="text-white font-mono text-sm">{stock.quote.price?.toFixed(2)}</p>
-            <p className={`text-xs font-mono ${change >= 0 ? 'text-green-400' : 'text-red-400'}`}>
-              {change >= 0 ? '+' : ''}{change.toFixed(2)}%
-            </p>
-          </div>
-        )}
+        <div className="text-right flex-shrink-0">
+          {stock.quote ? (
+            <>
+              <p className="text-white font-mono text-sm font-semibold leading-tight">
+                {stock.quote.price >= 1000
+                  ? stock.quote.price.toLocaleString('en-US', { maximumFractionDigits: 2 })
+                  : stock.quote.price.toFixed(2)}
+              </p>
+              <div className={`flex items-center justify-end gap-1 ${isUp ? 'text-green-400' : 'text-red-400'}`}>
+                <svg className="w-2.5 h-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5}
+                    d={isUp ? 'M5 10l7-7m0 0l7 7m-7-7v18' : 'M19 14l-7 7m0 0l-7-7m7 7V3'} />
+                </svg>
+                <span className="text-[11px] font-mono font-semibold">
+                  {isUp ? '+' : ''}{change.toFixed(2)}%
+                </span>
+              </div>
+            </>
+          ) : (
+            <span className="text-white/20 text-xs">—</span>
+          )}
+        </div>
       </div>
+      {stock.quote && (
+        <div className="mt-2 pt-2 border-t border-white/5 flex gap-4 text-[10px] font-mono text-white/30">
+          {stock.quote.high > 0 && <span>H <span className="text-white/50">{stock.quote.high.toFixed(2)}</span></span>}
+          {stock.quote.low > 0  && <span>L <span className="text-white/50">{stock.quote.low.toFixed(2)}</span></span>}
+          {stock.quote.volume > 0 && (
+            <span className="ml-auto">
+              Vol <span className="text-white/50">{formatVolume(stock.quote.volume)}</span>
+            </span>
+          )}
+        </div>
+      )}
     </button>
   );
 }
 
 function WatchlistDetail({ stock, history, loadingChart }: { stock: StockWithQuote; history: { date: string; close: number }[]; loadingChart: boolean }) {
   const m = SIGNAL_META[stock.signal];
+  const q = stock.quote;
+  const change = q?.changePercent ?? 0;
+  const isUp = change >= 0;
+
+  // First point to compute total evolution %
+  const firstClose = history[0]?.close;
+  const lastClose  = history[history.length - 1]?.close;
+  const totalEvo   = firstClose && lastClose ? ((lastClose - firstClose) / firstClose) * 100 : null;
+
   return (
-    <div className="border border-white/10 rounded-2xl bg-white/3 p-6 space-y-4">
-      <div className="flex items-start justify-between">
-        <div>
-          <h2 className="text-white font-black text-2xl">{stock.symbol}</h2>
-          <p className="text-white/50 text-sm">{stock.name}</p>
+    <div className="border border-white/10 rounded-2xl overflow-hidden" style={{ background: 'linear-gradient(160deg, rgba(255,255,255,0.025) 0%, rgba(255,255,255,0.015) 100%)' }}>
+      {/* Header */}
+      <div className="px-6 pt-5 pb-4 border-b border-white/8">
+        <div className="flex items-start justify-between mb-3">
+          <div className="flex items-center gap-3">
+            <StockLogo symbol={stock.symbol} name={stock.name} />
+            <div>
+              <h2 className="text-white font-black text-xl leading-none">{stock.symbol}</h2>
+              <p className="text-white/40 text-xs mt-0.5">{stock.name}</p>
+            </div>
+          </div>
+          <span className="px-2.5 py-1 rounded-lg text-xs font-bold"
+            style={{ color: m.color, backgroundColor: m.color + '18', border: `1px solid ${m.color}30` }}>
+            {m.icon} {m.label}
+          </span>
         </div>
-        <span className="px-3 py-1.5 rounded-xl text-sm font-bold" style={{ color: m.color, backgroundColor: m.color + '20' }}>
-          {m.icon} {m.label}
-        </span>
-      </div>
-      {stock.quote && (
-        <div className="flex gap-6">
-          <div><p className="text-white/40 text-xs uppercase">Preu</p><p className="text-white font-mono font-bold text-xl">{stock.quote.price?.toFixed(2)}</p></div>
-          <div><p className="text-white/40 text-xs uppercase">Canvi 1d</p><p className={`font-mono font-bold text-lg ${(stock.quote.changePercent ?? 0) >= 0 ? 'text-green-400' : 'text-red-400'}`}>{(stock.quote.changePercent ?? 0) >= 0 ? '+' : ''}{(stock.quote.changePercent ?? 0).toFixed(2)}%</p></div>
-        </div>
-      )}
-      {stock.signalNote && (
-        <div>
-          <p className="text-white/40 text-xs mb-1">Senyal</p>
-          <p className="text-white/70 text-sm leading-relaxed">{stock.signalNote}</p>
-        </div>
-      )}
-      {stock.technicalNote && (
-        <div>
-          <p className="text-white/40 text-xs mb-1">Tècnic</p>
-          <p className="text-white/60 text-sm leading-relaxed">{stock.technicalNote}</p>
-        </div>
-      )}
-      <div>
-        <p className="text-white/40 text-xs mb-3">Evolució (1 any)</p>
-        {loadingChart ? (
-          <div className="h-[200px] bg-white/5 rounded-xl animate-pulse" />
-        ) : history.length > 0 ? (
-          <ResponsiveContainer width="100%" height={200}>
-            <LineChart data={history}>
-              <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
-              <XAxis dataKey="date" tick={{ fill: 'rgba(255,255,255,0.3)', fontSize: 10 }} />
-              <YAxis tick={{ fill: 'rgba(255,255,255,0.3)', fontSize: 10 }} domain={['auto', 'auto']} />
-              <Tooltip contentStyle={{ background: '#0d1f1a', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 8, color: '#fff' }} />
-              <Line type="monotone" dataKey="close" stroke="#c9a84c" strokeWidth={1.5} dot={false} />
-            </LineChart>
-          </ResponsiveContainer>
-        ) : (
-          <p className="text-white/30 text-sm text-center py-8">Sense dades de preu disponibles.</p>
+
+        {q && (
+          <div className="flex items-end gap-3">
+            <span className="text-white font-mono font-black text-3xl leading-none">
+              {q.price >= 1000 ? q.price.toLocaleString('en-US', { maximumFractionDigits: 2 }) : q.price.toFixed(2)}
+            </span>
+            <span className={`font-mono text-base font-bold mb-0.5 flex items-center gap-1 ${isUp ? 'text-green-400' : 'text-red-400'}`}>
+              <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5}
+                  d={isUp ? 'M5 10l7-7m0 0l7 7m-7-7v18' : 'M19 14l-7 7m0 0l-7-7m7 7V3'} />
+              </svg>
+              {isUp ? '+' : ''}{change.toFixed(2)}%
+            </span>
+            <span className="text-white/25 text-xs mb-0.5 font-mono">avui</span>
+          </div>
         )}
       </div>
+
+      {/* Metrics grid */}
+      {q && (
+        <div className="grid grid-cols-3 sm:grid-cols-5 gap-px bg-white/5 border-b border-white/8">
+          {[
+            { label: 'Màx. dia',  value: q.high   > 0 ? q.high.toFixed(2)  : '—' },
+            { label: 'Mín. dia',  value: q.low    > 0 ? q.low.toFixed(2)   : '—' },
+            { label: 'Obertura',  value: q.open   > 0 ? q.open.toFixed(2)  : '—' },
+            { label: 'Volum',     value: q.volume > 0 ? formatVolume(q.volume) : '—' },
+            { label: 'Var. 1any', value: totalEvo !== null ? `${totalEvo >= 0 ? '+' : ''}${totalEvo.toFixed(1)}%` : '—',
+              color: totalEvo !== null ? (totalEvo >= 0 ? 'text-green-400' : 'text-red-400') : '' },
+          ].map(({ label, value, color }) => (
+            <div key={label} className="bg-[#0a0f0d] px-3 py-2.5">
+              <p className="text-white/30 text-[9px] uppercase tracking-widest mb-0.5">{label}</p>
+              <p className={`font-mono text-xs font-semibold ${color ?? 'text-white/70'}`}>{value}</p>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Chart */}
+      <div className="px-4 pt-4 pb-2">
+        <div className="flex items-center justify-between mb-3">
+          <p className="text-white/30 text-[10px] uppercase tracking-widest">Evolució 1 any</p>
+          {totalEvo !== null && (
+            <span className={`text-[10px] font-mono font-semibold px-2 py-0.5 rounded-full ${totalEvo >= 0 ? 'text-green-400 bg-green-400/10' : 'text-red-400 bg-red-400/10'}`}>
+              {totalEvo >= 0 ? '+' : ''}{totalEvo.toFixed(2)}%
+            </span>
+          )}
+        </div>
+        {loadingChart ? (
+          <div className="h-[220px] bg-white/3 rounded-xl animate-pulse" />
+        ) : history.length > 0 ? (
+          <ResponsiveContainer width="100%" height={220}>
+            <AreaChart data={history} margin={{ top: 4, right: 4, left: -22, bottom: 0 }}>
+              <defs>
+                <linearGradient id={`grad-${stock.symbol}`} x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="5%"  stopColor={isUp ? '#c9a84c' : '#ef4444'} stopOpacity={0.25} />
+                  <stop offset="95%" stopColor={isUp ? '#c9a84c' : '#ef4444'} stopOpacity={0} />
+                </linearGradient>
+              </defs>
+              <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.04)" vertical={false} />
+              <XAxis dataKey="date" tick={{ fill: 'rgba(255,255,255,0.2)', fontSize: 9 }}
+                tickLine={false} axisLine={false} interval="preserveStartEnd" />
+              <YAxis tick={{ fill: 'rgba(255,255,255,0.2)', fontSize: 9 }}
+                tickLine={false} axisLine={false} domain={['auto', 'auto']}
+                tickFormatter={v => v >= 1000 ? `${(v/1000).toFixed(1)}k` : v.toFixed(0)} />
+              <Tooltip
+                contentStyle={{ background: '#0d1f1a', border: '1px solid rgba(201,168,76,0.2)', borderRadius: 8, fontSize: 11, padding: '8px 12px' }}
+                formatter={(v: number) => [`${v.toFixed(2)}`, 'Preu']}
+                labelStyle={{ color: 'rgba(255,255,255,0.4)', fontSize: 10 }}
+              />
+              {firstClose && (
+                <ReferenceLine y={firstClose} stroke="rgba(255,255,255,0.12)" strokeDasharray="4 4" />
+              )}
+              <Area type="monotone" dataKey="close"
+                stroke={isUp ? '#c9a84c' : '#ef4444'} strokeWidth={2}
+                fill={`url(#grad-${stock.symbol})`} dot={false} activeDot={{ r: 3, fill: isUp ? '#c9a84c' : '#ef4444' }} />
+            </AreaChart>
+          </ResponsiveContainer>
+        ) : (
+          <div className="h-[220px] flex flex-col items-center justify-center gap-2">
+            <svg className="w-8 h-8 text-white/15" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M7 12l3-3 3 3 4-4M8 21l4-4 4 4M3 4h18M4 4h16v12a1 1 0 01-1 1H5a1 1 0 01-1-1V4z" />
+            </svg>
+            <p className="text-white/25 text-xs">Sense dades de preu disponibles</p>
+          </div>
+        )}
+      </div>
+
+      {/* Notes */}
+      {(stock.signalNote || stock.technicalNote) && (
+        <div className="px-6 pb-5 pt-2 space-y-3 border-t border-white/5 mt-2">
+          {stock.signalNote && (
+            <div>
+              <p className="text-white/30 text-[10px] uppercase tracking-widest mb-1">Senyal</p>
+              <p className="text-white/65 text-xs leading-relaxed">{stock.signalNote}</p>
+            </div>
+          )}
+          {stock.technicalNote && (
+            <div>
+              <p className="text-white/30 text-[10px] uppercase tracking-widest mb-1">Tècnic</p>
+              <p className="text-white/50 text-xs leading-relaxed">{stock.technicalNote}</p>
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }
