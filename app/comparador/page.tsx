@@ -122,7 +122,8 @@ export default function ComparadorPage() {
           </Link>
           <div className="flex items-center gap-6 text-sm">
             <Link href="/noticies"   className="text-[#2d6a4f]/70 hover:text-[#c9a84c] transition-colors text-xs uppercase tracking-widest">Notícies</Link>
-            <Link href="/comparador" className="text-[#c9a84c] font-semibold text-xs uppercase tracking-widest">Comparador</Link>
+            <Link href="/comparador"      className="text-[#c9a84c] font-semibold text-xs uppercase tracking-widest">Comparador</Link>
+            <Link href="/informe-bursatil" className="text-[#2d6a4f]/70 hover:text-[#c9a84c] transition-colors text-xs uppercase tracking-widest">Informe</Link>
             <Link href="/admin"      className="text-[#1a3a2a] hover:text-[#2d6a4f] transition-colors text-xs uppercase tracking-widest border border-[#1a3a2a] hover:border-[#2d6a4f]/40 px-2 py-0.5 rounded">Admin</Link>
           </div>
         </div>
