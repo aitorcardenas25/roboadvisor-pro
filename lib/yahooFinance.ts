@@ -34,7 +34,7 @@ const BASE_HEADERS = {
 
 let _crumb: { crumb: string; cookie: string; expiry: number } | null = null;
 
-async function getYahooCrumb(): Promise<{ crumb: string; cookie: string } | null> {
+export async function getYahooCrumb(): Promise<{ crumb: string; cookie: string } | null> {
   if (_crumb && Date.now() < _crumb.expiry) return _crumb;
   try {
     // fc.yahoo.com sets cookies without Cloudflare challenge
