@@ -188,8 +188,8 @@ export default function CarteresModelPage() {
 
         <div className="grid gap-5 sm:grid-cols-2">
           {PORTFOLIOS.map(p => (
-            <div key={p.id}
-              className="bg-white/[0.025] border border-[#1a3a2a]/60 rounded-2xl p-6 flex flex-col gap-5"
+            <Link key={p.id} href={`/client/carteres-model/${p.id}`}
+              className="block bg-white/[0.025] border border-[#1a3a2a]/60 rounded-2xl p-6 flex flex-col gap-5 hover:border-[#2d6a4f]/50 transition-all cursor-pointer"
               style={{ boxShadow: 'inset 0 1px 0 rgba(45,106,79,0.07)', borderTopColor: p.highlight + '60' }}>
 
               {/* Header */}
@@ -220,7 +220,7 @@ export default function CarteresModelPage() {
 
               {/* Rationale */}
               <p className="text-white/40 text-xs font-sans leading-relaxed border-t border-white/5 pt-4">{p.rationale}</p>
-            </div>
+            </Link>
           ))}
         </div>
 
