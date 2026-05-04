@@ -9,7 +9,7 @@ export default function LoginPage() {
   const { data: session, status } = useSession();
   const router       = useRouter();
   const searchParams = useSearchParams();
-  const callbackUrl  = searchParams.get('callbackUrl') ?? '/accions';
+  const callbackUrl  = searchParams.get('callbackUrl') ?? '/client/seguiment-accions';
 
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
@@ -23,7 +23,7 @@ export default function LoginPage() {
       if (session.user.role === 'admin') {
         router.replace('/admin');
       } else {
-        router.replace(callbackUrl.startsWith('/admin') ? '/accions' : callbackUrl);
+        router.replace(callbackUrl.startsWith('/admin') ? '/client/seguiment-accions' : callbackUrl);
       }
     }
   }, [session, status, router, callbackUrl]);

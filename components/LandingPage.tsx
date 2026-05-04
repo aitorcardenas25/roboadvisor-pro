@@ -27,7 +27,7 @@ const TOOLS = [
     badgeColor: 'text-emerald-400 bg-emerald-400/10 border-emerald-400/20',
   },
   {
-    href:  '/accions',
+    href:  '/client/seguiment-accions',
     iconPath: 'M3 17l6-6 4 4 8-8',
     title: "Seguiment d'Accions",
     desc:  "Senyals tècnics, fonamentals i anàlisi de gràfics en temps real.",
@@ -35,7 +35,7 @@ const TOOLS = [
     badgeColor: 'text-[#c9a84c] bg-[#c9a84c]/10 border-[#c9a84c]/20',
   },
   {
-    href:  '/cartera',
+    href:  '/client/carteres-model',
     iconPath: 'M21 13.255A23.931 23.931 0 0112 15c-3.183 0-6.22-.62-9-1.745M16 6V4a2 2 0 00-2-2h-4a2 2 0 00-2 2v2m4 6h.01M5 20h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z',
     title: 'Carteres Model',
     desc:  "Distribució d'actius òptima amb simulació Monte Carlo.",
@@ -55,7 +55,7 @@ const TOOLS = [
 const NAV_LINKS = [
   { label: 'Comparador', href: '/comparador'      },
   { label: 'Notícies',   href: '/noticies'         },
-  { label: 'Accions',    href: '/accions'           },
+  { label: 'Accions',    href: '/client/seguiment-accions' },
   { label: 'Informe',    href: '/informe-bursatil'  },
 ];
 
