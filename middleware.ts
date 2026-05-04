@@ -14,7 +14,7 @@ export default withAuth(
     }
 
     // Client-only routes: authorized or admin
-    const clientRoutes = ['/cartera', '/accions', '/informe-bursatil'];
+    const clientRoutes = ['/cartera', '/accions', '/informe-bursatil', '/client/'];
     for (const route of clientRoutes) {
       if (pathname.startsWith(route) && !CLIENT_ROLES.has(role ?? '')) {
         return NextResponse.redirect(new URL('/acces-restringit', req.url));
@@ -46,6 +46,7 @@ export default withAuth(
         if (pathname.startsWith('/cartera'))            return !!token;
         if (pathname.startsWith('/accions'))            return !!token;
         if (pathname.startsWith('/informe-bursatil'))   return !!token;
+        if (pathname.startsWith('/client/'))            return !!token;
         if (pathname.startsWith('/api/admin/'))         return !!token;
         if (pathname.startsWith('/api/portfolios'))     return !!token;
         if (pathname.startsWith('/api/stocks'))         return !!token;
@@ -67,6 +68,7 @@ export const config = {
     '/accions',
     '/informe-bursatil',
     '/informe-bursatil/:path*',
+    '/client/:path*',
     '/api/admin/:path*',
     '/api/portfolios/:path*',
     '/api/stocks/:path*',

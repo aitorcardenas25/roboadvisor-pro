@@ -17,7 +17,7 @@ export default function AdminPage() {
   // Authorized (non-admin) users logged in here by mistake → redirect to client area
   useEffect(() => {
     if (session && session.user.role !== 'admin') {
-      router.replace('/accions');
+      router.replace('/client/seguiment-accions');
     }
   }, [session, router]);
 
