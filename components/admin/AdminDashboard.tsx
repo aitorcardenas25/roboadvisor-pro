@@ -11,6 +11,7 @@ import NewsletterManager  from './NewsletterManager';
 import NewsManager          from './NewsManager';
 import StockTrackerManager  from './StockTrackerManager';
 import AdminPortfolios       from './AdminPortfolios';
+import ManualReportBuilder   from './ManualReportBuilder';
 
 interface Props {
   onLogout: () => void;
@@ -23,7 +24,7 @@ interface Stats {
   byRisk: { risk: number; count: number }[];
 }
 
-type Section = 'dashboard' | 'funds' | 'reports' | 'news' | 'newsletter' | 'stocks' | 'portfolios' | 'config';
+type Section = 'dashboard' | 'funds' | 'reports' | 'news' | 'newsletter' | 'stocks' | 'portfolios' | 'manual-report' | 'config';
 
 const NAV_ITEMS: { id: Section; iconPath: string; label: string }[] = [
   { id: 'dashboard',  iconPath: 'M4 5a1 1 0 011-1h4a1 1 0 011 1v4a1 1 0 01-1 1H5a1 1 0 01-1-1V5zm10 0a1 1 0 011-1h4a1 1 0 011 1v4a1 1 0 01-1 1h-4a1 1 0 01-1-1V5zM4 15a1 1 0 011-1h4a1 1 0 011 1v4a1 1 0 01-1 1H5a1 1 0 01-1-1v-4zm10 0a1 1 0 011-1h4a1 1 0 011 1v4a1 1 0 01-1 1h-4a1 1 0 01-1-1v-4z', label: 'Dashboard'         },
@@ -32,7 +33,8 @@ const NAV_ITEMS: { id: Section; iconPath: string; label: string }[] = [
   { id: 'news',       iconPath: 'M19 20H5a2 2 0 01-2-2V6a2 2 0 012-2h10l6 6v8a2 2 0 01-2 2zM9 13h6M9 17h3', label: 'Notícies'          },
   { id: 'newsletter', iconPath: 'M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z', label: 'Newsletter'         },
   { id: 'stocks',     iconPath: 'M3 17l6-6 4 4 8-8',                                                                                                                                                                                                          label: 'Accions'           },
-  { id: 'portfolios', iconPath: 'M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z',                                                                                                                                                 label: 'Carteres Model'    },
+  { id: 'portfolios',    iconPath: 'M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z',                                                                                                                                              label: 'Carteres Model'    },
+  { id: 'manual-report', iconPath: 'M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z',                                                                                              label: 'Informe Manual'    },
   { id: 'config',     iconPath: 'M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065zM15 12a3 3 0 11-6 0 3 3 0 016 0z', label: 'Configuració'      },
 ];
 
@@ -177,8 +179,9 @@ export default function AdminDashboard({ onLogout }: Props) {
             {activeSection === 'news'       && <NewsManager />}
             {activeSection === 'newsletter' && <NewsletterManager />}
             {activeSection === 'stocks'      && <StockTrackerManager />}
-            {activeSection === 'portfolios' && <AdminPortfolios />}
-            {activeSection === 'config'     && <AdminConfig />}
+            {activeSection === 'portfolios'    && <AdminPortfolios />}
+            {activeSection === 'manual-report' && <ManualReportBuilder />}
+            {activeSection === 'config'        && <AdminConfig />}
 
           </motion.div>
         </AnimatePresence>

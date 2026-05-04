@@ -110,8 +110,9 @@ export default function SeguimentAccionsPage() {
             const isUp = stock.change >= 0;
             const changeColor = isUp ? '#16a34a' : '#dc2626';
             return (
-              <div key={stock.ticker}
-                className="bg-white/[0.025] border border-[#1a3a2a]/60 rounded-2xl p-5 hover:border-[#2d6a4f]/50 transition-all"
+              <Link href={`/client/seguiment-accions/${encodeURIComponent(stock.ticker)}`}
+                key={stock.ticker}
+                className="block bg-white/[0.025] border border-[#1a3a2a]/60 rounded-2xl p-5 hover:border-[#2d6a4f]/50 transition-all cursor-pointer"
                 style={{ boxShadow: 'inset 0 1px 0 rgba(45,106,79,0.07)' }}>
                 <div className="flex items-start justify-between gap-4 flex-wrap">
                   <div className="flex items-center gap-4">
@@ -154,7 +155,7 @@ export default function SeguimentAccionsPage() {
                   </div>
                 </div>
                 <p className="sm:hidden text-white/35 text-xs font-sans mt-3 leading-relaxed">{stock.note}</p>
-              </div>
+              </Link>
             );
           })}
         </div>

@@ -52,7 +52,7 @@ function formatEarningsDate(ts: number | null): string | null {
 
 async function fetchStockData(ticker: string): Promise<StockReportData> {
   const sym   = encodeURIComponent(ticker.toUpperCase());
-  const mods  = 'summaryDetail,financialData,defaultKeyStatistics,price,assetProfile,calendarEvents';
+  const mods  = 'summaryDetail,financialData,defaultKeyStatistics,price,assetProfile,calendarEvents,earningsTrend,earningsHistory';
   const qsUrl = `https://query1.finance.yahoo.com/v11/finance/quoteSummary/${sym}?modules=${mods}`;
   const chUrl = `https://query1.finance.yahoo.com/v7/finance/chart/${sym}?interval=1d&range=1y`;
 
@@ -70,6 +70,8 @@ async function fetchStockData(ticker: string): Promise<StockReportData> {
     revenue: null, revenueGrowth: null, profitMargin: null,
     roe: null, debtToEquity: null, beta: null, dividendYield: null,
     lastEarningsDate: null, nextEarningsDate: null,
+    epsLastQActual: null, epsLastQEstimate: null, epsLastQSurprise: null, epsLastQDate: null,
+    epsNextQEstimate: null, epsNextQDate: null, revenueNextQEst: null,
     generatedAt: new Date().toLocaleDateString('ca-ES', { day: '2-digit', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' }),
     source: 'minimal',
   };
@@ -108,6 +110,8 @@ async function fetchStockData(ticker: string): Promise<StockReportData> {
         const pr  = r.price                  as Record<string, unknown> ?? {};
         const ap  = r.assetProfile           as Record<string, unknown> ?? {};
         const ce  = r.calendarEvents         as Record<string, unknown> ?? {};
+        const et  = r.earningsTrend          as Record<string, unknown> ?? {};
+        const eh  = r.earningsHistory        as Record<string, unknown> ?? {};
 
         base.name          = (pr.longName ?? pr.shortName ?? base.name) as string;
         base.description   = (ap.longBusinessSummary ?? '') as string;
@@ -140,12 +144,37 @@ async function fetchStockData(ticker: string): Promise<StockReportData> {
         base.roe           = raw(fd, 'returnOnEquity');
         base.debtToEquity  = raw(fd, 'debtToEquity');
 
-        // Earnings dates
-        const lastRaw  = (ce.earnings as Record<string, unknown> | undefined);
-        const lastTs   = (lastRaw?.earningsDate as { raw?: number }[] | undefined)?.[0]?.raw ?? null;
-        const nextTs   = (ce.exDividendDate as { raw?: number } | undefined)?.raw ?? null;
-        base.lastEarningsDate = formatEarningsDate(lastTs);
-        base.nextEarningsDate = formatEarningsDate(typeof nextTs === 'number' ? nextTs : null);
+        // Earnings dates — calendarEvents.earnings.earningsDate is an array [next, ...]
+        const ceEarnings   = (ce.earnings as Record<string, unknown> | undefined);
+        const earningsDates = (ceEarnings?.earningsDate as { raw?: number }[] | undefined) ?? [];
+        const now = Date.now() / 1000;
+        const pastDates = earningsDates.filter(d => (d.raw ?? 0) < now);
+        const futureDates = earningsDates.filter(d => (d.raw ?? 0) >= now);
+        base.lastEarningsDate = formatEarningsDate(pastDates[pastDates.length - 1]?.raw ?? null);
+        base.nextEarningsDate = formatEarningsDate(futureDates[0]?.raw ?? null);
+
+        // Quarterly EPS from earningsHistory (last reported quarter)
+        const ehHistory = (eh.history as Record<string, unknown>[] | undefined) ?? [];
+        if (ehHistory.length > 0) {
+          const lastQ = ehHistory[0] as Record<string, unknown>;
+          base.epsLastQActual   = (lastQ.epsActual   as { raw?: number } | undefined)?.raw ?? null;
+          base.epsLastQEstimate = (lastQ.epsEstimate  as { raw?: number } | undefined)?.raw ?? null;
+          base.epsLastQSurprise = (lastQ.surprisePercent as { raw?: number } | undefined)?.raw ?? null;
+          const qTs = (lastQ.quarter as { raw?: number } | undefined)?.raw ?? null;
+          base.epsLastQDate = qTs ? new Date(qTs * 1000).toLocaleDateString('es-ES', { month: 'short', year: 'numeric' }) : null;
+        }
+
+        // Next quarter consensus from earningsTrend
+        const etTrend = (et.trend as Record<string, unknown>[] | undefined) ?? [];
+        const nextQTrend = etTrend.find(t => t.period === '0q' || t.period === '+1q') as Record<string, unknown> | undefined;
+        if (nextQTrend) {
+          base.epsNextQEstimate = (nextQTrend.earningsEstimate as Record<string, unknown> | undefined)?.['avg']
+            ? ((nextQTrend.earningsEstimate as Record<string, { raw?: number }>)?.['avg']?.raw ?? null) : null;
+          base.revenueNextQEst  = (nextQTrend.revenueEstimate  as Record<string, unknown> | undefined)?.['avg']
+            ? ((nextQTrend.revenueEstimate  as Record<string, { raw?: number }>)?.['avg']?.raw ?? null) : null;
+          const endDateTs = (nextQTrend.endDate as { raw?: number } | undefined)?.raw ?? null;
+          base.epsNextQDate = endDateTs ? new Date(endDateTs * 1000).toLocaleDateString('es-ES', { month: 'short', year: 'numeric' }) : null;
+        }
 
         base.source = 'yahoo';
       }

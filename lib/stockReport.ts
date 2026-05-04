@@ -36,6 +36,14 @@ export interface StockReportData {
   lastEarningsDate: string | null;
   nextEarningsDate: string | null;
 
+  epsLastQActual:   number | null;
+  epsLastQEstimate: number | null;
+  epsLastQSurprise: number | null;
+  epsLastQDate:     string | null;
+  epsNextQEstimate: number | null;
+  epsNextQDate:     string | null;
+  revenueNextQEst:  number | null;
+
   generatedAt:  string;
   source:       'yahoo' | 'partial' | 'minimal';
 }
@@ -594,11 +602,70 @@ ${d.source === 'minimal' ? `
       </div>
     </div>
 
-    ${(d.lastEarningsDate || d.nextEarningsDate) ? `
-    <div style="display:flex;gap:16px;margin-top:16px;flex-wrap:wrap">
-      ${d.lastEarningsDate ? `<div style="flex:1;min-width:160px;background:#f0fdf4;border:1px solid #bbf7d0;border-radius:10px;padding:16px"><div class="sans" style="font-size:9px;color:#16a34a;text-transform:uppercase;letter-spacing:1.5px;margin-bottom:6px">Últimos resultados</div><div class="sans" style="font-size:14px;font-weight:700;color:#0f2137">${d.lastEarningsDate}</div></div>` : ''}
-      ${d.nextEarningsDate ? `<div style="flex:1;min-width:160px;background:#eff6ff;border:1px solid #bfdbfe;border-radius:10px;padding:16px"><div class="sans" style="font-size:9px;color:#2563eb;text-transform:uppercase;letter-spacing:1.5px;margin-bottom:6px">Próximos resultados</div><div class="sans" style="font-size:14px;font-weight:700;color:#0f2137">${d.nextEarningsDate}</div></div>` : ''}
-    </div>` : ''}
+    <!-- Quarterly results -->
+    <div style="margin-top:20px;display:grid;grid-template-columns:1fr 1fr;gap:16px">
+
+      <!-- Last quarter reported -->
+      <div style="background:#0f2137;border-radius:12px;padding:20px">
+        <div class="sans" style="font-size:9px;color:rgba(255,255,255,.35);text-transform:uppercase;letter-spacing:2px;margin-bottom:14px">
+          Último trimestre reportado${d.epsLastQDate ? ` · ${d.epsLastQDate}` : d.lastEarningsDate ? ` · ${d.lastEarningsDate}` : ''}
+        </div>
+        <div style="display:flex;gap:20px;flex-wrap:wrap">
+          <div>
+            <div class="sans" style="font-size:9px;color:rgba(255,255,255,.3);letter-spacing:1px;margin-bottom:4px">EPS Real</div>
+            <div style="font-family:'Courier New',monospace;font-size:22px;font-weight:700;color:#c9a84c">
+              ${d.epsLastQActual != null ? `${cur}${d.epsLastQActual.toFixed(2)}` : '—'}
+            </div>
+          </div>
+          <div>
+            <div class="sans" style="font-size:9px;color:rgba(255,255,255,.3);letter-spacing:1px;margin-bottom:4px">EPS Consenso</div>
+            <div style="font-family:'Courier New',monospace;font-size:22px;font-weight:700;color:rgba(255,255,255,.6)">
+              ${d.epsLastQEstimate != null ? `${cur}${d.epsLastQEstimate.toFixed(2)}` : '—'}
+            </div>
+          </div>
+          ${d.epsLastQSurprise != null ? `
+          <div>
+            <div class="sans" style="font-size:9px;color:rgba(255,255,255,.3);letter-spacing:1px;margin-bottom:4px">Sorpresa</div>
+            <div style="font-family:'Courier New',monospace;font-size:22px;font-weight:700;color:${d.epsLastQSurprise >= 0 ? '#16a34a' : '#dc2626'}">
+              ${d.epsLastQSurprise >= 0 ? '+' : ''}${(d.epsLastQSurprise * 100).toFixed(1)}%
+            </div>
+          </div>` : ''}
+        </div>
+        ${d.revenueGrowth != null ? `
+        <div style="margin-top:12px;padding-top:12px;border-top:1px solid rgba(255,255,255,.08)">
+          <span class="sans" style="font-size:11px;color:rgba(255,255,255,.35)">Crecimiento Ingresos TTM: </span>
+          <span style="font-family:'Courier New',monospace;font-size:13px;font-weight:700;color:${(d.revenueGrowth * 100) >= 0 ? '#16a34a' : '#dc2626'}">
+            ${(d.revenueGrowth * 100) >= 0 ? '+' : ''}${(d.revenueGrowth * 100).toFixed(1)}% YoY
+          </span>
+        </div>` : ''}
+      </div>
+
+      <!-- Next quarter consensus -->
+      <div style="background:#f0f9ff;border:1px solid #bae6fd;border-radius:12px;padding:20px">
+        <div class="sans" style="font-size:9px;color:#0369a1;text-transform:uppercase;letter-spacing:2px;margin-bottom:14px">
+          Próximo trimestre — Consenso analistas${d.epsNextQDate ? ` · ${d.epsNextQDate}` : d.nextEarningsDate ? ` · ${d.nextEarningsDate}` : ''}
+        </div>
+        <div style="display:flex;gap:20px;flex-wrap:wrap">
+          <div>
+            <div class="sans" style="font-size:9px;color:#0369a1;letter-spacing:1px;margin-bottom:4px">EPS Estimado</div>
+            <div style="font-family:'Courier New',monospace;font-size:22px;font-weight:700;color:#0f2137">
+              ${d.epsNextQEstimate != null ? `${cur}${d.epsNextQEstimate.toFixed(2)}` : '—'}
+            </div>
+          </div>
+          ${d.revenueNextQEst != null ? `
+          <div>
+            <div class="sans" style="font-size:9px;color:#0369a1;letter-spacing:1px;margin-bottom:4px">Revenue Estimado</div>
+            <div style="font-family:'Courier New',monospace;font-size:22px;font-weight:700;color:#0f2137">
+              ${fLarge(d.revenueNextQEst, cur)}
+            </div>
+          </div>` : ''}
+        </div>
+        <div style="margin-top:12px;padding-top:12px;border-top:1px solid #bae6fd">
+          <span class="sans" style="font-size:11px;color:#0369a1">Próximos resultados: </span>
+          <span class="sans" style="font-size:11px;font-weight:700;color:#0f2137">${d.nextEarningsDate ?? 'N/D'}</span>
+        </div>
+      </div>
+    </div>
   </div>
 </div>
 
