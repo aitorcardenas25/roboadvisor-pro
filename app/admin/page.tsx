@@ -1,16 +1,25 @@
 // app/admin/page.tsx
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { signIn, signOut, useSession } from 'next-auth/react';
+import { useRouter } from 'next/navigation';
 import AdminDashboard from '@/components/admin/AdminDashboard';
 
 export default function AdminPage() {
   const { data: session, status } = useSession();
+  const router = useRouter();
   const [username, setUsername]   = useState('');
   const [password, setPassword]   = useState('');
   const [error, setError]         = useState('');
   const [loading, setLoading]     = useState(false);
+
+  // Authorized (non-admin) users logged in here by mistake → redirect to client area
+  useEffect(() => {
+    if (session && session.user.role !== 'admin') {
+      router.replace('/accions');
+    }
+  }, [session, router]);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();

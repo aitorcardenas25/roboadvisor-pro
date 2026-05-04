@@ -190,8 +190,8 @@ export default function InformeBursatilPage() {
         {loading && (
           <div className="bg-white/[0.02] border border-[#1a3a2a]/40 rounded-2xl p-10 text-center">
             <div className="w-10 h-10 border-2 border-[#1a3a2a] border-t-[#c9a84c] rounded-full animate-spin mx-auto mb-4" />
-            <p className="text-white/50 text-sm">Obtenint dades de Yahoo Finance...</p>
-            <p className="text-white/25 text-xs mt-1">Normalment tarda 3–8 segons</p>
+            <p className="text-white/50 text-sm">Generant informe bursàtil...</p>
+            <p className="text-white/25 text-xs mt-1">Obtenint dades · Pot tardar fins a 15 segons</p>
           </div>
         )}
 

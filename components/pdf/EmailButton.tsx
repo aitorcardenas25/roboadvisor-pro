@@ -185,9 +185,41 @@ export default function EmailButton({
     error:   { icon: '❌', text: 'Error en l\'enviament',    sub: error },
   };
 
-  const current = stepLabels[step];
+  const current   = stepLabels[step];
   const isError   = step === 'error';
   const isSuccess = step === 'success';
+  const isTestMode = isError && error.toLowerCase().includes('mode test');
+
+  if (isTestMode) {
+    return (
+      <motion.div
+        initial={{ opacity: 0, scale: 0.95 }}
+        animate={{ opacity: 1, scale: 1 }}
+        className="w-full max-w-md bg-amber-50 border border-amber-200 rounded-xl p-4">
+        <p className="text-sm font-semibold text-amber-800 mb-1">
+          ⚠️ Resend en mode test
+        </p>
+        <p className="text-xs text-amber-700 mb-3 leading-relaxed">
+          Sense domini verificat, Resend només envia al teu propi email de Resend.
+          Per enviar a qualsevol client, verifica el teu domini.
+        </p>
+        <div className="flex gap-2 flex-wrap">
+          <a
+            href="https://resend.com/domains"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="px-3 py-1.5 bg-amber-600 text-white text-xs font-semibold rounded-lg hover:bg-amber-700 transition-colors">
+            Verificar domini →
+          </a>
+          <button
+            onClick={() => { setStep('input'); setError(''); }}
+            className="px-3 py-1.5 border border-amber-300 text-amber-700 text-xs font-medium rounded-lg hover:bg-amber-100 transition-colors">
+            Tornar a intentar
+          </button>
+        </div>
+      </motion.div>
+    );
+  }
 
   return (
     <motion.div

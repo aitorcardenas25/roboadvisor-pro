@@ -31,7 +31,7 @@ export default function AccesRestringitPage() {
 
         <div className="flex flex-col sm:flex-row gap-3 justify-center">
           <Link
-            href="/admin"
+            href="/login"
             className="inline-flex items-center justify-center gap-2 px-6 py-3 bg-[#c9a84c]/10 border border-[#c9a84c]/30 text-[#c9a84c] rounded-xl hover:bg-[#c9a84c]/20 transition-colors text-sm font-medium">
             Iniciar sessió
           </Link>
