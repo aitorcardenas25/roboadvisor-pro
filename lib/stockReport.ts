@@ -43,7 +43,7 @@ export interface StockReportData {
 // ─── Number formatters ────────────────────────────────────────────────────────
 
 function fPrice(n: number | null, cur = '$'): string {
-  if (n == null || !isFinite(n)) return '—';
+  if (n == null || !isFinite(n) || n === 0) return '—';
   if (n >= 1000) return `${cur}${n.toLocaleString('en-US', { maximumFractionDigits: 2 })}`;
   return `${cur}${n.toFixed(2)}`;
 }
@@ -378,6 +378,16 @@ a{color:var(--gold);text-decoration:none}
 </div>
 
 <div class="container">
+
+  ${d.source === 'minimal' ? `
+  <!-- Data unavailable banner -->
+  <div style="margin:24px 0;background:rgba(245,158,11,.08);border:1px solid rgba(245,158,11,.3);border-radius:10px;padding:16px 20px;display:flex;gap:12px;align-items:flex-start;font-family:Arial,sans-serif">
+    <span style="font-size:18px;line-height:1">⚠️</span>
+    <div>
+      <p style="font-size:13px;font-weight:700;color:#f59e0b;margin:0 0 4px 0">Dades de mercat temporalment no disponibles</p>
+      <p style="font-size:12px;color:rgba(245,158,11,.7);margin:0;line-height:1.5">Yahoo Finance limita les peticions del servidor. El gràfic TradingView (Secció F) continua operatiu. Torna a generar l'informe en uns minuts per obtenir les dades fonamentals.</p>
+    </div>
+  </div>` : ''}
 
   <!-- A. Descripció empresa -->
   <div class="section">

@@ -152,13 +152,8 @@ async function fetchStockData(ticker: string): Promise<StockReportData> {
     } catch { /* partial data is fine */ }
   }
 
-  if (base.price === 0) {
-    throw new Error(
-      `Yahoo Finance no ha retornat dades per a "${ticker}". ` +
-      `Pot ser per límit de peticions (429) — espera 30 segons i torna-ho a intentar. ` +
-      `Si el problema persisteix, comprova que el ticker és vàlid (ex: AAPL, MSFT, NVDA, ASML, SAN.MC).`
-    );
-  }
+  // Allow minimal reports (TradingView chart still works even without live data)
+  if (base.price === 0) base.source = 'minimal';
 
   return base;
 }

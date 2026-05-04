@@ -1,24 +1,24 @@
 import { withAuth } from 'next-auth/middleware';
 import { NextResponse } from 'next/server';
 
+const CLIENT_ROLES = new Set(['authorized', 'admin']);
+
 export default withAuth(
   function middleware(req) {
     const { pathname } = req.nextUrl;
     const role = req.nextauth.token?.role as string | undefined;
 
-    // Rutes d'admin: requereixen rol admin
-    if (pathname.startsWith('/admin') && pathname !== '/admin' && role !== 'admin') {
+    // Admin sub-routes: only admin role
+    if (pathname.startsWith('/admin/') && role !== 'admin') {
       return NextResponse.redirect(new URL('/admin', req.url));
     }
 
-    // Rutes de cartera pròpia: requereixen rol authorized o admin
-    if (pathname.startsWith('/cartera') && role !== 'authorized' && role !== 'admin') {
-      return NextResponse.redirect(new URL('/acces-restringit', req.url));
-    }
-
-    // Accions: requereixen rol authorized o admin
-    if (pathname.startsWith('/accions') && role !== 'authorized' && role !== 'admin') {
-      return NextResponse.redirect(new URL('/acces-restringit', req.url));
+    // Client-only routes: authorized or admin
+    const clientRoutes = ['/cartera', '/accions', '/informe-bursatil'];
+    for (const route of clientRoutes) {
+      if (pathname.startsWith(route) && !CLIENT_ROLES.has(role ?? '')) {
+        return NextResponse.redirect(new URL('/acces-restringit', req.url));
+      }
     }
 
     return NextResponse.next();
@@ -28,37 +28,29 @@ export default withAuth(
       authorized({ token, req }) {
         const { pathname } = req.nextUrl;
 
-        // Rutes públiques: sempre permeses
+        // Always public
         if (
           pathname === '/' ||
+          pathname === '/login' ||
+          pathname === '/admin' ||
           pathname.startsWith('/noticies') ||
           pathname.startsWith('/comparador') ||
+          pathname.startsWith('/acces-restringit') ||
           pathname.startsWith('/api/noticies') ||
           pathname.startsWith('/api/fons') ||
-          pathname.startsWith('/api/newsletter/subscribe') ||
-          pathname.startsWith('/acces-restringit')
-        ) {
-          return true;
-        }
+          pathname.startsWith('/api/newsletter/subscribe')
+        ) return true;
 
-        // /admin (pàgina de login): permesa sempre
-        if (pathname === '/admin') return true;
-
-        // Resta de /admin/*: requereix token
-        if (pathname.startsWith('/admin/')) return !!token;
-
-        // /cartera: requereix token (pública mostra teaser)
-        if (pathname.startsWith('/cartera')) return !!token;
-
-        // /accions: requereix token (pública mostra teaser)
-        if (pathname.startsWith('/accions')) return !!token;
-
-        // /api/portfolios: requereix token
-        if (pathname.startsWith('/api/portfolios')) return !!token;
-
-        // /api/stocks: requereix token
-        if (pathname.startsWith('/api/stocks')) return !!token;
-        if (pathname.startsWith('/api/market-data')) return !!token;
+        // Require valid session
+        if (pathname.startsWith('/admin/'))             return !!token;
+        if (pathname.startsWith('/cartera'))            return !!token;
+        if (pathname.startsWith('/accions'))            return !!token;
+        if (pathname.startsWith('/informe-bursatil'))   return !!token;
+        if (pathname.startsWith('/api/admin/'))         return !!token;
+        if (pathname.startsWith('/api/portfolios'))     return !!token;
+        if (pathname.startsWith('/api/stocks'))         return !!token;
+        if (pathname.startsWith('/api/market-data'))    return !!token;
+        if (pathname.startsWith('/api/stock-analysis')) return !!token;
 
         return true;
       },
@@ -68,15 +60,19 @@ export default withAuth(
 
 export const config = {
   matcher: [
+    '/login',
     '/admin/:path*',
     '/cartera/:path*',
     '/accions/:path*',
     '/accions',
+    '/informe-bursatil',
+    '/informe-bursatil/:path*',
     '/api/admin/:path*',
     '/api/portfolios/:path*',
     '/api/stocks/:path*',
     '/api/stocks',
     '/api/market-data/:path*',
     '/api/market-data',
+    '/api/stock-analysis',
   ],
 };
