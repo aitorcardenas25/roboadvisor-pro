@@ -409,7 +409,7 @@ function StepPreview({ form, assets, onGenerate, loading }: {
         onClick={onGenerate}
         disabled={loading || total !== 100 || assets.length === 0 || !form.clientName}
         className="w-full py-3 bg-[#1a3a2a] border border-[#2d6a4f]/60 text-[#c9a84c] font-bold text-sm rounded-xl hover:bg-[#1f4432] transition-colors disabled:opacity-40 disabled:cursor-not-allowed font-sans">
-        {loading ? 'Generant informe...' : 'Generar informe HTML'}
+        {loading ? 'Generant informe...' : 'Generar informe'}
       </button>
 
       {total !== 100 && assets.length > 0 && (
@@ -455,22 +455,28 @@ export default function ManualReportBuilder() {
         ...form,
         assets: assets.map(({ _key: _, ...rest }) => rest),
       };
+
       const res = await fetch('/api/admin/manual-report', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),
       });
+
       if (!res.ok) {
-        const j = await res.json().catch(() => ({}));
-        setError((j as { error?: string }).error ?? 'Error generant informe.');
-        return;
+        const { error } = await res.json().catch(() => ({ error: 'Error desconegut' }));
+        throw new Error(error || `Error ${res.status}`);
       }
+
       const html = await res.text();
-      const blob = new Blob([html], { type: 'text/html' });
+      const blob = new Blob([html], { type: 'text/html;charset=utf-8' });
       const url  = URL.createObjectURL(blob);
       window.open(url, '_blank');
-    } catch {
-      setError('Error de connexió.');
+      // Revoke after a delay so the new tab has time to load
+      setTimeout(() => URL.revokeObjectURL(url), 60_000);
+
+    } catch (err) {
+      console.error('Error generant informe:', err);
+      setError(err instanceof Error ? err.message : 'Error generant l\'informe. Torna-ho a intentar.');
     } finally {
       setLoading(false);
     }

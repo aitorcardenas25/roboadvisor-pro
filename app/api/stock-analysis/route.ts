@@ -3,6 +3,7 @@ import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/authOptions';
 import { generateStockReport, type StockReportData } from '@/lib/stockReport';
 import { getYahooCrumb } from '@/lib/yahooFinance';
+import { getStockDetail } from '@/lib/stocksData';
 
 const TICKER_RE = /^[A-Z0-9.\-\^]{1,15}$/i;
 
@@ -200,6 +201,31 @@ export async function GET(req: NextRequest) {
 
   try {
     const data = await fetchStockData(ticker);
+
+    // Enrich with curated static data when Yahoo returns nothing useful
+    const staticDetail = getStockDetail(ticker);
+    if (staticDetail) {
+      if (!data.name || data.name === ticker)  data.name        = staticDetail.name;
+      if (!data.description)                   data.description = staticDetail.description;
+      if (!data.sector)                        data.sector      = staticDetail.sector;
+      if (!data.exchange)                      data.exchange    = staticDetail.exchange;
+      if (!data.currency)                      data.currency    = staticDetail.currency;
+      if (data.price === 0)                  { data.price = staticDetail.refPrice; data.changePercent = staticDetail.refChange; data.change = staticDetail.refPrice * staticDetail.refChange / 100; }
+      if (data.pe            == null)          data.pe            = staticDetail.pe;
+      if (data.eps           == null)          data.eps           = staticDetail.eps;
+      if (data.revenue       == null && staticDetail.revenueB)  data.revenue = staticDetail.revenueB * 1e9;
+      if (data.revenueGrowth == null && staticDetail.revenueGrowth != null) data.revenueGrowth = staticDetail.revenueGrowth / 100;
+      if (data.profitMargin  == null && staticDetail.margin     != null) data.profitMargin  = staticDetail.margin / 100;
+      if (data.roe           == null && staticDetail.roe         != null) data.roe           = staticDetail.roe / 100;
+      if (data.beta          == null)          data.beta          = staticDetail.beta;
+      if (data.epsLastQActual   == null)       data.epsLastQActual   = staticDetail.lastQEpsAct;
+      if (data.epsLastQEstimate == null)       data.epsLastQEstimate = staticDetail.lastQEpsEst;
+      if (data.epsLastQDate     == null)       data.epsLastQDate     = staticDetail.lastQDate;
+      if (data.epsNextQEstimate == null)       data.epsNextQEstimate = staticDetail.nextQEpsEst;
+      if (data.epsNextQDate     == null)       data.epsNextQDate     = staticDetail.nextQDate;
+      if (data.source === 'minimal')           data.source = 'partial';
+    }
+
     const html = generateStockReport(data);
     return new NextResponse(html, {
       headers: {
