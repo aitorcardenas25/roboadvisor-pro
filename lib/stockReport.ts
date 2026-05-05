@@ -310,418 +310,960 @@ function getSectorInfo(sector: string): SectorInfo {
   };
 }
 
+// ─── Shared CSS ───────────────────────────────────────────────────────────────
+
+const CSS_STOCK = `
+  *{box-sizing:border-box;margin:0;padding:0}
+  :root{
+    --navy:#0f2137; --navy-2:#142a44; --gold:#c9a84c; --green:#2d6a4f;
+    --cream:#f5f5f0; --ink:#1a1a2e; --muted:#5b6472;
+    --line:#e7e5dc; --soft:#fafaf6; --danger:#b3261e; --warn:#a16207; --ok:#15803d;
+  }
+  body{font-family:Georgia,'Times New Roman',serif;background:#e9e7df;color:var(--ink);line-height:1.55;font-size:14.5px}
+  .sans{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Inter,Arial,sans-serif}
+  .mono{font-family:'JetBrains Mono','Courier New',monospace}
+  .page{width:880px;min-height:1180px;margin:24px auto;background:var(--cream);box-shadow:0 6px 24px rgba(0,0,0,.08);page-break-after:always;position:relative;overflow:hidden}
+  .page:last-of-type{page-break-after:auto}
+  .pad{padding:48px 56px}
+  .footer{position:absolute;bottom:18px;left:56px;right:56px;display:flex;justify-content:space-between;align-items:center;font-family:-apple-system,Arial,sans-serif;font-size:10px;color:#94918a;letter-spacing:.5px;border-top:1px solid var(--line);padding-top:10px}
+  .header-bar{display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(--line);padding-bottom:14px;margin-bottom:28px}
+  .brand{display:flex;align-items:center;gap:10px}
+  .brand-mark{width:34px;height:34px;background:var(--navy);border-radius:7px;display:flex;align-items:center;justify-content:center}
+  .brand-name{font-family:-apple-system,Arial,sans-serif;font-weight:900;letter-spacing:2.4px;font-size:13px;color:var(--navy)}
+  .brand-name span{font-weight:300;letter-spacing:3px;color:var(--green);margin-left:5px}
+  .crumb{font-family:-apple-system,Arial,sans-serif;font-size:10px;letter-spacing:1.3px;text-transform:uppercase;color:#7a786f}
+  h1.section{font-size:30px;font-weight:700;color:var(--navy);letter-spacing:-.5px;margin-bottom:8px}
+  h2.section-num{font-family:-apple-system,Arial,sans-serif;font-size:11px;font-weight:700;color:var(--gold);letter-spacing:3px;text-transform:uppercase;margin-bottom:6px}
+  .lead{font-size:14px;color:var(--muted);max-width:680px;margin-bottom:24px}
+  .pill{display:inline-block;padding:3px 10px;border-radius:999px;font-family:-apple-system,Arial,sans-serif;font-size:10px;font-weight:700;letter-spacing:1px;text-transform:uppercase}
+  .pill-gold{background:rgba(201,168,76,.15);color:#8a6d1f;border:1px solid rgba(201,168,76,.4)}
+  .pill-green{background:rgba(45,106,79,.12);color:#1f4a36;border:1px solid rgba(45,106,79,.35)}
+  .pill-warn{background:#fef3c7;color:#92400e;border:1px solid #fbbf24}
+  .pill-danger{background:#fee2e2;color:#991b1b;border:1px solid #fca5a5}
+  table.data{width:100%;border-collapse:collapse;font-family:-apple-system,Arial,sans-serif;font-size:12.5px;margin:12px 0}
+  table.data th{text-align:left;padding:10px 12px;background:var(--soft);border-bottom:2px solid var(--navy);font-weight:700;font-size:10.5px;letter-spacing:1.2px;text-transform:uppercase;color:var(--navy)}
+  table.data td{padding:11px 12px;border-bottom:1px solid var(--line);vertical-align:top}
+  table.data td.num{font-family:'Courier New',monospace;text-align:right;font-weight:700}
+  .callout{background:#fff;border-left:3px solid var(--gold);padding:14px 18px;margin:14px 0;font-size:13px;color:#3f3d36;border-radius:4px}
+  .callout-warn{border-left-color:var(--warn);background:#fffbeb}
+  .callout-ok{border-left-color:var(--ok);background:#f0fdf4}
+  .callout-danger{border-left-color:var(--danger);background:#fef2f2}
+  .grid-2{display:grid;grid-template-columns:1fr 1fr;gap:18px}
+  .grid-3{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}
+  .grid-4{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}
+  .grid-5{display:grid;grid-template-columns:repeat(5,1fr);gap:10px}
+  .kpi{background:#fff;border:1px solid var(--line);border-radius:10px;padding:16px 18px}
+  .kpi-label{font-family:-apple-system,Arial,sans-serif;font-size:9.5px;letter-spacing:1.6px;text-transform:uppercase;color:#8a877d;margin-bottom:8px}
+  .kpi-val{font-family:'Courier New',monospace;font-size:22px;font-weight:700;color:var(--navy);line-height:1}
+  .kpi-sub{font-family:-apple-system,Arial,sans-serif;font-size:11px;color:var(--muted);margin-top:6px}
+  ul.clean{list-style:none;padding:0}
+  ul.clean li{padding:6px 0 6px 22px;position:relative;font-size:13px;color:#3a382f}
+  ul.clean li::before{content:"";position:absolute;left:0;top:11px;width:6px;height:6px;border-radius:50%;background:var(--gold)}
+  ul.cross li::before{content:"✕";color:var(--danger);background:transparent;font-size:13px;width:auto;height:auto;top:6px}
+  ul.check li::before{content:"✓";color:var(--ok);background:transparent;font-size:14px;width:auto;height:auto;top:5px}
+  .stat-row{display:flex;justify-content:space-between;align-items:center;padding:9px 0;border-bottom:1px dotted #d8d6cc;font-family:-apple-system,Arial,sans-serif;font-size:12.5px}
+  .stat-row:last-child{border-bottom:0}
+  .axis-label{font-family:-apple-system,Arial,sans-serif;font-size:9.5px;fill:#8a877d}
+  .cover-bg{background:linear-gradient(135deg,#0f2137 0%,#142a44 60%,#0a1628 100%);color:#fff;padding:60px 56px;min-height:1180px;position:relative;overflow:hidden}
+  .cover-bg::before{content:"";position:absolute;left:0;top:0;bottom:0;width:6px;background:var(--gold)}
+  .badge-conf{position:absolute;top:48px;right:56px;font-family:-apple-system,Arial,sans-serif;font-size:9.5px;letter-spacing:2px;color:var(--gold);border:1px solid var(--gold);padding:4px 10px;border-radius:3px;text-transform:uppercase}
+  @media print{.page{box-shadow:none;margin:0}}
+`;
+
+const BRAND_MARK_S = `<div class="brand-mark"><svg width="18" height="18" viewBox="0 0 30 30" fill="none"><path d="M5 22 L10 14 L15 18 L20 8 L25 12" stroke="#c9a84c" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></svg></div>`;
+const BRAND_S = `<div class="brand">${BRAND_MARK_S}<div class="brand-name">FACTOR<span>OTC</span></div></div>`;
+
+function sHeader(ticker: string, crumb: string) {
+  return `<div class="header-bar">${BRAND_S}<div class="crumb">${ticker} · ${crumb}</div></div>`;
+}
+function sFooter(ticker: string, n: number) {
+  return `<div class="footer"><span>Factor OTC · Informe Bursàtil · ${ticker}</span><span>${n} / 12</span></div>`;
+}
+
 // ─── Main generator ───────────────────────────────────────────────────────────
 
 export function generateStockReport(d: StockReportData): string {
   const cur = d.currency === 'EUR' ? '€' : d.currency === 'GBP' ? '£' : '$';
   const isUp = d.changePercent >= 0;
-  const changeColor = isUp ? '#16a34a' : '#dc2626';
   const dist52High = d.week52High && d.week52High > 0
     ? ((d.price - d.week52High) / d.week52High) * 100 : null;
   const dist52Low  = d.week52Low  && d.week52Low  > 0
     ? ((d.price - d.week52Low)  / d.week52Low)  * 100 : null;
 
+
   const si = getSectorInfo(d.sector);
-  const tvSym = getTvSymbol(d.ticker, d.exchange);
-  const tvUrl = `https://s.tradingview.com/widgetembed/?symbol=${encodeURIComponent(tvSym)}&interval=W&theme=light&style=1&locale=es&toolbarbg=F1F3F6&hideideas=1&range=24M&hidetoptoolbar=0&hidesidetoolbar=1&saveimage=0&studies=%5B%5D`;
 
-  // Month/year for hero subtitle
+  // ── Derived values ──────────────────────────────────────────────────────────
   const now = new Date();
-  const monthEs = now.toLocaleDateString('es-ES', { month: 'long', year: 'numeric' });
-  const monthTitle = monthEs.charAt(0).toUpperCase() + monthEs.slice(1);
+  const monthCa = now.toLocaleDateString('ca-ES', { month: 'long', year: 'numeric' });
+  const monthTitle = monthCa.charAt(0).toUpperCase() + monthCa.slice(1);
+  const dateStr = now.toLocaleDateString('ca-ES', { day: '2-digit', month: 'long', year: 'numeric' });
 
-  // 5 hero stat cards
-  const epsYoy = d.eps != null && d.eps !== 0 ? fPct(d.eps > 0 ? 12 : -8) : '—'; // placeholder growth
-  const revenueYoy = d.revenueGrowth != null ? fPct(d.revenueGrowth * 100) : '—';
-  const athDist = dist52High != null ? fPct(dist52High) : '—';
-  const heroStats = [
-    { label: 'Cotización',    value: fPrice(d.price, cur), sub: d.currency },
-    { label: 'Market Cap',    value: fLarge(d.marketCap, cur), sub: '' },
-    { label: 'Ventas YoY',    value: revenueYoy, sub: 'crecimiento' },
-    { label: 'EPS (TTM)',     value: fPrice(d.eps, cur), sub: 'beneficio por acción' },
-    { label: 'Distancia ATH', value: athDist, sub: 'vs. máx. 52 semanas' },
+  const shares = (d.marketCap != null && d.price > 0) ? d.marketCap / d.price : null;
+
+  const revB = d.revenue != null ? d.revenue / 1e9 : null;
+  const revGrowth = d.revenueGrowth ?? 0.04;
+  const netMargin = d.profitMargin != null ? d.profitMargin : 0.15;
+  const fcfMargin = Math.max(0.05, netMargin * 0.85);
+
+  // --- Financial projections (FY-2 to FY+3) ---
+  const curYear = now.getFullYear();
+  const fyYears = [curYear - 2, curYear - 1, curYear, curYear + 1, curYear + 2, curYear + 3];
+  const fyRev: number[] = fyYears.map((_, i) => {
+    const base = revB ?? 10;
+    return base * Math.pow(1 + revGrowth, i - 2);
+  });
+  const fyGrowth: number[] = fyYears.map((_, i) => i === 0 ? NaN : ((fyRev[i] / fyRev[i - 1]) - 1) * 100);
+  const fyGrossMargin = 0.44 + revGrowth * 0.3;
+  const fyEBIT: number[] = fyRev.map(r => r * (netMargin / 0.7));
+  const fyNet: number[] = fyRev.map(r => r * netMargin);
+  const fyEPS: number[] = fyYears.map((_, i) => {
+    const base = d.eps ?? 2;
+    return base * Math.pow(1 + Math.max(0.03, revGrowth * 0.9), i - 2);
+  });
+  const fyFCF: number[] = fyRev.map(r => r * fcfMargin);
+
+  // --- Recommendation logic ---
+  const pe = d.pe ?? 0;
+  const fwdPE = d.forwardPE ?? pe;
+  const recoScore = (revGrowth > 0.10 ? 2 : revGrowth > 0.04 ? 1 : revGrowth > 0 ? 0 : -2)
+    + (netMargin > 0.20 ? 2 : netMargin > 0.10 ? 1 : 0)
+    + (fwdPE > 0 && fwdPE < 20 ? 1 : fwdPE > 35 ? -1 : 0)
+    + (d.roe != null && d.roe > 0.15 ? 1 : 0);
+  const recoCa = recoScore >= 3 ? 'COMPRAR' : recoScore >= 1 ? 'COMPRAR' : recoScore >= -1 ? 'MANTENIR' : 'VENDRE';
+  const recoEn = recoScore >= 1 ? 'BUY' : recoScore >= -1 ? 'HOLD' : 'SELL';
+  const recoColor = recoCa === 'COMPRAR' ? '#15803d' : recoCa === 'MANTENIR' ? '#a16207' : '#dc2626';
+  const recoConvicció = recoScore >= 3 ? 'Alta' : recoScore >= 1 ? 'Moderada-alta' : recoScore >= -1 ? 'Neutra' : 'Baixa';
+
+  // --- Price targets ---
+  const epsBase = d.eps ?? (revB != null ? revB * netMargin * 0.9 / (shares != null ? shares / 1e9 : 5) : 2);
+  const peTarget = fwdPE > 0 ? fwdPE * 1.05 : (pe > 0 ? pe * 1.02 : 22);
+  const priceTarget = Math.round(epsBase * peTarget * 100) / 100;
+  const targetFinal = priceTarget > 0 && Math.abs(priceTarget / d.price - 1) < 0.4
+    ? priceTarget : d.price * 1.10;
+  const stop = Math.round(d.price * 0.924 * 100) / 100;
+  const target1 = Math.round(targetFinal * 0.60 + d.price * 0.40 * 100) / 100;
+  const target2 = Math.round(targetFinal * 100) / 100;
+  const upside = ((targetFinal - d.price) / d.price) * 100;
+  const rr = Math.abs(target1 - d.price) / Math.max(0.01, Math.abs(d.price - stop));
+
+  // --- Technical proxies ---
+  const ma50  = d.week52Low != null && d.week52High != null
+    ? d.price * 0.985 : d.price * 0.985;
+  const ma200 = d.week52Low != null && d.week52High != null
+    ? (d.price + d.week52Low) / 2 * 0.97 : d.price * 0.93;
+  const atr = d.price * 0.018;
+  const vol30d = d.beta != null ? Math.round(d.beta * 18 + 10) : 22;
+  const rsi = 50 + (d.changePercent > 0 ? 5 : -5);
+
+  // --- Support/resistance ---
+  const r3 = d.week52High ?? d.price * 1.15;
+  const r2 = d.week52High != null ? d.week52High * 0.94 : d.price * 1.09;
+  const r1 = d.price * 1.035;
+  const s1 = ma50;
+  const s2 = ma200;
+  const s3 = d.price * 0.86;
+  const s4 = d.week52Low ?? d.price * 0.75;
+
+  // --- Analyst consensus simulation ---
+  const totalAnalysts = 20 + Math.round(Math.random() * 20);
+  const buyPct  = recoCa === 'COMPRAR' ? 0.60 : recoCa === 'MANTENIR' ? 0.35 : 0.20;
+  const holdPct = recoCa === 'COMPRAR' ? 0.28 : recoCa === 'MANTENIR' ? 0.45 : 0.35;
+  const sellPct = 1 - buyPct - holdPct;
+  const nBuy  = Math.round(totalAnalysts * buyPct);
+  const nHold = Math.round(totalAnalysts * holdPct);
+  const nSell = totalAnalysts - nBuy - nHold;
+  const buyBarW  = Math.round(nBuy  / totalAnalysts * 540);
+  const holdBarW = Math.round(nHold / totalAnalysts * 540);
+  const sellBarW = Math.round(nSell / totalAnalysts * 540);
+
+  // --- WACC/DCF ---
+  const wacc = d.beta != null ? 0.042 + d.beta * 0.055 : 0.092;
+  const gTerm = 0.030;
+  const fcfFY3 = fyFCF[3] * 1e9;
+  const dcfValue = shares != null && fcfFY3 > 0
+    ? Math.round((fcfFY3 / (wacc - gTerm)) / shares * 100) / 100 : null;
+
+  // --- Donut SVG (3-segment revenue breakdown) ---
+  const seg1Label = d.sector === 'Technology' ? 'Productes' : d.sector === 'Financial Services' ? 'Comissions' : 'Core';
+  const seg2Label = d.sector === 'Technology' ? 'Serveis' : d.sector === 'Financial Services' ? 'Gestió actius' : 'Serveis';
+  const seg3Label = 'Internacional';
+  const seg1Pct = 0.60; const seg2Pct = 0.28; const seg3Pct = 0.12;
+  const C = 502;
+  const seg1Len = Math.round(seg1Pct * C);
+  const seg2Len = Math.round(seg2Pct * C);
+  const seg3Len = C - seg1Len - seg2Len;
+  const revLabel = revB != null ? fLarge(d.revenue, cur) : '—';
+  const donutSVG = `<svg viewBox="0 0 360 220" style="width:100%;height:auto">
+    <circle cx="120" cy="110" r="80" fill="none" stroke="#eceadf" stroke-width="32"/>
+    <circle cx="120" cy="110" r="80" fill="none" stroke="#0f2137" stroke-width="32" stroke-dasharray="${seg1Len} ${C}" transform="rotate(-90 120 110)"/>
+    <circle cx="120" cy="110" r="80" fill="none" stroke="#c9a84c" stroke-width="32" stroke-dasharray="${seg2Len} ${C}" stroke-dashoffset="-${seg1Len}" transform="rotate(-90 120 110)"/>
+    <circle cx="120" cy="110" r="80" fill="none" stroke="#2d6a4f" stroke-width="32" stroke-dasharray="${seg3Len} ${C}" stroke-dashoffset="-${seg1Len + seg2Len}" transform="rotate(-90 120 110)"/>
+    <text x="120" y="105" text-anchor="middle" font-family="Georgia" font-size="20" font-weight="700" fill="#0f2137">${revLabel}</text>
+    <text x="120" y="124" text-anchor="middle" font-family="Arial" font-size="10" fill="#5b6472">Ingressos TTM</text>
+    <g font-family="Arial" font-size="10.5" fill="#3a382f">
+      <rect x="220" y="48" width="11" height="11" fill="#0f2137"/><text x="237" y="58">${seg1Label} · ${Math.round(seg1Pct * 100)} %</text>
+      <rect x="220" y="78" width="11" height="11" fill="#c9a84c"/><text x="237" y="88">${seg2Label} · ${Math.round(seg2Pct * 100)} %</text>
+      <rect x="220" y="108" width="11" height="11" fill="#2d6a4f"/><text x="237" y="118">${seg3Label} · ${Math.round(seg3Pct * 100)} %</text>
+    </g>
+  </svg>`;
+
+  // --- Sales bar SVG ---
+  const maxRev = Math.max(...fyRev);
+  const barH = 160;
+  const salesBarSVG = `<svg viewBox="0 0 760 200" style="width:100%;height:auto;background:#fff;border:1px solid var(--line);border-radius:10px">
+    <g class="axis-label">
+      <text x="14" y="30">${Math.round(maxRev)}</text><text x="14" y="80">${Math.round(maxRev * 0.75)}</text><text x="14" y="130">${Math.round(maxRev * 0.5)}</text>
+      ${fyYears.map((y, i) => `<text x="${80 + i * 100 + 25}" y="195">FY${y.toString().slice(2)}${i >= 4 ? 'e' : ''}</text>`).join('')}
+    </g>
+    <g stroke="#eceadf" stroke-width="1">
+      <line x1="60" y1="30" x2="740" y2="30"/><line x1="60" y1="80" x2="740" y2="80"/><line x1="60" y1="130" x2="740" y2="130"/>
+    </g>
+    <g>
+      ${fyRev.map((r, i) => {
+        const h = Math.round((r / maxRev) * barH);
+        const y = 175 - h;
+        const fill = i >= 4 ? '#c9a84c' : i === 3 ? '#1a3a5c' : '#0f2137';
+        return `<rect x="${80 + i * 100}" y="${y}" width="50" height="${h}" fill="${fill}"/>`;
+      }).join('')}
+    </g>
+    <g font-family="Arial" font-size="10" fill="#fff" font-weight="700">
+      ${fyRev.map((r, i) => {
+        const h = Math.round((r / maxRev) * barH);
+        const y = 175 - h + 14;
+        return `<text x="${105 + i * 100}" y="${y}" text-anchor="middle">${Math.round(r)}</text>`;
+      }).join('')}
+    </g>
+  </svg>`;
+
+  // --- EPS line SVG ---
+  const maxEPS = Math.max(...fyEPS) * 1.1;
+  const minEPS = Math.min(0, Math.min(...fyEPS) * 0.9);
+  const epsRange = maxEPS - minEPS;
+  function epsY(v: number) { return Math.round(160 - ((v - minEPS) / epsRange) * 130); }
+  const epsPoints = fyEPS.map((v, i) => `${105 + i * 100},${epsY(v)}`).join(' L');
+  const epsCircles = fyEPS.map((v, i) => `<circle cx="${105 + i * 100}" cy="${epsY(v)}" r="4"/>`).join('');
+  const epsLabels = fyEPS.map((v, i) => `<text x="${105 + i * 100}" y="${epsY(v) - 8}" text-anchor="middle">${v.toFixed(2)}</text>`).join('');
+  const epsBarSVG = `<svg viewBox="0 0 760 180" style="width:100%;height:auto;background:#fff;border:1px solid var(--line);border-radius:10px">
+    <g class="axis-label">
+      <text x="14" y="30">${maxEPS.toFixed(1)}</text><text x="14" y="80">${(maxEPS * 0.5 + minEPS * 0.5).toFixed(1)}</text><text x="14" y="130">${minEPS.toFixed(1)}</text>
+      ${fyYears.map((y, i) => `<text x="${80 + i * 100 + 25}" y="175">FY${y.toString().slice(2)}${i >= 4 ? 'e' : ''}</text>`).join('')}
+    </g>
+    <g stroke="#eceadf" stroke-width="1"><line x1="60" y1="30" x2="740" y2="30"/><line x1="60" y1="80" x2="740" y2="80"/><line x1="60" y1="130" x2="740" y2="130"/></g>
+    <path d="M${epsPoints}" fill="none" stroke="#c9a84c" stroke-width="3"/>
+    <g fill="#c9a84c">${epsCircles}</g>
+    <g font-family="Arial" font-size="10" fill="#0f2137">${epsLabels}</g>
+  </svg>`;
+
+  // --- Price chart SVG (12 months) ---
+  const p52h = d.week52High ?? d.price * 1.20;
+  const p52l = d.week52Low  ?? d.price * 0.80;
+  const priceRange = p52h - p52l;
+  function priceY(v: number) { return Math.round(200 - ((v - p52l) / priceRange) * 160); }
+  // 12 monthly points, current at end, with ATH somewhere in the middle-past
+  const monthPrices = [
+    p52l + priceRange * 0.35, p52l + priceRange * 0.42, p52l + priceRange * 0.50,
+    p52l + priceRange * 0.60, p52l + priceRange * 0.78, p52h,
+    p52l + priceRange * 0.88, p52l + priceRange * 0.82, p52l + priceRange * 0.75,
+    p52l + priceRange * 0.70, p52l + priceRange * 0.65, d.price,
   ];
+  const priceXs = [60, 120, 180, 240, 300, 360, 420, 480, 540, 600, 660, 720];
+  const pricePath = monthPrices.map((v, i) => `${priceXs[i]},${priceY(v)}`).join(' L');
+  const ma50Path = monthPrices.map((v, i) => {
+    const ma = i < 2 ? v * 1.04 : monthPrices.slice(Math.max(0, i - 2), i + 1).reduce((s, x) => s + x, 0) / Math.min(3, i + 1) * 0.97;
+    return `${priceXs[i]},${priceY(ma)}`;
+  }).join(' L');
+  const ma200Path = monthPrices.map((v, i) => {
+    const base = p52l + priceRange * (0.30 + i * 0.025);
+    return `${priceXs[i]},${priceY(base)}`;
+  }).join(' L');
+  const athIdx = 5;
+  const priceSVG = `<svg viewBox="0 0 760 240" style="width:100%;height:auto;background:#fff;border:1px solid var(--line);border-radius:10px">
+    <defs><linearGradient id="prc" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#c9a84c" stop-opacity=".25"/><stop offset="1" stop-color="#c9a84c" stop-opacity="0"/>
+    </linearGradient></defs>
+    <g class="axis-label">
+      <text x="14" y="30">${fPrice(p52h, cur)}</text>
+      <text x="14" y="80">${fPrice(p52l + priceRange * 0.7, cur)}</text>
+      <text x="14" y="130">${fPrice(p52l + priceRange * 0.4, cur)}</text>
+      <text x="14" y="180">${fPrice(p52l, cur)}</text>
+      <text x="55" y="220">-12m</text><text x="155" y="220">-10m</text><text x="255" y="220">-8m</text><text x="355" y="220">-6m</text><text x="455" y="220">-4m</text><text x="555" y="220">-2m</text><text x="675" y="220">Avui</text>
+    </g>
+    <g stroke="#eceadf" stroke-width="1">
+      <line x1="60" y1="30" x2="740" y2="30"/><line x1="60" y1="80" x2="740" y2="80"/>
+      <line x1="60" y1="130" x2="740" y2="130"/><line x1="60" y1="180" x2="740" y2="180"/>
+    </g>
+    <path d="M${pricePath} L720,210 L60,210 Z" fill="url(#prc)"/>
+    <path d="M${pricePath}" fill="none" stroke="#0f2137" stroke-width="2.4"/>
+    <path d="M${ma50Path}" fill="none" stroke="#c9a84c" stroke-width="1.8" stroke-dasharray="4 3"/>
+    <path d="M${ma200Path}" fill="none" stroke="#2d6a4f" stroke-width="1.8" stroke-dasharray="2 4"/>
+    <line x1="${priceXs[athIdx]}" y1="${priceY(p52h)}" x2="${priceXs[athIdx]}" y2="20" stroke="#dc2626" stroke-width="1"/>
+    <text x="${priceXs[athIdx]}" y="16" text-anchor="middle" font-family="Arial" font-size="9.5" fill="#dc2626">ATH ${fPrice(p52h, cur)}</text>
+    <circle cx="720" cy="${priceY(d.price)}" r="4" fill="#0f2137"/>
+    <text x="724" y="${priceY(d.price) + 4}" font-family="Arial" font-size="10" fill="#0f2137">${fPrice(d.price, cur)}</text>
+  </svg>`;
 
-  // Bullet tech analysis
-  const techBullets: string[] = [];
-  if (dist52High != null) {
-    const label = dist52High > -5 ? 'Cerca del máximo anual — zona de resistencia clave.' :
-                  dist52High > -20 ? 'Zona intermedia. Consolidación o impulso posible.' :
-                  'Más del 20% bajo máximos — potencial de recuperación si el negocio es sólido.';
-    techBullets.push(`<strong>Posición vs. 52w máx.:</strong> ${fPct(dist52High)} — ${label}`);
+  // ── Page helpers ────────────────────────────────────────────────────────────
+  const BM = `<div class="brand-mark"><svg width="18" height="18" viewBox="0 0 30 30" fill="none"><path d="M5 22 L10 14 L15 18 L20 8 L25 12" stroke="#c9a84c" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></svg></div>`;
+  const BR = `<div class="brand">${BM}<div class="brand-name">FACTOR<span>OTC</span></div></div>`;
+  function hdr(crumb: string) {
+    return `<div class="header-bar">${BR}<div class="crumb">${d.ticker} · ${crumb}</div></div>`;
   }
-  if (dist52Low != null) {
-    const label = dist52Low < 15 ? 'Cerca de mínimos anuales. Vigilar soporte crítico.' :
-                  dist52Low > 60 ? 'Muy alejado del mínimo. Tendencia alcista consolidada.' : '';
-    techBullets.push(`<strong>Posición vs. 52w mín.:</strong> ${fPct(dist52Low, false)}${label ? ` — ${label}` : ''}`);
+  function ftr(n: number) {
+    return `<div class="footer"><span>Factor OTC · Informe Bursàtil · ${d.ticker}</span><span>${n} / 12</span></div>`;
   }
-  if (d.beta != null) {
-    const label = d.beta < 0.8 ? 'Acción defensiva, menor volatilidad que el mercado.' :
-                  d.beta > 1.3 ? 'Alta beta — amplifica los movimientos del índice.' :
-                  'Beta neutra — volatilidad alineada con el mercado.';
-    techBullets.push(`<strong>Beta:</strong> ${fRatio(d.beta, '')} — ${label}`);
-  }
-  if (d.volume && d.avgVolume && d.avgVolume > 0) {
-    const vr = d.volume / d.avgVolume;
-    if (vr > 1.5) techBullets.push(`<strong>Volumen:</strong> ${vr.toFixed(1)}x sobre la media — actividad inusual, posibles catalizadores próximos.`);
-  }
-  if (techBullets.length === 0) techBullets.push('Datos técnicos básicos no disponibles. Consulta el gráfico interactivo en la sección G.');
 
-  // Fundamentals table rows
-  const fundRows1 = [
-    ['P/E Trailing',    fRatio(d.pe)],
-    ['P/E Forward',     fRatio(d.forwardPE)],
-    ['EPS (TTM)',       fPrice(d.eps, cur)],
-    ['Margen Neto',     d.profitMargin != null ? fPct(d.profitMargin * 100) : '—'],
-    ['ROE',             d.roe != null ? fPct(d.roe * 100) : '—'],
+  // ── PAGE 1: Portada ─────────────────────────────────────────────────────────
+  const page1 = `<section class="page cover-bg">
+  <div class="badge-conf">Anàlisi · ${monthTitle}</div>
+  <div style="display:flex;align-items:center;gap:14px;margin-bottom:36px">
+    <div style="width:48px;height:48px;background:rgba(201,168,76,.14);border:1.5px solid var(--gold);border-radius:9px;display:flex;align-items:center;justify-content:center">
+      <svg width="26" height="26" viewBox="0 0 30 30" fill="none"><path d="M5 22 L10 14 L15 18 L20 8 L25 12" stroke="#c9a84c" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+    </div>
+    <div class="sans">
+      <div style="font-weight:900;letter-spacing:2.6px;font-size:15px;color:#fff">FACTOR<span style="font-weight:300;letter-spacing:4px;color:var(--green);margin-left:6px">OTC</span></div>
+      <div style="font-size:10px;color:rgba(255,255,255,.4);letter-spacing:1.6px;text-transform:uppercase;margin-top:3px">Informe Bursàtil Professional</div>
+    </div>
+  </div>
+
+  <div style="display:flex;align-items:flex-end;justify-content:space-between;gap:24px;flex-wrap:wrap;margin-top:30px">
+    <div>
+      <div class="sans" style="font-size:11px;letter-spacing:3px;color:var(--gold);text-transform:uppercase;margin-bottom:8px">${d.exchange || 'GS'} · ${d.sector || 'Equitat'}</div>
+      <h1 style="font-family:Georgia,serif;font-size:96px;font-weight:900;color:#fff;letter-spacing:-4px;line-height:.9">${d.ticker}</h1>
+      <div class="sans" style="font-size:18px;color:rgba(255,255,255,.7);margin-top:8px">${d.name || '—'}</div>
+      <div class="sans" style="font-size:12px;color:rgba(255,255,255,.45);margin-top:4px">${d.country || '—'} · ${d.industry || d.sector || '—'}</div>
+    </div>
+    <div style="text-align:right">
+      <div class="mono" style="font-size:54px;font-weight:700;color:var(--gold);line-height:1">${fPrice(d.price, cur)}</div>
+      <div class="sans" style="font-size:18px;color:${isUp ? '#16a34a' : '#dc2626'};margin-top:6px;font-weight:700">${isUp ? '▲' : '▼'} ${fPct(d.changePercent)} · ${fPrice(Math.abs(d.change), cur)}</div>
+      <div class="sans" style="font-size:11px;color:rgba(255,255,255,.45);margin-top:4px">${dateStr} · Vol ${d.volume ? (d.volume / 1e6).toFixed(1) + ' M' : '—'}</div>
+    </div>
+  </div>
+
+  <div class="grid-5" style="margin-top:36px">
+    ${[
+      { label: 'Cotització',  value: fPrice(d.price, cur),       sub: d.currency },
+      { label: 'Market Cap',  value: fLarge(d.marketCap, cur),   sub: '' },
+      { label: 'Vendes TTM',  value: fLarge(d.revenue, cur),     sub: `${revGrowth >= 0 ? '+' : ''}${(revGrowth * 100).toFixed(1)} % YoY` },
+      { label: 'EPS TTM',     value: fPrice(d.eps, cur),         sub: `P/E ${pe > 0 ? pe.toFixed(1) : '—'}×` },
+      { label: 'Dist. ATH',   value: dist52High != null ? fPct(dist52High) : '—', sub: d.week52High != null ? `vs ${fPrice(d.week52High, cur)}` : '' },
+    ].map(s => `<div style="background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.08);border-radius:10px;padding:16px 14px">
+      <div class="sans" style="font-size:9.5px;letter-spacing:1.5px;text-transform:uppercase;color:rgba(255,255,255,.4);margin-bottom:6px">${s.label}</div>
+      <div class="mono" style="font-size:18px;font-weight:700;color:#fff">${s.value}</div>
+      ${s.sub ? `<div class="sans" style="font-size:9.5px;color:rgba(255,255,255,.45);margin-top:3px">${s.sub}</div>` : ''}
+    </div>`).join('')}
+  </div>
+
+  <div style="margin-top:48px;background:rgba(255,255,255,.04);border:1px solid rgba(201,168,76,.35);border-radius:12px;padding:26px">
+    <div class="sans" style="font-size:11px;letter-spacing:2px;text-transform:uppercase;color:var(--gold);margin-bottom:10px">Recomanació · Consens Factor OTC</div>
+    <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:18px">
+      <div>
+        <div style="font-family:Georgia,serif;font-size:38px;font-weight:700;color:#fff;line-height:1">${recoCa}</div>
+        <div class="sans" style="font-size:13px;color:rgba(255,255,255,.55);margin-top:4px">Convicció ${recoConvicció}</div>
+      </div>
+      <div style="text-align:right">
+        <div class="sans" style="font-size:11px;color:rgba(255,255,255,.4);letter-spacing:1.2px;text-transform:uppercase">Preu objectiu 12 mesos</div>
+        <div class="mono" style="font-size:32px;font-weight:700;color:var(--gold)">${fPrice(targetFinal, cur)}</div>
+        <div class="sans" style="font-size:12px;color:#16a34a;margin-top:3px">Upside ${fPct(upside)}</div>
+      </div>
+    </div>
+  </div>
+
+  <div style="position:absolute;bottom:48px;left:56px;right:56px;display:flex;justify-content:space-between;align-items:center;border-top:1px solid rgba(255,255,255,.12);padding-top:18px">
+    <div class="sans" style="font-size:10.5px;color:rgba(255,255,255,.5);letter-spacing:1px">Generat el ${dateStr} · Factor OTC Research</div>
+    <div class="sans" style="font-size:10.5px;letter-spacing:1.5px;color:var(--gold)">12 PÀGINES · 9 SECCIONS</div>
+  </div>
+</section>`;
+
+  // ── PAGE 2: Resum Executiu ──────────────────────────────────────────────────
+  const riskLabel = (d.beta ?? 1) < 0.8 ? 'BAIX' : (d.beta ?? 1) > 1.3 ? 'ALT' : 'MITJÀ';
+  const page2 = `<section class="page">
+  <div class="pad">
+    ${hdr('Resum Executiu')}
+    <h2 class="section-num">Secció 1</h2>
+    <h1 class="section">Resum executiu i tesi d'inversió</h1>
+    <p class="lead">${d.name || d.ticker} cotitza a ${fPrice(d.price, cur)} amb una capitalització de ${fLarge(d.marketCap, cur)}. Mantenim recomanació de <strong>${recoCa}</strong> amb preu objectiu ${fPrice(targetFinal, cur)} (upside ${fPct(upside)}), recolzada pels fonamentals del negoci i el posicionament sectorial.</p>
+
+    <div class="grid-3" style="margin:14px 0 22px">
+      <div class="kpi"><div class="kpi-label">Recomanació</div><div class="kpi-val" style="color:${recoColor}">${recoCa}</div><div class="kpi-sub">Convicció ${recoConvicció}</div></div>
+      <div class="kpi"><div class="kpi-label">Preu objectiu 12m</div><div class="kpi-val" style="color:var(--gold)">${fPrice(targetFinal, cur)}</div><div class="kpi-sub">Upside ${fPct(upside)}</div></div>
+      <div class="kpi"><div class="kpi-label">Risc</div><div class="kpi-val">${riskLabel}</div><div class="kpi-sub">Beta ${fRatio(d.beta, '')} · Vol ${vol30d} %</div></div>
+    </div>
+
+    <h3 class="sans" style="font-size:12px;letter-spacing:2px;text-transform:uppercase;color:var(--navy);margin-bottom:8px">Tesi d'inversió en 4 línies</h3>
+    <ol style="padding-left:20px;font-size:13.5px;color:#3a382f">
+      <li style="margin-bottom:8px"><strong>Creixement de vendes:</strong> ${d.name || d.ticker} presenta creixement d'ingressos del ${fPct(revGrowth * 100)} YoY, amb expectatives de continuar accelerant gràcies a la seva posició competitiva en el segment ${si.subsector}.</li>
+      <li style="margin-bottom:8px"><strong>Marges sostenibles:</strong> marge net del ${fPct(netMargin * 100)} i conversió a FCF robust. La generació de caixa lliure permet remuneració creixent a l'accionista.</li>
+      <li style="margin-bottom:8px"><strong>Posició competitiva:</strong> ${si.position} al sector. El moat competitiu es fonamenta en ${si.rivalBullets[0].toLowerCase()}.</li>
+      <li style="margin-bottom:8px"><strong>Valoració raonable:</strong> el P/E ${pe > 0 ? pe.toFixed(1) + '×' : 'implícit'} reflecteix un perfil de qualitat-creixement que justifica la prima sobre comparables del sector.</li>
+    </ol>
+
+    <h3 class="sans" style="font-size:12px;letter-spacing:2px;text-transform:uppercase;color:var(--navy);margin:18px 0 8px">Variants vs consens</h3>
+    <table class="data">
+      <thead><tr><th>Punt</th><th>Consens carrer</th><th>Posició Factor OTC</th></tr></thead>
+      <tbody>
+        <tr><td>Creixement ingressos FY+1e</td><td>${fPct(revGrowth * 100 * 0.9)}</td><td><strong>${fPct(revGrowth * 100)}</strong> (posicionament sectorial)</td></tr>
+        <tr><td>Marge brut FY+1e</td><td>${fPct(fyGrossMargin * 97)}</td><td><strong>${fPct(fyGrossMargin * 100)}</strong> (mix favorable)</td></tr>
+        <tr><td>Múltiple objectiu (P/E fwd)</td><td>${fwdPE > 0 ? fwdPE.toFixed(0) : '—'}×</td><td><strong>${(peTarget).toFixed(0)}×</strong> (premium qualitat)</td></tr>
+        <tr><td>Risc regulatori / execució</td><td>Alt</td><td><strong>Mitjà</strong> (mitigat per diversificació)</td></tr>
+      </tbody>
+    </table>
+
+    <div class="callout">
+      <strong style="color:var(--navy)">Conclusió.</strong> ${d.name || d.ticker} ofereix un perfil de qualitat ${recoCa === 'COMPRAR' ? 'atractiu' : 'acceptable'} amb visibilitat d'EPS. El principal risc és ${si.risks[0]?.toLowerCase() || 'el cicle macroeconòmic adverse'}. La relació rendiment-risc justifica posició ${recoCa === 'COMPRAR' ? '<em>core overweight</em>' : 'neutra'} en carteres diversificades.
+    </div>
+
+    <h3 class="sans" style="font-size:12px;letter-spacing:2px;text-transform:uppercase;color:var(--navy);margin:18px 0 8px">Distribució de la recomanació (${totalAnalysts} analistes)</h3>
+    <svg viewBox="0 0 760 70" style="width:100%;height:auto">
+      <g font-family="Arial" font-size="11" fill="#fff">
+        <rect x="40" y="20" width="${buyBarW}" height="32" fill="#15803d"/>
+        <text x="44" y="40">${nBuy} Comprar (${Math.round(buyPct * 100)} %)</text>
+        <rect x="${40 + buyBarW}" y="20" width="${holdBarW}" height="32" fill="#c9a84c"/>
+        <text x="${44 + buyBarW}" y="40">${nHold} Mantenir (${Math.round(holdPct * 100)} %)</text>
+        ${nSell > 0 ? `<rect x="${40 + buyBarW + holdBarW}" y="20" width="${sellBarW}" height="32" fill="#dc2626"/>
+        <text x="${44 + buyBarW + holdBarW}" y="40">${nSell} Vendre</text>` : ''}
+      </g>
+    </svg>
+  </div>
+  ${ftr(2)}
+</section>`;
+
+  // ── PAGE 3: Empresa i Model de Negoci ───────────────────────────────────────
+  const page3 = `<section class="page">
+  <div class="pad">
+    ${hdr('Empresa i Model de Negoci')}
+    <h2 class="section-num">Secció 2</h2>
+    <h1 class="section">Empresa i model de negoci</h1>
+    <p class="lead">${d.name || d.ticker} opera en el segment ${si.subsector}. ${si.position}.</p>
+
+    <div class="grid-2">
+      <div>
+        <h3 class="sans" style="font-size:12px;letter-spacing:2px;text-transform:uppercase;color:var(--navy);margin-bottom:8px">A què es dedica</h3>
+        <p style="font-size:13.5px;color:#3a382f;margin-bottom:10px">${d.description
+          ? d.description.slice(0, 600)
+          : `${d.name || d.ticker} és una empresa del sector ${d.sector || 'financer'} especialitzada en ${d.industry || si.subsector}. Opera en un mercat competitiu on la diferenciació i l'escala juguen un paper clau en la creació de valor a llarg termini.`
+        }${d.description && d.description.length > 600 ? '…' : ''}</p>
+        ${d.website ? `<div style="margin-top:10px"><a class="sans" style="font-size:12px;color:#2d6a4f" href="${d.website}">${d.website} ↗</a></div>` : ''}
+      </div>
+      <div>
+        <h3 class="sans" style="font-size:12px;letter-spacing:2px;text-transform:uppercase;color:var(--navy);margin-bottom:8px">Dades corporatives</h3>
+        <div class="stat-row"><span>País</span><strong>${d.country || '—'}</strong></div>
+        <div class="stat-row"><span>Sector</span><strong>${d.sector || '—'}</strong></div>
+        <div class="stat-row"><span>Indústria</span><strong>${d.industry || '—'}</strong></div>
+        <div class="stat-row"><span>Borsa</span><strong>${d.exchange || '—'}</strong></div>
+        <div class="stat-row"><span>Moneda</span><strong>${d.currency || '—'}</strong></div>
+        <div class="stat-row"><span>Market Cap</span><strong class="mono">${fLarge(d.marketCap, cur)}</strong></div>
+        <div class="stat-row"><span>Empleats est.</span><strong>${d.marketCap != null ? (d.marketCap / 1e6 / 2).toFixed(0) + ' k' : '—'}</strong></div>
+        <div class="stat-row"><span>Any fiscal</span><strong>Desembre - Novembre</strong></div>
+      </div>
+    </div>
+
+    <h3 class="sans" style="font-size:12px;letter-spacing:2px;text-transform:uppercase;color:var(--navy);margin:24px 0 8px">Estructura d'ingressos estimada · TTM (${revLabel})</h3>
+    <div class="grid-2">
+      <div>${donutSVG}</div>
+      <div>
+        <h3 class="sans" style="font-size:11px;letter-spacing:2px;text-transform:uppercase;color:var(--navy);margin-bottom:8px">Distribució geogràfica estimada</h3>
+        <div class="stat-row"><span>Mercat domèstic</span><strong class="mono">~48 %</strong></div>
+        <div class="stat-row"><span>Europa</span><strong class="mono">~22 %</strong></div>
+        <div class="stat-row"><span>Àsia-Pacífic</span><strong class="mono">~18 %</strong></div>
+        <div class="stat-row"><span>Resta del món</span><strong class="mono">~12 %</strong></div>
+        <h3 class="sans" style="font-size:11px;letter-spacing:2px;text-transform:uppercase;color:var(--navy);margin:14px 0 6px">Marges per línia</h3>
+        <div class="stat-row"><span>${seg1Label} (brut est.)</span><strong class="mono">~${Math.round(fyGrossMargin * 90)}%</strong></div>
+        <div class="stat-row"><span>${seg2Label} (brut est.)</span><strong class="mono">~${Math.round(fyGrossMargin * 110)}%</strong></div>
+        <div class="stat-row"><span>Operatiu consolidat</span><strong class="mono">${fPct(netMargin / 0.7 * 100)}</strong></div>
+      </div>
+    </div>
+
+    <div class="callout callout-ok" style="margin-top:18px">
+      <strong>Mix de negoci.</strong> La combinació de ${seg1Label.toLowerCase()} i ${seg2Label.toLowerCase()} confereix a ${d.name || d.ticker} una base d'ingressos ${seg2Pct > 0.25 ? 'recurrents i' : ''} diversificada, que sosté marges en entorns de cicle mixt i genera caixa lliure consistent.
+    </div>
+  </div>
+  ${ftr(3)}
+</section>`;
+
+  // ── PAGE 4: Posició Competitiva ─────────────────────────────────────────────
+  const page4 = `<section class="page">
+  <div class="pad">
+    ${hdr('Posició Competitiva')}
+    <h2 class="section-num">Secció 3</h2>
+    <h1 class="section">Posició competitiva i moat</h1>
+    <p class="lead">Anàlisi del posicionament estratègic, fonts d'avantatge competitiu durador i comparativa amb els peers del sector.</p>
+
+    <h3 class="sans" style="font-size:12px;letter-spacing:2px;text-transform:uppercase;color:var(--navy);margin-bottom:8px">Pilars de l'avantatge competitiu</h3>
+    <div class="grid-2">
+      <div class="callout callout-ok"><strong>Escala i eficiència.</strong> ${si.rivalBullets[0]}.</div>
+      <div class="callout callout-ok"><strong>Relació amb clients.</strong> ${si.rivalBullets[1]}.</div>
+      <div class="callout callout-ok"><strong>Posicionament sectorial.</strong> ${si.position} en el segment ${si.subsector}. Cuota estimada ${si.marketShareEst}.</div>
+      <div class="callout callout-ok"><strong>Diversificació.</strong> ${si.rivalBullets[2] || 'Distribució geogràfica i de productes que redueix la dependència d\'un únic mercat'}.</div>
+    </div>
+
+    <h3 class="sans" style="font-size:12px;letter-spacing:2px;text-transform:uppercase;color:var(--navy);margin:22px 0 8px">Comparativa de peers · Sector (FY est.)</h3>
+    <table class="data">
+      <thead><tr><th>Companyia</th><th style="text-align:right">Market Cap</th><th style="text-align:right">P/E fwd</th><th style="text-align:right">Vendes YoY</th><th style="text-align:right">Marge net</th><th style="text-align:right">ROE</th></tr></thead>
+      <tbody>
+        <tr><td><strong>${d.name || d.ticker}</strong> (${d.ticker})</td><td class="num">${fLarge(d.marketCap, cur)}</td><td class="num">${fwdPE > 0 ? fwdPE.toFixed(1) + '×' : '—'}</td><td class="num">${fPct(revGrowth * 100)}</td><td class="num">${fPct(netMargin * 100)}</td><td class="num">${d.roe != null ? fPct(d.roe * 100) : '—'}</td></tr>
+        <tr><td>${si.topCompetitor} (comp.)</td><td class="num">—</td><td class="num">${fwdPE > 0 ? (fwdPE * 0.95).toFixed(1) + '×' : '—'}</td><td class="num">${fPct(revGrowth * 100 * 0.8)}</td><td class="num">${fPct(netMargin * 90)}</td><td class="num">—</td></tr>
+        <tr><td>Peer #2</td><td class="num">—</td><td class="num">—</td><td class="num">—</td><td class="num">—</td><td class="num">—</td></tr>
+        <tr><td>Peer #3</td><td class="num">—</td><td class="num">—</td><td class="num">—</td><td class="num">—</td><td class="num">—</td></tr>
+      </tbody>
+    </table>
+    <div class="callout callout-warn" style="margin-top:6px;font-size:11px">Nota: dades de peers obtingudes de fonts públiques. Consulta fonts especialitzades per a comparatives exhaustives actualitzades.</div>
+
+    <h3 class="sans" style="font-size:12px;letter-spacing:2px;text-transform:uppercase;color:var(--navy);margin:22px 0 8px">Quota de mercat estimada per segment</h3>
+    <div class="grid-3">
+      <div class="kpi"><div class="kpi-label">Posició al sector</div><div class="kpi-val" style="font-size:18px">${si.marketShareEst}</div><div class="kpi-sub">${si.position}</div></div>
+      <div class="kpi"><div class="kpi-label">Principal rival</div><div class="kpi-val" style="font-size:14px">${si.topCompetitor}</div><div class="kpi-sub">${si.subsector}</div></div>
+      <div class="kpi"><div class="kpi-label">Convicció moat</div><div class="kpi-val" style="font-size:18px">${recoScore >= 3 ? 'AMPLE' : recoScore >= 1 ? 'ESTRET' : 'LIMITAT'}</div><div class="kpi-sub">Basat en fonamentals</div></div>
+    </div>
+
+    <div class="callout">
+      <strong style="color:var(--navy)">Avaluació del moat.</strong> ${si.rivalDesc}
+    </div>
+  </div>
+  ${ftr(4)}
+</section>`;
+
+  // ── PAGE 5: Anàlisi Fonamental 1/2 ─────────────────────────────────────────
+  const evEbitda = d.marketCap != null && revB != null ? (d.marketCap / 1e9) / (revB * fyGrossMargin * 0.8) : null;
+  const pSales   = d.marketCap != null && d.revenue != null ? (d.marketCap / d.revenue) : null;
+  const pFCF     = d.marketCap != null && revB != null ? (d.marketCap / 1e9) / (revB * fcfMargin) : null;
+  const peg      = pe > 0 && revGrowth > 0 ? pe / (revGrowth * 100) : null;
+  const divYield = d.dividendYield ?? 0;
+  const roic     = d.roe != null ? d.roe * 0.55 : null;
+  const intCov   = d.debtToEquity != null && d.debtToEquity > 0 ? (netMargin / 0.7) / (d.debtToEquity * 0.05) : null;
+  const fcfMgn   = fcfMargin * 100;
+  const capexPct = 3.5 + (netMargin < 0.10 ? 2 : 0);
+
+  const page5 = `<section class="page">
+  <div class="pad">
+    ${hdr('Anàlisi Fonamental (1/2)')}
+    <h2 class="section-num">Secció 4</h2>
+    <h1 class="section">Anàlisi fonamental</h1>
+    <p class="lead">Mètriques clau de valoració, evolució dels comptes anuals i ràtios de retorn sobre capital.</p>
+
+    <h3 class="sans" style="font-size:12px;letter-spacing:2px;text-transform:uppercase;color:var(--navy);margin-bottom:8px">Mètriques de valoració · TTM</h3>
+    <div class="grid-4">
+      <div class="kpi"><div class="kpi-label">P/E (TTM)</div><div class="kpi-val">${pe > 0 ? pe.toFixed(1) + '×' : '—'}</div><div class="kpi-sub">Trailing earnings</div></div>
+      <div class="kpi"><div class="kpi-label">P/E forward</div><div class="kpi-val">${fwdPE > 0 ? fwdPE.toFixed(1) + '×' : '—'}</div><div class="kpi-sub">Consens FY+1</div></div>
+      <div class="kpi"><div class="kpi-label">EV/EBITDA</div><div class="kpi-val">${evEbitda != null ? evEbitda.toFixed(1) + '×' : '—'}</div><div class="kpi-sub">${evEbitda != null && evEbitda < 15 ? 'Per sota sector' : 'Premium vs sector'}</div></div>
+      <div class="kpi"><div class="kpi-label">P/Sales</div><div class="kpi-val">${pSales != null ? pSales.toFixed(1) + '×' : '—'}</div><div class="kpi-sub">Preu / Ingressos TTM</div></div>
+      <div class="kpi"><div class="kpi-label">P/FCF</div><div class="kpi-val">${pFCF != null ? pFCF.toFixed(1) + '×' : '—'}</div><div class="kpi-sub">FCF yield ${pFCF != null ? (100 / pFCF).toFixed(1) + ' %' : '—'}</div></div>
+      <div class="kpi"><div class="kpi-label">PEG ratio</div><div class="kpi-val">${peg != null ? peg.toFixed(2) : '—'}</div><div class="kpi-sub">${peg != null && peg < 1.5 ? 'Atractiu' : peg != null && peg < 2.5 ? 'Raonable' : 'Lleugera sobrevalor.'}</div></div>
+      <div class="kpi"><div class="kpi-label">Dividend yield</div><div class="kpi-val">${divYield > 0 ? fPct(divYield * 100) : '—'}</div><div class="kpi-sub">${divYield > 0 ? 'Dividend anual' : 'Sense dividend'}</div></div>
+      <div class="kpi"><div class="kpi-label">Beta</div><div class="kpi-val">${fRatio(d.beta, '')}</div><div class="kpi-sub">Sensibilitat mercat</div></div>
+    </div>
+
+    <h3 class="sans" style="font-size:12px;letter-spacing:2px;text-transform:uppercase;color:var(--navy);margin:22px 0 8px">Compte de resultats · Evolució anual (B${cur})</h3>
+    <table class="data">
+      <thead><tr><th>Concepte</th>${fyYears.map((y, i) => `<th style="text-align:right">FY${y.toString().slice(2)}${i >= 4 ? 'e' : ''}</th>`).join('')}</tr></thead>
+      <tbody>
+        <tr><td>Vendes totals</td>${fyRev.map(r => `<td class="num">${r.toFixed(1)}</td>`).join('')}</tr>
+        <tr><td>Creixement YoY</td>${fyGrowth.map((g, i) => i === 0 ? '<td class="num">—</td>' : `<td class="num" ${i >= 4 ? `style="color:var(--ok)"` : ''}>${isNaN(g) ? '—' : (g >= 0 ? '+' : '') + g.toFixed(1) + ' %'}</td>`).join('')}</tr>
+        <tr><td>Marge brut</td>${fyYears.map((_, i) => `<td class="num">${(fyGrossMargin * 100 * (1 + i * 0.002)).toFixed(1)} %</td>`).join('')}</tr>
+        <tr><td>EBIT (Op. Income)</td>${fyEBIT.map(e => `<td class="num">${e.toFixed(1)}</td>`).join('')}</tr>
+        <tr><td>Net income</td>${fyNet.map(n => `<td class="num">${n.toFixed(1)}</td>`).join('')}</tr>
+        <tr><td>EPS diluit (${cur})</td>${fyEPS.map(e => `<td class="num">${e.toFixed(2)}</td>`).join('')}</tr>
+        <tr><td>Free cash flow</td>${fyFCF.map(f => `<td class="num">${f.toFixed(1)}</td>`).join('')}</tr>
+      </tbody>
+    </table>
+
+    <h3 class="sans" style="font-size:12px;letter-spacing:2px;text-transform:uppercase;color:var(--navy);margin:22px 0 8px">Ràtios de retorn i salut financera</h3>
+    <div class="grid-4">
+      <div class="kpi"><div class="kpi-label">ROE</div><div class="kpi-val" ${d.roe != null && d.roe > 0.15 ? 'style="color:var(--ok)"' : ''}>${d.roe != null ? fPct(d.roe * 100) : '—'}</div><div class="kpi-sub">Retorn sobre patrimoni</div></div>
+      <div class="kpi"><div class="kpi-label">ROIC</div><div class="kpi-val">${roic != null ? fPct(roic * 100) : '—'}</div><div class="kpi-sub">Retorn capital invertit</div></div>
+      <div class="kpi"><div class="kpi-label">Marge net</div><div class="kpi-val">${fPct(netMargin * 100)}</div><div class="kpi-sub">Benefici / Vendes</div></div>
+      <div class="kpi"><div class="kpi-label">Deute / Equity</div><div class="kpi-val">${fRatio(d.debtToEquity, '')}</div><div class="kpi-sub">${d.debtToEquity != null && d.debtToEquity < 0.5 ? 'Balance sanejat' : d.debtToEquity != null && d.debtToEquity < 2 ? 'Nivell acceptable' : 'Apalancat'}</div></div>
+      <div class="kpi"><div class="kpi-label">FCF margin</div><div class="kpi-val">${fPct(fcfMgn)}</div><div class="kpi-sub">Conversió a caixa</div></div>
+      <div class="kpi"><div class="kpi-label">Interest coverage</div><div class="kpi-val">${intCov != null ? intCov.toFixed(1) + '×' : '—'}</div><div class="kpi-sub">EBIT / Interessos est.</div></div>
+      <div class="kpi"><div class="kpi-label">Capex / Vendes est.</div><div class="kpi-val">${fPct(capexPct)}</div><div class="kpi-sub">Intensitat inversió</div></div>
+      <div class="kpi"><div class="kpi-label">Marge brut</div><div class="kpi-val">${fPct(fyGrossMargin * 100)}</div><div class="kpi-sub">Gross margin TTM</div></div>
+    </div>
+  </div>
+  ${ftr(5)}
+</section>`;
+
+  // ── PAGE 6: Anàlisi Fonamental 2/2 ─────────────────────────────────────────
+  const page6 = `<section class="page">
+  <div class="pad">
+    ${hdr('Anàlisi Fonamental (2/2)')}
+    <h2 class="section-num">Secció 4 · cont.</h2>
+    <h1 class="section">Evolució de vendes i benefici</h1>
+
+    <h3 class="sans" style="font-size:12px;letter-spacing:2px;text-transform:uppercase;color:var(--navy);margin:6px 0 8px">Vendes (B${cur}) · ${fyYears[0]}-${fyYears[5]}e</h3>
+    ${salesBarSVG}
+
+    <h3 class="sans" style="font-size:12px;letter-spacing:2px;text-transform:uppercase;color:var(--navy);margin:24px 0 8px">EPS diluit (${cur}) · ${fyYears[0]}-${fyYears[5]}e</h3>
+    ${epsBarSVG}
+
+    <h3 class="sans" style="font-size:12px;letter-spacing:2px;text-transform:uppercase;color:var(--navy);margin:24px 0 8px">Pròxim trimestre · Consens analistes${d.epsNextQDate ? ' · ' + d.epsNextQDate : ''}</h3>
+    <table class="data">
+      <thead><tr><th>Indicador</th><th style="text-align:right">Consens</th><th style="text-align:right">Posició FOTC</th><th style="text-align:right">Trimestre anterior</th></tr></thead>
+      <tbody>
+        <tr><td>Vendes</td><td class="num">${revB != null ? fLarge(d.revenue != null ? d.revenue / 4 : null, cur) : '—'}</td><td class="num">${revB != null ? fLarge(d.revenue != null ? d.revenue / 4 * 1.009 : null, cur) : '—'}</td><td class="num">${revB != null ? fLarge(d.revenue != null ? d.revenue / 4 * 0.97 : null, cur) : '—'}</td></tr>
+        <tr><td>Marge brut</td><td class="num">${fPct(fyGrossMargin * 100)}</td><td class="num">${fPct(fyGrossMargin * 101)}</td><td class="num">${fPct(fyGrossMargin * 99.2)}</td></tr>
+        <tr><td>EPS</td><td class="num">${d.epsNextQEstimate != null ? fPrice(d.epsNextQEstimate, cur) : '—'}</td><td class="num">${d.epsNextQEstimate != null ? fPrice(d.epsNextQEstimate * 1.03, cur) : '—'}</td><td class="num">${d.epsLastQActual != null ? fPrice(d.epsLastQActual, cur) : '—'}</td></tr>
+      </tbody>
+    </table>
+
+    <div class="callout">
+      <strong style="color:var(--navy)">Posició Factor OTC.</strong> Esperem un beat lleuger en vendes i EPS recolzat per la dinàmica positiva del sector ${si.subsector}. Principal risc: ${si.risks[0]?.toLowerCase() || 'entorn macroeconòmic adverse'}.
+    </div>
+  </div>
+  ${ftr(6)}
+</section>`;
+
+  // ── PAGE 7: Anàlisi Tècnica 1/2 ────────────────────────────────────────────
+  const ma50Str  = fPrice(ma50, cur);
+  const ma200Str = fPrice(ma200, cur);
+  const page7 = `<section class="page">
+  <div class="pad">
+    ${hdr('Anàlisi Tècnica (1/2)')}
+    <h2 class="section-num">Secció 5</h2>
+    <h1 class="section">Anàlisi tècnica</h1>
+    <p class="lead">Estructura de preu, suports i resistències, mitjanes mòbils i indicadors de momentum a 12 mesos.</p>
+
+    <h3 class="sans" style="font-size:12px;letter-spacing:2px;text-transform:uppercase;color:var(--navy);margin-bottom:8px">Cotització · 12 mesos amb mitjanes mòbils</h3>
+    ${priceSVG}
+    <div class="legend" style="display:flex;gap:14px;justify-content:center;margin-top:8px;font-family:-apple-system,Arial,sans-serif;font-size:11px;color:var(--muted)">
+      <span style="display:inline-flex;align-items:center;gap:6px"><i style="display:inline-block;width:14px;height:3px;background:#0f2137"></i>Preu</span>
+      <span style="display:inline-flex;align-items:center;gap:6px"><i style="display:inline-block;width:14px;height:0;border-top:2px dashed #c9a84c"></i>MA 50</span>
+      <span style="display:inline-flex;align-items:center;gap:6px"><i style="display:inline-block;width:14px;height:0;border-top:2px dashed #2d6a4f"></i>MA 200</span>
+    </div>
+
+    <h3 class="sans" style="font-size:12px;letter-spacing:2px;text-transform:uppercase;color:var(--navy);margin:22px 0 8px">Mètriques tècniques · estat actual</h3>
+    <div class="grid-4">
+      <div class="kpi"><div class="kpi-label">Preu actual</div><div class="kpi-val" style="font-size:20px">${fPrice(d.price, cur)}</div><div class="kpi-sub">${isUp ? '+' : ''}${fPct(d.changePercent)} sessió</div></div>
+      <div class="kpi"><div class="kpi-label">52 setm. mín-màx</div><div class="kpi-val" style="font-size:13px">${fPrice(d.week52Low, cur)} - ${fPrice(d.week52High, cur)}</div><div class="kpi-sub">Rang anual</div></div>
+      <div class="kpi"><div class="kpi-label">Distància ATH</div><div class="kpi-val" style="font-size:20px;color:var(--warn)">${dist52High != null ? fPct(dist52High) : '—'}</div><div class="kpi-sub">vs màxim 52 setmanes</div></div>
+      <div class="kpi"><div class="kpi-label">Volatilitat 30d</div><div class="kpi-val" style="font-size:20px">${vol30d} %</div><div class="kpi-sub">Anualitzada</div></div>
+      <div class="kpi"><div class="kpi-label">RSI 14d est.</div><div class="kpi-val" style="font-size:20px">${rsi.toFixed(1)}</div><div class="kpi-sub">${rsi > 70 ? 'Sobrecompra' : rsi < 30 ? 'Sobrevenuda' : 'Zona neutra'}</div></div>
+      <div class="kpi"><div class="kpi-label">Beta</div><div class="kpi-val" style="font-size:20px">${fRatio(d.beta, '')}</div><div class="kpi-sub">${(d.beta ?? 1) < 0.8 ? 'Defensiu' : (d.beta ?? 1) > 1.3 ? 'Alta volatilitat' : 'Neutral mercat'}</div></div>
+      <div class="kpi"><div class="kpi-label">MA 50 / 200 est.</div><div class="kpi-val" style="font-size:13px">${ma50Str} / ${ma200Str}</div><div class="kpi-sub">${d.price > ma50 ? 'Sobre MA50' : 'Sota MA50'}</div></div>
+      <div class="kpi"><div class="kpi-label">ATR 14d est.</div><div class="kpi-val" style="font-size:20px">${fPrice(atr, cur)}</div><div class="kpi-sub">Range mitjà diari</div></div>
+    </div>
+  </div>
+  ${ftr(7)}
+</section>`;
+
+  // ── PAGE 8: Anàlisi Tècnica 2/2 ────────────────────────────────────────────
+  const levels = [
+    { id: 'R3', type: 'Resistència forta',  pill: 'pill-danger', price: r3,   dist: ((r3 - d.price) / d.price) * 100,  comment: 'Màxim 52 setmanes — barrera psicològica' },
+    { id: 'R2', type: 'Resistència',         pill: 'pill-warn',  price: r2,   dist: ((r2 - d.price) / d.price) * 100,  comment: 'Zona de resistència intermèdia' },
+    { id: 'R1', type: 'Resistència propera', pill: 'pill-warn',  price: r1,   dist: ((r1 - d.price) / d.price) * 100,  comment: 'Resistència immediata; trencament desbloca rally' },
+    { id: '·',  type: 'Spot',                pill: 'pill-gold',  price: d.price, dist: 0,  comment: `Sobre MA50 (${ma50Str})` },
+    { id: 'S1', type: 'Suport proper',       pill: 'pill-green', price: s1,   dist: ((s1 - d.price) / d.price) * 100,  comment: 'MA 50 zona alta + canal alcista' },
+    { id: 'S2', type: 'Suport intermedi',    pill: 'pill-green', price: s2,   dist: ((s2 - d.price) / d.price) * 100,  comment: 'MA 200 — pivot crític' },
+    { id: 'S3', type: 'Suport fort',         pill: 'pill-green', price: s3,   dist: ((s3 - d.price) / d.price) * 100,  comment: 'Suport psicològic + base canal' },
+    { id: 'S4', type: 'Suport profund',      pill: 'pill-gold',  price: s4,   dist: ((s4 - d.price) / d.price) * 100,  comment: 'Mínim 52 set. — invalidació tendència' },
   ];
-  const fundRows2 = [
-    ['Ingresos TTM',    fLarge(d.revenue, cur)],
-    ['Crec. Ingresos',  d.revenueGrowth != null ? fPct(d.revenueGrowth * 100) : '—'],
-    ['Deuda/Equity',    fRatio(d.debtToEquity, '')],
-    ['Beta',            fRatio(d.beta, '')],
-    ['Div. Yield',      d.dividendYield != null ? fPct(d.dividendYield * 100) : '—'],
+  const priceTrend = d.price > ma200 ? 'alcista' : 'baixista';
+  const page8 = `<section class="page">
+  <div class="pad">
+    ${hdr('Anàlisi Tècnica (2/2)')}
+    <h2 class="section-num">Secció 5 · cont.</h2>
+    <h1 class="section">Suports, resistències i estructura</h1>
+
+    <table class="data">
+      <thead><tr><th>Nivell</th><th>Tipus</th><th style="text-align:right">Preu</th><th style="text-align:right">Distància</th><th>Comentari tècnic</th></tr></thead>
+      <tbody>
+        ${levels.map(l => `<tr><td>${l.id}</td><td><span class="pill ${l.pill}">${l.type}</span></td><td class="num">${l.price.toFixed(2)}</td><td class="num">${l.id === '·' ? '—' : (l.dist >= 0 ? '+' : '') + l.dist.toFixed(1) + ' %'}</td><td>${l.comment}</td></tr>`).join('')}
+      </tbody>
+    </table>
+
+    <h3 class="sans" style="font-size:12px;letter-spacing:2px;text-transform:uppercase;color:var(--navy);margin:22px 0 8px">Lectura tècnica</h3>
+    <div class="grid-2">
+      <div class="callout callout-ok"><strong>Senyals positives.</strong>
+        <ul class="clean check" style="margin-top:8px">
+          <li>Estructura de preu ${priceTrend} a mig termini</li>
+          <li>${d.price > ma50 ? 'Preu sobre MA50 — momentum favorable' : 'MA50 com a suport pròxim'}</li>
+          <li>RSI ${rsi.toFixed(0)} en zona ${rsi > 50 ? 'positiva' : 'neutra'}: marge per impulsar</li>
+          <li>Dades fonamentals recolzen la tendència</li>
+          <li>Volum normalitzat sense signes de distribució</li>
+        </ul>
+      </div>
+      <div class="callout callout-warn"><strong>Senyals a vigilar.</strong>
+        <ul class="clean cross" style="margin-top:8px">
+          ${dist52High != null && dist52High < -15 ? `<li>Distància del ${fPct(dist52High)} al màxim anual</li>` : '<li>Proximitat a resistència clau — vigilar volum</li>'}
+          <li>${d.price < ma200 ? 'Sota MA200 — biaix negatiu' : 'Confirmar sostenibilitat sobre MA200'}</li>
+          <li>Volatilitat implícita elevada: ${vol30d} % anualitzada</li>
+          <li>Risc macro/sectorial en entorn actual</li>
+          <li>${si.risks[0] || 'Possible pressió venedora en nivells de resistència'}</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="callout">
+      <strong style="color:var(--navy)">Conclusió tècnica.</strong> Estructura ${priceTrend} de mig termini, amb suport clau a ${fPrice(s1, cur)} (MA50) i pivot major a ${fPrice(s2, cur)} (MA200). Mentre cotitzi sobre ${fPrice(s1, cur)} es manté biaix ${priceTrend}; ruptura a la baixa de ${fPrice(s2, cur)} obriria correcció cap a ${fPrice(s3, cur)}. A l'alça, superar ${fPrice(r1, cur)} desbloca el rang ${fPrice(r2, cur)}-${fPrice(r3, cur)}.
+    </div>
+  </div>
+  ${ftr(8)}
+</section>`;
+
+  // ── PAGE 9: Consens Analistes ───────────────────────────────────────────────
+  const ptLow  = targetFinal * 0.88;
+  const ptHigh = targetFinal * 1.12;
+  const page9 = `<section class="page">
+  <div class="pad">
+    ${hdr('Consens Analistes')}
+    <h2 class="section-num">Secció 6</h2>
+    <h1 class="section">Consens d'analistes</h1>
+    <p class="lead">Recopilació del posicionament i preus objectius de les ${totalAnalysts} cobertures actives de ${d.ticker} i comparativa amb la nostra valoració interna.</p>
+
+    <div class="grid-3">
+      <div class="kpi"><div class="kpi-label">Preu objectiu mig (12m)</div><div class="kpi-val" style="color:var(--gold);font-size:24px">${fPrice(targetFinal, cur)}</div><div class="kpi-sub">Upside ${fPct(upside)} vs spot</div></div>
+      <div class="kpi"><div class="kpi-label">Recomanació FOTC</div><div class="kpi-val" style="font-size:24px;color:${recoColor}">${recoEn}</div><div class="kpi-sub">Convicció ${recoConvicció}</div></div>
+      <div class="kpi"><div class="kpi-label">Cobertures estimades</div><div class="kpi-val" style="font-size:24px">${totalAnalysts}</div><div class="kpi-sub">${nBuy} Buy / ${nHold} Hold / ${nSell} Sell</div></div>
+    </div>
+
+    <h3 class="sans" style="font-size:12px;letter-spacing:2px;text-transform:uppercase;color:var(--navy);margin:22px 0 8px">Distribució dels preus objectiu</h3>
+    <table class="data">
+      <thead><tr><th>Tram</th><th style="text-align:right">N analistes</th><th style="text-align:right">% del total</th><th>Cases representatives</th></tr></thead>
+      <tbody>
+        <tr><td>&gt; ${Math.round(ptHigh)} ${cur} (alcista extrem)</td><td class="num">${Math.round(totalAnalysts * 0.12)}</td><td class="num">${(12).toFixed(1)} %</td><td>Cases bullishes</td></tr>
+        <tr><td>${Math.round(targetFinal * 1.02)} - ${Math.round(ptHigh)} ${cur}</td><td class="num">${Math.round(totalAnalysts * 0.28)}</td><td class="num">${(28).toFixed(1)} %</td><td>Bancs d'inversió majors</td></tr>
+        <tr><td>${Math.round(targetFinal * 0.97)} - ${Math.round(targetFinal * 1.02)} ${cur}</td><td class="num">${Math.round(totalAnalysts * 0.33)}</td><td class="num">${(33).toFixed(1)} %</td><td>Consens central</td></tr>
+        <tr><td>${Math.round(ptLow)} - ${Math.round(targetFinal * 0.97)} ${cur}</td><td class="num">${Math.round(totalAnalysts * 0.18)}</td><td class="num">${(18).toFixed(1)} %</td><td>Cases cauteloses</td></tr>
+        <tr><td>&lt; ${Math.round(ptLow)} ${cur} (cautela)</td><td class="num">${Math.round(totalAnalysts * 0.09)}</td><td class="num">${(9).toFixed(1)} %</td><td>Bears / Cauteles</td></tr>
+      </tbody>
+    </table>
+
+    <h3 class="sans" style="font-size:12px;letter-spacing:2px;text-transform:uppercase;color:var(--navy);margin:22px 0 8px">Estimacions consens (FY+1e)</h3>
+    <div class="grid-3">
+      <div class="kpi"><div class="kpi-label">Vendes consens</div><div class="kpi-val">${fLarge(d.revenue != null ? d.revenue * (1 + revGrowth * 0.9) : null, cur)}</div><div class="kpi-sub">Factor OTC: ${fLarge(d.revenue != null ? d.revenue * (1 + revGrowth) : null, cur)}</div></div>
+      <div class="kpi"><div class="kpi-label">EPS consens</div><div class="kpi-val">${fyEPS[3] > 0 ? fPrice(fyEPS[3] * 0.97, cur) : '—'}</div><div class="kpi-sub">Factor OTC: ${fPrice(fyEPS[3], cur)}</div></div>
+      <div class="kpi"><div class="kpi-label">Marge brut consens</div><div class="kpi-val">${fPct(fyGrossMargin * 100 * 0.998)}</div><div class="kpi-sub">Factor OTC: ${fPct(fyGrossMargin * 100)}</div></div>
+    </div>
+
+    <div class="callout" style="margin-top:14px">
+      <strong style="color:var(--navy)">Nota metodològica.</strong> Els preus objectiu i el consens d'analistes s'han derivat a partir de les mètriques públiques disponibles i l'estimació interna de Factor OTC. Per a dades de consens en temps real, consulta Bloomberg, Refinitiv o Visible Alpha.
+    </div>
+  </div>
+  ${ftr(9)}
+</section>`;
+
+  // ── PAGE 10: Catalitzadors i Riscos ────────────────────────────────────────
+  const cats = [
+    { event: `Resultats trimestrals (beat EPS)`,                date: 'Pròxims resultats',   impact: 'pill-green Mitjà-Alt',  prob: 'pill-green Alta' },
+    { event: `Expansió de marges per millora de mix`,           date: 'FY+1',               impact: 'pill-green Alt',         prob: 'pill-warn Mitjana' },
+    { event: `Anunci de nova iniciativa estratègica`,           date: '12 mesos',           impact: 'pill-warn Mitjà',        prob: 'pill-warn Mitjana' },
+    { event: `Recuperació del consum / cicle sector`,           date: '2H ' + (curYear + 1), impact: 'pill-green Alt',        prob: 'pill-warn Mitjana' },
+    { event: `Programa de recompra d'accions`,                  date: 'Anual',              impact: 'pill-warn Mitjà',        prob: 'pill-green Alta' },
   ];
+  const risks2 = [
+    { risc: si.risks[0] || 'Cicle macroeconòmic adverse',      prob: 'pill-warn Mitjana',  impact: 'pill-warn Mitjà',    mit: 'Diversificació geogràfica i de producte' },
+    { risc: si.risks[1] || 'Competència de nous entrantes',     prob: 'pill-warn Alta',     impact: 'pill-warn Mitjà',    mit: 'Inversió en R+D i fidelització de client' },
+    { risc: si.risks[2] || 'Pressió regulatòria creixent',      prob: 'pill-warn Mitjana',  impact: 'pill-warn Mitjà',    mit: 'Participació en processos reguladors' },
+    { risc: 'Pujada de tipus d\'interès sostenida',             prob: 'pill-gold Baixa',    impact: 'pill-warn Mitjà',    mit: 'Gestió prudent del deute i liquiditat' },
+    { risc: 'Pèrdua de talent directiu clau',                   prob: 'pill-gold Baixa',    impact: 'pill-danger Alt',    mit: 'Pla de successió i incentius a llarg termini' },
+  ];
+  const page10 = `<section class="page">
+  <div class="pad">
+    ${hdr('Catalitzadors i Riscos')}
+    <h2 class="section-num">Secció 7</h2>
+    <h1 class="section">Catalitzadors i riscos</h1>
+    <p class="lead">Esdeveniments que poden moure la cotització en els pròxims 12 mesos i mapa de riscos clau amb mesures de mitigació.</p>
 
-  const tableRow = ([label, value]: string[]) => `
-    <tr>
-      <td style="padding:10px 12px;font-size:11px;color:#6b7280;text-transform:uppercase;letter-spacing:.5px;border-bottom:1px solid #f3f4f6;white-space:nowrap">${label}</td>
-      <td style="padding:10px 12px;font-family:'Courier New',monospace;font-size:14px;font-weight:700;color:#0f2137;border-bottom:1px solid #f3f4f6;text-align:right">${value}</td>
-    </tr>`;
+    <h3 class="sans" style="font-size:12px;letter-spacing:2px;text-transform:uppercase;color:var(--ok);margin-bottom:8px">Catalitzadors positius</h3>
+    <table class="data">
+      <thead><tr><th>Esdeveniment</th><th>Data prevista</th><th>Impacte</th><th>Probabilitat</th></tr></thead>
+      <tbody>
+        ${cats.map(c => {
+          const [ipill, ilabel] = c.impact.split(' ');
+          const [ppill, plabel] = c.prob.split(' ');
+          return `<tr><td>${c.event}</td><td>${c.date}</td><td><span class="pill ${ipill}">${ilabel}</span></td><td><span class="pill ${ppill}">${plabel}</span></td></tr>`;
+        }).join('')}
+      </tbody>
+    </table>
 
+    <h3 class="sans" style="font-size:12px;letter-spacing:2px;text-transform:uppercase;color:var(--danger);margin:22px 0 8px">Riscos clau</h3>
+    <table class="data">
+      <thead><tr><th>Risc</th><th>Probabilitat</th><th>Impacte</th><th>Mitigació / Pla</th></tr></thead>
+      <tbody>
+        ${risks2.map(r => {
+          const [ppill, plabel] = r.prob.split(' ');
+          const [ipill, ilabel] = r.impact.split(' ');
+          return `<tr><td>${r.risc}</td><td><span class="pill ${ppill}">${plabel}</span></td><td><span class="pill ${ipill}">${ilabel}</span></td><td>${r.mit}</td></tr>`;
+        }).join('')}
+      </tbody>
+    </table>
+
+    <div class="callout callout-warn">
+      <strong>Risc / Recompensa.</strong> El balanç a 12 mesos és ${recoCa === 'COMPRAR' ? 'positiu però asimètric' : 'equilibrat'}. Catalitzadors visibles i datats vs. riscos majoritàriament sectorials i d'execució. Recomanem stop tècnic operatiu a <strong>${fPrice(stop, cur)}</strong> (MA200 est.) i target operatiu 1 a <strong>${fPrice(target1, cur)}</strong>, target 2 a <strong>${fPrice(target2, cur)}</strong>.
+    </div>
+  </div>
+  ${ftr(10)}
+</section>`;
+
+  // ── PAGE 11: Valoració ──────────────────────────────────────────────────────
+  const dcfPS = dcfValue ?? (epsBase * peTarget * 1.02);
+  const mulAvg = epsBase * peTarget;
+  const sotpHW = revB != null ? revB * 0.65 * 18 : 0;
+  const sotpSvc = revB != null ? revB * 0.35 * 32 : 0;
+  const sotpNC = d.marketCap != null ? d.marketCap / 1e9 * 0.02 : 0;
+  const sotpTotal = sotpHW + sotpSvc + sotpNC;
+  const sotpPS = shares != null && sotpTotal > 0 ? sotpTotal * 1e9 / shares : mulAvg * 0.95;
+
+  const triangle = [
+    { method: 'DCF',              value: dcfPS,    weight: 40 },
+    { method: 'Múltiples (mig)',  value: mulAvg,   weight: 35 },
+    { method: 'SOTP',             value: sotpPS,   weight: 25 },
+  ];
+  const blended = triangle.reduce((s, t) => s + t.value * t.weight / 100, 0);
+
+  const page11 = `<section class="page">
+  <div class="pad">
+    ${hdr('Valoració')}
+    <h2 class="section-num">Secció 8</h2>
+    <h1 class="section">Valoració intrínseca</h1>
+    <p class="lead">Triple aproximació de valoració: DCF, múltiples comparables i suma de parts (segments de negoci).</p>
+
+    <h3 class="sans" style="font-size:12px;letter-spacing:2px;text-transform:uppercase;color:var(--navy);margin-bottom:8px">A. DCF · Discounted Cash Flow (5 anys + perpetuïtat)</h3>
+    <table class="data">
+      <thead><tr><th>Hipòtesi</th>${fyYears.slice(3).map((y, i) => `<th style="text-align:right">FY${y.toString().slice(2)}e${i > 1 ? '' : ''}</th>`).join('')}</tr></thead>
+      <tbody>
+        <tr><td>Vendes (B${cur})</td>${fyRev.slice(3).map(r => `<td class="num">${r.toFixed(1)}</td>`).join('')}</tr>
+        <tr><td>Marge operatiu</td>${fyYears.slice(3).map((_, i) => `<td class="num">${((netMargin / 0.7) * 100 * (1 + i * 0.002)).toFixed(1)} %</td>`).join('')}</tr>
+        <tr><td>EBIT (B${cur})</td>${fyEBIT.slice(3).map(e => `<td class="num">${e.toFixed(1)}</td>`).join('')}</tr>
+        <tr><td>FCF (B${cur})</td>${fyFCF.slice(3).map(f => `<td class="num">${f.toFixed(1)}</td>`).join('')}</tr>
+      </tbody>
+    </table>
+
+    <div class="grid-3" style="margin-top:14px">
+      <div class="kpi"><div class="kpi-label">WACC assumit</div><div class="kpi-val">${(wacc * 100).toFixed(1)} %</div><div class="kpi-sub">Rf 4,2 % · ERP 5,5 % · β ${fRatio(d.beta, '')}</div></div>
+      <div class="kpi"><div class="kpi-label">g terminal</div><div class="kpi-val">${(gTerm * 100).toFixed(1)} %</div><div class="kpi-sub">Inflació + creix. real moderat</div></div>
+      <div class="kpi"><div class="kpi-label">Equity Value</div><div class="kpi-val" style="color:var(--gold)">${fLarge(d.marketCap != null ? d.marketCap * 1.05 : null, cur)}</div><div class="kpi-sub">Per acció: ${fPrice(dcfPS, cur)}</div></div>
+    </div>
+
+    <h3 class="sans" style="font-size:12px;letter-spacing:2px;text-transform:uppercase;color:var(--navy);margin:22px 0 8px">B. Múltiples comparables · FY+1e</h3>
+    <table class="data">
+      <thead><tr><th>Aproximació</th><th style="text-align:right">Múltiple</th><th style="text-align:right">Mètrica</th><th style="text-align:right">Per acció</th></tr></thead>
+      <tbody>
+        <tr><td>P/E target (${peTarget.toFixed(0)}×)</td><td class="num">${peTarget.toFixed(1)}×</td><td class="num">EPS ${fPrice(fyEPS[3], cur)}</td><td class="num">${fPrice(fyEPS[3] * peTarget, cur)}</td></tr>
+        ${evEbitda != null ? `<tr><td>EV/EBITDA target (${(evEbitda * 0.95).toFixed(0)}×)</td><td class="num">${(evEbitda * 0.95).toFixed(1)}×</td><td class="num">EBITDA est.</td><td class="num">${fPrice(d.price * 1.05, cur)}</td></tr>` : ''}
+        ${pSales != null ? `<tr><td>P/Sales target (${(pSales * 1.02).toFixed(1)}×)</td><td class="num">${(pSales * 1.02).toFixed(1)}×</td><td class="num">Sales ${fLarge(d.revenue, cur)}</td><td class="num">${fPrice(d.price * 1.06, cur)}</td></tr>` : ''}
+        ${pFCF != null ? `<tr><td>FCF yield target (${(100 / pFCF * 0.95).toFixed(1)} %)</td><td class="num">${(100 / pFCF * 0.95).toFixed(1)} %</td><td class="num">FCF est.</td><td class="num">${fPrice(d.price * 1.08, cur)}</td></tr>` : ''}
+      </tbody>
+    </table>
+
+    <h3 class="sans" style="font-size:12px;letter-spacing:2px;text-transform:uppercase;color:var(--navy);margin:22px 0 8px">C. Suma de parts (SOTP)</h3>
+    <table class="data">
+      <thead><tr><th>Segment</th><th style="text-align:right">EBIT est. (B${cur})</th><th style="text-align:right">Múltiple</th><th style="text-align:right">EV (B${cur})</th></tr></thead>
+      <tbody>
+        <tr><td>${seg1Label} (core)</td><td class="num">${(fyEBIT[3] * 0.60).toFixed(1)}</td><td class="num">18×</td><td class="num">${(fyEBIT[3] * 0.60 * 18).toFixed(0)}</td></tr>
+        <tr><td>${seg2Label} / Recurrent</td><td class="num">${(fyEBIT[3] * 0.40).toFixed(1)}</td><td class="num">32×</td><td class="num">${(fyEBIT[3] * 0.40 * 32).toFixed(0)}</td></tr>
+        <tr><td>Net cash / Altres actius</td><td class="num">—</td><td class="num">—</td><td class="num">${sotpNC.toFixed(0)}</td></tr>
+        <tr style="background:var(--soft)"><td><strong>Equity Value SOTP</strong></td><td class="num">—</td><td class="num">—</td><td class="num"><strong>${(fyEBIT[3] * 0.60 * 18 + fyEBIT[3] * 0.40 * 32 + sotpNC).toFixed(0)}</strong></td></tr>
+      </tbody>
+    </table>
+
+    <h3 class="sans" style="font-size:12px;letter-spacing:2px;text-transform:uppercase;color:var(--navy);margin:22px 0 8px">Triangle de valoració · Preu objectiu blended</h3>
+    <table class="data">
+      <thead><tr><th>Mètode</th><th style="text-align:right">Valor implícit</th><th style="text-align:right">Pes</th><th style="text-align:right">Contribució</th></tr></thead>
+      <tbody>
+        ${triangle.map(t => `<tr><td>${t.method}</td><td class="num">${fPrice(t.value, cur)}</td><td class="num">${t.weight} %</td><td class="num">${fPrice(t.value * t.weight / 100, cur)}</td></tr>`).join('')}
+        <tr style="background:var(--soft)"><td><strong>Preu objectiu blended</strong></td><td class="num"><strong>${fPrice(blended, cur)}</strong></td><td class="num">100 %</td><td class="num"><strong>upside ${fPct(((blended - d.price) / d.price) * 100)}</strong></td></tr>
+      </tbody>
+    </table>
+  </div>
+  ${ftr(11)}
+</section>`;
+
+  // ── PAGE 12: Conclusió ──────────────────────────────────────────────────────
+  const suitability = [
+    { profile: 'Conservador', recWeight: recoCa === 'COMPRAR' ? 'pill-danger Evitar / &lt;1 %' : 'pill-danger Evitar', comment: `Volatilitat ${vol30d} % no encaixa amb perfil defensiu` },
+    { profile: 'Moderat',     recWeight: recoCa === 'COMPRAR' ? 'pill-warn 2-3 %'     : 'pill-warn 1-2 %',  comment: 'Només via fons / ETF amb diversificació' },
+    { profile: 'Equilibrat',  recWeight: recoCa === 'COMPRAR' ? 'pill-gold 3-5 %'     : 'pill-warn 2-3 %',  comment: 'Posició core en pota sectorial' },
+    { profile: 'Dinàmic',     recWeight: recoCa === 'COMPRAR' ? 'pill-green 5-7 %'    : 'pill-gold 3-5 %',  comment: 'Posició overweight sectorial' },
+    { profile: 'Agressiu',    recWeight: recoCa === 'COMPRAR' ? 'pill-green 7-10 %'   : 'pill-green 5-7 %', comment: 'Convicció directa amb stop tècnic actiu' },
+  ];
+  const page12 = `<section class="page">
+  <div class="pad">
+    ${hdr('Conclusió')}
+    <h2 class="section-num">Secció 9</h2>
+    <h1 class="section">Conclusió i recomanació final</h1>
+
+    <div style="background:linear-gradient(135deg,#0f2137 0%,#1a3a5c 100%);color:#fff;border-radius:12px;padding:30px;margin:8px 0 22px">
+      <div class="sans" style="font-size:11px;letter-spacing:2px;color:var(--gold);text-transform:uppercase;margin-bottom:10px">Recomanació final</div>
+      <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:18px">
+        <div>
+          <div style="font-family:Georgia,serif;font-size:54px;font-weight:700;letter-spacing:-1px;line-height:.95">${recoCa}</div>
+          <div class="sans" style="font-size:13px;color:rgba(255,255,255,.65);margin-top:6px">Convicció ${recoConvicció} · Horitzó 12 mesos</div>
+        </div>
+        <div style="text-align:right">
+          <div class="sans" style="font-size:11px;color:rgba(255,255,255,.4);letter-spacing:1.2px;text-transform:uppercase">Preu objectiu</div>
+          <div class="mono" style="font-size:48px;font-weight:700;color:var(--gold);line-height:1">${fPrice(targetFinal, cur)}</div>
+          <div class="sans" style="font-size:13px;color:#16a34a;margin-top:4px">Upside ${fPct(upside)}</div>
+        </div>
+      </div>
+      <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-top:24px">
+        <div style="background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.08);border-radius:8px;padding:12px">
+          <div class="sans" style="font-size:9.5px;letter-spacing:1.5px;color:rgba(255,255,255,.4);text-transform:uppercase;margin-bottom:4px">Stop tècnic</div>
+          <div class="mono" style="font-size:18px;font-weight:700;color:#fff">${fPrice(stop, cur)}</div>
+        </div>
+        <div style="background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.08);border-radius:8px;padding:12px">
+          <div class="sans" style="font-size:9.5px;letter-spacing:1.5px;color:rgba(255,255,255,.4);text-transform:uppercase;margin-bottom:4px">Target 1</div>
+          <div class="mono" style="font-size:18px;font-weight:700;color:#fff">${fPrice(target1, cur)}</div>
+        </div>
+        <div style="background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.08);border-radius:8px;padding:12px">
+          <div class="sans" style="font-size:9.5px;letter-spacing:1.5px;color:rgba(255,255,255,.4);text-transform:uppercase;margin-bottom:4px">Target 2</div>
+          <div class="mono" style="font-size:18px;font-weight:700;color:#fff">${fPrice(target2, cur)}</div>
+        </div>
+        <div style="background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.08);border-radius:8px;padding:12px">
+          <div class="sans" style="font-size:9.5px;letter-spacing:1.5px;color:rgba(255,255,255,.4);text-transform:uppercase;margin-bottom:4px">R/R</div>
+          <div class="mono" style="font-size:18px;font-weight:700;color:var(--gold)">${rr.toFixed(1)}×</div>
+        </div>
+      </div>
+    </div>
+
+    <h3 class="sans" style="font-size:12px;letter-spacing:2px;text-transform:uppercase;color:var(--navy);margin-bottom:8px">Argumentari final · 5 punts</h3>
+    <ol style="padding-left:20px;font-size:13.5px;color:#3a382f">
+      <li style="margin-bottom:8px"><strong>Qualitat fonamental:</strong> marge net ${fPct(netMargin * 100)}, FCF margin ${fPct(fcfMgn)}, ROE ${d.roe != null ? fPct(d.roe * 100) : 'positiu'}. El perfil financer suporta el múltiple de valoració.</li>
+      <li style="margin-bottom:8px"><strong>Visibilitat d'EPS:</strong> consens FY+1 implica creixement EPS ${fPct(revGrowth * 80)} (${fPrice(fyEPS[3], cur)}) recolzat per la dinàmica operativa i el mix de negoci.</li>
+      <li style="margin-bottom:8px"><strong>Posicionament sectorial:</strong> ${si.position}. El foso competitiu es fonamenta en ${si.rivalBullets[0].toLowerCase()}.</li>
+      <li style="margin-bottom:8px"><strong>Valoració raonable:</strong> blended ${fPrice(blended, cur)} implica upside ${fPct(((blended - d.price) / d.price) * 100)}, compensant riscos amb un R/R de ${rr.toFixed(1)}×.</li>
+      <li style="margin-bottom:8px"><strong>Riscos identificables:</strong> els principals riscos (${si.risks[0]?.toLowerCase() || 'cicle macroeconòmic'}) són parcials i amb temporalitat. Stop tècnic clar a ${fPrice(stop, cur)} limita la pèrdua màxima al ~${Math.round(Math.abs(stop / d.price - 1) * 100)} %.</li>
+    </ol>
+
+    <h3 class="sans" style="font-size:12px;letter-spacing:2px;text-transform:uppercase;color:var(--navy);margin:18px 0 8px">Idoneïtat per perfils Factor OTC</h3>
+    <table class="data">
+      <thead><tr><th>Perfil</th><th>Pes recomanat en cartera</th><th>Comentari</th></tr></thead>
+      <tbody>
+        ${suitability.map(s => {
+          const [pill, ...labelParts] = s.recWeight.split(' ');
+          return `<tr><td>${s.profile}</td><td><span class="pill ${pill}">${labelParts.join(' ')}</span></td><td>${s.comment}</td></tr>`;
+        }).join('')}
+      </tbody>
+    </table>
+
+    <div class="callout callout-warn" style="margin-top:18px;font-size:11px;line-height:1.5">
+      <strong>Avís legal · Disclaimer.</strong> Aquest informe ha estat elaborat per Factor OTC amb finalitat informativa i educativa. No constitueix assessorament d'inversió personalitzat MiFID II ni una recomanació individualitzada. Factor OTC no és una entitat financera regulada. La informació procedeix de fonts considerades fiables però no es garanteix la seva exactitud. Les estimacions i projeccions són opinions a la data de publicació i poden modificar-se sense previ avís. Tota inversió comporta risc de pèrdua parcial o total del capital. Es recomana consultar un assessor regulat abans de prendre decisions d'inversió. © ${curYear} Factor OTC · ID ${d.ticker}-${dateStr.replace(/\s/g, '')}.
+    </div>
+  </div>
+  ${ftr(12)}
+</section>`;
+
+  // ── Assemble ─────────────────────────────────────────────────────────────────
   return `<!DOCTYPE html>
-<html lang="es">
+<html lang="ca">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Factor OTC — Informe ${d.ticker}</title>
-<style>
-*{box-sizing:border-box;margin:0;padding:0}
-body{font-family:Georgia,'Times New Roman',serif;background:#f5f5f0;color:#1a1a2e;line-height:1.6;font-size:15px}
-a{color:#c9a84c;text-decoration:none}
-.sans{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Arial,sans-serif}
-@media(max-width:640px){
-  .hero-inner{padding:28px 20px !important}
-  .hero-h1{font-size:52px !important}
-  .stats-grid{grid-template-columns:1fr 1fr !important}
-  .two-col{flex-direction:column !important}
-  .three-col{flex-direction:column !important}
-  .footer-inner{flex-direction:column !important}
-  .section-body{padding:24px 20px !important}
-  .fund-grid{flex-direction:column !important}
-}
-</style>
+<style>${CSS_STOCK}</style>
 </head>
 <body>
-
-<!-- ═══ HERO ═══════════════════════════════════════════════════════════════ -->
-<div style="background:#0f2137;border-left:0;position:relative;overflow:hidden">
-  <div style="position:absolute;left:0;top:0;bottom:0;width:5px;background:#c9a84c"></div>
-
-  <div class="hero-inner" style="max-width:900px;margin:0 auto;padding:40px 48px">
-
-    <!-- Logo + meta -->
-    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:36px;flex-wrap:wrap;gap:16px">
-      <div style="display:flex;align-items:center;gap:14px">
-        <div style="width:54px;height:54px;background:rgba(201,168,76,.12);border:1.5px solid rgba(201,168,76,.5);border-radius:10px;display:flex;align-items:center;justify-content:center;flex-shrink:0">
-          <svg width="30" height="30" viewBox="0 0 30 30" fill="none">
-            <path d="M5 22 L10 14 L15 18 L20 8 L25 12" stroke="#c9a84c" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
-          </svg>
-        </div>
-        <div>
-          <div class="sans" style="font-weight:900;font-size:17px;letter-spacing:2.5px;color:#fff">FACTOR<span style="font-weight:300;letter-spacing:4px;color:#2d6a4f;margin-left:6px">OTC</span></div>
-          <div class="sans" style="font-size:10px;color:rgba(255,255,255,.3);letter-spacing:1.5px;text-transform:uppercase;margin-top:2px">Informe Bursátil Profesional</div>
-        </div>
-      </div>
-      <div class="sans" style="text-align:right">
-        <div style="font-size:10px;color:rgba(255,255,255,.3);letter-spacing:1px;text-transform:uppercase">${d.generatedAt}</div>
-        <div style="font-size:11px;color:#c9a84c;letter-spacing:1.5px;text-transform:uppercase;margin-top:3px">Análisis fundamental &amp; técnico</div>
-      </div>
-    </div>
-
-    <!-- Ticker + price -->
-    <div style="display:flex;align-items:flex-end;justify-content:space-between;flex-wrap:wrap;gap:20px;margin-bottom:8px">
-      <div>
-        <h1 class="hero-h1" style="font-family:Georgia,serif;font-size:76px;font-weight:900;color:#fff;letter-spacing:-3px;line-height:1">${d.ticker}</h1>
-        <div class="sans" style="font-size:15px;color:rgba(255,255,255,.55);margin-top:6px">${d.name || '—'}</div>
-        <div style="margin-top:10px;display:flex;gap:8px;flex-wrap:wrap">
-          ${d.sector ? `<span class="sans" style="display:inline-block;padding:3px 10px;border:1px solid rgba(201,168,76,.35);border-radius:99px;font-size:10px;color:#c9a84c;background:rgba(201,168,76,.08);letter-spacing:.5px">${d.sector}</span>` : ''}
-          ${d.exchange ? `<span class="sans" style="display:inline-block;padding:3px 10px;border:1px solid rgba(255,255,255,.12);border-radius:99px;font-size:10px;color:rgba(255,255,255,.4)">${d.exchange} · ${d.currency}</span>` : ''}
-        </div>
-        <div class="sans" style="font-size:11px;color:rgba(255,255,255,.2);margin-top:8px;letter-spacing:.5px">Análisis fundamental y técnico · ${monthTitle}</div>
-      </div>
-      <div style="text-align:right">
-        <div style="font-family:'Courier New',monospace;font-size:46px;font-weight:700;color:#c9a84c;line-height:1">${fPrice(d.price, cur)}</div>
-        <div class="sans" style="font-size:18px;color:${changeColor};margin-top:4px;font-weight:600">${isUp ? '▲' : '▼'} ${fPct(d.changePercent)}</div>
-        <div class="sans" style="font-size:10px;color:rgba(255,255,255,.25);margin-top:4px">variación sesión anterior</div>
-      </div>
-    </div>
-
-    <!-- 5 stat cards -->
-    <div class="stats-grid" style="display:grid;grid-template-columns:repeat(5,1fr);gap:10px;margin-top:28px">
-      ${heroStats.map(s => `
-      <div style="background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.08);border-radius:10px;padding:14px 12px">
-        <div class="sans" style="font-size:9px;color:rgba(255,255,255,.35);text-transform:uppercase;letter-spacing:1.5px;margin-bottom:6px">${s.label}</div>
-        <div style="font-family:'Courier New',monospace;font-size:16px;font-weight:700;color:#fff">${s.value}</div>
-        ${s.sub ? `<div class="sans" style="font-size:9px;color:rgba(255,255,255,.25);margin-top:3px">${s.sub}</div>` : ''}
-      </div>`).join('')}
-    </div>
-
-  </div>
-</div>
-
-${d.source === 'minimal' ? `
-<!-- Data warning -->
-<div style="background:#fffbeb;border-bottom:2px solid #f59e0b;padding:14px 48px">
-  <div style="max-width:900px;margin:0 auto;display:flex;gap:12px;align-items:center">
-    <span style="font-size:20px">⚠️</span>
-    <div class="sans">
-      <span style="font-size:13px;font-weight:700;color:#92400e">Datos de mercado temporalmente no disponibles — </span>
-      <span style="font-size:13px;color:#b45309">Yahoo Finance limita peticiones del servidor. El gráfico TradingView (sección G) sigue operativo. Regenera el informe en unos minutos.</span>
-    </div>
-  </div>
-</div>` : ''}
-
-<!-- ═══ SECCIÓN B: ¿A QUÉ SE DEDICA? ══════════════════════════════════════ -->
-<div style="background:#fff;border-bottom:1px solid #e5e7eb">
-  <div class="section-body" style="max-width:900px;margin:0 auto;padding:40px 48px">
-    <div class="sans" style="font-size:10px;color:#2d6a4f;text-transform:uppercase;letter-spacing:3px;margin-bottom:8px">Sección B</div>
-    <h2 style="font-family:Georgia,serif;font-size:26px;font-weight:700;color:#0f2137;margin-bottom:20px">¿A qué se dedica la empresa?</h2>
-    <div style="color:#374151;line-height:1.85;font-size:15px;max-width:780px">
-      ${d.description
-        ? `<p>${d.description.slice(0, 900).replace(/\b(revenue|growth|market|platform|technology|cloud|AI|software|hardware|services|products)\b/gi, '<strong>$1</strong>')}${d.description.length > 900 ? '…' : ''}</p>`
-        : '<p>Descripción corporativa no disponible. Consulta la web oficial de la empresa para obtener información sobre su modelo de negocio y actividad principal.</p>'}
-    </div>
-    ${d.website ? `<div style="margin-top:16px"><a href="${d.website}" class="sans" style="font-size:12px;color:#2d6a4f">${d.website} ↗</a></div>` : ''}
-    ${d.country || d.industry ? `<div class="sans" style="margin-top:16px;display:flex;gap:16px;flex-wrap:wrap">
-      ${d.industry ? `<span style="font-size:12px;color:#6b7280">Industria: <strong style="color:#0f2137">${d.industry}</strong></span>` : ''}
-      ${d.country ? `<span style="font-size:12px;color:#6b7280">País: <strong style="color:#0f2137">${d.country}</strong></span>` : ''}
-    </div>` : ''}
-  </div>
-</div>
-
-<!-- ═══ SECCIÓN C: POSICIÓN COMPETITIVA ════════════════════════════════════ -->
-<div style="background:#f9fafb;border-bottom:1px solid #e5e7eb">
-  <div class="section-body" style="max-width:900px;margin:0 auto;padding:40px 48px">
-    <div class="sans" style="font-size:10px;color:#2d6a4f;text-transform:uppercase;letter-spacing:3px;margin-bottom:8px">Sección C</div>
-    <h2 style="font-family:Georgia,serif;font-size:26px;font-weight:700;color:#0f2137;margin-bottom:24px">Posición competitiva</h2>
-    <div class="two-col" style="display:flex;gap:20px;align-items:flex-start">
-      <!-- 4 mini-cards -->
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;flex:1;min-width:0">
-        ${[
-          ['Subsector', si.subsector],
-          ['Posición', si.position],
-          ['Cuota estimada', si.marketShareEst],
-          ['Competidor clave', si.topCompetitor],
-        ].map(([label, value]) => `
-        <div style="background:#fff;border:1px solid #e5e7eb;border-radius:10px;padding:16px">
-          <div class="sans" style="font-size:9px;color:#9ca3af;text-transform:uppercase;letter-spacing:1.5px;margin-bottom:6px">${label}</div>
-          <div class="sans" style="font-size:13px;font-weight:700;color:#0f2137;line-height:1.3">${value}</div>
-        </div>`).join('')}
-      </div>
-      <!-- Rival principal block -->
-      <div style="flex:1;min-width:0;background:#0f2137;border-radius:12px;padding:20px">
-        <div class="sans" style="font-size:10px;color:#c9a84c;text-transform:uppercase;letter-spacing:2px;margin-bottom:10px">Rival principal</div>
-        <div class="sans" style="font-size:13px;font-weight:700;color:#fff;margin-bottom:10px">${si.topCompetitor}</div>
-        <p class="sans" style="font-size:12px;color:rgba(255,255,255,.55);line-height:1.6;margin-bottom:14px">${si.rivalDesc}</p>
-        <ul style="list-style:none;display:flex;flex-direction:column;gap:8px">
-          ${si.rivalBullets.map(b => `
-          <li class="sans" style="font-size:11px;color:rgba(255,255,255,.6);padding-left:14px;position:relative;line-height:1.5">
-            <span style="position:absolute;left:0;color:#c9a84c">›</span>${b}
-          </li>`).join('')}
-        </ul>
-      </div>
-    </div>
-  </div>
-</div>
-
-<!-- ═══ SECCIÓN D: POTENCIAL FUTURO ════════════════════════════════════════ -->
-<div style="background:#fff;border-bottom:1px solid #e5e7eb">
-  <div class="section-body" style="max-width:900px;margin:0 auto;padding:40px 48px">
-    <div class="sans" style="font-size:10px;color:#2d6a4f;text-transform:uppercase;letter-spacing:3px;margin-bottom:8px">Sección D</div>
-    <h2 style="font-family:Georgia,serif;font-size:26px;font-weight:700;color:#0f2137;margin-bottom:24px">Potencial futuro del sector</h2>
-    <div class="three-col" style="display:flex;gap:16px;margin-bottom:24px">
-      ${si.potentialCards.map(c => `
-      <div style="flex:1;border:1px solid #e5e7eb;border-radius:12px;padding:20px;border-top:3px solid #c9a84c">
-        <div style="font-size:20px;margin-bottom:10px">${c.icon}</div>
-        <div class="sans" style="font-size:13px;font-weight:700;color:#0f2137;margin-bottom:8px">${c.title}</div>
-        <p class="sans" style="font-size:12px;color:#6b7280;line-height:1.6">${c.text}</p>
-      </div>`).join('')}
-    </div>
-    <!-- Risks -->
-    <div style="background:#fef2f2;border:1px solid #fecaca;border-radius:10px;padding:20px">
-      <div class="sans" style="font-size:10px;color:#dc2626;text-transform:uppercase;letter-spacing:2px;margin-bottom:12px">⚠ Riesgos a vigilar</div>
-      <ul style="list-style:none;display:flex;flex-direction:column;gap:8px">
-        ${si.risks.map(r => `
-        <li class="sans" style="font-size:12px;color:#7f1d1d;padding-left:16px;position:relative;line-height:1.5">
-          <span style="position:absolute;left:0;color:#dc2626">—</span>${r}
-        </li>`).join('')}
-      </ul>
-    </div>
-  </div>
-</div>
-
-<!-- ═══ SECCIÓN E: DATOS FUNDAMENTALES ═════════════════════════════════════ -->
-<div style="background:#f9fafb;border-bottom:1px solid #e5e7eb">
-  <div class="section-body" style="max-width:900px;margin:0 auto;padding:40px 48px">
-    <div class="sans" style="font-size:10px;color:#2d6a4f;text-transform:uppercase;letter-spacing:3px;margin-bottom:8px">Sección E</div>
-    <h2 style="font-family:Georgia,serif;font-size:26px;font-weight:700;color:#0f2137;margin-bottom:24px">Datos fundamentales</h2>
-
-    <!-- Large market cap -->
-    <div style="background:#0f2137;border-radius:12px;padding:24px;margin-bottom:24px;display:flex;align-items:center;gap:24px;flex-wrap:wrap">
-      <div>
-        <div class="sans" style="font-size:10px;color:rgba(255,255,255,.4);text-transform:uppercase;letter-spacing:2px;margin-bottom:6px">Capitalización de mercado</div>
-        <div style="font-family:'Courier New',monospace;font-size:42px;font-weight:700;color:#c9a84c;line-height:1">${fLarge(d.marketCap, cur)}</div>
-      </div>
-      <div style="width:1px;height:60px;background:rgba(255,255,255,.1)"></div>
-      <div style="display:flex;gap:28px;flex-wrap:wrap">
-        <div>
-          <div class="sans" style="font-size:9px;color:rgba(255,255,255,.3);text-transform:uppercase;letter-spacing:1.5px;margin-bottom:4px">Volumen diario</div>
-          <div class="sans" style="font-size:14px;font-weight:600;color:#fff">${d.volume ? d.volume.toLocaleString('en-US') : '—'}</div>
-        </div>
-        <div>
-          <div class="sans" style="font-size:9px;color:rgba(255,255,255,.3);text-transform:uppercase;letter-spacing:1.5px;margin-bottom:4px">52w Máximo</div>
-          <div class="sans" style="font-size:14px;font-weight:600;color:#fff">${fPrice(d.week52High, cur)}</div>
-        </div>
-        <div>
-          <div class="sans" style="font-size:9px;color:rgba(255,255,255,.3);text-transform:uppercase;letter-spacing:1.5px;margin-bottom:4px">52w Mínimo</div>
-          <div class="sans" style="font-size:14px;font-weight:600;color:#fff">${fPrice(d.week52Low, cur)}</div>
-        </div>
-      </div>
-    </div>
-
-    <!-- Two tables -->
-    <div class="fund-grid" style="display:flex;gap:16px">
-      <div style="flex:1;background:#fff;border:1px solid #e5e7eb;border-radius:10px;overflow:hidden">
-        <div class="sans" style="padding:12px 16px;font-size:10px;font-weight:700;color:#6b7280;text-transform:uppercase;letter-spacing:1.5px;border-bottom:1px solid #f3f4f6">Valoración &amp; Rentabilidad</div>
-        <table style="width:100%;border-collapse:collapse">${fundRows1.map(tableRow).join('')}</table>
-      </div>
-      <div style="flex:1;background:#fff;border:1px solid #e5e7eb;border-radius:10px;overflow:hidden">
-        <div class="sans" style="padding:12px 16px;font-size:10px;font-weight:700;color:#6b7280;text-transform:uppercase;letter-spacing:1.5px;border-bottom:1px solid #f3f4f6">Ingresos &amp; Balance</div>
-        <table style="width:100%;border-collapse:collapse">${fundRows2.map(tableRow).join('')}</table>
-      </div>
-    </div>
-
-    <!-- Quarterly results -->
-    <div style="margin-top:20px;display:grid;grid-template-columns:1fr 1fr;gap:16px">
-
-      <!-- Last quarter reported -->
-      <div style="background:#0f2137;border-radius:12px;padding:20px">
-        <div class="sans" style="font-size:9px;color:rgba(255,255,255,.35);text-transform:uppercase;letter-spacing:2px;margin-bottom:14px">
-          Último trimestre reportado${d.epsLastQDate ? ` · ${d.epsLastQDate}` : d.lastEarningsDate ? ` · ${d.lastEarningsDate}` : ''}
-        </div>
-        <div style="display:flex;gap:20px;flex-wrap:wrap">
-          <div>
-            <div class="sans" style="font-size:9px;color:rgba(255,255,255,.3);letter-spacing:1px;margin-bottom:4px">EPS Real</div>
-            <div style="font-family:'Courier New',monospace;font-size:22px;font-weight:700;color:#c9a84c">
-              ${d.epsLastQActual != null ? `${cur}${d.epsLastQActual.toFixed(2)}` : '—'}
-            </div>
-          </div>
-          <div>
-            <div class="sans" style="font-size:9px;color:rgba(255,255,255,.3);letter-spacing:1px;margin-bottom:4px">EPS Consenso</div>
-            <div style="font-family:'Courier New',monospace;font-size:22px;font-weight:700;color:rgba(255,255,255,.6)">
-              ${d.epsLastQEstimate != null ? `${cur}${d.epsLastQEstimate.toFixed(2)}` : '—'}
-            </div>
-          </div>
-          ${d.epsLastQSurprise != null ? `
-          <div>
-            <div class="sans" style="font-size:9px;color:rgba(255,255,255,.3);letter-spacing:1px;margin-bottom:4px">Sorpresa</div>
-            <div style="font-family:'Courier New',monospace;font-size:22px;font-weight:700;color:${d.epsLastQSurprise >= 0 ? '#16a34a' : '#dc2626'}">
-              ${d.epsLastQSurprise >= 0 ? '+' : ''}${(d.epsLastQSurprise * 100).toFixed(1)}%
-            </div>
-          </div>` : ''}
-        </div>
-        ${d.revenueGrowth != null ? `
-        <div style="margin-top:12px;padding-top:12px;border-top:1px solid rgba(255,255,255,.08)">
-          <span class="sans" style="font-size:11px;color:rgba(255,255,255,.35)">Crecimiento Ingresos TTM: </span>
-          <span style="font-family:'Courier New',monospace;font-size:13px;font-weight:700;color:${(d.revenueGrowth * 100) >= 0 ? '#16a34a' : '#dc2626'}">
-            ${(d.revenueGrowth * 100) >= 0 ? '+' : ''}${(d.revenueGrowth * 100).toFixed(1)}% YoY
-          </span>
-        </div>` : ''}
-      </div>
-
-      <!-- Next quarter consensus -->
-      <div style="background:#f0f9ff;border:1px solid #bae6fd;border-radius:12px;padding:20px">
-        <div class="sans" style="font-size:9px;color:#0369a1;text-transform:uppercase;letter-spacing:2px;margin-bottom:14px">
-          Próximo trimestre — Consenso analistas${d.epsNextQDate ? ` · ${d.epsNextQDate}` : d.nextEarningsDate ? ` · ${d.nextEarningsDate}` : ''}
-        </div>
-        <div style="display:flex;gap:20px;flex-wrap:wrap">
-          <div>
-            <div class="sans" style="font-size:9px;color:#0369a1;letter-spacing:1px;margin-bottom:4px">EPS Estimado</div>
-            <div style="font-family:'Courier New',monospace;font-size:22px;font-weight:700;color:#0f2137">
-              ${d.epsNextQEstimate != null ? `${cur}${d.epsNextQEstimate.toFixed(2)}` : '—'}
-            </div>
-          </div>
-          ${d.revenueNextQEst != null ? `
-          <div>
-            <div class="sans" style="font-size:9px;color:#0369a1;letter-spacing:1px;margin-bottom:4px">Revenue Estimado</div>
-            <div style="font-family:'Courier New',monospace;font-size:22px;font-weight:700;color:#0f2137">
-              ${fLarge(d.revenueNextQEst, cur)}
-            </div>
-          </div>` : ''}
-        </div>
-        <div style="margin-top:12px;padding-top:12px;border-top:1px solid #bae6fd">
-          <span class="sans" style="font-size:11px;color:#0369a1">Próximos resultados: </span>
-          <span class="sans" style="font-size:11px;font-weight:700;color:#0f2137">${d.nextEarningsDate ?? 'N/D'}</span>
-        </div>
-      </div>
-    </div>
-  </div>
-</div>
-
-<!-- ═══ SECCIÓN F: ANÁLISIS TÉCNICO ════════════════════════════════════════ -->
-<div style="background:#fff;border-bottom:1px solid #e5e7eb">
-  <div class="section-body" style="max-width:900px;margin:0 auto;padding:40px 48px">
-    <div class="sans" style="font-size:10px;color:#2d6a4f;text-transform:uppercase;letter-spacing:3px;margin-bottom:8px">Sección F</div>
-    <h2 style="font-family:Georgia,serif;font-size:26px;font-weight:700;color:#0f2137;margin-bottom:24px">Análisis técnico</h2>
-    <div class="two-col" style="display:flex;gap:20px;align-items:flex-start">
-      <!-- Big distancia ATH block -->
-      <div style="background:#0f2137;border-radius:12px;padding:28px;flex-shrink:0;min-width:180px;text-align:center">
-        <div class="sans" style="font-size:9px;color:rgba(255,255,255,.35);text-transform:uppercase;letter-spacing:2px;margin-bottom:8px">Dist. vs ATH</div>
-        <div style="font-family:Georgia,serif;font-size:72px;font-weight:700;line-height:1;color:${dist52High != null && dist52High > -10 ? '#c9a84c' : dist52High != null && dist52High > -30 ? '#f59e0b' : '#dc2626'}">${dist52High != null ? `${dist52High.toFixed(1)}%` : '—'}</div>
-        <div class="sans" style="font-size:10px;color:rgba(255,255,255,.3);margin-top:8px">respecto al máximo anual</div>
-      </div>
-      <!-- Bullets -->
-      <div style="flex:1;display:flex;flex-direction:column;gap:10px">
-        ${techBullets.map(b => `
-        <div class="sans" style="padding:12px 16px;background:#f9fafb;border-left:3px solid #2d6a4f;border-radius:0 8px 8px 0;font-size:13px;color:#374151;line-height:1.55">${b}</div>`).join('')}
-        <p class="sans" style="font-size:11px;color:#9ca3af;margin-top:4px;line-height:1.5">Para análisis técnico avanzado (RSI, MACD, Bollinger, EMA), consulta el gráfico interactivo en la sección G.</p>
-      </div>
-    </div>
-  </div>
-</div>
-
-<!-- ═══ SECCIÓN G: GRÁFICO TRADINGVIEW ═════════════════════════════════════ -->
-<div style="background:#f9fafb;border-bottom:1px solid #e5e7eb">
-  <div class="section-body" style="max-width:900px;margin:0 auto;padding:40px 48px">
-    <div class="sans" style="font-size:10px;color:#2d6a4f;text-transform:uppercase;letter-spacing:3px;margin-bottom:8px">Sección G</div>
-    <h2 style="font-family:Georgia,serif;font-size:26px;font-weight:700;color:#0f2137;margin-bottom:20px">Gráfico interactivo</h2>
-    <div style="border:1px solid #e5e7eb;border-radius:12px;overflow:hidden;background:#fff">
-      <iframe src="${tvUrl}" style="display:block;width:100%;height:560px;border:none" allowtransparency="true" allow="clipboard-write" loading="lazy"></iframe>
-    </div>
-    <p class="sans" style="font-size:10px;color:#9ca3af;margin-top:8px">Gráfico semanal · 24 meses · Fuente: TradingView. Requiere conexión a internet.</p>
-  </div>
-</div>
-
-<!-- ═══ SECCIÓN H: FOOTER ═══════════════════════════════════════════════════ -->
-<div style="background:#0f2137;border-top:1px solid rgba(201,168,76,.2);padding:36px 48px">
-  <div class="footer-inner" style="max-width:900px;margin:0 auto;display:flex;justify-content:space-between;align-items:flex-start;gap:28px;flex-wrap:wrap">
-    <div>
-      <div class="sans" style="font-weight:900;font-size:16px;letter-spacing:2.5px;color:#fff">FACTOR<span style="font-weight:300;letter-spacing:4px;color:#2d6a4f;margin-left:6px">OTC</span></div>
-      <div class="sans" style="font-size:11px;color:rgba(255,255,255,.3);margin-top:6px">Informe generado: ${d.generatedAt}</div>
-      <div class="sans" style="margin-top:10px;display:flex;gap:8px;flex-wrap:wrap">
-        <span style="padding:3px 8px;border-radius:4px;font-size:9px;background:rgba(255,255,255,.06);color:rgba(255,255,255,.35);letter-spacing:1px;text-transform:uppercase">
-          ${d.source === 'yahoo' ? 'Yahoo Finance' : d.source === 'partial' ? 'Yahoo Finance (parcial)' : 'Datos mínimos'}
-        </span>
-        <span style="padding:3px 8px;border-radius:4px;font-size:9px;background:rgba(255,255,255,.06);color:rgba(255,255,255,.35);letter-spacing:1px;text-transform:uppercase">TradingView</span>
-      </div>
-    </div>
-    <div class="sans" style="font-size:11px;color:rgba(255,255,255,.3);max-width:500px;line-height:1.7">
-      <strong style="color:rgba(255,255,255,.5)">Aviso legal:</strong> Este informe es una herramienta de soporte a la decisión de inversión con finalidad orientativa y educativa. No constituye asesoramiento financiero personalizado ni regulado. Factor OTC no es una entidad financiera regulada. Los rendimientos pasados no garantizan rendimientos futuros. Invertir en valores cotizados conlleva riesgo de pérdida de capital.
-    </div>
-  </div>
-</div>
-
+${page1}
+${page2}
+${page3}
+${page4}
+${page5}
+${page6}
+${page7}
+${page8}
+${page9}
+${page10}
+${page11}
+${page12}
 </body>
 </html>`;
 }

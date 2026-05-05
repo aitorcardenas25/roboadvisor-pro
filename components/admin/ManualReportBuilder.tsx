@@ -1,8 +1,6 @@
 'use client';
 
 import { useState, useMemo } from 'react';
-import { pdf } from '@react-pdf/renderer';
-import { ManualReportPDF } from '@/components/pdf/ManualReportPDF';
 import { FINANCIAL_PRODUCTS, type FinancialProduct } from '@/lib/products';
 import type { ManualAsset, ManualPortfolioInput } from '@/lib/manualReport';
 
@@ -411,7 +409,7 @@ function StepPreview({ form, assets, onGenerate, loading }: {
         onClick={onGenerate}
         disabled={loading || total !== 100 || assets.length === 0 || !form.clientName}
         className="w-full py-3 bg-[#1a3a2a] border border-[#2d6a4f]/60 text-[#c9a84c] font-bold text-sm rounded-xl hover:bg-[#1f4432] transition-colors disabled:opacity-40 disabled:cursor-not-allowed font-sans">
-        {loading ? 'Generant PDF...' : 'Descarregar informe PDF'}
+        {loading ? 'Generant informe...' : 'Generar informe'}
       </button>
 
       {total !== 100 && assets.length > 0 && (
@@ -458,34 +456,27 @@ export default function ManualReportBuilder() {
         assets: assets.map(({ _key: _, ...rest }) => rest),
       };
 
-      const generatedAt = new Date().toLocaleDateString('ca-ES', {
-        day: '2-digit', month: 'long', year: 'numeric',
-        hour: '2-digit', minute: '2-digit',
-      });
-
-      // Generate PDF client-side with @react-pdf/renderer
-      const blob = await pdf(
-        <ManualReportPDF data={payload} generatedAt={generatedAt} />
-      ).toBlob();
-
-      // Download PDF
-      const url  = URL.createObjectURL(blob);
-      const link = document.createElement('a');
-      link.href  = url;
-      link.download = `Factor_OTC_Manual_${payload.clientName.replace(/\s+/g, '_')}_${new Date().toISOString().split('T')[0]}.pdf`;
-      link.click();
-      URL.revokeObjectURL(url);
-
-      // Save to registry in background (fire-and-forget)
-      fetch('/api/admin/manual-report', {
+      const res = await fetch('/api/admin/manual-report', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),
-      }).catch(() => {});
+      });
+
+      if (!res.ok) {
+        const { error } = await res.json().catch(() => ({ error: 'Error desconegut' }));
+        throw new Error(error || `Error ${res.status}`);
+      }
+
+      const html = await res.text();
+      const blob = new Blob([html], { type: 'text/html;charset=utf-8' });
+      const url  = URL.createObjectURL(blob);
+      window.open(url, '_blank');
+      // Revoke after a delay so the new tab has time to load
+      setTimeout(() => URL.revokeObjectURL(url), 60_000);
 
     } catch (err) {
-      console.error('Error generant PDF:', err);
-      setError('Error generant el PDF. Torna-ho a intentar.');
+      console.error('Error generant informe:', err);
+      setError(err instanceof Error ? err.message : 'Error generant l\'informe. Torna-ho a intentar.');
     } finally {
       setLoading(false);
     }
