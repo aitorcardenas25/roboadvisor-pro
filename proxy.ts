@@ -4,7 +4,7 @@ import { NextResponse } from 'next/server';
 const CLIENT_ROLES = new Set(['authorized', 'admin']);
 
 export default withAuth(
-  function middleware(req) {
+  function proxy(req) {
     const { pathname } = req.nextUrl;
     const role = req.nextauth.token?.role as string | undefined;
 

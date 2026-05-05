@@ -8,5 +8,5 @@ export async function GET() {
   if ((session?.user as { role?: string })?.role !== 'admin') {
     return NextResponse.json({ error: 'No autoritzat.' }, { status: 403 });
   }
-  return NextResponse.json({ subscribers: getAllSubscribers() });
+  return NextResponse.json({ subscribers: await getAllSubscribers() });
 }

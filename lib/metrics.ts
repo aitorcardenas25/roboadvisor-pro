@@ -520,3 +520,116 @@ export function getRiskReturnInterpretation(
   if (sharpe >= 0.0) return 'Relació risc/rendibilitat moderada. La rendibilitat compensa just el risc assumit.';
   return 'Relació risc/rendibilitat negativa. Les pèrdues superen la prima de risc en el període analitzat.';
 }
+
+// ─── VALUE AT RISK / CONDITIONAL VALUE AT RISK ────────────────────────────────
+
+export interface VaRResult {
+  /** VaR at the given confidence level as a positive percentage loss */
+  var: number;
+  /** CVaR (Expected Shortfall) — average loss beyond VaR */
+  cvar: number;
+  /** Confidence level used, e.g. 0.95 */
+  confidenceLevel: number;
+  /** Number of return observations used */
+  n: number;
+  /** Method used */
+  method: 'historical' | 'parametric';
+}
+
+/**
+ * Historical VaR/CVaR from a monthly return series.
+ * Returns losses as positive numbers (e.g. 5.2 means 5.2% loss).
+ *
+ * @param monthlyReturns  Array of monthly % returns (e.g. [-2.1, 3.4, ...])
+ * @param confidenceLevel Default 0.95 (95% VaR)
+ * @param horizonMonths   Holding period in months, default 1
+ */
+export function calculateHistoricalVaR(
+  monthlyReturns: number[],
+  confidenceLevel = 0.95,
+  horizonMonths = 1,
+): VaRResult {
+  if (monthlyReturns.length < 10) {
+    return { var: 0, cvar: 0, confidenceLevel, n: monthlyReturns.length, method: 'historical' };
+  }
+
+  // Scale returns to horizon using √t approximation
+  const scale = Math.sqrt(horizonMonths);
+  const scaled = monthlyReturns.map(r => r * scale);
+  const sorted = [...scaled].sort((a, b) => a - b);
+  const n = sorted.length;
+
+  const cutoffIdx = Math.floor(n * (1 - confidenceLevel));
+  const varReturn = sorted[cutoffIdx] ?? sorted[0];
+  const varLoss = -varReturn; // convert to positive loss
+
+  // CVaR = mean of returns worse than VaR threshold
+  const tailReturns = sorted.slice(0, cutoffIdx + 1);
+  const cvarReturn = tailReturns.length > 0
+    ? tailReturns.reduce((s, r) => s + r, 0) / tailReturns.length
+    : varReturn;
+  const cvarLoss = -cvarReturn;
+
+  return {
+    var:  Math.round(varLoss  * 100) / 100,
+    cvar: Math.round(cvarLoss * 100) / 100,
+    confidenceLevel,
+    n,
+    method: 'historical',
+  };
+}
+
+/**
+ * Parametric (Gaussian) VaR/CVaR.
+ * More efficient when few observations are available.
+ *
+ * @param annualizedReturn    Annual expected return %
+ * @param annualizedVolatility Annual volatility %
+ * @param confidenceLevel     Default 0.95
+ * @param horizonMonths       Holding period in months, default 1
+ */
+export function calculateParametricVaR(
+  annualizedReturn: number,
+  annualizedVolatility: number,
+  confidenceLevel = 0.95,
+  horizonMonths = 1,
+): VaRResult {
+  const monthlyReturn = annualizedReturn / 12;
+  const monthlyVol = annualizedVolatility / Math.sqrt(12);
+
+  // Scale to horizon
+  const horizonReturn = monthlyReturn * horizonMonths;
+  const horizonVol = monthlyVol * Math.sqrt(horizonMonths);
+
+  // z-score for confidence level (approximation via rational Chebyshev)
+  const z = normalInvCDF(confidenceLevel);
+
+  // VaR
+  const varLoss = -(horizonReturn - z * horizonVol);
+
+  // CVaR = μ - σ × φ(z) / (1 - α)  where φ is the standard normal PDF
+  const phi = Math.exp(-0.5 * z * z) / Math.sqrt(2 * Math.PI);
+  const cvarLoss = -(horizonReturn - horizonVol * phi / (1 - confidenceLevel));
+
+  return {
+    var:  Math.round(varLoss  * 100) / 100,
+    cvar: Math.round(cvarLoss * 100) / 100,
+    confidenceLevel,
+    n: 0, // parametric — no observed data
+    method: 'parametric',
+  };
+}
+
+/** Rational approximation of the inverse normal CDF (Abramowitz & Stegun 26.2.17) */
+function normalInvCDF(p: number): number {
+  if (p <= 0 || p >= 1) throw new RangeError(`p must be in (0,1), got ${p}`);
+  const a = [2.515517, 0.802853, 0.010328];
+  const b = [1.432788, 0.189269, 0.001308];
+  const t = p < 0.5
+    ? Math.sqrt(-2 * Math.log(p))
+    : Math.sqrt(-2 * Math.log(1 - p));
+  const num   = a[0] + a[1] * t + a[2] * t * t;
+  const denom = 1 + b[0] * t + b[1] * t * t + b[2] * t * t * t;
+  const z = t - num / denom;
+  return p < 0.5 ? -z : z;
+}

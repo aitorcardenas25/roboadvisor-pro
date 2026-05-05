@@ -45,16 +45,13 @@ interface MetricsRequest {
 
 export async function POST(req: NextRequest) {
   try {
-    const body = await req.json() as MetricsRequest;
-    const { portfolio, scoring, questionnaire, options = {} } = body;
+    const { validateBody } = await import('@/lib/validate');
+    const { PortfolioMetricsSchema } = await import('@/lib/schemas');
 
-    // Validació bàsica
-    if (!portfolio || !scoring || !questionnaire) {
-      return NextResponse.json(
-        { error: 'portfolio, scoring i questionnaire són obligatoris.' },
-        { status: 400 }
-      );
-    }
+    const v = await validateBody(req, PortfolioMetricsSchema);
+    if (!v.ok) return v.response;
+
+    const { portfolio, scoring, questionnaire, options = {} } = v.data as unknown as MetricsRequest;
 
     // ── Mètriques de la cartera ───────────────────────────────────────────────
     // Sense dades reals de moment (s'obtenen via backtest separat)

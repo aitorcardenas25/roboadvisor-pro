@@ -12,5 +12,5 @@ export async function GET() {
   if (!isAuthorized(session)) {
     return NextResponse.json({ error: 'No autoritzat.' }, { status: 403 });
   }
-  return NextResponse.json({ portfolios: getActivePortfolios() });
+  return NextResponse.json({ portfolios: await getActivePortfolios() });
 }

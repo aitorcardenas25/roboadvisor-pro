@@ -640,6 +640,21 @@ export default function RoboAdvisorApp({ onBack }: Props) {
                 transition={{ delay: 0.4 }}>
                 {getProfileDescription(scoring.profile)}
               </motion.p>
+              <motion.div
+                className="mt-3"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ delay: 0.5 }}>
+                {portfolio.optimizationSource === 'mpt-optimized' ? (
+                  <span className="inline-flex items-center gap-1 text-xs font-medium px-2.5 py-1 rounded-full bg-white/20 text-white border border-white/30">
+                    ✦ Optimitzada amb MPT
+                  </span>
+                ) : (
+                  <span className="inline-flex items-center gap-1 text-xs font-medium px-2.5 py-1 rounded-full bg-black/20 text-white/70 border border-white/20">
+                    Model base per perfil
+                  </span>
+                )}
+              </motion.div>
             </div>
             <motion.div
               className="text-right"

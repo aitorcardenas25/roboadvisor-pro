@@ -56,13 +56,13 @@ export async function POST(_: NextRequest, { params }: { params: Promise<{ id: s
   if (!isAdmin(session)) return NextResponse.json({ error: 'No autoritzat.' }, { status: 403 });
 
   const { id } = await params;
-  const nl = getNewsletter(id);
+  const nl = await getNewsletter(id);
   if (!nl) return NextResponse.json({ error: 'Newsletter no trobada.' }, { status: 404 });
   if (nl.status !== 'validated') {
     return NextResponse.json({ error: 'Només es poden enviar newsletters validades.' }, { status: 422 });
   }
 
-  const subscribers = getActiveSubscribers();
+  const subscribers = await getActiveSubscribers();
   if (subscribers.length === 0) {
     return NextResponse.json({ error: 'No hi ha subscriptors actius.' }, { status: 422 });
   }
@@ -70,7 +70,7 @@ export async function POST(_: NextRequest, { params }: { params: Promise<{ id: s
   const apiKey = process.env.RESEND_API_KEY;
   if (!apiKey) {
     // Simulem enviament sense API key real
-    changeStatus(id, 'sent');
+    await changeStatus(id, 'sent');
     return NextResponse.json({
       success:  true,
       simulated: true,
@@ -83,7 +83,7 @@ export async function POST(_: NextRequest, { params }: { params: Promise<{ id: s
     const { Resend } = await import('resend');
     const resend = new Resend(apiKey);
     const html   = buildNewsletterHTML(nl);
-    const from   = process.env.FROM_EMAIL ?? 'onboarding@resend.dev';
+    const from   = process.env.RESEND_FROM_EMAIL ?? 'onboarding@resend.dev';
 
     // Enviem per lots de 50 (límit Resend batch)
     const batchSize = 50;
@@ -101,7 +101,7 @@ export async function POST(_: NextRequest, { params }: { params: Promise<{ id: s
       sent += batch.length;
     }
 
-    changeStatus(id, 'sent');
+    await changeStatus(id, 'sent');
     return NextResponse.json({ success: true, sentTo: sent });
   } catch (err) {
     return NextResponse.json({ error: `Error enviant: ${(err as Error).message}` }, { status: 500 });

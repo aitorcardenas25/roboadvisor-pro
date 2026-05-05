@@ -56,23 +56,13 @@ interface SeriesPoint {
 
 export async function POST(req: NextRequest) {
   try {
-    const body = await req.json() as BacktestRequest;
-    const { allocations, startDate, endDate, initialAmount } = body;
+    const { validateBody } = await import('@/lib/validate');
+    const { BacktestSchema } = await import('@/lib/schemas');
 
-    // Validació bàsica
-    if (!allocations?.length || !startDate || !endDate || !initialAmount) {
-      return NextResponse.json(
-        { error: 'Paràmetres incomplets: allocations, startDate, endDate i initialAmount són obligatoris.' },
-        { status: 400 }
-      );
-    }
+    const v = await validateBody(req, BacktestSchema);
+    if (!v.ok) return v.response;
 
-    if (new Date(startDate) >= new Date(endDate)) {
-      return NextResponse.json(
-        { error: 'startDate ha de ser anterior a endDate.' },
-        { status: 400 }
-      );
-    }
+    const { allocations, startDate, endDate, initialAmount } = v.data;
 
     // ── Obtenir dades de cada producte ────────────────────────────────────────
     const productDataMap = new Map<string, number[]>();

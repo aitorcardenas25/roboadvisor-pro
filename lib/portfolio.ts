@@ -3,6 +3,7 @@
 
 import { InvestorProfile, FinancialProduct, FINANCIAL_PRODUCTS } from './products';
 import { InvestorQuestionnaire } from './scoring';
+import { optimizeFromProfile, type OptimizationSource } from './portfolioAdapter';
 
 // ─── TYPES ────────────────────────────────────────────────────────────────────
 
@@ -27,6 +28,7 @@ export interface Portfolio {
   totalTER: number;            // cost total ponderat %
   esgScore: number;            // 0-100
   characteristics: PortfolioCharacteristics;
+  optimizationSource: OptimizationSource; // 'mpt-optimized' | 'profile-model'
 }
 
 export interface CompositeBenchmark {
@@ -73,16 +75,29 @@ export function buildPortfolio(
   const investableAmount = questionnaire.currentSavings * (questionnaire.percentageToInvest / 100);
   const tier = getComplexityTier(questionnaire.monthlyContribution);
 
+  // Build base portfolio from hardcoded model
+  let portfolio: Portfolio;
   switch (profile) {
     case 'conservador':
-      return buildConservadorPortfolio(investableAmount, questionnaire, tier);
+      portfolio = buildConservadorPortfolio(investableAmount, questionnaire, tier); break;
     case 'moderat':
-      return buildModeratPortfolio(investableAmount, questionnaire, tier);
+      portfolio = buildModeratPortfolio(investableAmount, questionnaire, tier); break;
     case 'dinamic':
-      return buildDinamicPortfolio(investableAmount, questionnaire, tier);
+      portfolio = buildDinamicPortfolio(investableAmount, questionnaire, tier); break;
     case 'agressiu':
-      return buildAgressiuPortfolio(investableAmount, questionnaire, tier);
+      portfolio = buildAgressiuPortfolio(investableAmount, questionnaire, tier); break;
   }
+
+  // Overlay MPT-optimized metrics (allocations/names/rationale unchanged)
+  const opt = optimizeFromProfile(profile);
+  portfolio.optimizationSource = opt.source;
+  if (opt.source === 'mpt-optimized') {
+    portfolio.expectedReturn     = opt.expectedReturn;
+    portfolio.expectedVolatility = opt.expectedVolatility;
+    portfolio.expectedSharpe     = opt.expectedSharpe;
+  }
+
+  return portfolio;
 }
 
 // ─── CARTERA CONSERVADORA ─────────────────────────────────────────────────────
@@ -135,6 +150,7 @@ function buildConservadorPortfolio(
     maxDrawdownEstimate: -6.0,
     totalTER: calculateTotalTER(allocations),
     esgScore: calculateESGScore(allocations, q),
+    optimizationSource: 'profile-model',
     characteristics: {
       equityWeight: 15,
       fixedIncomeWeight: 50,
@@ -202,6 +218,7 @@ function buildModeratPortfolio(
     maxDrawdownEstimate: -15.0,
     totalTER: calculateTotalTER(allocations),
     esgScore: calculateESGScore(allocations, q),
+    optimizationSource: 'profile-model',
     characteristics: {
       equityWeight: 60,
       fixedIncomeWeight: 30,
@@ -271,6 +288,7 @@ function buildDinamicPortfolio(
     maxDrawdownEstimate: -25.0,
     totalTER: calculateTotalTER(allocations),
     esgScore: calculateESGScore(allocations, q),
+    optimizationSource: 'profile-model',
     characteristics: {
       equityWeight: 85,
       fixedIncomeWeight: 10,
@@ -333,6 +351,7 @@ function buildAgressiuPortfolio(
     maxDrawdownEstimate: -38.0,
     totalTER: calculateTotalTER(allocations),
     esgScore: calculateESGScore(allocations, q),
+    optimizationSource: 'profile-model',
     characteristics: {
       equityWeight: 95,
       fixedIncomeWeight: 5,

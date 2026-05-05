@@ -56,7 +56,7 @@ export async function POST(req: NextRequest) {
 
     // ── Enviar email amb Resend ───────────────────────────────────────────────
     const { data, error } = await getResend().emails.send({
-      from:    process.env.FROM_EMAIL ?? 'onboarding@resend.dev',
+      from:    process.env.RESEND_FROM_EMAIL ?? 'onboarding@resend.dev',
       to:      [email],
       subject: `Factor OTC — Informe Financer Personalitzat — ${clientName}`,
       html:    buildEmailHTML(clientName, profileLabel, scoreValue, reportDate),

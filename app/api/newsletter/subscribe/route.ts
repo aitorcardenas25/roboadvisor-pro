@@ -1,11 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { subscribe } from '@/lib/newsletter';
+import { validateBody } from '@/lib/validate';
+import { SubscribeSchema } from '@/lib/schemas';
 
 export async function POST(req: NextRequest) {
+  const v = await validateBody(req, SubscribeSchema);
+  if (!v.ok) return v.response;
+
   try {
-    const { email, name } = await req.json();
-    if (!email) return NextResponse.json({ error: 'Email obligatori.' }, { status: 400 });
-    const result = subscribe(email, name ?? '');
+    const result = await subscribe(v.data.email, v.data.name);
     if (!result.ok) return NextResponse.json({ error: result.error }, { status: 409 });
     return NextResponse.json({ success: true, message: 'Subscripció confirmada!' });
   } catch {
