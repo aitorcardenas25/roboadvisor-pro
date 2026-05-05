@@ -351,7 +351,7 @@ export function generateManualReport(d: ManualPortfolioInput): string {
   const healthScore  = d.initialAmount > 20000 ? 9 : d.initialAmount > 5000 ? 7 : 5;
 
   const generatedAt = new Date().toLocaleDateString('ca-ES', { day: '2-digit', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' });
-  const reportId    = `JNS-${new Date().toISOString().replace(/[-:T.Z]/g, '').slice(0,10)}`;
+  const reportId    = `JNS-${new Date().toISOString().slice(0, 10).replace(/-/g, '')}`;
   const clientFirst = d.clientName.split(' ')[0];
 
   // Asset pages: split into two pages of max 4 each

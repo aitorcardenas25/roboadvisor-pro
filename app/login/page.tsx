@@ -1,11 +1,11 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, Suspense } from 'react';
 import { signIn, useSession } from 'next-auth/react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 
-export default function LoginPage() {
+function LoginForm() {
   const { data: session, status } = useSession();
   const router       = useRouter();
   const searchParams = useSearchParams();
@@ -16,7 +16,6 @@ export default function LoginPage() {
   const [error, setError]       = useState('');
   const [loading, setLoading]   = useState(false);
 
-  // Redirect if already authenticated
   useEffect(() => {
     if (status === 'loading') return;
     if (session) {
@@ -37,7 +36,6 @@ export default function LoginPage() {
       setError('Credencials incorrectes. Torna-ho a intentar.');
       setLoading(false);
     }
-    // redirect handled by useEffect above
   };
 
   if (status === 'loading') {
@@ -53,7 +51,6 @@ export default function LoginPage() {
       style={{ backgroundImage: 'radial-gradient(ellipse at 50% 0%, rgba(26,58,42,0.4) 0%, transparent 70%)' }}>
 
       <div className="w-full max-w-sm">
-        {/* Logo */}
         <div className="text-center mb-10">
           <Link href="/" className="inline-flex items-center gap-2 mb-4">
             <div className="w-8 h-8 bg-[#1a3a2a] border border-[#2d6a4f]/50 rounded flex items-center justify-center">
@@ -65,7 +62,6 @@ export default function LoginPage() {
           <p className="text-white/30 text-xs uppercase tracking-[0.3em]">Zona de clients</p>
         </div>
 
-        {/* Card */}
         <div className="bg-white/[0.03] border border-[#1a3a2a]/60 rounded-2xl p-8"
           style={{ boxShadow: 'inset 0 1px 0 rgba(45,106,79,0.1)' }}>
           <h1 className="text-white font-bold text-xl mb-1">Accés clients</h1>
@@ -116,7 +112,6 @@ export default function LoginPage() {
           </form>
         </div>
 
-        {/* Admin link */}
         <p className="text-center text-white/20 text-xs mt-6">
           Ets administrador?{' '}
           <Link href="/admin" className="text-[#2d6a4f]/70 hover:text-[#c9a84c] transition-colors">
@@ -125,5 +120,17 @@ export default function LoginPage() {
         </p>
       </div>
     </div>
+  );
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen bg-[#080e0b] flex items-center justify-center">
+        <div className="w-6 h-6 border-2 border-[#c9a84c]/20 border-t-[#c9a84c] rounded-full animate-spin" />
+      </div>
+    }>
+      <LoginForm />
+    </Suspense>
   );
 }
