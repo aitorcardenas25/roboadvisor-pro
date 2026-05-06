@@ -3,7 +3,7 @@ const EmailButton = dynamic(
   () => import('@/components/pdf/EmailButton'),
   { ssr: false }
 );
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import dynamic from 'next/dynamic';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
@@ -29,7 +29,11 @@ import {
 } from '@/lib/monteCarlo';
 import { generateReport, FinancialReport, LEGAL_DISCLAIMER } from '@/lib/report';
 import { getDataStatusColor } from '@/lib/products';
+import { checkMiFIDSuitability, suitabilityLabel, suitabilityColor } from '@/lib/suitability';
+import { generateIPS } from '@/lib/ips';
 import HiddenCharts from '@/components/pdf/HiddenCharts';
+import EfficientFrontier from '@/components/charts/EfficientFrontier';
+import CorrelationHeatmap from '@/components/charts/CorrelationHeatmap';
 import {
   AnimatedKpi, AnimatedProgressBar, LoadingSpinner,
   StepTransition, AnimatedCard,
@@ -180,6 +184,14 @@ export default function RoboAdvisorApp({ onBack }: Props) {
   const [historical, setHistorical] = useState<HistoricalChartPoint[]>([]);
   const [activeTab, setActiveTab]   = useState('resum');
   const [loading, setLoading]       = useState(false);
+  const [riskFreeRate, setRiskFreeRate] = useState(3.0);
+
+  useEffect(() => {
+    fetch('/api/risk-free-rate')
+      .then(r => r.json())
+      .then(({ rate }: { rate: number }) => { if (isFinite(rate) && rate > 0) setRiskFreeRate(rate); })
+      .catch(() => {});
+  }, []);
 
   const update = useCallback((field: keyof InvestorQuestionnaire, value: unknown) => {
     setQ(prev => ({ ...prev, [field]: value }));
@@ -199,7 +211,7 @@ export default function RoboAdvisorApp({ onBack }: Props) {
     setLoading(true);
     setTimeout(() => {
       const sc   = calculateScore(q);
-      const port = buildPortfolio(sc.profile, q);
+      const port = buildPortfolio(sc.profile, q, riskFreeRate);
       const met  = calculatePortfolioMetrics(port);
       const mc   = runPortfolioMonteCarlo(port, {
         initialInvestment:   q.initialInvestment,
@@ -588,6 +600,8 @@ export default function RoboAdvisorApp({ onBack }: Props) {
     const scenarios    = buildScenarioAnalysis(
       portfolio, q.initialInvestment, q.monthlyContribution, q.investmentHorizon
     );
+    const ips          = generateIPS(q, scoring, portfolio);
+    const suitability  = checkMiFIDSuitability(scoring.profile, q, portfolio.allocations);
 
     const TABS = [
       { id: 'resum',      label: '📋 Resum' },
@@ -875,6 +889,25 @@ export default function RoboAdvisorApp({ onBack }: Props) {
                     ))}
                   </div>
                 </Card>
+
+                {/* ── IPS ── */}
+                <Card title="Investment Policy Statement (IPS)">
+                  <p className="text-xs text-gray-400 mb-4">
+                    Document MiFID II · versió {ips.version} · {new Date(ips.generatedAt).toLocaleDateString('ca-ES')}
+                  </p>
+                  <div className="space-y-4">
+                    {ips.sections.map((s, i) => (
+                      <motion.div
+                        key={i}
+                        initial={{ opacity: 0, y: 6 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ delay: i * 0.05 }}>
+                        <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">{s.title}</p>
+                        <p className="text-sm text-gray-700 leading-relaxed">{s.content}</p>
+                      </motion.div>
+                    ))}
+                  </div>
+                </Card>
               </div>
             )}
 
@@ -940,6 +973,67 @@ export default function RoboAdvisorApp({ onBack }: Props) {
                       </motion.div>
                     ))}
                   </div>
+                </Card>
+
+                {/* ── SUITABILITY MiFID II ── */}
+                <Card title="Adequació MiFID II (Art. 54)">
+                  <div className="flex items-center gap-3 mb-4">
+                    <span className={`text-xs font-semibold px-3 py-1 rounded-full ${suitabilityColor(suitability.overall)}`}>
+                      {suitabilityLabel(suitability.overall)}
+                    </span>
+                    <span className="text-xs text-gray-500">
+                      {suitability.mifidCompliant ? '✓ Cartera conforme MiFID II' : '⚠ Revisió recomanada'}
+                    </span>
+                  </div>
+                  {suitability.warnings.length > 0 && (
+                    <div className="mb-3 space-y-1">
+                      {suitability.warnings.map((w, i) => (
+                        <p key={i} className="text-xs text-amber-700 bg-amber-50 rounded px-3 py-1.5">{w}</p>
+                      ))}
+                    </div>
+                  )}
+                  <div className="space-y-2">
+                    {suitability.products.map((p, i) => (
+                      <motion.div
+                        key={i}
+                        className="flex items-start gap-3 p-2 rounded-lg bg-gray-50"
+                        initial={{ opacity: 0, x: -8 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        transition={{ delay: i * 0.04 }}>
+                        <span className={`text-xs font-medium px-2 py-0.5 rounded-full mt-0.5 shrink-0 ${suitabilityColor(p.status)}`}>
+                          {suitabilityLabel(p.status)}
+                        </span>
+                        <div className="min-w-0">
+                          <p className="text-xs font-medium text-gray-800 truncate">{p.productName}</p>
+                          {p.reasons.map((r, j) => (
+                            <p key={j} className="text-xs text-gray-500 mt-0.5">{r}</p>
+                          ))}
+                        </div>
+                      </motion.div>
+                    ))}
+                  </div>
+                </Card>
+
+                {/* ── FRONTERA EFICIENT ── */}
+                <Card title="Frontera eficient (Markowitz MPT)" badge="ℹ️ Classes d'actiu">
+                  <p className="text-xs text-gray-400 mb-4">
+                    Combinació òptima de risc i retorn per al perfil <strong>{scoring.profile}</strong>. El punt de la cartera actual pot estar fora de la frontera perquè inclou productes concrets (no classes d'actiu pures).
+                  </p>
+                  <EfficientFrontier
+                    profile={scoring.profile}
+                    profileColor={profileColor}
+                    portfolioReturn={portfolio.expectedReturn}
+                    portfolioVol={portfolio.expectedVolatility}
+                    portfolioName={portfolio.name}
+                  />
+                </Card>
+
+                {/* ── HEATMAP CORRELACIÓ ── */}
+                <Card title="Matriu de correlació" badge="📊 Diversificació">
+                  <p className="text-xs text-gray-400 mb-4">
+                    Correlació entre les classes d'actiu de la cartera. Valors baixos o negatius indiquen bona diversificació.
+                  </p>
+                  <CorrelationHeatmap profile={scoring.profile} />
                 </Card>
               </div>
             )}

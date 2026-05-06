@@ -6,6 +6,8 @@ import { ScoringResult, InvestorQuestionnaire, getProfileLabel, getProfileDescri
 import { Portfolio, CompositeBenchmark } from './portfolio';
 import { PortfolioMetrics } from './metrics';
 import { MonteCarloResult } from './monteCarlo';
+import { generateIPS, InvestmentPolicyStatement } from './ips';
+import { checkMiFIDSuitability, SuitabilityReport } from './suitability';
 
 // ─── TYPES ────────────────────────────────────────────────────────────────────
 
@@ -14,6 +16,8 @@ export interface FinancialReport {
   executiveSummary: ExecutiveSummary;
   investorProfile: InvestorProfileSection;
   financialDiagnostics: DiagnosticsSection;
+  ipsSection:      InvestmentPolicyStatement;
+  suitabilitySection: SuitabilityReport;
   portfolioSection: PortfolioSection;
   benchmarkSection: BenchmarkSection;
   metricsSection:  MetricsSection;
@@ -24,6 +28,8 @@ export interface FinancialReport {
   conclusionSection: ConclusionSection;
   legalDisclaimer: string;
 }
+
+export type { InvestmentPolicyStatement, SuitabilityReport };
 
 export interface ReportMetadata {
   reportId:        string;
@@ -262,6 +268,8 @@ export function generateReport(
     executiveSummary:     buildExecutiveSummary(questionnaire, scoring, portfolio, monteCarlo),
     investorProfile:      buildInvestorProfile(scoring),
     financialDiagnostics: buildDiagnostics(scoring, questionnaire),
+    ipsSection:           generateIPS(questionnaire, scoring, portfolio),
+    suitabilitySection:   checkMiFIDSuitability(scoring.profile, questionnaire, portfolio.allocations),
     portfolioSection:     buildPortfolioSection(portfolio),
     benchmarkSection:     buildBenchmarkSection(portfolio),
     metricsSection:       buildMetricsSection(metrics, portfolio),

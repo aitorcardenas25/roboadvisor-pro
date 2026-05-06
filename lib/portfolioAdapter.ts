@@ -120,10 +120,10 @@ const PROFILE_CONSTRAINTS: Record<InvestorProfile, OptimizationConstraints> = {
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
-function capmReturn(assetClass: string): number {
+function capmReturn(assetClass: string, rf: number): number {
   const beta = ASSET_BETAS[assetClass] ?? 1.0;
   return capmExpectedReturn({
-    riskFreeRate: RF,
+    riskFreeRate: rf,
     beta,
     marketReturnPremium: DAMODARAN_ERP_EUR,
   }).expectedReturn;
@@ -146,14 +146,14 @@ function subCorrelationMatrix(assetClasses: string[]): number[][] {
  * Tries to run Markowitz optimization for the given profile.
  * Returns source='fallback' if the optimization cannot produce a valid result.
  */
-export function optimizeFromProfile(profile: InvestorProfile): AdapterResult {
+export function optimizeFromProfile(profile: InvestorProfile, rf = RF): AdapterResult {
   try {
     const assetIds = PROFILE_ASSETS[profile];
-    const constraints = PROFILE_CONSTRAINTS[profile];
+    const constraints = { ...PROFILE_CONSTRAINTS[profile], riskFreeRate: rf };
 
     const assets: Asset[] = assetIds.map(ac => ({
       id: ac,
-      expectedReturn: capmReturn(ac),
+      expectedReturn: capmReturn(ac, rf),
       volatility: ASSET_VOLS[ac] ?? 15,
     }));
 
@@ -171,7 +171,7 @@ export function optimizeFromProfile(profile: InvestorProfile): AdapterResult {
     }
 
     const sharpe = tp.volatility > 0
-      ? (tp.expectedReturn - RF) / tp.volatility
+      ? (tp.expectedReturn - rf) / tp.volatility
       : 0;
 
     return {
@@ -204,5 +204,91 @@ function fallback(profile: InvestorProfile, assetIds: string[]): AdapterResult {
     ...params,
     weights: Array(n).fill(1 / n),
     assetIds,
+  };
+}
+
+// ── Exports per a visualitzacions ─────────────────────────────────────────────
+
+export const PROFILE_ASSET_LABELS: Record<string, string> = {
+  'monetari':                  'Monetari',
+  'renda-fixa-curta':          'RF Curta',
+  'renda-fixa-global':         'RF Global',
+  'renda-fixa-europa':         'RF Europa',
+  'renda-variable-global':     'RV Global',
+  'renda-variable-usa':        'RV USA',
+  'renda-variable-europa':     'RV Europa',
+  'renda-variable-emergents':  'Emergents',
+  'renda-variable-small-caps': 'Small Caps',
+  'immobiliari':               'Immobiliari',
+  'tecnologia':                'Tecnologia',
+  'salut':                     'Salut',
+  'energia':                   'Energia',
+};
+
+export interface FrontierPoint {
+  vol: number;
+  ret: number;
+  sharpe: number;
+}
+
+export interface FrontierData {
+  frontier: FrontierPoint[];
+  tangency: FrontierPoint & { assetIds: string[]; weights: number[] };
+  minVar: FrontierPoint;
+}
+
+/** Computes efficient frontier data for a given profile (client-side safe, pure JS). */
+export function computeFrontierData(profile: InvestorProfile, rf = RF): FrontierData {
+  try {
+    const assetIds = PROFILE_ASSETS[profile];
+    const constraints = { ...PROFILE_CONSTRAINTS[profile], riskFreeRate: rf };
+    const assets: Asset[] = assetIds.map(ac => ({
+      id: ac,
+      expectedReturn: capmReturn(ac, rf),
+      volatility: ASSET_VOLS[ac] ?? 15,
+    }));
+    const matrix = { correlations: subCorrelationMatrix(assetIds) };
+    const result = optimizePortfolio(assets, matrix, constraints);
+
+    const round1 = (n: number) => Math.round(n * 10) / 10;
+    const round2 = (n: number) => Math.round(n * 100) / 100;
+
+    return {
+      frontier: result.efficientFrontier.map(p => ({
+        vol:    round1(p.volatility),
+        ret:    round1(p.expectedReturn),
+        sharpe: round2(p.sharpeRatio),
+      })),
+      tangency: {
+        vol:     round1(result.tangencyPortfolio.volatility),
+        ret:     round1(result.tangencyPortfolio.expectedReturn),
+        sharpe:  round2(result.tangencyPortfolio.sharpeRatio),
+        assetIds,
+        weights: result.tangencyPortfolio.weights,
+      },
+      minVar: {
+        vol:    round1(result.minVariancePortfolio.volatility),
+        ret:    round1(result.minVariancePortfolio.expectedReturn),
+        sharpe: round2(result.minVariancePortfolio.sharpeRatio),
+      },
+    };
+  } catch {
+    return {
+      frontier: [],
+      tangency: { vol: 0, ret: 0, sharpe: 0, assetIds: [], weights: [] },
+      minVar:   { vol: 0, ret: 0, sharpe: 0 },
+    };
+  }
+}
+
+/** Returns the correlation submatrix labels and values for the given profile's assets. */
+export function getCorrelationData(profile: InvestorProfile): {
+  labels: string[];
+  matrix: number[][];
+} {
+  const assetIds = PROFILE_ASSETS[profile];
+  return {
+    labels: assetIds.map(id => PROFILE_ASSET_LABELS[id] ?? id),
+    matrix: subCorrelationMatrix(assetIds),
   };
 }
