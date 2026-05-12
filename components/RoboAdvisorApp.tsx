@@ -18,9 +18,12 @@ import {
   getProfileIcon, ValidationResult, ScoringResult,
 } from '@/lib/scoring';
 import { buildPortfolio, Portfolio } from '@/lib/portfolio';
+import { checkMiFIDSuitability, suitabilityLabel, suitabilityColor } from '@/lib/suitability';
+import { generateIPS } from '@/lib/ips';
 import {
   calculatePortfolioMetrics, generateSimulatedHistoricalData,
   calculateDrawdownSeries, getMetricsStatusLabel,
+  calculateParametricVaR,
   PortfolioMetrics, HistoricalChartPoint,
 } from '@/lib/metrics';
 import {
@@ -598,6 +601,7 @@ export default function RoboAdvisorApp({ onBack }: Props) {
       { id: 'montecarlo', label: '🎲 Monte Carlo' },
       { id: 'costos',     label: '💰 Costos' },
       { id: 'riscos',     label: '⚠️ Riscos' },
+      { id: 'mifid',      label: '🏛️ MiFID II' },
     ];
 
     return (
@@ -1004,16 +1008,21 @@ export default function RoboAdvisorApp({ onBack }: Props) {
                   </span>
                 </motion.div>
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                  {[
-                    { label: 'Rendibilitat anual', value: `${metrics.annualizedReturn.toFixed(2)}%`,     good: metrics.annualizedReturn >= 4 },
-                    { label: 'Volatilitat anual',  value: `${metrics.annualizedVolatility.toFixed(2)}%`, good: metrics.annualizedVolatility <= 15 },
-                    { label: 'Sharpe Ratio',       value: metrics.sharpeRatio.toFixed(2),               good: metrics.sharpeRatio >= 0.5 },
-                    { label: 'Sortino Ratio',      value: metrics.sortinoRatio.toFixed(2),              good: metrics.sortinoRatio >= 0.6 },
-                    { label: 'Max Drawdown',       value: `${metrics.maxDrawdown.toFixed(2)}%`,         good: metrics.maxDrawdown >= -20 },
-                    { label: 'Calmar Ratio',       value: metrics.calmarRatio.toFixed(2),               good: metrics.calmarRatio >= 0.3 },
-                    { label: 'Beta',               value: metrics.beta.toFixed(2),                      good: metrics.beta <= 1 },
-                    { label: 'Tracking Error',     value: `${metrics.trackingError.toFixed(2)}%`,       good: true },
-                  ].map((m, i) => (
+                  {(() => {
+                    const var95 = calculateParametricVaR(
+                      metrics.annualizedReturn, metrics.annualizedVolatility, 0.95, 1
+                    );
+                    return [
+                      { label: 'Rendibilitat anual', value: `${metrics.annualizedReturn.toFixed(2)}%`,     good: metrics.annualizedReturn >= 4 },
+                      { label: 'Volatilitat anual',  value: `${metrics.annualizedVolatility.toFixed(2)}%`, good: metrics.annualizedVolatility <= 15 },
+                      { label: 'Sharpe Ratio',       value: metrics.sharpeRatio.toFixed(2),               good: metrics.sharpeRatio >= 0.5 },
+                      { label: 'Sortino Ratio',      value: metrics.sortinoRatio.toFixed(2),              good: metrics.sortinoRatio >= 0.6 },
+                      { label: 'Max Drawdown',       value: `${metrics.maxDrawdown.toFixed(2)}%`,         good: metrics.maxDrawdown >= -20 },
+                      { label: 'Calmar Ratio',       value: metrics.calmarRatio.toFixed(2),               good: metrics.calmarRatio >= 0.3 },
+                      { label: 'VaR 95% (1M)',       value: `−${var95.var.toFixed(2)}%`,                  good: var95.var <= 10 },
+                      { label: 'CVaR 95% (1M)',      value: `−${var95.cvar.toFixed(2)}%`,                 good: var95.cvar <= 15 },
+                    ];
+                  })().map((m, i) => (
                     <motion.div key={i}
                       className={`rounded-xl p-4 border ${m.good ? 'bg-emerald-50 border-emerald-200' : 'bg-red-50 border-red-200'}`}
                       initial={{ opacity: 0, scale: 0.9 }}
@@ -1281,6 +1290,87 @@ export default function RoboAdvisorApp({ onBack }: Props) {
                 </div>
               </div>
             )}
+
+            {/* ── TAB MIFID II ─────────────────────────────────────────────── */}
+            {activeTab === 'mifid' && (() => {
+              const suit = checkMiFIDSuitability(scoring.profile, q, portfolio.allocations);
+              const ips  = generateIPS(q, scoring, portfolio);
+              const statusBg = suit.overall === 'adequate'   ? 'bg-emerald-50 border-emerald-200 text-emerald-800' :
+                               suit.overall === 'borderline' ? 'bg-amber-50 border-amber-200 text-amber-800' :
+                               'bg-red-50 border-red-200 text-red-800';
+              return (
+                <div className="space-y-6">
+                  {/* Suitability overall */}
+                  <motion.div
+                    className={`rounded-xl p-4 border font-semibold text-sm flex items-center gap-2 ${statusBg}`}
+                    initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
+                    <span className="text-lg">
+                      {suit.overall === 'adequate' ? '✅' : suit.overall === 'borderline' ? '⚠️' : '❌'}
+                    </span>
+                    <span>
+                      Suitability MiFID II Art. 54: <strong>{suitabilityLabel(suit.overall)}</strong>
+                      {suit.mifidCompliant ? ' — Cartera MiFID compliant' : ' — Revisió requerida'}
+                    </span>
+                  </motion.div>
+
+                  {/* Warnings */}
+                  {suit.warnings.length > 0 && (
+                    <Card title="Advertències a nivell de cartera">
+                      <ul className="space-y-1">
+                        {suit.warnings.map((w, i) => (
+                          <li key={i} className="text-sm text-amber-700 flex gap-2">
+                            <span>⚠️</span><span>{w}</span>
+                          </li>
+                        ))}
+                      </ul>
+                    </Card>
+                  )}
+
+                  {/* Per-product suitability */}
+                  <Card title="Adequació per producte">
+                    <div className="space-y-2">
+                      {suit.products.map((p, i) => (
+                        <motion.div key={i}
+                          className="flex items-start justify-between gap-4 py-2 border-b border-gray-100 last:border-0"
+                          initial={{ opacity: 0, x: -8 }}
+                          animate={{ opacity: 1, x: 0 }}
+                          transition={{ delay: i * 0.05 }}>
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm font-medium text-gray-800 truncate">{p.productName}</p>
+                            {p.reasons.length > 0 && (
+                              <ul className="mt-1 space-y-0.5">
+                                {p.reasons.map((r, j) => (
+                                  <li key={j} className="text-xs text-gray-500">{r}</li>
+                                ))}
+                              </ul>
+                            )}
+                          </div>
+                          <span className={`flex-shrink-0 text-xs px-2 py-0.5 rounded-full font-medium ${suitabilityColor(p.status)}`}>
+                            {suitabilityLabel(p.status)}
+                          </span>
+                        </motion.div>
+                      ))}
+                    </div>
+                  </Card>
+
+                  {/* IPS */}
+                  <Card title={`Investment Policy Statement (v${ips.version})`} badge="MiFID II">
+                    <p className="text-xs text-gray-400 mb-4">{new Date(ips.generatedAt).toLocaleDateString('ca-ES')}</p>
+                    <div className="space-y-3">
+                      {ips.sections.map((s, i) => (
+                        <motion.div key={i}
+                          initial={{ opacity: 0 }}
+                          animate={{ opacity: 1 }}
+                          transition={{ delay: i * 0.07 }}>
+                          <p className="text-xs font-semibold text-gray-700 mb-1">{s.title}</p>
+                          <p className="text-xs text-gray-500 leading-relaxed">{s.content}</p>
+                        </motion.div>
+                      ))}
+                    </div>
+                  </Card>
+                </div>
+              );
+            })()}
 
           </motion.div>
         </AnimatePresence>
