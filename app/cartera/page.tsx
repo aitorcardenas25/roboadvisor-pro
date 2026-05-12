@@ -32,6 +32,11 @@ function fmt(n: number | null | undefined, dec = 1, suffix = '%') {
   return `${n.toFixed(dec)}${suffix}`;
 }
 
+function sharpe(ret: number | null | undefined, vol: number | null | undefined, rf: number): number | null {
+  if (ret == null || vol == null || vol <= 0) return null;
+  return Math.round((ret - rf) / vol * 100) / 100;
+}
+
 function WeightBar({ weight, total = 100 }: { weight: number; total?: number }) {
   const pct = Math.min(100, (weight / total) * 100);
   const color = pct > 40 ? '#f97316' : pct > 25 ? '#c9a84c' : '#34d399';
@@ -64,9 +69,11 @@ function buildSimulatedHistory(portfolio: AdminPortfolio): SimulatedPoint[] {
   return points;
 }
 
-function PortfolioCard({ p, onClick }: { p: AdminPortfolio; onClick: () => void }) {
+function PortfolioCard({ p, onClick, rf }: { p: AdminPortfolio; onClick: () => void; rf: number }) {
   const meta = PROFILE_META[p.recommendedProfile] ?? PROFILE_META.default;
   const weightOk = Math.abs(p.totalWeight - 100) < 0.01;
+  const sr = sharpe(p.expectedReturn, p.expectedVol, rf);
+  const srColor = sr == null ? 'text-white/30' : sr >= 1 ? 'text-green-400' : sr >= 0.5 ? 'text-amber-400' : 'text-red-400';
   return (
     <motion.button
       onClick={onClick}
@@ -93,20 +100,26 @@ function PortfolioCard({ p, onClick }: { p: AdminPortfolio; onClick: () => void 
 
       <div className="flex items-center justify-between text-xs text-white/30">
         <span>{p.assets.length} actius · {p.horizon}</span>
-        <span className={weightOk ? 'text-green-400' : 'text-orange-400'}>
-          {weightOk ? '✓ 100%' : `${p.totalWeight}%`}
-        </span>
+        <div className="flex items-center gap-2">
+          {sr != null && (
+            <span className={`font-medium ${srColor}`}>Sharpe {sr.toFixed(2)}</span>
+          )}
+          <span className={weightOk ? 'text-green-400' : 'text-orange-400'}>
+            {weightOk ? '✓ 100%' : `${p.totalWeight}%`}
+          </span>
+        </div>
       </div>
     </motion.button>
   );
 }
 
-function PortfolioDetail({ p, onBack }: { p: AdminPortfolio; onBack: () => void }) {
+function PortfolioDetail({ p, onBack, rf }: { p: AdminPortfolio; onBack: () => void; rf: number }) {
   const meta = PROFILE_META[p.recommendedProfile] ?? PROFILE_META.default;
   const history = buildSimulatedHistory(p);
   const gain = history.length >= 2
     ? ((history[history.length - 1].value - history[0].value) / history[0].value * 100).toFixed(1)
     : '—';
+  const sr = sharpe(p.expectedReturn, p.expectedVol, rf);
 
   const pieData = p.assets.map((a, i) => ({
     name:  a.name.length > 22 ? a.name.slice(0, 22) + '…' : a.name,
@@ -144,15 +157,16 @@ function PortfolioDetail({ p, onBack }: { p: AdminPortfolio; onBack: () => void 
       </div>
 
       {/* KPI strip */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
+      <div className="grid grid-cols-2 md:grid-cols-5 gap-3 mb-6">
         {[
-          { label: 'Retorn esperat',  value: fmt(p.expectedReturn) },
-          { label: 'Volatilitat',     value: fmt(p.expectedVol)    },
-          { label: 'Horitzó',         value: p.horizon             },
-          { label: 'Rendiment 2a',    value: `+${gain}%`           },
+          { label: 'Retorn esperat',  value: fmt(p.expectedReturn), color: '#c9a84c' },
+          { label: 'Volatilitat',     value: fmt(p.expectedVol),    color: '#c9a84c' },
+          { label: 'Sharpe',          value: sr != null ? sr.toFixed(2) : '—', color: sr == null ? undefined : sr >= 1 ? '#4ade80' : sr >= 0.5 ? '#fb923c' : '#f87171' },
+          { label: 'Horitzó',         value: p.horizon,             color: '#c9a84c' },
+          { label: 'Rendiment 2a',    value: `+${gain}%`,           color: '#c9a84c' },
         ].map(kpi => (
           <div key={kpi.label} className="bg-[#0d1f1a] border border-white/10 rounded-lg p-3 text-center">
-            <div className="text-[#c9a84c] font-bold text-lg">{kpi.value}</div>
+            <div className="font-bold text-lg" style={{ color: kpi.color ?? '#c9a84c' }}>{kpi.value}</div>
             <div className="text-white/30 text-xs mt-0.5">{kpi.label}</div>
           </div>
         ))}
@@ -288,6 +302,15 @@ export default function CarteraPage() {
   const [portfolios, setPortfolios] = useState<AdminPortfolio[]>([]);
   const [selected, setSelected]    = useState<AdminPortfolio | null>(null);
   const [loading, setLoading]      = useState(true);
+  const [rf, setRf]                = useState(3.0);
+  const [rfSource, setRfSource]    = useState<'ecb-api' | 'fallback'>('fallback');
+
+  useEffect(() => {
+    fetch('/api/risk-free-rate')
+      .then(r => r.json())
+      .then(d => { if (typeof d.rate === 'number') { setRf(d.rate); setRfSource(d.source ?? 'ecb-api'); } })
+      .catch(() => {});
+  }, []);
 
   useEffect(() => {
     if (status === 'unauthenticated') {
@@ -343,7 +366,7 @@ export default function CarteraPage() {
       <div className="max-w-5xl mx-auto px-6 py-10">
         <AnimatePresence mode="wait">
           {selected ? (
-            <PortfolioDetail key="detail" p={selected} onBack={() => setSelected(null)} />
+            <PortfolioDetail key="detail" p={selected} onBack={() => setSelected(null)} rf={rf} />
           ) : (
             <motion.div
               key="list"
@@ -360,6 +383,12 @@ export default function CarteraPage() {
                 <p className="text-white/40 text-sm">
                   Carteres recomanades pel teu perfil inversor. Selecciona&apos;n una per veure el detall.
                 </p>
+                <div className="mt-3 flex items-center gap-2 text-xs text-white/30">
+                  <span className={`inline-block w-1.5 h-1.5 rounded-full ${rfSource === 'ecb-api' ? 'bg-green-400 animate-pulse' : 'bg-white/30'}`} />
+                  Taxa lliure de risc BCE: <span className="text-white/60 font-medium">{rf.toFixed(2)}%</span>
+                  <span className="text-white/20">·</span>
+                  Sharpe ≥ 1 = excel·lent &nbsp;|&nbsp; ≥ 0.5 = acceptable
+                </div>
               </div>
 
               {portfolios.length === 0 ? (
@@ -370,7 +399,7 @@ export default function CarteraPage() {
               ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                   {portfolios.map(p => (
-                    <PortfolioCard key={p.id} p={p} onClick={() => setSelected(p)} />
+                    <PortfolioCard key={p.id} p={p} onClick={() => setSelected(p)} rf={rf} />
                   ))}
                 </div>
               )}

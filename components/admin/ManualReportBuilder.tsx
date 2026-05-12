@@ -1,8 +1,10 @@
 'use client';
 
 import { useState, useMemo } from 'react';
+import { pdf } from '@react-pdf/renderer';
 import { FINANCIAL_PRODUCTS, type FinancialProduct } from '@/lib/products';
 import type { ManualAsset, ManualPortfolioInput } from '@/lib/manualReport';
+import { ManualReportPDF } from '@/components/pdf/ManualReportPDF';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -340,8 +342,9 @@ function StepAssets({ assets, setAssets }: { assets: AssetRow[]; setAssets: (a: 
 
 // ── Step 3: Preview + generate ────────────────────────────────────────────────
 
-function StepPreview({ form, assets, onGenerate, loading }: {
+function StepPreview({ form, assets, onGenerate, loading, genStep }: {
   form: ClientForm; assets: AssetRow[]; onGenerate: () => void; loading: boolean;
+  genStep: 'idle' | 'rendering' | 'done' | 'error';
 }) {
   const total = totalWeight(assets);
   const avgTER = assets.length > 0
@@ -408,8 +411,22 @@ function StepPreview({ form, assets, onGenerate, loading }: {
       <button
         onClick={onGenerate}
         disabled={loading || total !== 100 || assets.length === 0 || !form.clientName}
-        className="w-full py-3 bg-[#1a3a2a] border border-[#2d6a4f]/60 text-[#c9a84c] font-bold text-sm rounded-xl hover:bg-[#1f4432] transition-colors disabled:opacity-40 disabled:cursor-not-allowed font-sans">
-        {loading ? 'Generant informe...' : 'Generar informe'}
+        className={`w-full py-3 font-bold text-sm rounded-xl transition-all font-sans flex items-center justify-center gap-2 ${
+          genStep === 'done'
+            ? 'bg-green-700/30 border border-green-500/40 text-green-400'
+            : genStep === 'error'
+            ? 'bg-red-700/30 border border-red-500/40 text-red-400'
+            : 'bg-[#1a3a2a] border border-[#2d6a4f]/60 text-[#c9a84c] hover:bg-[#1f4432] disabled:opacity-40 disabled:cursor-not-allowed'
+        }`}>
+        {genStep === 'rendering' && <span className="animate-spin text-base">⏳</span>}
+        {genStep === 'done'      && <span>✓</span>}
+        {genStep === 'error'     && <span>✕</span>}
+        <span>
+          {genStep === 'rendering' ? 'Generant PDF...'
+           : genStep === 'done'    ? 'PDF descarregat!'
+           : genStep === 'error'   ? 'Error. Torna-ho a intentar'
+           : '📄 Generar i descarregar PDF'}
+        </span>
       </button>
 
       {total !== 100 && assets.length > 0 && (
@@ -440,6 +457,7 @@ export default function ManualReportBuilder() {
     monthlyAmount: 200, adminNote: '',
   });
   const [assets, setAssets] = useState<AssetRow[]>([]);
+  const [genStep, setGenStep] = useState<'idle' | 'rendering' | 'done' | 'error'>('idle');
 
   const canNext = useMemo(() => {
     if (step === 1) return !!form.clientName && !!form.clientEmail && form.horizon > 0 && form.initialAmount > 0;
@@ -449,6 +467,7 @@ export default function ManualReportBuilder() {
 
   const generate = async () => {
     setLoading(true);
+    setGenStep('rendering');
     setError(null);
     try {
       const payload: ManualPortfolioInput = {
@@ -456,26 +475,34 @@ export default function ManualReportBuilder() {
         assets: assets.map(({ _key: _, ...rest }) => rest),
       };
 
-      const res = await fetch('/api/admin/manual-report', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload),
+      const generatedAt = new Date().toLocaleDateString('ca-ES', {
+        day: '2-digit', month: 'long', year: 'numeric',
       });
 
-      if (!res.ok) {
-        const { error } = await res.json().catch(() => ({ error: 'Error desconegut' }));
-        throw new Error(error || `Error ${res.status}`);
-      }
+      // 1. Generar PDF client-side
+      const blob = await pdf(
+        <ManualReportPDF data={payload} generatedAt={generatedAt} />
+      ).toBlob();
 
-      const html = await res.text();
-      const blob = new Blob([html], { type: 'text/html;charset=utf-8' });
+      // 2. Descarregar
       const url  = URL.createObjectURL(blob);
-      window.open(url, '_blank');
-      // Revoke after a delay so the new tab has time to load
-      setTimeout(() => URL.revokeObjectURL(url), 60_000);
+      const link = document.createElement('a');
+      link.href  = url;
+      link.download = `Factor_OTC_Informe_Manual_${form.clientName.replace(/\s+/g, '_')}_${new Date().toISOString().split('T')[0]}.pdf`;
+      link.click();
+      URL.revokeObjectURL(url);
 
+      // 3. Guardar al registre (fire-and-forget)
+      fetch('/api/admin/manual-report', {
+        method:  'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body:    JSON.stringify(payload),
+      }).catch(() => {});
+
+      setGenStep('done');
     } catch (err) {
       console.error('Error generant informe:', err);
+      setGenStep('error');
       setError(err instanceof Error ? err.message : 'Error generant l\'informe. Torna-ho a intentar.');
     } finally {
       setLoading(false);
@@ -519,7 +546,7 @@ export default function ManualReportBuilder() {
       <div className="bg-white/[0.02] border border-[#1a3a2a]/60 rounded-2xl p-6 mb-6">
         {step === 1 && <StepClientData form={form} setForm={setForm} />}
         {step === 2 && <StepAssets assets={assets} setAssets={setAssets} />}
-        {step === 3 && <StepPreview form={form} assets={assets} onGenerate={generate} loading={loading} />}
+        {step === 3 && <StepPreview form={form} assets={assets} onGenerate={generate} loading={loading} genStep={genStep} />}
       </div>
 
       {error && (

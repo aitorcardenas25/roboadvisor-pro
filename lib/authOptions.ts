@@ -1,6 +1,7 @@
 import { NextAuthOptions } from 'next-auth';
 import CredentialsProvider from 'next-auth/providers/credentials';
 import { findUserByCredentials } from './users';
+import { logAuditEvent } from './auditLog';
 
 export const authOptions: NextAuthOptions = {
   providers: [
@@ -14,6 +15,7 @@ export const authOptions: NextAuthOptions = {
         if (!credentials?.username || !credentials?.password) return null;
         const user = findUserByCredentials(credentials.username, credentials.password);
         if (!user) return null;
+        logAuditEvent('auth.login', { userId: user.id, userEmail: user.email });
         return { id: user.id, name: user.name, email: user.email, role: user.role };
       },
     }),
