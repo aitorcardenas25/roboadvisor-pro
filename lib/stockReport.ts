@@ -64,7 +64,7 @@ function fLarge(n: number | null, cur = '$'): string {
   if (Math.abs(n) >= 1e12) return `${cur}${(n / 1e12).toFixed(2)}T`;
   if (Math.abs(n) >= 1e9)  return `${cur}${(n / 1e9).toFixed(2)}B`;
   if (Math.abs(n) >= 1e6)  return `${cur}${(n / 1e6).toFixed(1)}M`;
-  return `${cur}${n.toLocaleString()}`;
+  return `${cur}${Math.round(n).toLocaleString('ca-ES')}`;
 }
 function fRatio(n: number | null, suffix = 'x'): string {
   if (n == null || !isFinite(n)) return '—';
