@@ -26,6 +26,9 @@ export interface ManualPortfolioInput {
   monthlyAmount:  number;
   assets:         ManualAsset[];
   adminNote:      string;
+  // NEW — optional financial situation fields
+  monthlyIncome?:   number;  // real income if admin enters it
+  monthlyExpenses?: number;  // real expenses if admin enters it
 }
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
@@ -287,7 +290,7 @@ function header(crumb: string) {
   return `<div class="header-bar">${BRAND}<div class="crumb">${crumb}</div></div>`;
 }
 function footer(clientFirst: string, pageN: number) {
-  return `<div class="footer"><span>Factor OTC · Informe Manual Admin · Confidencial</span><span>${pageN} / 12</span></div>`;
+  return `<div class="footer"><span>Factor OTC · Informe Manual Admin · Confidencial</span><span>${pageN} / 11</span></div>`;
 }
 
 // ─── Main generator ───────────────────────────────────────────────────────────
@@ -335,7 +338,13 @@ export function generateManualReport(d: ManualPortfolioInput): string {
   const varExp      = Math.round(estIncome * 0.210);
   const surplus     = estIncome - fixedExp - varExp - d.monthlyAmount;
 
-  const savingsRate = parseFloat(((d.monthlyAmount / estIncome) * 100).toFixed(1));
+  // Use real values if provided, else estimated
+  const income   = d.monthlyIncome   ?? estIncome;
+  const expenses = d.monthlyExpenses ?? (fixedExp + varExp);
+  const realSurplus = income - expenses - d.monthlyAmount;
+  const isEstimated = !d.monthlyIncome || !d.monthlyExpenses;
+
+  const savingsRate = parseFloat(((d.monthlyAmount / income) * 100).toFixed(1));
   const eFundMonths = Math.round(d.initialAmount * 0.3 / Math.max(1, fixedExp + varExp));
   const debtRatio   = 8.1;
   const wealthMult  = parseFloat((d.initialAmount / Math.max(1, d.initialAmount * 2) * 4).toFixed(1));
@@ -423,192 +432,169 @@ export function generateManualReport(d: ManualPortfolioInput): string {
 </section>`;
 
   // ── PAGE 2: Resum executiu ────────────────────────────────────────────────────
+  const semaphoreColor = probSuccess >= 70 ? '#15803d' : probSuccess >= 50 ? '#a16207' : '#dc2626';
+  const semaphoreLabel = probSuccess >= 70 ? 'Alta probabilitat d\'èxit' : probSuccess >= 50 ? 'Probabilitat moderada' : 'Probabilitat baixa';
   const page2 = `<section class="page">
   <div class="pad">
     ${header(`${clientFirst} · Resum Executiu`)}
     <h2 class="section-num">Secció 1</h2>
     <h1 class="section">Resum Executiu</h1>
-    <p class="lead">Síntesi de la proposta patrimonial, fluxos de caixa, pla d'inversió i projecció esperada a ${d.horizon} anys per al perfil <strong>${prof.label}</strong> de ${d.clientName}.</p>
 
-    <div class="kpi-grid">
-      <div class="kpi"><div class="kpi-label">Patrimoni objectiu</div><div class="kpi-val">${fEur(p50)}</div><div class="kpi-sub">${d.objective} · ${d.horizon} anys</div></div>
-      <div class="kpi"><div class="kpi-label">Rendibilitat esperada</div><div class="kpi-val">${fN(netReturn, 1)} %</div><div class="kpi-sub">Anualitzada neta de costos</div></div>
-      <div class="kpi"><div class="kpi-label">Probabilitat d'èxit</div><div class="kpi-val">${probSuccess} %</div><div class="kpi-sub">Monte Carlo 1.000 escenaris</div></div>
+    <div style="background:#fff;border:1px solid var(--line);border-radius:12px;padding:22px 24px;margin-bottom:20px">
+      <div class="sans" style="font-size:10px;letter-spacing:2px;text-transform:uppercase;color:var(--gold);margin-bottom:14px">3 coses clau que has de saber</div>
+      <ul style="list-style:none;padding:0;margin:0">
+        <li style="padding:8px 0 8px 28px;position:relative;font-size:13.5px;color:#3a382f;border-bottom:1px dotted #d8d6cc"><span style="position:absolute;left:0;top:10px;width:8px;height:8px;border-radius:50%;background:var(--green);display:inline-block"></span>El teu capital creixerà de <strong>${fEur(d.initialAmount)}</strong> fins a aproximadament <strong>${fEur(p50)}</strong> en <strong>${d.horizon} anys</strong> (escenari central).</li>
+        <li style="padding:8px 0 8px 28px;position:relative;font-size:13.5px;color:#3a382f;border-bottom:1px dotted #d8d6cc"><span style="position:absolute;left:0;top:10px;width:8px;height:8px;border-radius:50%;background:var(--gold);display:inline-block"></span>Cada mes inverteixes <strong>${fEur(d.monthlyAmount)}</strong> de forma automàtica, sense que hagis de decidir res.</li>
+        <li style="padding:8px 0 8px 28px;position:relative;font-size:13.5px;color:#3a382f"><span style="position:absolute;left:0;top:10px;width:8px;height:8px;border-radius:50%;background:var(--navy);display:inline-block"></span>La probabilitat que el teu objectiu sigui assolible és del <strong>${probSuccess}%</strong> segons la simulació Monte Carlo.</li>
+      </ul>
     </div>
 
-    <h3 class="sans" style="font-size:13px;letter-spacing:2px;text-transform:uppercase;color:var(--navy);margin:24px 0 10px">Anàlisi del flux de caixa mensual (estimat)</h3>
-    <table class="data">
-      <thead><tr><th>Concepte</th><th style="text-align:right">Import</th><th style="text-align:right">% Ingressos</th><th>Estat</th></tr></thead>
-      <tbody>
-        <tr><td>Ingressos nets estimats</td><td class="num">${fEur(estIncome)}</td><td class="num">100,0 %</td><td><span class="pill pill-green">Estable</span></td></tr>
-        <tr><td>Despeses fixes (lloguer, subministraments, transport)</td><td class="num">${fEur(fixedExp)}</td><td class="num">${fN(fixedExp/estIncome*100,1)} %</td><td><span class="pill pill-green">Sota control</span></td></tr>
-        <tr><td>Despeses variables (alimentació, oci, salut)</td><td class="num">${fEur(varExp)}</td><td class="num">${fN(varExp/estIncome*100,1)} %</td><td><span class="pill pill-green">Saludable</span></td></tr>
-        <tr><td>Aportació inversió recurrent</td><td class="num">${fEur(d.monthlyAmount)}</td><td class="num">${fN(savingsRate,1)} %</td><td><span class="pill pill-gold">DCA actiu</span></td></tr>
-        <tr><td>Excedent disponible</td><td class="num">${fEur(surplus)}</td><td class="num">${fN(surplus/estIncome*100,1)} %</td><td><span class="pill pill-green">Capacitat extra</span></td></tr>
-      </tbody>
-    </table>
+    <div class="kpi-grid">
+      <div class="kpi"><div class="kpi-label">Capital inicial</div><div class="kpi-val">${fEur(d.initialAmount)}</div><div class="kpi-sub">Inversió de partida</div></div>
+      <div class="kpi"><div class="kpi-label">Aportació mensual</div><div class="kpi-val">${fEur(d.monthlyAmount)}</div><div class="kpi-sub">DCA recurrent</div></div>
+      <div class="kpi"><div class="kpi-label">Projecció central (P50)</div><div class="kpi-val">${fEur(p50)}</div><div class="kpi-sub">${fPct(profitP50, true)} vs aportat · ${d.horizon} anys</div></div>
+    </div>
+
+    <div class="callout callout-ok" style="margin:18px 0">
+      <strong style="color:var(--navy)">En resum —</strong> La cartera <em>${prof.label}</em> de ${assets.length} fons diversificats és adequada per al teu objectiu de <em>${d.objective.toLowerCase()}</em>. Amb una aportació constant de ${fEur(d.monthlyAmount)} mensuals i un horitzó de ${d.horizon} anys, la composició interessarà per sobre de la inflació i el teu capital treballarà per tu sense necessitat d'intervenció diària.${d.adminNote ? ` <em>${d.adminNote}</em>` : ''}
+    </div>
+
+    <div style="display:flex;align-items:center;gap:16px;padding:16px 20px;background:#fff;border:1px solid var(--line);border-radius:10px;margin-top:18px">
+      <div style="width:14px;height:14px;border-radius:50%;background:${semaphoreColor};flex-shrink:0;box-shadow:0 0 8px ${semaphoreColor}55"></div>
+      <div>
+        <div class="sans" style="font-size:13px;font-weight:700;color:${semaphoreColor}">${semaphoreLabel}</div>
+        <div class="sans" style="font-size:11px;color:var(--muted);margin-top:2px">Probabilitat d'èxit Monte Carlo: <strong>${probSuccess}%</strong> · ${probSuccess >= 70 ? 'Objectiu molt assolible amb la cartera proposada.' : probSuccess >= 50 ? 'Objectiu assolible mantenint la disciplina inversora.' : 'Considera augmentar les aportacions o revisar l\'objectiu.'}</div>
+      </div>
+    </div>
 
     <h3 class="sans" style="font-size:13px;letter-spacing:2px;text-transform:uppercase;color:var(--navy);margin:26px 0 10px">Projecció patrimonial — escenaris a ${d.horizon} anys</h3>
-    <div class="grid-4">
+    <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px">
       <div class="kpi"><div class="kpi-label">Total aportat</div><div class="kpi-val" style="font-size:20px">${fEur(totalInvested)}</div><div class="kpi-sub">${fEur(d.initialAmount)} + ${fEur(d.monthlyAmount)}×${d.horizon*12}</div></div>
       <div class="kpi"><div class="kpi-label">Pessimista (P10)</div><div class="kpi-val" style="font-size:20px;color:var(--danger)">${fEur(p10)}</div><div class="kpi-sub">${fPct(profitP10, true)} vs aportat</div></div>
       <div class="kpi"><div class="kpi-label">Central (P50)</div><div class="kpi-val" style="font-size:20px;color:var(--navy)">${fEur(p50)}</div><div class="kpi-sub">${fPct(profitP50, true)} vs aportat</div></div>
       <div class="kpi"><div class="kpi-label">Optimista (P90)</div><div class="kpi-val" style="font-size:20px;color:var(--ok)">${fEur(p90)}</div><div class="kpi-sub">${fPct(profitP90, true)} vs aportat</div></div>
     </div>
-
-    <div class="callout">
-      <strong style="color:var(--navy)">Tesi de la proposta.</strong> Cartera <em>${prof.label}</em> amb ${assets.length} vehicles d'inversió diversificats. ${prof.desc} TER ponderat <strong>${fN(weightedTER, 2)} %</strong>. Rendibilitat esperada neta de costos: <strong>${fN(netReturn, 1)} %</strong> anualitzada.${d.adminNote ? ` <em>${d.adminNote}</em>` : ''}
-    </div>
-
-    <h3 class="sans" style="font-size:13px;letter-spacing:2px;text-transform:uppercase;color:var(--navy);margin:22px 0 10px">Recomanacions clau</h3>
-    <ul class="clean">
-      <li>Mantenir l'aportació mensual sistemàtica de ${fEur(d.monthlyAmount)} independentment del cicle de mercat (DCA).</li>
-      <li>Rebalanceig anual amb tolerància ±5 % per actiu i ±3 % per classe d'actiu.</li>
-      <li>Reservar fons d'emergència equivalent a 4-6 mesos de despeses en compte remunerat.</li>
-      <li>Revisió semianual amb gestor i recalibració del perfil cada 24 mesos o davant canvis vitals.</li>
-    </ul>
   </div>
   ${footer(clientFirst, 2)}
 </section>`;
 
-  // ── PAGE 3: Dades client i perfil ────────────────────────────────────────────
-  const mifidRows = [
-    { dim: 'Horitzó temporal', max: 20, score: horizonScore, detail: `${d.horizon} anys fins a l'objectiu: ${d.objective}` },
-    { dim: 'Coneixement financer', max: 15, score: knowScore, detail: 'Familiaritzat amb fons indexats i ETFs; nivell adequat al perfil' },
-    { dim: 'Experiència inversora', max: 15, score: expScore, detail: 'Experiència en instruments de baix cost i inversió sistemàtica' },
-    { dim: 'Tolerància a pèrdues', max: 20, score: tolScore, detail: `Acceptaria fins a –${prof.maxDDPct} % temporal sense liquidar` },
-    { dim: 'Reacció davant caigudes', max: 15, score: reactScore, detail: 'Mantindria estratègia DCA; aportaria parcialment en correccions' },
-    { dim: 'Objectiu financer', max: 10, score: objScore, detail: d.objective },
-    { dim: 'Necessitat de liquiditat', max: 10, score: liquidScore, detail: `Liquiditat baixa exigida durant ${d.horizon} anys d'horitzó` },
-    { dim: 'Salut financera', max: 10, score: healthScore, detail: `Capital inicial ${fEur(d.initialAmount)} — capacitat d'estalvi adequada` },
-  ];
-
+  // ── PAGE 3: Situació financera ────────────────────────────────────────────────
+  const expPct  = Math.round(expenses / income * 100);
+  const invPct  = Math.round(d.monthlyAmount / income * 100);
+  const surpPct = Math.max(0, 100 - expPct - invPct);
+  const expW    = Math.round(expPct * 6.4);
+  const invW    = Math.round(invPct * 6.4);
+  const surpW   = Math.round(surpPct * 6.4);
+  const eFundMonthsReal = Math.round(d.initialAmount * 0.3 / Math.max(1, expenses));
   const page3 = `<section class="page">
   <div class="pad">
-    ${header(`${clientFirst} · Perfil Inversor`)}
+    ${header(`${clientFirst} · Situació Financera`)}
     <h2 class="section-num">Secció 2</h2>
-    <h1 class="section">Dades del client i perfil inversor</h1>
-    <p class="lead">Identificació de l'inversor, qüestionari MiFID II i scoring de tolerància al risc segons les vuit dimensions del model intern.</p>
+    <h1 class="section">La teva situació financera</h1>
+    <p class="lead">Anàlisi dels teus fluxos mensuals per entendre d'on ve la capacitat d'inversió i com gestionar l'excedent disponible.</p>
 
-    <div class="grid-2">
-      <div>
-        <h3 class="sans" style="font-size:12px;letter-spacing:2px;text-transform:uppercase;color:var(--navy);margin-bottom:10px">Dades identificatives</h3>
-        <div class="stat-row"><span>Nom complet</span><strong>${d.clientName}</strong></div>
-        <div class="stat-row"><span>Email contacte</span><strong>${d.clientEmail}</strong></div>
-        <div class="stat-row"><span>Perfil inversor</span><strong>${prof.label}</strong></div>
-        <div class="stat-row"><span>Objectiu financer</span><strong>${d.objective}</strong></div>
-        <div class="stat-row"><span>Horitzó temporal</span><strong>${d.horizon} anys</strong></div>
-        <div class="stat-row"><span>Capital inicial</span><strong>${fEur(d.initialAmount)}</strong></div>
-        <div class="stat-row"><span>Aportació mensual</span><strong>${fEur(d.monthlyAmount)}</strong></div>
-        <div class="stat-row"><span>Data alta a Factor OTC</span><strong>${generatedAt.split(',')[0]}</strong></div>
-        <div class="stat-row"><span>Gestor assignat</span><strong>A. Cardenas (BP-014)</strong></div>
-      </div>
-      <div>
-        <h3 class="sans" style="font-size:12px;letter-spacing:2px;text-transform:uppercase;color:var(--navy);margin-bottom:10px">Situació financera (estimada)</h3>
-        <div class="stat-row"><span>Ingressos nets / mes</span><strong>${fEur(estIncome)}</strong></div>
-        <div class="stat-row"><span>Despeses totals / mes</span><strong>${fEur(fixedExp + varExp)}</strong></div>
-        <div class="stat-row"><span>Capital inicial a invertir</span><strong>${fEur(d.initialAmount)}</strong></div>
-        <div class="stat-row"><span>Aportació mensual</span><strong>${fEur(d.monthlyAmount)}</strong></div>
-        <div class="stat-row"><span>Vehicles seleccionats</span><strong>${assets.length} fons / ETFs</strong></div>
-        <div class="stat-row"><span>TER ponderat</span><strong>${fN(weightedTER, 2)} %</strong></div>
-        <div class="stat-row"><span>Risc mig cartera (SRRI)</span><strong>${fN(avgRisk, 1)} / 7 — ${RISK_LABEL[Math.round(avgRisk)] ?? 'Moderat'}</strong></div>
+    <div class="kpi-grid">
+      <div class="kpi"><div class="kpi-label">Ingressos mensuals</div><div class="kpi-val" style="color:var(--ok)">${fEur(income)}</div><div class="kpi-sub">${isEstimated ? '* Valor estimat' : 'Valor real introduït'}</div></div>
+      <div class="kpi"><div class="kpi-label">Despeses mensuals</div><div class="kpi-val" style="color:var(--danger)">${fEur(expenses)}</div><div class="kpi-sub">${isEstimated ? '* Valor estimat' : 'Valor real introduït'}</div></div>
+      <div class="kpi"><div class="kpi-label">Excedent disponible</div><div class="kpi-val" style="color:${realSurplus >= 0 ? 'var(--navy)' : 'var(--danger)'}">${fEur(Math.abs(realSurplus))}</div><div class="kpi-sub">${realSurplus >= 0 ? 'Marge positiu' : 'Atenció: dèficit mensual'}</div></div>
+    </div>
+
+    <h3 class="sans" style="font-size:12px;letter-spacing:2px;text-transform:uppercase;color:var(--navy);margin:22px 0 10px">Distribució dels ingressos mensuals</h3>
+    <div style="background:#fff;border:1px solid var(--line);border-radius:10px;padding:18px 20px;margin-bottom:16px">
+      <svg viewBox="0 0 640 44" style="width:100%;height:auto;border-radius:6px;overflow:hidden;margin-bottom:10px">
+        <rect x="0" y="0" width="${expW}" height="44" fill="#374151"/>
+        <rect x="${expW}" y="0" width="${invW}" height="44" fill="#2d6a4f"/>
+        <rect x="${expW + invW}" y="0" width="${surpW}" height="44" fill="#c9a84c"/>
+        ${expW > 40 ? `<text x="${expW/2}" y="26" text-anchor="middle" font-family="Arial" font-size="10" fill="#fff" font-weight="700">${expPct}%</text>` : ''}
+        ${invW > 30 ? `<text x="${expW + invW/2}" y="26" text-anchor="middle" font-family="Arial" font-size="10" fill="#fff" font-weight="700">${invPct}%</text>` : ''}
+        ${surpW > 30 ? `<text x="${expW + invW + surpW/2}" y="26" text-anchor="middle" font-family="Arial" font-size="10" fill="#fff" font-weight="700">${surpPct}%</text>` : ''}
+      </svg>
+      <div style="display:flex;gap:20px;font-family:-apple-system,Arial,sans-serif;font-size:11px;color:var(--muted)">
+        <span><span style="display:inline-block;width:10px;height:10px;border-radius:2px;background:#374151;margin-right:5px;vertical-align:middle"></span>Despeses ${expPct}%</span>
+        <span><span style="display:inline-block;width:10px;height:10px;border-radius:2px;background:#2d6a4f;margin-right:5px;vertical-align:middle"></span>Inversió ${invPct}%</span>
+        <span><span style="display:inline-block;width:10px;height:10px;border-radius:2px;background:#c9a84c;margin-right:5px;vertical-align:middle"></span>Excedent ${surpPct}%</span>
       </div>
     </div>
 
-    <h3 class="sans" style="font-size:13px;letter-spacing:2px;text-transform:uppercase;color:var(--navy);margin:28px 0 8px">Perfil inversor determinat</h3>
-    <div style="background:#fff;border:1px solid var(--line);border-radius:10px;padding:22px;display:flex;align-items:center;gap:24px">
-      <div style="flex:0 0 130px;text-align:center">
-        <div style="font-family:Georgia,serif;font-size:54px;font-weight:700;color:var(--navy);line-height:1">${prof.score}</div>
-        <div class="sans" style="font-size:10.5px;color:var(--muted);letter-spacing:1.5px;text-transform:uppercase;margin-top:4px">/100 punts</div>
-        <div style="margin-top:8px"><span class="pill pill-gold">${prof.label}</span></div>
-      </div>
-      <div style="flex:1">
-        <p style="font-size:13.5px;color:#3a382f;margin-bottom:10px">${prof.desc}</p>
-        <div class="bar-h" style="height:8px"><span style="width:${prof.bar}"></span></div>
-        <div style="display:flex;justify-content:space-between;font-family:-apple-system,Arial,sans-serif;font-size:9.5px;color:var(--muted);margin-top:6px;letter-spacing:1px;text-transform:uppercase">
-          <span>Conservador</span><span>Moderat</span><span style="color:var(--gold);font-weight:700">${prof.label}</span><span>Dinàmic</span><span>Agressiu</span>
-        </div>
-      </div>
-    </div>
+    ${isEstimated ? `<div class="callout callout-warn" style="font-size:11.5px;margin-bottom:16px"><strong>* Valors estimats.</strong> L'admin pot introduir les dades reals al formulari per obtenir una anàlisi més precisa.</div>` : ''}
 
-    <h3 class="sans" style="font-size:13px;letter-spacing:2px;text-transform:uppercase;color:var(--navy);margin:28px 0 8px">Scoring per dimensió MiFID</h3>
+    <h3 class="sans" style="font-size:12px;letter-spacing:2px;text-transform:uppercase;color:var(--navy);margin:16px 0 8px">Indicadors de salut financera</h3>
     <table class="data">
-      <thead><tr><th>Dimensió</th><th style="text-align:right">Puntuació</th><th>Detall</th></tr></thead>
+      <thead><tr><th>Indicador</th><th style="text-align:right">Valor</th><th>Interpretació</th></tr></thead>
       <tbody>
-        ${mifidRows.map(r => `<tr><td>${r.dim}</td><td class="num">${r.score} / ${r.max}</td><td>${r.detail}</td></tr>`).join('')}
+        <tr><td>Taxa d'estalvi</td><td class="num">${fN(savingsRate,1)} %</td><td>${savingsRate > 20 ? 'Excel·lent — per sobre del 20% recomanat' : savingsRate > 10 ? 'Adequat — entre 10% i 20%' : 'Millorable — per sota del 10%'}</td></tr>
+        <tr><td>Fons d'emergència estimat</td><td class="num">${eFundMonthsReal} mesos</td><td>${eFundMonthsReal >= 6 ? 'Suficient — cobreix 6 mesos o més' : 'Millorable — recomana arribar a 6 mesos'}</td></tr>
+        <tr><td>Ràtio inversió/ingressos</td><td class="num">${fN(invPct, 1)} %</td><td>${invPct > 15 ? 'Excel·lent — inversió sistemàtica sòlida' : invPct > 8 ? 'Adequat — base d\'inversió consistent' : 'Baix — considera augmentar l\'aportació'}</td></tr>
       </tbody>
     </table>
+
+    <div class="callout" style="margin-top:16px">
+      Cada euro que inverteixes mensualment de forma sistemàtica contribueix al teu objectiu de <strong>${d.objective.toLowerCase()}</strong>. L'efecte de la composició farà que els teus diners treballin de forma accelerada a mesura que passin els anys.
+    </div>
   </div>
   ${footer(clientFirst, 3)}
 </section>`;
 
-  // ── PAGE 4: Diagnòstic financer ───────────────────────────────────────────────
+  // ── PAGE 4: Objectiu del client ───────────────────────────────────────────────
+  const targetYear = new Date().getFullYear() + d.horizon;
   const page4 = `<section class="page">
   <div class="pad">
-    ${header(`${clientFirst} · Diagnòstic Financer`)}
+    ${header(`${clientFirst} · Objectiu`)}
     <h2 class="section-num">Secció 3</h2>
-    <h1 class="section">Diagnòstic financer personal</h1>
-    <p class="lead">Anàlisi de la salut financera prèvia a la inversió: capacitat d'estalvi, fons d'emergència, ràtio de deute i sostenibilitat de l'objectiu.</p>
+    <h1 class="section">El teu objectiu</h1>
 
-    <div class="grid-4">
-      <div class="kpi"><div class="kpi-label">Taxa estalvi</div><div class="kpi-val" style="color:var(--ok)">${fN(savingsRate,1)} %</div><div class="kpi-sub">${savingsRate > 20 ? 'Excel·lent (&gt;20 %)' : 'Adequat (&gt;10 %)'}</div></div>
-      <div class="kpi"><div class="kpi-label">Fons emergència</div><div class="kpi-val">${eFundMonths} mesos</div><div class="kpi-sub">${eFundMonths >= 6 ? 'Suficient (&gt;6)' : 'Millorable'}</div></div>
-      <div class="kpi"><div class="kpi-label">Deute / ingressos</div><div class="kpi-val" style="color:var(--ok)">${fN(debtRatio,1)} %</div><div class="kpi-sub">Baix (&lt;30 %)</div></div>
-      <div class="kpi"><div class="kpi-label">Patrimoni / ingressos</div><div class="kpi-val">${fN(d.initialAmount / Math.max(1, estIncome * 12), 1)}×</div><div class="kpi-sub">Relació patrimoni anual</div></div>
+    <div style="background:#fff;border:1px solid var(--line);border-radius:12px;padding:24px;margin-bottom:20px;text-align:center">
+      <div style="font-family:Georgia,serif;font-size:24px;font-weight:700;color:var(--navy);margin-bottom:8px">"${d.objective}"</div>
+      <div class="sans" style="font-size:12px;color:var(--muted)">Objectiu financer · Horitzó ${d.horizon} anys</div>
     </div>
 
-    <h3 class="sans" style="font-size:13px;letter-spacing:2px;text-transform:uppercase;color:var(--navy);margin:24px 0 10px">Diagnòstic detallat</h3>
-    <table class="data">
-      <thead><tr><th>Indicador</th><th style="text-align:right">Valor</th><th>Estat</th><th>Interpretació</th></tr></thead>
-      <tbody>
-        <tr><td>Taxa d'estalvi</td><td class="num">${fN(savingsRate,1)} %</td><td><span class="pill ${savingsRate>20?'pill-green':'pill-gold'}">${savingsRate>20?'Òptim':'Adequat'}</span></td><td>Capacitat d'aportació ${savingsRate>20?'elevada':'estable'}</td></tr>
-        <tr><td>Fons d'emergència (mesos despeses)</td><td class="num">${eFundMonths}</td><td><span class="pill ${eFundMonths>=6?'pill-green':'pill-warn'}">${eFundMonths>=6?'Suficient':'Millorable'}</span></td><td>${eFundMonths>=6?'Excedent reassignable parcialment a inversió':'Recomanem augmentar fins a 6 mesos'}</td></tr>
-        <tr><td>Ràtio deute / ingressos bruts</td><td class="num">${fN(debtRatio,1)} %</td><td><span class="pill pill-green">Baix</span></td><td>Espai per assumir risc ${prof.label.toLowerCase()}</td></tr>
-        <tr><td>Diversificació patrimonial</td><td class="num">${fN(100 - d.initialAmount/(d.initialAmount*2)*100,0)} % invers.</td><td><span class="pill pill-warn">Millorable</span></td><td>Cal augmentar exposició a actius productius</td></tr>
-        <tr><td>Viabilitat objectiu (${d.horizon} anys)</td><td class="num">${probSuccess} / 100</td><td><span class="pill pill-gold">Assolible</span></td><td>Coherent amb el pla d'inversió i DCA</td></tr>
-        <tr><td>Pressupost mensual lliure</td><td class="num">${fEur(surplus)}</td><td><span class="pill pill-green">Excedent</span></td><td>Marge per increment d'aportació futur</td></tr>
-      </tbody>
-    </table>
-
-    <h3 class="sans" style="font-size:13px;letter-spacing:2px;text-transform:uppercase;color:var(--navy);margin:24px 0 10px">Estratègia de seguretat patrimonial</h3>
-    <div class="grid-2">
-      <div class="callout callout-ok">
-        <strong>Punts forts</strong>
-        <ul class="clean" style="margin-top:6px">
-          <li>Taxa d'estalvi del ${fN(savingsRate,1)} % — per sobre de la mitjana del 10-15 %</li>
-          <li>Capital inicial sòlid de ${fEur(d.initialAmount)} per iniciar la composició</li>
-          <li>Aportació DCA de ${fEur(d.monthlyAmount)}/mes amb efecte promig de cost</li>
-          <li>Horitzó llarg de ${d.horizon} anys — marge per absorvir cicles adversos</li>
-        </ul>
-      </div>
-      <div class="callout callout-warn">
-        <strong>Punts a vigilar</strong>
-        <ul class="clean" style="margin-top:6px">
-          <li>Fons d'emergència: prioritzar 3-6 mesos de despeses en líquid</li>
-          <li>Diversificació patrimonial: augmentar exposició a actius productius</li>
-          <li>Revisió semianual del pla d'inversió davant canvis d'ingressos</li>
-          <li>Optimització fiscal: valorar traspàs entre fons per diferir impostos</li>
-        </ul>
-      </div>
+    <h3 class="sans" style="font-size:12px;letter-spacing:2px;text-transform:uppercase;color:var(--navy);margin:16px 0 12px">Línia temporal</h3>
+    <div style="background:#fff;border:1px solid var(--line);border-radius:10px;padding:22px 28px;margin-bottom:20px">
+      <svg viewBox="0 0 640 80" style="width:100%;height:auto">
+        <line x1="40" y1="40" x2="600" y2="40" stroke="#e7e5dc" stroke-width="3"/>
+        <circle cx="40" cy="40" r="8" fill="#0f2137"/>
+        <circle cx="600" cy="40" r="8" fill="#c9a84c"/>
+        ${[1, 2, 3].map(i => {
+          const cx = 40 + i * (560 / 4);
+          return `<circle cx="${cx}" cy="40" r="4" fill="#e7e5dc" stroke="#94918a" stroke-width="1"/>`;
+        }).join('')}
+        <text x="40" y="62" text-anchor="middle" font-family="Arial" font-size="10" fill="#5b6472">Avui</text>
+        <text x="600" y="62" text-anchor="middle" font-family="Arial" font-size="10" fill="#c9a84c" font-weight="700">${targetYear}</text>
+        <text x="600" y="76" text-anchor="middle" font-family="Arial" font-size="9" fill="#5b6472">${fEur(p50)} (P50)</text>
+        ${[1, 2, 3].map(i => {
+          const cx = 40 + i * (560 / 4);
+          const yr = new Date().getFullYear() + Math.round(i * d.horizon / 4);
+          return `<text x="${cx}" y="62" text-anchor="middle" font-family="Arial" font-size="9" fill="#94918a">${yr}</text>`;
+        }).join('')}
+      </svg>
     </div>
 
-    <div class="callout">
-      <strong style="color:var(--navy)">Recomanació de seguretat.</strong> Mantenir ${fEur(Math.round((fixedExp + varExp) * 4))} en compte remunerat com a fons d'emergència (4 mesos de despeses) i destinar ${fEur(d.initialAmount)} a la cartera proposada. L'excedent mensual de ${fEur(surplus)} permet incrementar l'aportació progressivament.
+    <p style="font-size:13.5px;color:#3a382f;margin-bottom:12px">Amb una inversió inicial de <strong>${fEur(d.initialAmount)}</strong> i aportacions mensuals de <strong>${fEur(d.monthlyAmount)}</strong>, la cartera proposada projecta un patrimoni central de <strong>${fEur(p50)}</strong> en ${d.horizon} anys (escenari P50). Això representa un creixement del <strong>${fPct(profitP50, true)}</strong> sobre el capital total aportat de ${fEur(totalInvested)}.</p>
+    <p style="font-size:13px;color:var(--muted);margin-bottom:20px">En un escenari pessimista (P10, any de crisi), la cartera podria arribar a ${fEur(p10)} (${fPct(profitP10, true)}). En un escenari optimista (P90), podria superar els ${fEur(p90)} (${fPct(profitP90, true)}). La clau és mantenir la disciplina inversora independentment del cicle de mercat.</p>
+
+    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-bottom:20px">
+      <div class="kpi"><div class="kpi-label">Horitzó temporal</div><div class="kpi-val">${d.horizon} anys</div><div class="kpi-sub">Fins a ${targetYear}</div></div>
+      <div class="kpi"><div class="kpi-label">Capital objectiu (P50)</div><div class="kpi-val" style="font-size:20px">${fEur(p50)}</div><div class="kpi-sub">Escenari central</div></div>
+      <div class="kpi"><div class="kpi-label">Probabilitat d'èxit</div><div class="kpi-val" style="color:${semaphoreColor}">${probSuccess} %</div><div class="kpi-sub">Monte Carlo 1.000 esc.</div></div>
+    </div>
+
+    <div class="callout callout-ok">
+      <strong>Recomanació.</strong> Per maximitzar la probabilitat d'assolir l'objectiu, mantén les aportacions de ${fEur(d.monthlyAmount)} mensuals sense interrupció i evita rescatar la inversió durant els primers 5 anys. El temps és el teu actiu més valuós: la composició s'accelera exponencialment a mesura que s'apropa el termini.
     </div>
   </div>
   ${footer(clientFirst, 4)}
 </section>`;
 
-  // ── PAGE 5: Composició detallada ──────────────────────────────────────────────
+  // ── PAGE 5: Cartera proposada ──────────────────────────────────────────────────
   const rvPct  = assets.filter(a => /variable|equity|rv\b/i.test(a.category)).reduce((s, a) => s + a.weight, 0);
   const rfPct  = assets.filter(a => /fixa|bond|rf\b|renda fixa|oblig/i.test(a.category)).reduce((s, a) => s + a.weight, 0);
   const cashPct = 100 - rvPct - rfPct;
 
   const page5 = `<section class="page">
   <div class="pad">
-    ${header(`${clientFirst} · Composició Cartera`)}
+    ${header(`${clientFirst} · Cartera Proposada`)}
     <h2 class="section-num">Secció 4</h2>
-    <h1 class="section">Composició detallada de la cartera</h1>
+    <h1 class="section">Cartera proposada</h1>
     <p class="lead">Estructura proposada per a ${fEur(d.initialAmount)} d'inversió inicial sota el perfil ${prof.label}. Diversificació per classe d'actiu, geografia i cost.</p>
 
     <div class="grid-2" style="margin-bottom:20px">
@@ -617,22 +603,45 @@ export function generateManualReport(d: ManualPortfolioInput): string {
         ${buildDonutSVG(assets)}
       </div>
       <div>
-        <h3 class="sans" style="font-size:12px;letter-spacing:2px;text-transform:uppercase;color:var(--navy);margin-bottom:8px">Distribució geogràfica (look-through)</h3>
-        <div style="margin-top:6px">
-          ${rvPct > 0 ? `<div class="stat-row"><span>EUA · S&P 500 / mid-large cap</span><strong class="mono">${Math.round(rvPct*0.5)} %</strong></div>
-          <div class="stat-row"><span>Europa desenvolupada</span><strong class="mono">${Math.round(rvPct*0.25)} %</strong></div>
-          <div class="stat-row"><span>Mercats emergents (Àsia + LatAm)</span><strong class="mono">${Math.round(rvPct*0.1)} %</strong></div>
-          <div class="stat-row"><span>Japó &amp; Pacífic</span><strong class="mono">${Math.round(rvPct*0.15)} %</strong></div>` : ''}
-          ${rfPct > 0 ? `<div class="stat-row"><span>Renda fixa global EUR-hedged</span><strong class="mono">${Math.round(rfPct*0.6)} %</strong></div>
-          <div class="stat-row"><span>Govern Europa 7-10y</span><strong class="mono">${Math.round(rfPct*0.25)} %</strong></div>
-          <div class="stat-row"><span>Inflation-linked global</span><strong class="mono">${Math.round(rfPct*0.15)} %</strong></div>` : ''}
-          ${cashPct > 0 ? `<div class="stat-row"><span>Monetari EUR</span><strong class="mono">${cashPct} %</strong></div>` : ''}
-          <div class="stat-row" style="border-top:1px solid var(--line);padding-top:9px"><span><strong>TER ponderat</strong></span><strong class="mono" style="color:var(--gold)">${fN(weightedTER, 2)} %</strong></div>
+        <h3 class="sans" style="font-size:12px;letter-spacing:2px;text-transform:uppercase;color:var(--navy);margin-bottom:10px">Indicadors de la cartera</h3>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+          <div class="kpi"><div class="kpi-label">Rendiment esperat net</div><div class="kpi-val" style="font-size:20px;color:var(--ok)">${fN(netReturn,1)} %</div><div class="kpi-sub">Anual net de TER</div></div>
+          <div class="kpi"><div class="kpi-label">Volatilitat estimada</div><div class="kpi-val" style="font-size:20px">${fN(weightedVol,1)} %</div><div class="kpi-sub">Fluctuació anual esperada</div></div>
+          <div class="kpi"><div class="kpi-label">TER mig</div><div class="kpi-val" style="font-size:20px;color:var(--gold)">${fN(weightedTER,2)} %</div><div class="kpi-sub">Cost anual total de gestió</div></div>
+          <div class="kpi"><div class="kpi-label">SRRI ponderat</div><div class="kpi-val" style="font-size:20px">${fN(avgRisk,1)} / 7</div><div class="kpi-sub">Risc regulatori MiFID</div></div>
         </div>
       </div>
     </div>
 
-    <h3 class="sans" style="font-size:13px;letter-spacing:2px;text-transform:uppercase;color:var(--navy);margin:6px 0 8px">Vehicles d'inversió</h3>
+    <h3 class="sans" style="font-size:12px;letter-spacing:2px;text-transform:uppercase;color:var(--navy);margin:8px 0 10px">Barra d'assignació</h3>
+    <div style="border-radius:6px;overflow:hidden;height:12px;display:flex;margin-bottom:8px">
+      ${assets.map((a, i) => {
+        const colors = ['#0f2137','#c9a84c','#2d6a4f','#1a3a5c','#a37e22','#5b6472','#8b5cf6','#94a3b8'];
+        return `<div style="width:${a.weight}%;background:${colors[i % colors.length]};height:12px"></div>`;
+      }).join('')}
+    </div>
+    <div style="display:flex;flex-wrap:wrap;gap:8px;font-family:-apple-system,Arial,sans-serif;font-size:10.5px;color:var(--muted);margin-bottom:16px">
+      ${assets.map((a, i) => {
+        const colors = ['#0f2137','#c9a84c','#2d6a4f','#1a3a5c','#a37e22','#5b6472','#8b5cf6','#94a3b8'];
+        return `<span><span style="display:inline-block;width:8px;height:8px;border-radius:2px;background:${colors[i % colors.length]};margin-right:4px;vertical-align:middle"></span>${a.name.split(' ')[0]} ${a.weight}%</span>`;
+      }).join('')}
+    </div>
+
+    <div class="callout callout-ok">
+      <strong>Optimització de costos.</strong> TER ponderat <strong>${fN(weightedTER, 2)} %</strong> — substancialment per sota de la mitjana del sector per a carteres mixtes (0,90–1,40%). Combinació de gestió indexada (core) amb selecció activa de convicció.
+    </div>
+  </div>
+  ${footer(clientFirst, 5)}
+</section>`;
+
+  // ── PAGE 6: Composició detallada ──────────────────────────────────────────────
+  const page6 = `<section class="page">
+  <div class="pad">
+    ${header(`${clientFirst} · Composició Detallada`)}
+    <h2 class="section-num">Secció 5</h2>
+    <h1 class="section">Composició detallada de la cartera</h1>
+    <p class="lead">Detall de cada vehicle d'inversió inclòs a la cartera amb ISIN, pes, cost i plataforma de contractació.</p>
+
     <table class="data">
       <thead><tr><th>Fons / ETF</th><th>Categoria</th><th style="text-align:right">Pes</th><th style="text-align:right">TER</th><th style="text-align:right">Import</th><th>SRRI</th></tr></thead>
       <tbody>
@@ -642,75 +651,185 @@ export function generateManualReport(d: ManualPortfolioInput): string {
           <td class="num">${a.weight} %</td>
           <td class="num">${fN(a.ter, 2)} %</td>
           <td class="num">${fEur(d.initialAmount * a.weight / 100)}</td>
-          <td>${a.risk}/7</td>
+          <td>${srriBar(a.risk)}</td>
         </tr>`).join('')}
+        <tr style="background:var(--soft)">
+          <td><strong>Total cartera</strong></td><td></td>
+          <td class="num"><strong>100 %</strong></td>
+          <td class="num" style="color:var(--gold)"><strong>${fN(weightedTER, 2)} %</strong></td>
+          <td class="num"><strong>${fEur(d.initialAmount)}</strong></td>
+          <td></td>
+        </tr>
       </tbody>
     </table>
 
-    <div class="callout callout-ok">
-      <strong>Optimització de costos.</strong> TER ponderat <strong>${fN(weightedTER, 2)} %</strong> — substancialment per sota de la mitjana del sector per a carteres mixtes (0,90–1,40 %). Combinació de gestió indexada (core) amb selecció activa de convicció per a rendiment addicional.
+    <h3 class="sans" style="font-size:12px;letter-spacing:2px;text-transform:uppercase;color:var(--navy);margin:22px 0 8px">Distribució geogràfica (look-through)</h3>
+    <div>
+      ${rvPct > 0 ? `<div class="stat-row"><span>EUA · S&P 500 / mid-large cap</span><strong class="mono">${Math.round(rvPct*0.5)} %</strong></div>
+      <div class="stat-row"><span>Europa desenvolupada</span><strong class="mono">${Math.round(rvPct*0.25)} %</strong></div>
+      <div class="stat-row"><span>Mercats emergents (Àsia + LatAm)</span><strong class="mono">${Math.round(rvPct*0.1)} %</strong></div>
+      <div class="stat-row"><span>Japó &amp; Pacífic</span><strong class="mono">${Math.round(rvPct*0.15)} %</strong></div>` : ''}
+      ${rfPct > 0 ? `<div class="stat-row"><span>Renda fixa global EUR-hedged</span><strong class="mono">${Math.round(rfPct*0.6)} %</strong></div>
+      <div class="stat-row"><span>Govern Europa 7-10y</span><strong class="mono">${Math.round(rfPct*0.25)} %</strong></div>
+      <div class="stat-row"><span>Inflation-linked global</span><strong class="mono">${Math.round(rfPct*0.15)} %</strong></div>` : ''}
+      ${cashPct > 0 ? `<div class="stat-row"><span>Monetari EUR</span><strong class="mono">${cashPct} %</strong></div>` : ''}
     </div>
-  </div>
-  ${footer(clientFirst, 5)}
-</section>`;
-
-  // ── PAGES 6-7: Justificació per actiu ────────────────────────────────────────
-  const page6 = `<section class="page">
-  <div class="pad">
-    ${header(`${clientFirst} · Justificació per actiu (1/${page7Assets.length > 0 ? '2' : '1'})`)}
-    <h2 class="section-num">Secció 5</h2>
-    <h1 class="section">Justificació individualitzada per actiu</h1>
-    <p class="lead">Per a cada vehicle s'inclou la tesi d'inversió, anàlisi fonamental del subjacent, encaix tàctic i mitigació de riscos.</p>
-    ${page6Assets.map(assetCard).join('')}
   </div>
   ${footer(clientFirst, 6)}
 </section>`;
 
-  const page7 = page7Assets.length > 0 ? `<section class="page">
+  // ── PAGE 7: Justificació per actiu ────────────────────────────────────────────
+  function assetCardImproved(a: ManualAsset): string {
+    const ret = assetReturn(a);
+    const vol = assetVol(a);
+    const color = categoryPill(a.category);
+    return `<div style="background:#fff;border:1px solid var(--line);border-radius:10px;padding:16px 18px;margin-bottom:12px">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px">
+        <div>
+          <div style="font-family:Georgia,serif;font-size:17px;font-weight:700;color:var(--navy)">${a.name}</div>
+          <div class="sans" style="font-size:11px;color:var(--muted);margin-top:2px">${a.isin} · ${a.weight} % de la cartera</div>
+        </div>
+        <span style="display:inline-block;padding:3px 10px;border-radius:999px;font-family:-apple-system,Arial,sans-serif;font-size:10px;font-weight:700;letter-spacing:1px;text-transform:uppercase;background:${color}22;color:${color};border:1px solid ${color}44">${a.category}</span>
+      </div>
+      <p style="font-size:13px;color:#3a382f;margin-bottom:10px"><strong>Per què l'hem triat:</strong> ${a.justification || 'Vehicle seleccionat per la seva qualitat, cost competitiu i encaix estratègic amb el perfil ' + prof.label + '.'}</p>
+      <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-top:8px">
+        <div style="background:var(--soft);border-radius:6px;padding:8px 10px;text-align:center">
+          <div class="sans" style="font-size:9px;letter-spacing:1.2px;text-transform:uppercase;color:#8a877d;margin-bottom:3px">Rend. hist.</div>
+          <div class="mono" style="font-size:13px;font-weight:700;color:var(--ok)">${fN(ret,1)} %</div>
+        </div>
+        <div style="background:var(--soft);border-radius:6px;padding:8px 10px;text-align:center">
+          <div class="sans" style="font-size:9px;letter-spacing:1.2px;text-transform:uppercase;color:#8a877d;margin-bottom:3px">Volatilitat</div>
+          <div class="mono" style="font-size:13px;font-weight:700;color:var(--navy)">${fN(vol,1)} %</div>
+        </div>
+        <div style="background:var(--soft);border-radius:6px;padding:8px 10px;text-align:center">
+          <div class="sans" style="font-size:9px;letter-spacing:1.2px;text-transform:uppercase;color:#8a877d;margin-bottom:3px">TER</div>
+          <div class="mono" style="font-size:13px;font-weight:700;color:var(--gold)">${fN(a.ter,2)} %</div>
+        </div>
+        <div style="background:var(--soft);border-radius:6px;padding:8px 10px;text-align:center">
+          <div class="sans" style="font-size:9px;letter-spacing:1.2px;text-transform:uppercase;color:#8a877d;margin-bottom:3px">SRRI</div>
+          <div style="margin-top:2px">${srriBar(a.risk)}</div>
+        </div>
+      </div>
+    </div>`;
+  }
+
+  const page7 = `<section class="page">
   <div class="pad">
-    ${header(`${clientFirst} · Justificació per actiu (2/2)`)}
-    ${page7Assets.map(assetCard).join('')}
-    ${page7Assets.length < 3 ? `<div class="callout" style="margin-top:18px"><strong style="color:var(--navy)">Nota del gestor.</strong> ${d.adminNote || 'La selecció de vehicles s\'ha realitzat seguint els criteris de qualitat, cost i coherència amb el perfil ' + prof.label + ' del client.'}</div>` : ''}
-  </div>
-  ${footer(clientFirst, 7)}
-</section>` : `<section class="page">
-  <div class="pad">
-    ${header(`${clientFirst} · Justificació per actiu`)}
-    <h2 class="section-num">Secció 5 · cont.</h2>
-    <h1 class="section">Consideracions addicionals</h1>
-    <div class="callout">
-      <strong style="color:var(--navy)">Nota del gestor.</strong> ${d.adminNote || 'La selecció de vehicles s\'ha realitzat seguint els criteris de qualitat, cost i coherència amb el perfil ' + prof.label + ' del client. La combinació de vehicles escollida maximitza la diversificació reduint al mínim les comissions.'}
-    </div>
-    <h3 class="sans" style="font-size:13px;letter-spacing:2px;text-transform:uppercase;color:var(--navy);margin:24px 0 10px">Criteris de selecció</h3>
-    <ul class="clean">
-      <li>Track record &gt;5 anys i estabilitat de l'equip gestor</li>
-      <li>Cost (TER) per sota del quartil superior de la categoria</li>
-      <li>Liquiditat suficient per a aportacions/reembolsos T+2/T+3</li>
-      <li>Coherència entre la política d'inversió declarada i la cartera real (style drift &lt;10 %)</li>
-      <li>Domicili UCITS i fiscalitat òptima per a residents espanyols</li>
-      <li>Cobertura de divisa explícita als fons d'RF</li>
-    </ul>
+    ${header(`${clientFirst} · Justificació per Actiu`)}
+    <h2 class="section-num">Secció 6</h2>
+    <h1 class="section">Justificació individualitzada per actiu</h1>
+    <p class="lead">Per a cada vehicle s'inclou la tesi d'inversió, raó de selecció i mètriques clau que justifiquen la seva inclusió en la cartera.</p>
+    ${assets.map(assetCardImproved).join('')}
+    ${assets.length === 0 ? `<div class="callout"><strong style="color:var(--navy)">Cap actiu seleccionat.</strong> Afegeix actius a la cartera per veure la justificació aquí.</div>` : ''}
   </div>
   ${footer(clientFirst, 7)}
 </section>`;
 
-  // ── PAGE 8: Anàlisi gràfica i mètriques ──────────────────────────────────────
+  // ── PAGE 8: Riscos i escenaris ────────────────────────────────────────────────
+  const stressLoss30 = Math.round(p50 * 0.70);
   const page8 = `<section class="page">
   <div class="pad">
-    ${header(`${clientFirst} · Anàlisi Gràfica i Mètriques`)}
-    <h2 class="section-num">Secció 6</h2>
-    <h1 class="section">Anàlisi gràfica i mètriques de risc-rendiment</h1>
-    <p class="lead">Comportament esperat de la cartera en escenaris simulats i indicadors clau de gestió.</p>
+    ${header(`${clientFirst} · Riscos i Escenaris`)}
+    <h2 class="section-num">Secció 7</h2>
+    <h1 class="section">Riscos i escenaris de mercat</h1>
+    <p class="lead">Anàlisi dels principals riscos i escenaris adversos per entendre com es comportaria la cartera en situacions extremes.</p>
 
-    <h3 class="sans" style="font-size:12px;letter-spacing:2px;text-transform:uppercase;color:var(--navy);margin-bottom:8px">Evolució simulada (base 100, ${Math.min(d.horizon,5)} anys)</h3>
-    ${buildEvolutionSVG(netReturn, Math.min(d.horizon, 5))}
-    <div class="legend" style="margin-top:8px;justify-content:center">
-      <span><i style="background:#0f2137"></i>Cartera ${clientFirst}</span>
-      <span><i style="background:#5b6472"></i>Benchmark compost</span>
+    <h3 class="sans" style="font-size:12px;letter-spacing:2px;text-transform:uppercase;color:var(--navy);margin:8px 0 10px">Escenaris de rendiment a ${d.horizon} anys</h3>
+    <div class="grid-2" style="gap:12px;margin-bottom:18px">
+      <div style="background:#fff;border:1px solid var(--line);border-top:4px solid var(--danger);border-radius:10px;padding:16px 18px">
+        <div class="sans" style="font-size:10px;letter-spacing:1.5px;text-transform:uppercase;color:var(--danger);margin-bottom:6px">Pessimista (P10)</div>
+        <div class="mono" style="font-size:26px;font-weight:700;color:var(--danger)">${fEur(p10)}</div>
+        <div class="sans" style="font-size:11px;color:var(--muted);margin-top:4px">${fPct(profitP10, true)} vs aportat · Rendiment ${fN(Math.max(0.5, netReturn - weightedVol * 0.35), 1)} %</div>
+        <p style="font-size:12px;color:#3a382f;margin-top:8px">Escenari de crisi sostinguda: mercats adversos durant múltiples anys. La inversió segueix sent positiva però per sota de l'esperada.</p>
+      </div>
+      <div style="background:#fff;border:1px solid var(--line);border-top:4px solid var(--ok);border-radius:10px;padding:16px 18px">
+        <div class="sans" style="font-size:10px;letter-spacing:1.5px;text-transform:uppercase;color:var(--ok);margin-bottom:6px">Optimista (P90)</div>
+        <div class="mono" style="font-size:26px;font-weight:700;color:var(--ok)">${fEur(p90)}</div>
+        <div class="sans" style="font-size:11px;color:var(--muted);margin-top:4px">${fPct(profitP90, true)} vs aportat · Rendiment ${fN(netReturn + weightedVol * 0.35, 1)} %</div>
+        <p style="font-size:12px;color:#3a382f;margin-top:8px">Mercat favorable amb creixement sostingut i estabilitat dels actius. L'efecte de la composició s'accelera.</p>
+      </div>
     </div>
 
-    <h3 class="sans" style="font-size:12px;letter-spacing:2px;text-transform:uppercase;color:var(--navy);margin:24px 0 8px">Indicadors clau de risc-rendiment</h3>
+    <div style="background:#fff3cd;border-left:4px solid #c9a84c;border-radius:4px;padding:14px 18px;margin-bottom:18px">
+      <div class="sans" style="font-size:10px;letter-spacing:1.5px;text-transform:uppercase;color:var(--warn);margin-bottom:6px">Stress test — Caiguda del 30%</div>
+      <div style="font-size:13.5px;color:#3a382f">Si els mercats cauen un <strong>30%</strong>, la teva cartera passaria de <strong>${fEur(p50)}</strong> a aproximadament <strong>${fEur(stressLoss30)}</strong>. Històricament, mercats similars han trigat entre <strong>2 i 4 anys</strong> a recuperar-se. La clau és no vendre en mínims i continuar les aportacions mensuals.</div>
+    </div>
+
+    <h3 class="sans" style="font-size:12px;letter-spacing:2px;text-transform:uppercase;color:var(--navy);margin:16px 0 8px">Tipologia de riscos</h3>
+    <table class="data">
+      <thead><tr><th>Risc</th><th>Probabilitat</th><th>Impacte</th><th>Mitigació</th></tr></thead>
+      <tbody>
+        <tr><td>Risc de mercat (correcció &gt;15%)</td><td><span class="pill pill-warn">Mitjana</span></td><td><span class="pill pill-warn" style="background:#fef2f2;color:#991b1b;border-color:#fca5a5">Alt</span></td><td>Diversificació, DCA, pota RF amortidor</td></tr>
+        <tr><td>Risc de tipus d'interès</td><td><span class="pill pill-warn">Mitjana</span></td><td><span class="pill pill-gold">Mitjà</span></td><td>Diversificació de durades</td></tr>
+        ${rvPct > 30 ? '<tr><td>Risc de divisa (USD/GBP)</td><td><span class="pill pill-warn">Mitjana</span></td><td><span class="pill pill-gold">Mitjà</span></td><td>Cobertura RF · Exposició natural EUR</td></tr>' : ''}
+        <tr><td>Risc d'inflació estructural</td><td><span class="pill pill-gold">Baixa-Mitjana</span></td><td><span class="pill pill-warn" style="background:#fef2f2;color:#991b1b;border-color:#fca5a5">Alt</span></td><td>${rfPct > 0 ? 'Inflation-linked global com a hedge' : 'DCA regular com a protecció parcial'}</td></tr>
+        <tr><td>Risc de liquiditat</td><td><span class="pill pill-green">Baixa</span></td><td><span class="pill pill-green">Baix</span></td><td>Tots els fons UCITS T+2/T+3</td></tr>
+      </tbody>
+    </table>
+
+    <div style="background:#fff;border:1px solid var(--line);border-radius:10px;padding:16px 20px;margin-top:16px">
+      <div class="sans" style="font-size:11px;font-weight:700;color:var(--navy);margin-bottom:6px">Quan puc perdre diners?</div>
+      <p style="font-size:13px;color:#3a382f">La inversió pot perdre valor a curt termini per correccions de mercat (és normal i esperable). El drawdown màxim estimat és del <strong>${fN(Math.abs(maxDD), 1)}%</strong>. A llarg termini (${d.horizon} anys), la probabilitat de pèrdua nominal és de tan sols el <strong>${probLoss}%</strong>. La disciplina de no vendre durant caigudes és la millor protecció.</p>
+    </div>
+  </div>
+  ${footer(clientFirst, 8)}
+</section>`;
+
+  // ── PAGE 9: Costos i fiscalitat ───────────────────────────────────────────────
+  const annualTER  = Math.round(d.initialAmount * weightedTER / 100);
+  const totalTERCost = Math.round(totalInvested * weightedTER / 100 * d.horizon);
+  const page9 = `<section class="page">
+  <div class="pad">
+    ${header(`${clientFirst} · Costos i Fiscalitat`)}
+    <h2 class="section-num">Secció 8</h2>
+    <h1 class="section">Costos i fiscalitat</h1>
+    <p class="lead">Impacte dels costos sobre la rendibilitat final i consideracions fiscals per a residents a Espanya.</p>
+
     <div class="grid-4">
+      <div class="kpi"><div class="kpi-label">TER ponderat</div><div class="kpi-val" style="color:var(--gold)">${fN(weightedTER,2)} %</div><div class="kpi-sub">Cost anual total</div></div>
+      <div class="kpi"><div class="kpi-label">Cost any 1</div><div class="kpi-val" style="font-size:20px">${fEur(annualTER)}</div><div class="kpi-sub">Sobre capital inicial</div></div>
+      <div class="kpi"><div class="kpi-label">Cost total estimat</div><div class="kpi-val" style="font-size:20px">${fEur(totalTERCost)}</div><div class="kpi-sub">En ${d.horizon} anys</div></div>
+      <div class="kpi"><div class="kpi-label">Rend. bruta - TER</div><div class="kpi-val" style="font-size:20px">${fN(netReturn,1)} %</div><div class="kpi-sub">Neta anualitzada</div></div>
+    </div>
+
+    <h3 class="sans" style="font-size:12px;letter-spacing:2px;text-transform:uppercase;color:var(--navy);margin:22px 0 8px">Costos per vehicle d'inversió</h3>
+    <table class="data">
+      <thead><tr><th>Fons / ETF</th><th style="text-align:right">Pes</th><th style="text-align:right">TER</th><th style="text-align:right">Cost anual (€)</th><th style="text-align:right">Contribució al TER mig</th></tr></thead>
+      <tbody>
+        ${assets.map(a => {
+          const costAny = Math.round(d.initialAmount * a.weight / 100 * a.ter / 100);
+          const contrib = parseFloat((a.weight / 100 * a.ter).toFixed(3));
+          return `<tr>
+            <td>${a.name}</td>
+            <td class="num">${a.weight} %</td>
+            <td class="num">${fN(a.ter, 2)} %</td>
+            <td class="num">${fEur(costAny)}</td>
+            <td class="num">${fN(contrib, 3)} %</td>
+          </tr>`;
+        }).join('')}
+        <tr style="background:var(--soft)"><td><strong>Total</strong></td><td class="num"><strong>100 %</strong></td><td class="num" style="color:var(--gold)"><strong>${fN(weightedTER,2)} %</strong></td><td class="num"><strong>${fEur(annualTER)}</strong></td><td class="num" style="color:var(--gold)"><strong>${fN(weightedTER,3)} %</strong></td></tr>
+      </tbody>
+    </table>
+
+    <h3 class="sans" style="font-size:12px;letter-spacing:2px;text-transform:uppercase;color:var(--navy);margin:22px 0 8px">Nota fiscal (residents a Espanya)</h3>
+    <div class="callout">
+      <strong style="color:var(--navy)">Fiscalitat dels fons d'inversió UCITS.</strong> Els fons d'inversió (no ETFs) permeten traspàs sense tributació (diferiment fiscal). Tributen com a rendiment del capital mobiliari al reembolsar: 19% fins a 6.000€ de guany, 21% fins a 50.000€ i 23% per sobre. Els ETFs tributen com a guany patrimonial en cada transmissió. Recomanem consultar un assessor fiscal per optimitzar la cartera en funció de la situació personal.
+    </div>
+  </div>
+  ${footer(clientFirst, 9)}
+</section>`;
+
+  // ── PAGE 10: Mètriques i rendiment ────────────────────────────────────────────
+  const page10 = `<section class="page">
+  <div class="pad">
+    ${header(`${clientFirst} · Mètriques i Rendiment`)}
+    <h2 class="section-num">Secció 9</h2>
+    <h1 class="section">Mètriques i rendiment esperat</h1>
+    <p class="lead">Indicadors de risc-rendiment de la cartera i projecció Monte Carlo a ${d.horizon} anys.</p>
+
+    ${buildMCSVG(p10, p50, p90, totalInvested, d.horizon, netReturn, weightedVol, d.initialAmount, d.monthlyAmount)}
+
+    <div class="grid-4" style="margin-top:18px">
       <div class="kpi"><div class="kpi-label">Rendib. anualitzada</div><div class="kpi-val" style="font-size:22px">${fN(netReturn,2)} %</div><div class="kpi-sub">Esperada · ${d.horizon} anys</div></div>
       <div class="kpi"><div class="kpi-label">Volatilitat</div><div class="kpi-val" style="font-size:22px">${fN(weightedVol,2)} %</div><div class="kpi-sub">Anualitzada</div></div>
       <div class="kpi"><div class="kpi-label">Sharpe</div><div class="kpi-val" style="font-size:22px">${fN(sharpe,2)}</div><div class="kpi-sub">&gt;0,5 òptim</div></div>
@@ -721,114 +840,6 @@ export function generateManualReport(d: ManualPortfolioInput): string {
       <div class="kpi"><div class="kpi-label">Tracking error</div><div class="kpi-val" style="font-size:22px">${fN(trackErr,2)} %</div><div class="kpi-sub">vs benchmark</div></div>
     </div>
 
-    <h3 class="sans" style="font-size:12px;letter-spacing:2px;text-transform:uppercase;color:var(--navy);margin:22px 0 8px">Rendibilitat per període (estimat)</h3>
-    <svg viewBox="0 0 760 140" style="width:100%;height:auto;background:#fff;border:1px solid var(--line);border-radius:10px">
-      <g font-family="Arial" font-size="10" fill="#5b6472">
-        <text x="60" y="115" text-anchor="middle">YTD</text>
-        <text x="180" y="115" text-anchor="middle">1 any</text>
-        <text x="300" y="115" text-anchor="middle">3 anys</text>
-        <text x="420" y="115" text-anchor="middle">5 anys</text>
-        <text x="540" y="115" text-anchor="middle">10 anys</text>
-        <text x="660" y="115" text-anchor="middle">${d.horizon} anys (esp.)</text>
-      </g>
-      <g>
-        ${[
-          { x: 40, w: 160, h: Math.round(netReturn/2), bench: Math.round(netReturn*0.93/2) },
-          { x: 160, w: 160, h: Math.round(netReturn), bench: Math.round(netReturn*0.93) },
-          { x: 280, w: 160, h: Math.round(netReturn*3), bench: Math.round(netReturn*0.93*3) },
-          { x: 400, w: 160, h: Math.round(netReturn*5), bench: Math.round(netReturn*0.93*5) },
-          { x: 520, w: 160, h: Math.round(netReturn*10), bench: Math.round(netReturn*0.93*10) },
-          { x: 640, w: 160, h: Math.round(netReturn*d.horizon), bench: Math.round(netReturn*0.93*d.horizon) },
-        ].map((b, i) => {
-          const scale = 86 / Math.max(...[netReturn*d.horizon, netReturn*0.93*d.horizon]);
-          const hScaled = Math.max(4, Math.round(b.h * scale));
-          const bScaled = Math.max(3, Math.round(b.bench * scale));
-          return `<rect x="${b.x}" y="${96-hScaled}" width="20" height="${hScaled}" fill="#0f2137"/>
-          <rect x="${b.x+22}" y="${96-bScaled}" width="20" height="${bScaled}" fill="#c9a84c"/>
-          <text x="${b.x+10}" y="${90-hScaled}" font-family="Arial" font-size="9" fill="#3a382f" text-anchor="middle">${b.h} %</text>`;
-        }).join('')}
-      </g>
-    </svg>
-    <div class="legend" style="margin-top:8px;justify-content:center">
-      <span><i style="background:#0f2137"></i>Cartera</span>
-      <span><i style="background:#c9a84c"></i>Benchmark</span>
-    </div>
-  </div>
-  ${footer(clientFirst, 8)}
-</section>`;
-
-  // ── PAGE 9: Benchmark compost ─────────────────────────────────────────────────
-  const page9 = `<section class="page">
-  <div class="pad">
-    ${header(`${clientFirst} · Benchmark Compost`)}
-    <h2 class="section-num">Secció 7</h2>
-    <h1 class="section">Benchmark compost de referència</h1>
-    <p class="lead">Índex compost dissenyat per replicar passivament una cartera ${prof.label} ${rvPct > 0 && rfPct > 0 ? `${rvPct}/${rfPct}` : ''}, utilitzat per a comparació de resultats i atribució de performance.</p>
-
-    <table class="data">
-      <thead><tr><th>Índex</th><th style="text-align:right">Pes</th><th>Descripció</th></tr></thead>
-      <tbody>
-        ${rvPct > 0 ? `
-        <tr><td>MSCI World Index NR EUR</td><td class="num">${Math.round(rvPct*0.55)} %</td><td>Renda variable global desenvolupada</td></tr>
-        <tr><td>S&P 500 Total Return</td><td class="num">${Math.round(rvPct*0.20)} %</td><td>Renda variable EUA</td></tr>
-        <tr><td>MSCI Europe NR</td><td class="num">${Math.round(rvPct*0.15)} %</td><td>Renda variable Europa</td></tr>
-        <tr><td>MSCI Emerging Markets NR</td><td class="num">${Math.round(rvPct*0.10)} %</td><td>Mercats emergents</td></tr>` : ''}
-        ${rfPct > 0 ? `
-        <tr><td>Bloomberg Global Aggregate Bond EUR Hedged</td><td class="num">${Math.round(rfPct*0.55)} %</td><td>RF global investment grade</td></tr>
-        <tr><td>Bloomberg Euro Government 7-10y</td><td class="num">${Math.round(rfPct*0.30)} %</td><td>RF govern europea</td></tr>
-        <tr><td>Bloomberg Global Inflation Linked</td><td class="num">${Math.round(rfPct*0.15)} %</td><td>RF inflation-linked</td></tr>` : ''}
-        ${cashPct > 0 ? `<tr><td>€STR Index</td><td class="num">${cashPct} %</td><td>Liquiditat euro</td></tr>` : ''}
-      </tbody>
-    </table>
-
-    <h3 class="sans" style="font-size:12px;letter-spacing:2px;text-transform:uppercase;color:var(--navy);margin:22px 0 8px">Cartera vs benchmark</h3>
-    <table class="data">
-      <thead><tr><th>Mètrica</th><th style="text-align:right">Cartera</th><th style="text-align:right">Benchmark</th><th style="text-align:right">Diferencial</th></tr></thead>
-      <tbody>
-        <tr><td>Rendibilitat esperada</td><td class="num">${fN(netReturn,2)} %</td><td class="num">${fN(netReturn*0.93,2)} %</td><td class="num" style="color:var(--ok)">+${fN(netReturn*0.07,2)} %</td></tr>
-        <tr><td>Volatilitat esperada</td><td class="num">${fN(weightedVol,2)} %</td><td class="num">${fN(weightedVol*1.03,2)} %</td><td class="num" style="color:var(--ok)">-${fN(weightedVol*0.03,2)} %</td></tr>
-        <tr><td>Sharpe esperat</td><td class="num">${fN(sharpe,2)}</td><td class="num">${fN(sharpe*0.88,2)}</td><td class="num" style="color:var(--ok)">+${fN(sharpe*0.12,2)}</td></tr>
-        <tr><td>Drawdown màx esperat</td><td class="num">${fN(maxDD,1)} %</td><td class="num">${fN(maxDD*1.07,1)} %</td><td class="num" style="color:var(--ok)">+${fN(maxDD*-0.07,1)} pp</td></tr>
-        <tr><td>Cost (TER)</td><td class="num">${fN(weightedTER,2)} %</td><td class="num">0,00 %</td><td class="num" style="color:var(--danger)">-${fN(weightedTER,2)} %</td></tr>
-      </tbody>
-    </table>
-
-    <div class="callout">
-      <strong style="color:var(--navy)">Nota metodològica.</strong> El benchmark s'actualitza trimestralment amb rebalanceig estàtic. La comparativa és informativa i no es pot replicar directament (els índexs no inclouen TER, slippage ni traspàs fiscal). El gestor avaluarà l'Information Ratio trimestralment.
-    </div>
-
-    <h3 class="sans" style="font-size:12px;letter-spacing:2px;text-transform:uppercase;color:var(--navy);margin:22px 0 8px">Criteris de selecció dels fons</h3>
-    <ul class="clean">
-      <li>Track record &gt;5 anys i estabilitat de l'equip gestor</li>
-      <li>Cost (TER) per sota del quartil superior de la categoria</li>
-      <li>Liquiditat suficient per a aportacions/reembolsos T+2/T+3</li>
-      <li>Coherència entre la política d'inversió declarada i la cartera real (style drift &lt;10 %)</li>
-      <li>Domicili UCITS i fiscalitat òptima per a residents espanyols</li>
-      <li>Cobertura de divisa explícita als fons d'RF</li>
-    </ul>
-  </div>
-  ${footer(clientFirst, 9)}
-</section>`;
-
-  // ── PAGE 10: Monte Carlo ──────────────────────────────────────────────────────
-  const valP50Pct  = parseFloat(((p50 - totalInvested) / totalInvested * 100).toFixed(1));
-  const realP50    = Math.round(p50 / Math.pow(1.025, d.horizon));
-  const page10 = `<section class="page">
-  <div class="pad">
-    ${header(`${clientFirst} · Projecció Monte Carlo`)}
-    <h2 class="section-num">Secció 8</h2>
-    <h1 class="section">Projecció Monte Carlo</h1>
-    <p class="lead">Simulació de 1.000 escenaris aleatoris combinant rendibilitat esperada, volatilitat i correlacions per estimar la distribució de patrimoni a ${d.horizon} anys.</p>
-
-    ${buildMCSVG(p10, p50, p90, totalInvested, d.horizon, netReturn, weightedVol, d.initialAmount, d.monthlyAmount)}
-
-    <div class="grid-4" style="margin-top:18px">
-      <div class="kpi"><div class="kpi-label">Aportat acumulat</div><div class="kpi-val" style="font-size:20px">${fEur(totalInvested)}</div><div class="kpi-sub">${fEur(d.initialAmount)} + ${d.horizon*12} × ${fEur(d.monthlyAmount)}</div></div>
-      <div class="kpi"><div class="kpi-label">Pessimista P10</div><div class="kpi-val" style="font-size:20px;color:var(--danger)">${fEur(p10)}</div><div class="kpi-sub">${fPct(profitP10, true)} nominal</div></div>
-      <div class="kpi"><div class="kpi-label">Central P50</div><div class="kpi-val" style="font-size:20px">${fEur(p50)}</div><div class="kpi-sub">${fPct(profitP50, true)} nominal</div></div>
-      <div class="kpi"><div class="kpi-label">Optimista P90</div><div class="kpi-val" style="font-size:20px;color:var(--ok)">${fEur(p90)}</div><div class="kpi-sub">${fPct(profitP90, true)} nominal</div></div>
-    </div>
-
     <h3 class="sans" style="font-size:12px;letter-spacing:2px;text-transform:uppercase;color:var(--navy);margin:22px 0 8px">Anàlisi de probabilitats</h3>
     <table class="data">
       <thead><tr><th>Mètrica</th><th style="text-align:right">Valor</th><th>Lectura</th></tr></thead>
@@ -836,119 +847,69 @@ export function generateManualReport(d: ManualPortfolioInput): string {
         <tr><td>Probabilitat de retorn positiu nominal</td><td class="num">${probPositive} %</td><td>Molt elevada per a ${d.horizon} anys</td></tr>
         <tr><td>Probabilitat de batre la inflació (CPI 2,5 %)</td><td class="num">${probInflation} %</td><td>Cobertura real positiva esperada</td></tr>
         <tr><td>Probabilitat d'assolir ${fEur(p50)} (objectiu)</td><td class="num">${probSuccess} %</td><td>Objectiu assolible amb constància</td></tr>
-        <tr><td>Probabilitat de superar ${fEur(p90)}</td><td class="num">${Math.round(probSuccess * 0.42)} %</td><td>Possible amb escenaris benignes</td></tr>
         <tr><td>Probabilitat de pèrdua nominal a ${d.horizon} anys</td><td class="num" style="color:var(--danger)">${probLoss} %</td><td>Risc residual baix</td></tr>
-        <tr><td>Valor real (P50, descompt. inflació 2,5 %)</td><td class="num">${fEur(realP50)}</td><td>Poder de compra esperat</td></tr>
       </tbody>
     </table>
-
-    <div class="callout callout-warn">
-      <strong>Nota.</strong> La simulació es basa en supòsits estadístics (rendibilitats log-normals i correlacions històriques) i no garanteix resultats reals. Cal recalibrar trimestralment els paràmetres de mercat.
-    </div>
   </div>
   ${footer(clientFirst, 10)}
 </section>`;
 
-  // ── PAGE 11: Context macro i riscos ──────────────────────────────────────────
+  // ── PAGE 11: Conclusions i propers passos ─────────────────────────────────────
+  const platforms = [...new Set(assets.map(a => a.platform))].join(' / ') || 'Trade Republic / MyInvestor';
+  const adequacyLabel = probSuccess >= 70 ? 'òptima' : probSuccess >= 55 ? 'molt adequada' : 'adequada';
+  const reviewDate6m = new Date(Date.now() + 15778800000).toLocaleDateString('ca-ES', { day: '2-digit', month: 'long', year: 'numeric' });
   const page11 = `<section class="page">
   <div class="pad">
-    ${header(`${clientFirst} · Macro &amp; Riscos`)}
-    <h2 class="section-num">Secció 9</h2>
-    <h1 class="section">Context macroeconòmic i anàlisi de riscos</h1>
-    <p class="lead">Marc macro de referència per a les decisions d'inversió i mapa de riscos amb mesures de mitigació.</p>
+    ${header(`${clientFirst} · Conclusions`)}
+    <h2 class="section-num">Secció 10</h2>
+    <h1 class="section">Conclusions i recomanacions</h1>
 
-    <h3 class="sans" style="font-size:12px;letter-spacing:2px;text-transform:uppercase;color:var(--navy);margin:6px 0 8px">Marc macro · ${new Date().toLocaleDateString('ca-ES',{month:'long',year:'numeric'})}</h3>
-    <table class="data">
-      <thead><tr><th>Indicador</th><th>Eurozona</th><th>EUA</th><th>Implicació per a la cartera</th></tr></thead>
-      <tbody>
-        <tr><td>Tipus referència banc central</td><td>2,25 %</td><td>3,75 %</td><td>Cicle de baixades — favorable a RF de durada mitja</td></tr>
-        <tr><td>Inflació subjacent (anual)</td><td>2,1 %</td><td>2,7 %</td><td>Aproximant-se a objectius — neutra</td></tr>
-        <tr><td>Creixement PIB esperat 2026</td><td>1,2 %</td><td>1,8 %</td><td>Expansió moderada — sostén RV</td></tr>
-        <tr><td>Atur</td><td>6,2 %</td><td>4,3 %</td><td>Mercat laboral resilient als EUA</td></tr>
-        <tr><td>Earnings growth S&P 500 (2026e)</td><td>—</td><td>+9,2 %</td><td>Sostén multiplicadors</td></tr>
-        <tr><td>Earnings growth Stoxx 600 (2026e)</td><td>+5,8 %</td><td>—</td><td>Recuperació gradual</td></tr>
-      </tbody>
-    </table>
+    <div style="background:linear-gradient(135deg,#0f2137 0%,#1a3a5c 100%);color:#fff;border-radius:10px;padding:22px;margin-bottom:20px">
+      <div class="sans" style="font-size:11px;letter-spacing:2px;color:var(--gold);text-transform:uppercase;margin-bottom:6px">Conclusió final</div>
+      <div style="font-family:Georgia,serif;font-size:20px;line-height:1.4">La cartera proposada és <strong>${adequacyLabel}</strong> per al perfil <strong>${prof.label}</strong> amb un objectiu de <em>${d.objective.toLowerCase()}</em>.</div>
+    </div>
 
-    <h3 class="sans" style="font-size:12px;letter-spacing:2px;text-transform:uppercase;color:var(--navy);margin:22px 0 8px">Matriu de riscos</h3>
-    <table class="data">
-      <thead><tr><th>Risc</th><th>Probabilitat</th><th>Impacte</th><th>Mitigació</th></tr></thead>
-      <tbody>
-        <tr><td>Risc de mercat (correcció &gt;15 %)</td><td><span class="pill pill-warn">Mitjana</span></td><td><span class="pill pill-warn">Alt</span></td><td>Diversificació, DCA, pota RF amortidor</td></tr>
-        <tr><td>Risc de tipus d'interès</td><td><span class="pill pill-warn">Mitjana</span></td><td><span class="pill pill-gold">Mitjà</span></td><td>Diversificació de durades; bond ladder</td></tr>
-        ${rvPct > 30 ? '<tr><td>Risc de divisa (USD/GBP)</td><td><span class="pill pill-warn">Mitjana</span></td><td><span class="pill pill-gold">Mitjà</span></td><td>Cobertura RF · Exposició natural EUR</td></tr>' : ''}
-        <tr><td>Risc d'inflació estructural</td><td><span class="pill pill-gold">Baixa-Mitjana</span></td><td><span class="pill pill-warn">Alt</span></td><td>${rfPct > 0 ? 'Inflation-linked global com a hedge' : 'DCA regular com a protecció parcial'}</td></tr>
-        <tr><td>Risc geopolític</td><td><span class="pill pill-warn">Mitjana</span></td><td><span class="pill pill-gold">Mitjà</span></td><td>Diversificació geogràfica · Hedge implícit RF refugi</td></tr>
-        <tr><td>Risc de liquiditat</td><td><span class="pill pill-green">Baixa</span></td><td><span class="pill pill-green">Baix</span></td><td>Tots els fons UCITS T+2/T+3${cashPct > 0 ? ' + ' + cashPct + ' % monetari' : ''}</td></tr>
-        <tr><td>Risc de concentració</td><td><span class="pill pill-green">Baixa</span></td><td><span class="pill pill-gold">Mitjà</span></td><td>${assets.length} fons, diversificació per gestores i regions</td></tr>
-        <tr><td>Risc fiscal / regulatori</td><td><span class="pill pill-warn">Mitjana</span></td><td><span class="pill pill-gold">Mitjà</span></td><td>Vehicles UCITS, traspàs fiscal entre fons</td></tr>
-      </tbody>
-    </table>
+    <h3 class="sans" style="font-size:12px;letter-spacing:2px;text-transform:uppercase;color:var(--navy);margin:16px 0 10px">5 passos d'acció immediata</h3>
+    <ol style="list-style:none;padding:0;margin:0 0 20px">
+      <li style="display:flex;gap:14px;padding:10px 0;border-bottom:1px dotted #d8d6cc;align-items:flex-start">
+        <span style="display:flex;align-items:center;justify-content:center;width:26px;height:26px;border-radius:50%;background:var(--navy);color:#fff;font-family:-apple-system,Arial,sans-serif;font-size:11px;font-weight:700;flex-shrink:0">1</span>
+        <span style="font-size:13.5px;color:#3a382f">Obre el compte a <strong>${platforms}</strong> si no el tens. El procés dura aproximadament 15 minuts en línia.</span>
+      </li>
+      <li style="display:flex;gap:14px;padding:10px 0;border-bottom:1px dotted #d8d6cc;align-items:flex-start">
+        <span style="display:flex;align-items:center;justify-content:center;width:26px;height:26px;border-radius:50%;background:var(--navy);color:#fff;font-family:-apple-system,Arial,sans-serif;font-size:11px;font-weight:700;flex-shrink:0">2</span>
+        <span style="font-size:13.5px;color:#3a382f">Transfereix el capital inicial de <strong>${fEur(d.initialAmount)}</strong> i subscriu els fons seguint els pesos indicats a la cartera.</span>
+      </li>
+      <li style="display:flex;gap:14px;padding:10px 0;border-bottom:1px dotted #d8d6cc;align-items:flex-start">
+        <span style="display:flex;align-items:center;justify-content:center;width:26px;height:26px;border-radius:50%;background:var(--gold);color:#fff;font-family:-apple-system,Arial,sans-serif;font-size:11px;font-weight:700;flex-shrink:0">3</span>
+        <span style="font-size:13.5px;color:#3a382f">Configura l'aportació automàtica de <strong>${fEur(d.monthlyAmount)}</strong> mensuals per a cadascun dels fons (DCA recurrent).</span>
+      </li>
+      <li style="display:flex;gap:14px;padding:10px 0;border-bottom:1px dotted #d8d6cc;align-items:flex-start">
+        <span style="display:flex;align-items:center;justify-content:center;width:26px;height:26px;border-radius:50%;background:var(--green);color:#fff;font-family:-apple-system,Arial,sans-serif;font-size:11px;font-weight:700;flex-shrink:0">4</span>
+        <span style="font-size:13.5px;color:#3a382f">No moguis la cartera durant els primers <strong>12 mesos</strong>. Les fluctuacions de mercat a curt termini son normals i esperades.</span>
+      </li>
+      <li style="display:flex;gap:14px;padding:10px 0;align-items:flex-start">
+        <span style="display:flex;align-items:center;justify-content:center;width:26px;height:26px;border-radius:50%;background:var(--muted);color:#fff;font-family:-apple-system,Arial,sans-serif;font-size:11px;font-weight:700;flex-shrink:0">5</span>
+        <span style="font-size:13.5px;color:#3a382f">Revisa amb el teu gestor cada <strong>6 mesos</strong> o davant canvis importants en la teva situació financera o objectius.</span>
+      </li>
+    </ol>
 
-    <h3 class="sans" style="font-size:12px;letter-spacing:2px;text-transform:uppercase;color:var(--navy);margin:22px 0 8px">Contribució al risc per fons</h3>
-    <svg viewBox="0 0 760 110" style="width:100%;height:auto;background:#fff;border:1px solid var(--line);border-radius:10px">
-      <text x="40" y="28" font-family="Arial" font-size="10" fill="#5b6472">Pes en contribució a la volatilitat total · 100 %</text>
-      <g font-family="Arial" font-size="9.5" fill="#3a382f">
-        ${(() => {
-          const colors = ['#0f2137','#1a3a5c','#c9a84c','#a37e22','#2d6a4f','#5b6472','#94918a','#b8b3a3'];
-          let xOff = 40;
-          return assets.slice(0, 8).map((a, i) => {
-            const barW = Math.round(a.weight * 6.8);
-            const el = `<rect x="${xOff}" y="40" width="${barW}" height="22" fill="${colors[i]}"/><text x="${xOff+4}" y="56" fill="#fff" font-size="9">${a.name.split(' ')[0].slice(0,8)} · ${a.weight}%</text>`;
-            xOff += barW + 2;
-            return el;
-          }).join('');
-        })()}
-      </g>
-    </svg>
+    <div style="background:#fff;border:1px solid var(--line);border-radius:10px;padding:14px 18px;margin-bottom:16px;display:flex;align-items:center;gap:14px">
+      <div style="width:10px;height:10px;border-radius:50%;background:var(--gold);flex-shrink:0"></div>
+      <div class="sans" style="font-size:12.5px;color:#3a382f">Pròxima revisió recomanada: <strong>${reviewDate6m}</strong></div>
+    </div>
+
+    <div class="callout callout-warn" style="margin-top:10px;font-size:11px;line-height:1.5">
+      <strong>Avís legal · Disclaimer.</strong> Aquest informe ha estat generat per Factor OTC com a eina interna de suport a l'assessorament patrimonial amb finalitat orientativa i educativa. No constitueix assessorament financer regulat MiFID II ni recomanació d'inversió personalitzada. Factor OTC no és una entitat financera regulada. Els rendiments estimats es basen en models estadístics i dades històriques que no garanteixen resultats futurs. Tota inversió comporta risc de pèrdua parcial o total del capital. Es recomana consultar un assessor financer regulat (EAFI, IFA o entitat autoritzada) abans de prendre decisions d'inversió. © ${new Date().getFullYear()} Factor OTC · ID ${reportId}.
+    </div>
   </div>
   ${footer(clientFirst, 11)}
 </section>`;
 
-  // ── PAGE 12: Conclusió ────────────────────────────────────────────────────────
-  const page12 = `<section class="page">
-  <div class="pad">
-    ${header(`${clientFirst} · Conclusió i Seguiment`)}
-    <h2 class="section-num">Secció 10</h2>
-    <h1 class="section">Conclusió i pla de seguiment</h1>
-    <p class="lead">Resum executiu de la proposta i full de ruta operatiu de seguiment patrimonial.</p>
+  // ── Unused variables kept for TypeScript compatibility ────────────────────────
+  void horizonScore; void knowScore; void expScore; void tolScore;
+  void reactScore; void objScore; void liquidScore; void healthScore;
 
-    <div style="background:linear-gradient(135deg,#0f2137 0%,#1a3a5c 100%);color:#fff;border-radius:10px;padding:26px;margin-bottom:18px">
-      <div class="sans" style="font-size:11px;letter-spacing:2px;color:var(--gold);text-transform:uppercase;margin-bottom:6px">Conclusió final</div>
-      <div style="font-family:Georgia,serif;font-size:22px;line-height:1.4;margin-bottom:10px">La cartera <strong>${prof.label}</strong> proposada s'adequa al perfil de ${d.clientName} i a l'objectiu de ${d.objective.toLowerCase()} a ${d.horizon} anys.</div>
-      <div style="font-size:13.5px;color:rgba(255,255,255,.78)">L'estructura combina <strong>${rvPct > 0 ? rvPct + ' % renda variable global diversificada' : 'actius de creixement'}</strong>${rfPct > 0 ? ', <strong>' + rfPct + ' % renda fixa de qualitat</strong>' : ''}${cashPct > 0 ? ' i <strong>' + cashPct + ' % cash buffer</strong>' : ''}, amb un TER del ${fN(weightedTER,2)} %, una rendibilitat esperada del ${fN(netReturn,1)} % anualitzada i una probabilitat d'èxit del ${probSuccess} % segons la simulació Monte Carlo.</div>
-    </div>
-
-    <h3 class="sans" style="font-size:12px;letter-spacing:2px;text-transform:uppercase;color:var(--navy);margin:14px 0 8px">Pla de seguiment recomanat</h3>
-    <table class="data">
-      <thead><tr><th>Període</th><th>Acció</th><th>Responsable</th></tr></thead>
-      <tbody>
-        <tr><td>Mensual</td><td>Verificació d'aportació recurrent (DCA) i seguiment de NAV</td><td>Client + sistema</td></tr>
-        <tr><td>Trimestral</td><td>Anàlisi de drift d'assignació i alertes ±5 %</td><td>Gestor</td></tr>
-        <tr><td>Semestral</td><td>Revisió completa amb gestor: Information Ratio, atribució per actiu, costos</td><td>A. Cardenas (gestor)</td></tr>
-        <tr><td>Anual</td><td>Rebalanceig estructural si drift &gt;5 % · Revisió fiscal · Actualització objectius</td><td>Gestor + client</td></tr>
-        <tr><td>Bianual</td><td>Recalibració del perfil MiFID i revisió del marc macro a llarg termini</td><td>Comitè inversió</td></tr>
-        <tr><td>Esdeveniment</td><td>Reunió immediata davant canvis vitals (ingressos, fills, herència) o caigudes &gt;15 %</td><td>Gestor</td></tr>
-      </tbody>
-    </table>
-
-    <h3 class="sans" style="font-size:12px;letter-spacing:2px;text-transform:uppercase;color:var(--navy);margin:22px 0 8px">Pròxims passos operatius</h3>
-    <ol style="list-style:decimal;padding-left:24px;font-size:13.5px;color:#3a382f">
-      <li style="margin-bottom:6px">Validació del client de la composició proposada i signatura del contracte de gestió.</li>
-      <li style="margin-bottom:6px">Obertura de comptes a la plataforma escollida (${[...new Set(assets.map(a=>a.platform))].join(' / ') || 'Trade Republic / MyInvestor'}) i transferència de capital.</li>
-      <li style="margin-bottom:6px">Subscripció esglaonada en 2-3 setmanes per evitar concentració temporal d'entrada.</li>
-      <li style="margin-bottom:6px">Configuració d'aportacions automàtiques mensuals (${fEur(d.monthlyAmount)} · DCA).</li>
-      <li style="margin-bottom:6px">Programació de la primera revisió semestral (${new Date(Date.now()+15778800000).toLocaleDateString('ca-ES',{month:'long',year:'numeric'})}).</li>
-      <li style="margin-bottom:6px">Activació d'alertes de seguiment a la plataforma Factor OTC.</li>
-    </ol>
-
-    <div class="callout callout-warn" style="margin-top:18px;font-size:11px;line-height:1.5">
-      <strong>Avís legal · Disclaimer.</strong> Aquest informe ha estat generat per Factor OTC com a eina interna de suport a l'assessorament patrimonial amb finalitat orientativa i educativa. No constitueix assessorament financer regulat MiFID II ni recomanació d'inversió personalitzada. Factor OTC no és una entitat financera regulada. Els rendiments estimats es basen en models estadístics i dades històriques que no garanteixen resultats futurs. Tota inversió comporta risc de pèrdua parcial o total del capital. Es recomana consultar un assessor financer regulat (EAFI, IFA o entitat autoritzada) abans de prendre decisions d'inversió. © ${new Date().getFullYear()} Factor OTC · ID ${reportId}.
-    </div>
-  </div>
-  ${footer(clientFirst, 12)}
-</section>`;
-
+  // ── Assemble ──────────────────────────────────────────────────────────────────
   return `<!DOCTYPE html>
 <html lang="ca">
 <head>
@@ -969,7 +930,6 @@ ${page8}
 ${page9}
 ${page10}
 ${page11}
-${page12}
 </body>
 </html>`;
 }
