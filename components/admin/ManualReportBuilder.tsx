@@ -100,11 +100,18 @@ interface ClientForm {
   investorProfile: string; objective: string;
   horizon: number; initialAmount: number; monthlyAmount: number;
   adminNote: string;
+  monthlyIncome?:   number;
+  monthlyExpenses?: number;
 }
 
 function StepClientData({ form, setForm }: { form: ClientForm; setForm: (f: ClientForm) => void }) {
-  const set = (k: keyof ClientForm) => (v: string) =>
-    setForm({ ...form, [k]: k === 'horizon' || k === 'initialAmount' || k === 'monthlyAmount' ? Number(v) : v });
+  const REQUIRED_NUMS = ['horizon', 'initialAmount', 'monthlyAmount'];
+  const OPTIONAL_NUMS = ['monthlyIncome', 'monthlyExpenses'];
+  const set = (k: keyof ClientForm) => (v: string) => {
+    if (REQUIRED_NUMS.includes(k))  return setForm({ ...form, [k]: Number(v) });
+    if (OPTIONAL_NUMS.includes(k))  return setForm({ ...form, [k]: v === '' ? undefined : Number(v) });
+    return setForm({ ...form, [k]: v });
+  };
 
   return (
     <div className="space-y-5">
@@ -151,6 +158,19 @@ function StepClientData({ form, setForm }: { form: ClientForm; setForm: (f: Clie
           placeholder="Context addicional per a l&apos;informe..."
           className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-white text-sm font-sans focus:outline-none focus:border-[#c9a84c]/50 placeholder-white/20 resize-none" />
       </div>
+      <div className="grid grid-cols-2 gap-4">
+        <div>
+          <Label>Ingressos mensuals nets (€)</Label>
+          <Input value={form.monthlyIncome ?? ''} onChange={set('monthlyIncome')} type="number" placeholder="3.500" />
+        </div>
+        <div>
+          <Label>Despeses mensuals (€)</Label>
+          <Input value={form.monthlyExpenses ?? ''} onChange={set('monthlyExpenses')} type="number" placeholder="2.100" />
+        </div>
+      </div>
+      <p className="text-white/25 text-xs font-sans italic -mt-2">
+        Opcional. Si no s&apos;introdueixen, s&apos;estimaran a partir de l&apos;aportació mensual.
+      </p>
     </div>
   );
 }

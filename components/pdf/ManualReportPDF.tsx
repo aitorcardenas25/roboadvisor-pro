@@ -26,7 +26,7 @@ const ASSET_COLORS = [C.gold, C.green2, C.blue, '#8b5cf6', '#f97316', '#ec4899',
 // ─── STYLES ───────────────────────────────────────────────────────────────────
 const S = StyleSheet.create({
   page: { backgroundColor: C.white, fontFamily: 'Helvetica', paddingBottom: 50 },
-  coverPage: { backgroundColor: C.navy, fontFamily: 'Helvetica' },
+  coverPage: { backgroundColor: C.green, fontFamily: 'Helvetica' },
 
   header: {
     paddingHorizontal: 45, paddingTop: 24, paddingBottom: 14,
@@ -196,7 +196,95 @@ function CoverPage({ d, generatedAt }: { d: ManualPortfolioInput; generatedAt: s
   );
 }
 
-// ─── Page 2: Client profile + Allocation ─────────────────────────────────────
+// ─── Page 2: Financial Summary ───────────────────────────────────────────────
+
+function FinancialSummaryPage({ d }: { d: ManualPortfolioInput }) {
+  // Estimate income/expenses if not provided
+  const estIncome   = Math.round(d.monthlyAmount / 0.095);
+  const fixedExp    = Math.round(estIncome * 0.386);
+  const varExp      = Math.round(estIncome * 0.210);
+
+  const income      = d.monthlyIncome   ?? estIncome;
+  const expenses    = d.monthlyExpenses ?? (fixedExp + varExp);
+  const surplus     = income - expenses - d.monthlyAmount;
+  const isEstimated = !d.monthlyIncome || !d.monthlyExpenses;
+
+  const weightedReturn = d.assets.reduce((s, a) => s + (a.weight / 100) * assetReturn(a), 0);
+  const weightedTER    = d.assets.reduce((s, a) => s + (a.weight / 100) * a.ter, 0);
+  const netReturn      = Math.max(0, weightedReturn - weightedTER);
+  const totalInvested  = d.initialAmount + d.monthlyAmount * d.horizon * 12;
+
+  const pPess = projection(d.initialAmount, d.monthlyAmount, Math.max(0, netReturn - 2), d.horizon);
+  const pBase = projection(d.initialAmount, d.monthlyAmount, netReturn,                   d.horizon);
+  const pOpt  = projection(d.initialAmount, d.monthlyAmount, netReturn + 2,               d.horizon);
+
+  const scenarios = [
+    { label: 'Pessimista', value: fEur(pPess), rate: `${Math.max(0, netReturn - 2).toFixed(1)}%`, gain: fEur(pPess - totalInvested), color: C.red },
+    { label: 'Base',       value: fEur(pBase), rate: `${netReturn.toFixed(1)}%`,                  gain: fEur(pBase - totalInvested), color: C.gold },
+    { label: 'Optimista',  value: fEur(pOpt),  rate: `${(netReturn + 2).toFixed(1)}%`,            gain: fEur(pOpt  - totalInvested), color: C.green2 },
+  ];
+
+  return (
+    <Page size="A4" style={S.page}>
+      <Header section="Situació Financera" client={d.clientName} />
+      <Footer />
+
+      <View style={S.body}>
+        <Text style={S.tag}>SITUACIÓ FINANCERA</Text>
+        <Text style={S.h2}>Situació financera del client</Text>
+        {isEstimated ? (
+          <Text style={[S.body2, { color: C.gray, marginBottom: 10, fontFamily: 'Helvetica-Oblique' }]}>
+            * Valors estimats a partir de l&apos;aportació mensual. L&apos;admin pot introduir dades reals al formulari.
+          </Text>
+        ) : null}
+
+        {/* 3 metric boxes: income / expenses / surplus */}
+        <View style={[S.row, { marginBottom: 16 }]}>
+          <View style={[S.metricBox, { borderTopWidth: 3, borderTopColor: C.green2 }]}>
+            <Text style={S.metricLabel}>Ingressos mensuals nets</Text>
+            <Text style={[S.metricValue, { color: C.green2 }]}>{fEur(income)}</Text>
+            <Text style={S.metricSub}>{isEstimated ? 'Estimat' : 'Introduït per admin'}</Text>
+          </View>
+          <View style={[S.metricBox, { borderTopWidth: 3, borderTopColor: C.red }]}>
+            <Text style={S.metricLabel}>Despeses mensuals</Text>
+            <Text style={[S.metricValue, { color: C.red }]}>{fEur(expenses)}</Text>
+            <Text style={S.metricSub}>{isEstimated ? 'Estimat' : 'Introduït per admin'}</Text>
+          </View>
+          <View style={[S.metricBox, { borderTopWidth: 3, borderTopColor: surplus >= 0 ? C.gold : C.red }]}>
+            <Text style={S.metricLabel}>Excedent mensual</Text>
+            <Text style={[S.metricValue, { color: surplus >= 0 ? C.gold : C.red }]}>{fEur(Math.abs(surplus))}</Text>
+            <Text style={S.metricSub}>{surplus >= 0 ? 'Disponible post-aportació' : 'Dèficit mensual'}</Text>
+          </View>
+        </View>
+
+        <View style={S.divider} />
+
+        {/* Scenario cards preview */}
+        <Text style={S.tag}>PROJECCIÓ A {d.horizon} ANYS · RESUM</Text>
+        <Text style={[S.h2, { marginBottom: 8 }]}>Escenaris de rendiment (avanç)</Text>
+        <Text style={[S.body2, { marginBottom: 10 }]}>
+          Capital inicial {fEur(d.initialAmount)} + {fEur(d.monthlyAmount)}/mes durant {d.horizon} anys. Total aportat: {fEur(totalInvested)}.
+        </Text>
+
+        <View style={S.row}>
+          {scenarios.map(sc => (
+            <View key={sc.label} style={[S.metricBox, { borderTopWidth: 3, borderTopColor: sc.color }]}>
+              <Text style={[S.metricLabel, { color: sc.color }]}>{sc.label}</Text>
+              <Text style={[S.metricValue, { fontSize: 15, color: sc.color }]}>{sc.value}</Text>
+              <Text style={S.metricSub}>Rendiment: {sc.rate} · Guany: {sc.gain}</Text>
+            </View>
+          ))}
+        </View>
+
+        <Text style={[S.body2, { marginTop: 6, color: C.gray, fontFamily: 'Helvetica-Oblique' }]}>
+          Veure Secció D per a l&apos;anàlisi completa de projeccions i costos.
+        </Text>
+      </View>
+    </Page>
+  );
+}
+
+// ─── Page 3: Client profile + Allocation ─────────────────────────────────────
 
 function ProfilePage({ d }: { d: ManualPortfolioInput }) {
   const profileLabel = PROFILE_LABEL[d.investorProfile] ?? d.investorProfile;
@@ -478,6 +566,7 @@ export function ManualReportPDF({ data, generatedAt }: Props) {
       creator="Factor OTC Admin"
       producer="@react-pdf/renderer">
       <CoverPage d={data} generatedAt={generatedAt} />
+      <FinancialSummaryPage d={data} />
       <ProfilePage d={data} />
       <AssetsPage d={data} />
       <ProjectionsPage d={data} />

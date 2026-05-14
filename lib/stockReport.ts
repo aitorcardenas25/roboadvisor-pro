@@ -610,7 +610,7 @@ export function generateStockReport(d: StockReportData): string {
     return `<div class="header-bar">${BR}<div class="crumb">${d.ticker} · ${crumb}</div></div>`;
   }
   function ftr(n: number) {
-    return `<div class="footer"><span>Factor OTC · Informe Bursàtil · ${d.ticker}</span><span>${n} / 12</span></div>`;
+    return `<div class="footer"><span>Factor OTC · Informe Bursàtil · ${d.ticker}</span><span>${n} / 13</span></div>`;
   }
 
   // ── PAGE 1: Portada ─────────────────────────────────────────────────────────
@@ -671,13 +671,73 @@ export function generateStockReport(d: StockReportData): string {
 
   <div style="position:absolute;bottom:48px;left:56px;right:56px;display:flex;justify-content:space-between;align-items:center;border-top:1px solid rgba(255,255,255,.12);padding-top:18px">
     <div class="sans" style="font-size:10.5px;color:rgba(255,255,255,.5);letter-spacing:1px">Generat el ${dateStr} · Factor OTC Research</div>
-    <div class="sans" style="font-size:10.5px;letter-spacing:1.5px;color:var(--gold)">12 PÀGINES · 9 SECCIONS</div>
+    <div class="sans" style="font-size:10.5px;letter-spacing:1.5px;color:var(--gold)">13 PÀGINES · 9 SECCIONS</div>
   </div>
 </section>`;
 
-  // ── PAGE 2: Resum Executiu ──────────────────────────────────────────────────
-  const riskLabel = (d.beta ?? 1) < 0.8 ? 'BAIX' : (d.beta ?? 1) > 1.3 ? 'ALT' : 'MITJÀ';
+  // ── PAGE 2: Decisió i Resum ────────────────────────────────────────────────
   const page2 = `<section class="page">
+  <div class="pad">
+    ${hdr('Decisió i Resum')}
+    <h2 class="section-num">Resum de la Recomanació</h2>
+    <h1 class="section">Decisió d'inversió · ${d.ticker}</h1>
+
+    <div style="background:linear-gradient(135deg,#0f2137 0%,#1a3a5c 100%);color:#fff;border-radius:14px;padding:32px;margin:12px 0 24px">
+      <div class="sans" style="font-size:11px;letter-spacing:2.5px;color:var(--gold);text-transform:uppercase;margin-bottom:14px">Recomanació Factor OTC · ${monthTitle}</div>
+      <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:20px;margin-bottom:24px">
+        <div>
+          <div style="font-family:Georgia,serif;font-size:68px;font-weight:700;color:#fff;letter-spacing:-1px;line-height:.9">${recoCa}</div>
+          <div class="sans" style="font-size:13px;color:rgba(255,255,255,.6);margin-top:8px">Convicció ${recoConvicció} · Horitzó 12 mesos</div>
+        </div>
+        <div style="text-align:right">
+          <div class="sans" style="font-size:10px;color:rgba(255,255,255,.4);letter-spacing:1.5px;text-transform:uppercase">Preu actual</div>
+          <div class="mono" style="font-size:28px;font-weight:700;color:rgba(255,255,255,.85)">${fPrice(d.price, cur)}</div>
+          <div class="sans" style="font-size:10px;color:rgba(255,255,255,.4);letter-spacing:1.5px;text-transform:uppercase;margin-top:10px">Preu objectiu 12m</div>
+          <div class="mono" style="font-size:44px;font-weight:700;color:var(--gold);line-height:1">${fPrice(targetFinal, cur)}</div>
+          <div class="sans" style="font-size:14px;color:#16a34a;margin-top:4px;font-weight:700">Upside ${fPct(upside)}</div>
+        </div>
+      </div>
+      <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px">
+        <div style="background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);border-radius:8px;padding:12px">
+          <div class="sans" style="font-size:9px;letter-spacing:1.5px;color:rgba(255,255,255,.4);text-transform:uppercase;margin-bottom:4px">Stop tècnic</div>
+          <div class="mono" style="font-size:20px;font-weight:700;color:#dc2626">${fPrice(stop, cur)}</div>
+          <div class="sans" style="font-size:9px;color:rgba(255,255,255,.35);margin-top:3px">-${Math.round(Math.abs(stop / d.price - 1) * 100)} % des d'ara</div>
+        </div>
+        <div style="background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);border-radius:8px;padding:12px">
+          <div class="sans" style="font-size:9px;letter-spacing:1.5px;color:rgba(255,255,255,.4);text-transform:uppercase;margin-bottom:4px">Target 1</div>
+          <div class="mono" style="font-size:20px;font-weight:700;color:#fff">${fPrice(target1, cur)}</div>
+        </div>
+        <div style="background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);border-radius:8px;padding:12px">
+          <div class="sans" style="font-size:9px;letter-spacing:1.5px;color:rgba(255,255,255,.4);text-transform:uppercase;margin-bottom:4px">Target 2</div>
+          <div class="mono" style="font-size:20px;font-weight:700;color:var(--gold)">${fPrice(target2, cur)}</div>
+        </div>
+        <div style="background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);border-radius:8px;padding:12px">
+          <div class="sans" style="font-size:9px;letter-spacing:1.5px;color:rgba(255,255,255,.4);text-transform:uppercase;margin-bottom:4px">R/R</div>
+          <div class="mono" style="font-size:20px;font-weight:700;color:var(--gold)">${rr.toFixed(1)}×</div>
+          <div class="sans" style="font-size:9px;color:rgba(255,255,255,.35);margin-top:3px">risc/recompensa</div>
+        </div>
+      </div>
+    </div>
+
+    <h3 class="sans" style="font-size:12px;letter-spacing:2px;text-transform:uppercase;color:var(--navy);margin:20px 0 10px">Punts clau de la tesi</h3>
+    <ol style="padding-left:20px;font-size:13.5px;color:#3a382f">
+      <li style="margin-bottom:8px"><strong>Creixement visible:</strong> ingressos creixent al ${fPct(revGrowth * 100)} YoY amb pipeline sòlid que dóna visibilitat als pròxims 2-3 exercicis.</li>
+      <li style="margin-bottom:8px"><strong>Marges en expansió:</strong> marge net del ${fPct(netMargin * 100)} amb conversió a FCF robust que financia dividends i recompres d'accions.</li>
+      <li style="margin-bottom:8px"><strong>Posició competitiva fosa:</strong> ${si.position} al segment ${si.subsector}. Barreres d'entrada elevades que protegeixen la quota de mercat (${si.marketShareEst}).</li>
+      <li style="margin-bottom:8px"><strong>Valoració justificada:</strong> P/E ${pe > 0 ? pe.toFixed(1) + '×' : 'implícit'} reflecteix qualitat-creixement; DCF suporta upside de ${fPct(upside)} al nostre objectiu de ${fPrice(targetFinal, cur)}.</li>
+      <li style="margin-bottom:8px"><strong>Catàlisi pròxims:</strong> earnings de ${d.nextEarningsDate ? new Date(d.nextEarningsDate).toLocaleDateString('ca-ES', { month: 'short', year: 'numeric' }) : 'pròxim trimestre'} i resultat ${d.epsNextQEstimate != null ? 'estimat de ' + fPrice(d.epsNextQEstimate, cur) + ' EPS' : 'amb expectatives positives'} com a catalitzador a curt termini.</li>
+    </ol>
+
+    <div class="callout callout-warn" style="margin-top:18px">
+      <strong>Risc principal a vigilar.</strong> ${si.risks[0] || 'Cicle macroeconòmic advers que pugui impactar la visibilitat d\'ingressos.'}. Stop tècnic actiu a <strong>${fPrice(stop, cur)}</strong> (–${Math.round(Math.abs(stop / d.price - 1) * 100)} %) per limitar la pèrdua màxima. Veure Secció 7 per a l'anàlisi complet de riscos.
+    </div>
+  </div>
+  ${ftr(2)}
+</section>`;
+
+  // ── PAGE 3: Resum Executiu ──────────────────────────────────────────────────
+  const riskLabel = (d.beta ?? 1) < 0.8 ? 'BAIX' : (d.beta ?? 1) > 1.3 ? 'ALT' : 'MITJÀ';
+  const page3 = `<section class="page">
   <div class="pad">
     ${hdr('Resum Executiu')}
     <h2 class="section-num">Secció 1</h2>
@@ -725,11 +785,11 @@ export function generateStockReport(d: StockReportData): string {
       </g>
     </svg>
   </div>
-  ${ftr(2)}
+  ${ftr(3)}
 </section>`;
 
-  // ── PAGE 3: Empresa i Model de Negoci ───────────────────────────────────────
-  const page3 = `<section class="page">
+  // ── PAGE 4: Empresa i Model de Negoci ───────────────────────────────────────
+  const page4 = `<section class="page">
   <div class="pad">
     ${hdr('Empresa i Model de Negoci')}
     <h2 class="section-num">Secció 2</h2>
@@ -778,11 +838,11 @@ export function generateStockReport(d: StockReportData): string {
       <strong>Mix de negoci.</strong> La combinació de ${seg1Label.toLowerCase()} i ${seg2Label.toLowerCase()} confereix a ${d.name || d.ticker} una base d'ingressos ${seg2Pct > 0.25 ? 'recurrents i' : ''} diversificada, que sosté marges en entorns de cicle mixt i genera caixa lliure consistent.
     </div>
   </div>
-  ${ftr(3)}
+  ${ftr(4)}
 </section>`;
 
-  // ── PAGE 4: Posició Competitiva ─────────────────────────────────────────────
-  const page4 = `<section class="page">
+  // ── PAGE 5: Posició Competitiva ─────────────────────────────────────────────
+  const page5 = `<section class="page">
   <div class="pad">
     ${hdr('Posició Competitiva')}
     <h2 class="section-num">Secció 3</h2>
@@ -820,10 +880,10 @@ export function generateStockReport(d: StockReportData): string {
       <strong style="color:var(--navy)">Avaluació del moat.</strong> ${si.rivalDesc}
     </div>
   </div>
-  ${ftr(4)}
+  ${ftr(5)}
 </section>`;
 
-  // ── PAGE 5: Anàlisi Fonamental 1/2 ─────────────────────────────────────────
+  // ── PAGE 6: Anàlisi Fonamental 1/2 ─────────────────────────────────────────
   const evEbitda = d.marketCap != null && revB != null ? (d.marketCap / 1e9) / (revB * fyGrossMargin * 0.8) : null;
   const pSales   = d.marketCap != null && d.revenue != null ? (d.marketCap / d.revenue) : null;
   const pFCF     = d.marketCap != null && revB != null ? (d.marketCap / 1e9) / (revB * fcfMargin) : null;
@@ -834,7 +894,7 @@ export function generateStockReport(d: StockReportData): string {
   const fcfMgn   = fcfMargin * 100;
   const capexPct = 3.5 + (netMargin < 0.10 ? 2 : 0);
 
-  const page5 = `<section class="page">
+  const page6 = `<section class="page">
   <div class="pad">
     ${hdr('Anàlisi Fonamental (1/2)')}
     <h2 class="section-num">Secció 4</h2>
@@ -879,11 +939,11 @@ export function generateStockReport(d: StockReportData): string {
       <div class="kpi"><div class="kpi-label">Marge brut</div><div class="kpi-val">${fPct(fyGrossMargin * 100)}</div><div class="kpi-sub">Gross margin TTM</div></div>
     </div>
   </div>
-  ${ftr(5)}
+  ${ftr(6)}
 </section>`;
 
-  // ── PAGE 6: Anàlisi Fonamental 2/2 ─────────────────────────────────────────
-  const page6 = `<section class="page">
+  // ── PAGE 7: Anàlisi Fonamental 2/2 ─────────────────────────────────────────
+  const page7 = `<section class="page">
   <div class="pad">
     ${hdr('Anàlisi Fonamental (2/2)')}
     <h2 class="section-num">Secció 4 · cont.</h2>
@@ -909,13 +969,13 @@ export function generateStockReport(d: StockReportData): string {
       <strong style="color:var(--navy)">Posició Factor OTC.</strong> Esperem un beat lleuger en vendes i EPS recolzat per la dinàmica positiva del sector ${si.subsector}. Principal risc: ${si.risks[0]?.toLowerCase() || 'entorn macroeconòmic adverse'}.
     </div>
   </div>
-  ${ftr(6)}
+  ${ftr(7)}
 </section>`;
 
-  // ── PAGE 7: Anàlisi Tècnica 1/2 ────────────────────────────────────────────
+  // ── PAGE 8: Anàlisi Tècnica 1/2 ────────────────────────────────────────────
   const ma50Str  = fPrice(ma50, cur);
   const ma200Str = fPrice(ma200, cur);
-  const page7 = `<section class="page">
+  const page8 = `<section class="page">
   <div class="pad">
     ${hdr('Anàlisi Tècnica (1/2)')}
     <h2 class="section-num">Secció 5</h2>
@@ -942,10 +1002,10 @@ export function generateStockReport(d: StockReportData): string {
       <div class="kpi"><div class="kpi-label">ATR 14d est.</div><div class="kpi-val" style="font-size:20px">${fPrice(atr, cur)}</div><div class="kpi-sub">Range mitjà diari</div></div>
     </div>
   </div>
-  ${ftr(7)}
+  ${ftr(8)}
 </section>`;
 
-  // ── PAGE 8: Anàlisi Tècnica 2/2 ────────────────────────────────────────────
+  // ── PAGE 9: Anàlisi Tècnica 2/2 ────────────────────────────────────────────
   const levels = [
     { id: 'R3', type: 'Resistència forta',  pill: 'pill-danger', price: r3,   dist: ((r3 - d.price) / d.price) * 100,  comment: 'Màxim 52 setmanes — barrera psicològica' },
     { id: 'R2', type: 'Resistència',         pill: 'pill-warn',  price: r2,   dist: ((r2 - d.price) / d.price) * 100,  comment: 'Zona de resistència intermèdia' },
@@ -957,7 +1017,7 @@ export function generateStockReport(d: StockReportData): string {
     { id: 'S4', type: 'Suport profund',      pill: 'pill-gold',  price: s4,   dist: ((s4 - d.price) / d.price) * 100,  comment: 'Mínim 52 set. — invalidació tendència' },
   ];
   const priceTrend = d.price > ma200 ? 'alcista' : 'baixista';
-  const page8 = `<section class="page">
+  const page9 = `<section class="page">
   <div class="pad">
     ${hdr('Anàlisi Tècnica (2/2)')}
     <h2 class="section-num">Secció 5 · cont.</h2>
@@ -996,13 +1056,13 @@ export function generateStockReport(d: StockReportData): string {
       <strong style="color:var(--navy)">Conclusió tècnica.</strong> Estructura ${priceTrend} de mig termini, amb suport clau a ${fPrice(s1, cur)} (MA50) i pivot major a ${fPrice(s2, cur)} (MA200). Mentre cotitzi sobre ${fPrice(s1, cur)} es manté biaix ${priceTrend}; ruptura a la baixa de ${fPrice(s2, cur)} obriria correcció cap a ${fPrice(s3, cur)}. A l'alça, superar ${fPrice(r1, cur)} desbloca el rang ${fPrice(r2, cur)}-${fPrice(r3, cur)}.
     </div>
   </div>
-  ${ftr(8)}
+  ${ftr(9)}
 </section>`;
 
-  // ── PAGE 9: Consens Analistes ───────────────────────────────────────────────
+  // ── PAGE 10: Consens Analistes ───────────────────────────────────────────────
   const ptLow  = targetFinal * 0.88;
   const ptHigh = targetFinal * 1.12;
-  const page9 = `<section class="page">
+  const page10 = `<section class="page">
   <div class="pad">
     ${hdr('Consens Analistes')}
     <h2 class="section-num">Secció 6</h2>
@@ -1038,10 +1098,10 @@ export function generateStockReport(d: StockReportData): string {
       <strong style="color:var(--navy)">Nota metodològica.</strong> Els preus objectiu i el consens d'analistes s'han derivat a partir de les mètriques públiques disponibles i l'estimació interna de Factor OTC. Per a dades de consens en temps real, consulta Bloomberg, Refinitiv o Visible Alpha.
     </div>
   </div>
-  ${ftr(9)}
+  ${ftr(10)}
 </section>`;
 
-  // ── PAGE 10: Catalitzadors i Riscos ────────────────────────────────────────
+  // ── PAGE 11: Catalitzadors i Riscos ────────────────────────────────────────
   const cats = [
     { event: `Resultats trimestrals (beat EPS)`,                date: 'Pròxims resultats',   impact: 'pill-green Mitjà-Alt',  prob: 'pill-green Alta' },
     { event: `Expansió de marges per millora de mix`,           date: 'FY+1',               impact: 'pill-green Alt',         prob: 'pill-warn Mitjana' },
@@ -1056,7 +1116,7 @@ export function generateStockReport(d: StockReportData): string {
     { risc: 'Pujada de tipus d\'interès sostenida',             prob: 'pill-gold Baixa',    impact: 'pill-warn Mitjà',    mit: 'Gestió prudent del deute i liquiditat' },
     { risc: 'Pèrdua de talent directiu clau',                   prob: 'pill-gold Baixa',    impact: 'pill-danger Alt',    mit: 'Pla de successió i incentius a llarg termini' },
   ];
-  const page10 = `<section class="page">
+  const page11 = `<section class="page">
   <div class="pad">
     ${hdr('Catalitzadors i Riscos')}
     <h2 class="section-num">Secció 7</h2>
@@ -1091,10 +1151,10 @@ export function generateStockReport(d: StockReportData): string {
       <strong>Risc / Recompensa.</strong> El balanç a 12 mesos és ${recoCa === 'COMPRAR' ? 'positiu però asimètric' : 'equilibrat'}. Catalitzadors visibles i datats vs. riscos majoritàriament sectorials i d'execució. Recomanem stop tècnic operatiu a <strong>${fPrice(stop, cur)}</strong> (MA200 est.) i target operatiu 1 a <strong>${fPrice(target1, cur)}</strong>, target 2 a <strong>${fPrice(target2, cur)}</strong>.
     </div>
   </div>
-  ${ftr(10)}
+  ${ftr(11)}
 </section>`;
 
-  // ── PAGE 11: Valoració ──────────────────────────────────────────────────────
+  // ── PAGE 12: Valoració ──────────────────────────────────────────────────────
   const dcfPS = dcfValue ?? (epsBase * peTarget * 1.02);
   const mulAvg = epsBase * peTarget;
   const sotpHW = revB != null ? revB * 0.65 * 18 : 0;
@@ -1110,7 +1170,7 @@ export function generateStockReport(d: StockReportData): string {
   ];
   const blended = triangle.reduce((s, t) => s + t.value * t.weight / 100, 0);
 
-  const page11 = `<section class="page">
+  const page12 = `<section class="page">
   <div class="pad">
     ${hdr('Valoració')}
     <h2 class="section-num">Secció 8</h2>
@@ -1165,10 +1225,10 @@ export function generateStockReport(d: StockReportData): string {
       </tbody>
     </table>
   </div>
-  ${ftr(11)}
+  ${ftr(12)}
 </section>`;
 
-  // ── PAGE 12: Conclusió ──────────────────────────────────────────────────────
+  // ── PAGE 13: Conclusió ──────────────────────────────────────────────────────
   const suitability = [
     { profile: 'Conservador', recWeight: recoCa === 'COMPRAR' ? 'pill-danger Evitar / &lt;1 %' : 'pill-danger Evitar', comment: `Volatilitat ${vol30d} % no encaixa amb perfil defensiu` },
     { profile: 'Moderat',     recWeight: recoCa === 'COMPRAR' ? 'pill-warn 2-3 %'     : 'pill-warn 1-2 %',  comment: 'Només via fons / ETF amb diversificació' },
@@ -1176,11 +1236,24 @@ export function generateStockReport(d: StockReportData): string {
     { profile: 'Dinàmic',     recWeight: recoCa === 'COMPRAR' ? 'pill-green 5-7 %'    : 'pill-gold 3-5 %',  comment: 'Posició overweight sectorial' },
     { profile: 'Agressiu',    recWeight: recoCa === 'COMPRAR' ? 'pill-green 7-10 %'   : 'pill-green 5-7 %', comment: 'Convicció directa amb stop tècnic actiu' },
   ];
-  const page12 = `<section class="page">
+  const page13 = `<section class="page">
   <div class="pad">
     ${hdr('Conclusió')}
     <h2 class="section-num">Secció 9</h2>
     <h1 class="section">Conclusió i recomanació final</h1>
+
+    <div style="background:rgba(15,33,55,.06);border:1.5px solid rgba(15,33,55,.15);border-radius:10px;padding:14px 18px;margin:4px 0 18px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px">
+      <div style="display:flex;align-items:center;gap:16px">
+        <div style="font-family:Georgia,serif;font-size:28px;font-weight:700;color:${recoColor}">${recoCa}</div>
+        <div class="sans" style="font-size:11px;color:var(--muted)">Convicció ${recoConvicció}</div>
+      </div>
+      <div style="display:flex;gap:18px;flex-wrap:wrap">
+        <div style="text-align:center"><div class="sans" style="font-size:9px;letter-spacing:1px;color:var(--muted);text-transform:uppercase">Objectiu</div><div class="mono" style="font-size:16px;font-weight:700;color:var(--gold)">${fPrice(targetFinal, cur)}</div></div>
+        <div style="text-align:center"><div class="sans" style="font-size:9px;letter-spacing:1px;color:var(--muted);text-transform:uppercase">Upside</div><div class="mono" style="font-size:16px;font-weight:700;color:var(--ok)">${fPct(upside)}</div></div>
+        <div style="text-align:center"><div class="sans" style="font-size:9px;letter-spacing:1px;color:var(--muted);text-transform:uppercase">Stop</div><div class="mono" style="font-size:16px;font-weight:700;color:var(--danger)">${fPrice(stop, cur)}</div></div>
+        <div style="text-align:center"><div class="sans" style="font-size:9px;letter-spacing:1px;color:var(--muted);text-transform:uppercase">R/R</div><div class="mono" style="font-size:16px;font-weight:700;color:var(--navy)">${rr.toFixed(1)}×</div></div>
+      </div>
+    </div>
 
     <div style="background:linear-gradient(135deg,#0f2137 0%,#1a3a5c 100%);color:#fff;border-radius:12px;padding:30px;margin:8px 0 22px">
       <div class="sans" style="font-size:11px;letter-spacing:2px;color:var(--gold);text-transform:uppercase;margin-bottom:10px">Recomanació final</div>
@@ -1239,7 +1312,7 @@ export function generateStockReport(d: StockReportData): string {
       <strong>Avís legal · Disclaimer.</strong> Aquest informe ha estat elaborat per Factor OTC amb finalitat informativa i educativa. No constitueix assessorament d'inversió personalitzat MiFID II ni una recomanació individualitzada. Factor OTC no és una entitat financera regulada. La informació procedeix de fonts considerades fiables però no es garanteix la seva exactitud. Les estimacions i projeccions són opinions a la data de publicació i poden modificar-se sense previ avís. Tota inversió comporta risc de pèrdua parcial o total del capital. Es recomana consultar un assessor regulat abans de prendre decisions d'inversió. © ${curYear} Factor OTC · ID ${d.ticker}-${dateStr.replace(/\s/g, '')}.
     </div>
   </div>
-  ${ftr(12)}
+  ${ftr(13)}
 </section>`;
 
   // ── Assemble ─────────────────────────────────────────────────────────────────
@@ -1264,6 +1337,7 @@ ${page9}
 ${page10}
 ${page11}
 ${page12}
+${page13}
 </body>
 </html>`;
 }
