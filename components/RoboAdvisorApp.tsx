@@ -32,8 +32,6 @@ import {
 } from '@/lib/monteCarlo';
 import { generateReport, FinancialReport, LEGAL_DISCLAIMER } from '@/lib/report';
 import { getDataStatusColor } from '@/lib/products';
-import { checkMiFIDSuitability, suitabilityLabel, suitabilityColor } from '@/lib/suitability';
-import { generateIPS } from '@/lib/ips';
 import HiddenCharts from '@/components/pdf/HiddenCharts';
 import EfficientFrontier from '@/components/charts/EfficientFrontier';
 import CorrelationHeatmap from '@/components/charts/CorrelationHeatmap';
