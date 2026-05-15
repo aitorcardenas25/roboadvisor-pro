@@ -27,13 +27,8 @@ export interface ManualPortfolioInput {
   assets:         ManualAsset[];
   adminNote:      string;
   // NEW — optional financial situation fields
-  monthlyIncome?:    number;  // real income if admin enters it
-  monthlyExpenses?:  number;  // real expenses if admin enters it
-  deutes?:           number;  // total outstanding debts
-  patrimoni?:        number;  // net worth (assets - liabilities)
-  ingresosExtra?:    number;  // extra/irregular monthly income
-  objectiuAmount?:   number;  // target capital amount in €
-  fondEmergencia?:   number;  // current emergency fund in €
+  monthlyIncome?:   number;  // real income if admin enters it
+  monthlyExpenses?: number;  // real expenses if admin enters it
 }
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
@@ -295,7 +290,7 @@ function header(crumb: string) {
   return `<div class="header-bar">${BRAND}<div class="crumb">${crumb}</div></div>`;
 }
 function footer(clientFirst: string, pageN: number) {
-  return `<div class="footer"><span>Factor OTC · Informe Manual Admin · Confidencial</span><span>${pageN} / 12</span></div>`;
+  return `<div class="footer"><span>Factor OTC · Informe Manual Admin · Confidencial</span><span>${pageN} / 11</span></div>`;
 }
 
 // ─── Main generator ───────────────────────────────────────────────────────────
@@ -543,22 +538,10 @@ export function generateManualReport(d: ManualPortfolioInput): string {
       <thead><tr><th>Indicador</th><th style="text-align:right">Valor</th><th>Interpretació</th></tr></thead>
       <tbody>
         <tr><td>Taxa d'estalvi</td><td class="num">${fN(savingsRate,1)} %</td><td>${savingsRate > 20 ? 'Excel·lent — per sobre del 20% recomanat' : savingsRate > 10 ? 'Adequat — entre 10% i 20%' : 'Millorable — per sota del 10%'}</td></tr>
-        <tr><td>Fons d'emergència${efundProvided > 0 ? ' (real)' : ' (estimat)'}</td><td class="num">${efundMonthsCurrent} mesos${efundProvided > 0 ? ' · ' + fEur(efundProvided) : ''}</td><td>${efundMonthsCurrent >= 6 ? 'Suficient — cobreix 6 mesos o més' : efundMonthsCurrent >= 3 ? 'Parcial — entre 3 i 6 mesos' : 'Insuficient — menys de 3 mesos'}</td></tr>
+        <tr><td>Fons d'emergència estimat</td><td class="num">${eFundMonthsReal} mesos</td><td>${eFundMonthsReal >= 6 ? 'Suficient — cobreix 6 mesos o més' : 'Millorable — recomana arribar a 6 mesos'}</td></tr>
         <tr><td>Ràtio inversió/ingressos</td><td class="num">${fN(invPct, 1)} %</td><td>${invPct > 15 ? 'Excel·lent — inversió sistemàtica sòlida' : invPct > 8 ? 'Adequat — base d\'inversió consistent' : 'Baix — considera augmentar l\'aportació'}</td></tr>
-        ${totalDeute > 0 || totalPatrimoni > 0 ? `<tr><td>Ràtio deute/patrimoni</td><td class="num" style="color:${debtRatioReal < 30 ? 'var(--ok)' : debtRatioReal < 50 ? 'var(--warn)' : 'var(--danger)'}">${totalPatrimoni > 0 ? fN(debtRatioReal,1) + ' %' : '—'}</td><td>${debtRatioReal < 30 ? 'Excel·lent — solvència sòlida' : debtRatioReal < 50 ? 'Adequat — endeutament controlat' : 'Elevat — prioritzar reducció de deute'}</td></tr>` : ''}
       </tbody>
     </table>
-
-    ${(totalDeute > 0 || totalPatrimoni > 0 || efundProvided > 0) ? `
-    <h3 class="sans" style="font-size:12px;letter-spacing:2px;text-transform:uppercase;color:var(--navy);margin:18px 0 8px">Balanç patrimonial</h3>
-    <table class="data">
-      <thead><tr><th>Partida</th><th style="text-align:right">Import</th><th>Valoració</th></tr></thead>
-      <tbody>
-        ${totalPatrimoni > 0 ? `<tr><td>Patrimoni net (actius – passius)</td><td class="num">${fEur(totalPatrimoni)}</td><td>${totalPatrimoni > d.initialAmount * 10 ? 'Excel·lent — base patrimonial sòlida' : totalPatrimoni > d.initialAmount * 3 ? 'En construcció — bon punt de partida' : 'Incipient — potencial de creixement alt'}</td></tr>` : ''}
-        ${totalDeute > 0 ? `<tr><td>Deutes totals</td><td class="num" style="color:var(--danger)">${fEur(totalDeute)}</td><td>${totalDeute < income * 12 ? 'Manejable — menys de 12 mesos d\'ingressos' : totalDeute < income * 36 ? 'Moderat — 1-3 anys d\'ingressos' : 'Elevat — més de 3 anys d\'ingressos'}</td></tr>` : ''}
-        ${efundProvided > 0 ? `<tr><td>Fons d'emergència actual</td><td class="num">${fEur(efundProvided)}</td><td>${efundProvided >= expenses * 6 ? 'Suficient — cobreix 6+ mesos de despeses' : efundProvided >= expenses * 3 ? 'Parcial — cobreix 3-6 mesos' : 'Insuficient — recomana ampliar a 6 mesos'}</td></tr>` : ''}
-      </tbody>
-    </table>` : ''}
 
     <div class="callout" style="margin-top:16px">
       Cada euro que inverteixes mensualment de forma sistemàtica contribueix al teu objectiu de <strong>${d.objective.toLowerCase()}</strong>. L'efecte de la composició farà que els teus diners treballin de forma accelerada a mesura que passin els anys.
@@ -609,10 +592,6 @@ export function generateManualReport(d: ManualPortfolioInput): string {
       <div class="kpi"><div class="kpi-label">Capital objectiu (P50)</div><div class="kpi-val" style="font-size:20px">${fEur(p50)}</div><div class="kpi-sub">Escenari central</div></div>
       <div class="kpi"><div class="kpi-label">Probabilitat d'èxit</div><div class="kpi-val" style="color:${semaphoreColor}">${probSuccess} %</div><div class="kpi-sub">Monte Carlo 1.000 esc.</div></div>
     </div>
-
-    ${d.objectiuAmount ? `<div class="callout ${d.objectiuAmount <= p50 ? 'callout-ok' : d.objectiuAmount <= p90 ? '' : 'callout-warn'}" style="margin-bottom:14px">
-      <strong>Objectiu quantificat: ${fEur(goalAmount)}.</strong> ${goalAmount <= p50 ? `L'escenari central (P50 = ${fEur(p50)}) <strong>supera l'objectiu</strong>. Probabilitat d'assolir-lo: molt alta (${goalFeasibility}%).` : goalAmount <= p90 ? `L'escenari optimista (P90 = ${fEur(p90)}) <strong>assoleix l'objectiu</strong>. Probabilitat estimada: ${goalFeasibility}%.` : `L'objectiu de ${fEur(goalAmount)} supera fins i tot l'escenari P90 (${fEur(p90)}). Considera augmentar les aportacions mensuals o ampliar el termini.`}
-    </div>` : ''}
 
     <div class="callout callout-ok">
       <strong>Recomanació.</strong> Per maximitzar la probabilitat d'assolir l'objectiu, mantén les aportacions de ${fEur(d.monthlyAmount)} mensuals sense interrupció i evita rescatar la inversió durant els primers 5 anys. El temps és el teu actiu més valuós: la composició s'accelera exponencialment a mesura que s'apropa el termini.
@@ -941,79 +920,9 @@ export function generateManualReport(d: ManualPortfolioInput): string {
   ${footer(clientFirst, 11)}
 </section>`;
 
-  // ── PAGE 12: IPS — Declaració de Política d'Inversió ─────────────────────────
-  const mifidTotal = horizonScore + knowScore + expScore + tolScore + reactScore + objScore + liquidScore + healthScore;
-  const CONSTRAINTS: Record<string, { rvMin: string; rvMax: string; rfMin: string; rfMax: string }> = {
-    conservador: { rvMin: '0%',  rvMax: '40%', rfMin: '40%', rfMax: '80%' },
-    moderat:     { rvMin: '30%', rvMax: '70%', rfMin: '20%', rfMax: '60%' },
-    dinamic:     { rvMin: '50%', rvMax: '90%', rfMin: '0%',  rfMax: '40%' },
-    agressiu:    { rvMin: '60%', rvMax: '100%',rfMin: '0%',  rfMax: '30%' },
-  };
-  const cons = CONSTRAINTS[d.investorProfile] ?? { rvMin: '0%', rvMax: '100%', rfMin: '0%', rfMax: '100%' };
-  const benchmarkName = rvPct >= 70 ? 'MSCI World 100%' : rvPct >= 50 ? 'MSCI World 60% / Bloomberg Agg 40%' : rvPct >= 30 ? 'MSCI World 40% / Bloomberg Agg 60%' : 'Bloomberg Agg 80% / MSCI World 20%';
-  const benchReturn   = rvPct >= 70 ? 8.0 : rvPct >= 50 ? 6.0 : rvPct >= 30 ? 4.5 : 3.0;
-  const alphaVsBench  = parseFloat((netReturn - benchReturn).toFixed(2));
-
-  const page12 = `<section class="page">
-  <div class="pad">
-    ${header(`${clientFirst} · IPS — Política d'Inversió`)}
-    <h2 class="section-num">Secció 11</h2>
-    <h1 class="section">Declaració de Política d'Inversió (IPS)</h1>
-    <p class="lead">Document formal que estableix el mandat d'inversió, les restriccions per classe d'actiu, el benchmark i la política de revisió. Conforme al marc MiFID II Art. 54 DR 2017/565.</p>
-
-    <div style="background:#fff;border-left:4px solid var(--navy);border-radius:4px;padding:16px 20px;margin-bottom:20px">
-      <div class="sans" style="font-size:10px;letter-spacing:1.8px;text-transform:uppercase;color:var(--navy);margin-bottom:8px">Mandat d'inversió formal</div>
-      <p style="font-size:13.5px;color:#3a382f;line-height:1.65">Factor OTC ha elaborat aquesta proposta per a <strong>${d.clientName}</strong> d'acord amb el perfil <strong>${prof.label}</strong>. Objectiu: <em>${d.objective.toLowerCase()}</em> en un horitzó de <strong>${d.horizon} anys</strong>. El mandat aplica gestió indexada diversificada globalment, minimització de costos i aportació periòdica sistemàtica (DCA). Sense concentracions en un sol emissor superiors al 40 %, sense apalancament i amb liquiditat UCITS T+2/T+3.</p>
-    </div>
-
-    <h3 class="sans" style="font-size:12px;letter-spacing:2px;text-transform:uppercase;color:var(--navy);margin:0 0 8px">Avaluació de dimensions MiFID II</h3>
-    <table class="data" style="margin-bottom:18px">
-      <thead><tr><th>Dimensió</th><th style="text-align:right">Punts</th><th style="text-align:right">Màx</th><th>Valoració</th></tr></thead>
-      <tbody>
-        <tr><td>Horitzó temporal</td><td class="num">${horizonScore}</td><td class="num">20</td><td>${horizonScore >= 15 ? 'Llarg termini — composició màxima' : horizonScore >= 8 ? 'Termini mitjà — cartera mixta' : 'Curt termini — carteres conservadores'}</td></tr>
-        <tr><td>Coneixements financers</td><td class="num">${knowScore}</td><td class="num">12</td><td>${knowScore >= 10 ? 'Expert — comprèn instruments complexos' : knowScore >= 7 ? 'Intermedi — fons i ETFs' : 'Bàsic — productes simples'}</td></tr>
-        <tr><td>Experiència inversora</td><td class="num">${expScore}</td><td class="num">13</td><td>${expScore >= 10 ? 'Àmplia — ha viscut crisis i recuperació' : expScore >= 7 ? 'Moderada — mercats alcistes' : 'Limitada — primer contacte'}</td></tr>
-        <tr><td>Tolerància al risc</td><td class="num">${tolScore}</td><td class="num">18</td><td>${tolScore >= 14 ? 'Alta — assumeix fluctuacions importants' : tolScore >= 9 ? 'Moderada — fins a –15%' : 'Baixa — prefereix estabilitat'}</td></tr>
-        <tr><td>Resposta a caigudes</td><td class="num">${reactScore}</td><td class="num">12</td><td>${reactScore >= 10 ? 'Disciplinat — afegirà en caigudes' : reactScore >= 7 ? 'Estable — no vendrà en pànic' : 'Incert — pot liquidar en mínims'}</td></tr>
-        <tr><td>Objectiu financer</td><td class="num">${objScore}</td><td class="num">6</td><td>${d.objective.toLowerCase()}</td></tr>
-        <tr><td>Liquiditat i necessitats</td><td class="num">${liquidScore}</td><td class="num">7</td><td>${d.horizon > 10 ? 'No necessita liquiditat a curt termini' : 'Possible necessitat parcial a mig termini'}</td></tr>
-        <tr><td>Situació financera</td><td class="num">${healthScore}</td><td class="num">9</td><td>${d.initialAmount > 20000 ? 'Capacitat alta' : d.initialAmount > 5000 ? 'Capacitat mitja' : 'Capacitat limitada'}</td></tr>
-        <tr style="background:var(--soft)">
-          <td><strong>TOTAL MiFID II</strong></td>
-          <td class="num" style="color:var(--gold)"><strong>${mifidTotal}</strong></td>
-          <td class="num">97</td>
-          <td><strong>Perfil validat: ${prof.label} · Adequació: ${mifidTotal >= 70 ? 'Alta' : mifidTotal >= 50 ? 'Moderada' : 'Baixa'}</strong></td>
-        </tr>
-      </tbody>
-    </table>
-
-    <div class="grid-2" style="gap:16px">
-      <div>
-        <h3 class="sans" style="font-size:12px;letter-spacing:2px;text-transform:uppercase;color:var(--navy);margin-bottom:8px">Restriccions d'actius (Investment Constraints)</h3>
-        <table class="data">
-          <thead><tr><th>Classe d'actiu</th><th style="text-align:right">Mínim</th><th style="text-align:right">Màxim</th><th style="text-align:right">Actual</th></tr></thead>
-          <tbody>
-            <tr><td>Renda variable global</td><td class="num">${cons.rvMin}</td><td class="num">${cons.rvMax}</td><td class="num" style="color:${rvPct < parseInt(cons.rvMin) || rvPct > parseInt(cons.rvMax) ? 'var(--danger)' : 'var(--ok)'}">${rvPct} %</td></tr>
-            <tr><td>Renda fixa / Oblig.</td><td class="num">${cons.rfMin}</td><td class="num">${cons.rfMax}</td><td class="num" style="color:${rfPct < parseInt(cons.rfMin) || rfPct > parseInt(cons.rfMax) ? 'var(--danger)' : 'var(--ok)'}">${rfPct} %</td></tr>
-            <tr><td>Monetari / Liquiditat</td><td class="num">0%</td><td class="num">20%</td><td class="num">${cashPct} %</td></tr>
-            <tr style="background:var(--soft)"><td><strong>TER màxim permès</strong></td><td class="num" colspan="2">—</td><td class="num" style="color:${weightedTER < 0.5 ? 'var(--ok)' : weightedTER < 1.0 ? 'var(--warn)' : 'var(--danger)'}"><strong>${fN(weightedTER,2)} %</strong></td></tr>
-          </tbody>
-        </table>
-      </div>
-      <div>
-        <h3 class="sans" style="font-size:12px;letter-spacing:2px;text-transform:uppercase;color:var(--navy);margin-bottom:8px">Benchmark i política de revisió</h3>
-        <div class="stat-row"><span class="sans" style="font-size:12px">Benchmark de referència</span><strong class="mono" style="font-size:11.5px">${benchmarkName}</strong></div>
-        <div class="stat-row"><span class="sans" style="font-size:12px">Retorn esperat benchmark</span><strong class="mono" style="font-size:11.5px">${fN(benchReturn, 1)} %</strong></div>
-        <div class="stat-row"><span class="sans" style="font-size:12px">Alpha esperat (net)</span><strong class="mono" style="font-size:11.5px;color:${alphaVsBench >= 0 ? 'var(--ok)' : 'var(--danger)'}">${alphaVsBench >= 0 ? '+' : ''}${fN(alphaVsBench, 2)} %</strong></div>
-        <div class="stat-row"><span class="sans" style="font-size:12px">Freqüència de revisió</span><strong class="mono" style="font-size:11.5px">Semestral</strong></div>
-        <div class="stat-row"><span class="sans" style="font-size:12px">Rebalanceig</span><strong class="mono" style="font-size:11.5px">Anual o ±5% desviació</strong></div>
-        <div class="stat-row"><span class="sans" style="font-size:12px">Drawdown trigger</span><strong class="mono" style="font-size:11.5px">${fN(prof.maxDDPct, 0)} % — revisió obligatòria</strong></div>
-        <div class="stat-row" style="border-bottom:0"><span class="sans" style="font-size:12px">Vigència d'aquest IPS</span><strong class="mono" style="font-size:11.5px">12 mesos des de la data</strong></div>
-      </div>
-    </div>
-  </div>
-  ${footer(clientFirst, 12)}
-</section>`;
+  // ── Unused variables kept for TypeScript compatibility ────────────────────────
+  void horizonScore; void knowScore; void expScore; void tolScore;
+  void reactScore; void objScore; void liquidScore; void healthScore;
 
   // ── Assemble ──────────────────────────────────────────────────────────────────
   return `<!DOCTYPE html>
@@ -1036,7 +945,6 @@ ${page8}
 ${page9}
 ${page10}
 ${page11}
-${page12}
 </body>
 </html>`;
 }

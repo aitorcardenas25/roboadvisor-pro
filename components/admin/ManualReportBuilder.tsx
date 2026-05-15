@@ -100,18 +100,13 @@ interface ClientForm {
   investorProfile: string; objective: string;
   horizon: number; initialAmount: number; monthlyAmount: number;
   adminNote: string;
-  monthlyIncome?:    number;
-  monthlyExpenses?:  number;
-  deutes?:           number;
-  patrimoni?:        number;
-  ingresosExtra?:    number;
-  objectiuAmount?:   number;
-  fondEmergencia?:   number;
+  monthlyIncome?:   number;
+  monthlyExpenses?: number;
 }
 
 function StepClientData({ form, setForm }: { form: ClientForm; setForm: (f: ClientForm) => void }) {
   const REQUIRED_NUMS = ['horizon', 'initialAmount', 'monthlyAmount'];
-  const OPTIONAL_NUMS = ['monthlyIncome', 'monthlyExpenses', 'deutes', 'patrimoni', 'ingresosExtra', 'objectiuAmount', 'fondEmergencia'];
+  const OPTIONAL_NUMS = ['monthlyIncome', 'monthlyExpenses'];
   const set = (k: keyof ClientForm) => (v: string) => {
     if (REQUIRED_NUMS.includes(k))  return setForm({ ...form, [k]: Number(v) });
     if (OPTIONAL_NUMS.includes(k))  return setForm({ ...form, [k]: v === '' ? undefined : Number(v) });
@@ -166,39 +161,15 @@ function StepClientData({ form, setForm }: { form: ClientForm; setForm: (f: Clie
       <div className="grid grid-cols-2 gap-4">
         <div>
           <Label>Ingressos mensuals nets (€)</Label>
-          <Input value={form.monthlyIncome ?? ''} onChange={set('monthlyIncome')} type="number" placeholder="3500" />
+          <Input value={form.monthlyIncome ?? ''} onChange={set('monthlyIncome')} type="number" placeholder="3.500" />
         </div>
         <div>
           <Label>Despeses mensuals (€)</Label>
-          <Input value={form.monthlyExpenses ?? ''} onChange={set('monthlyExpenses')} type="number" placeholder="2100" />
-        </div>
-      </div>
-      <div className="grid grid-cols-2 gap-4">
-        <div>
-          <Label>Capital objectiu (€)</Label>
-          <Input value={form.objectiuAmount ?? ''} onChange={set('objectiuAmount')} type="number" placeholder="150000" />
-        </div>
-        <div>
-          <Label>Fons d&apos;emergència actual (€)</Label>
-          <Input value={form.fondEmergencia ?? ''} onChange={set('fondEmergencia')} type="number" placeholder="10000" />
-        </div>
-      </div>
-      <div className="grid grid-cols-3 gap-4">
-        <div>
-          <Label>Deutes totals (€)</Label>
-          <Input value={form.deutes ?? ''} onChange={set('deutes')} type="number" placeholder="25000" />
-        </div>
-        <div>
-          <Label>Patrimoni net (€)</Label>
-          <Input value={form.patrimoni ?? ''} onChange={set('patrimoni')} type="number" placeholder="120000" />
-        </div>
-        <div>
-          <Label>Ingressos extra (€/mes)</Label>
-          <Input value={form.ingresosExtra ?? ''} onChange={set('ingresosExtra')} type="number" placeholder="500" />
+          <Input value={form.monthlyExpenses ?? ''} onChange={set('monthlyExpenses')} type="number" placeholder="2.100" />
         </div>
       </div>
       <p className="text-white/25 text-xs font-sans italic -mt-2">
-        Tots els camps anteriors són opcionals. Si no s&apos;introdueixen, s&apos;estimaran automàticament.
+        Opcional. Si no s&apos;introdueixen, s&apos;estimaran a partir de l&apos;aportació mensual.
       </p>
     </div>
   );
