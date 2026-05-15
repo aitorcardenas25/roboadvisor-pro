@@ -90,7 +90,7 @@ const S = StyleSheet.create({
   body2:   { fontSize: 8,  color: C.gray, lineHeight: 1.55 },
   bold:    { fontFamily: 'Helvetica-Bold' },
   italic:  { fontFamily: 'Helvetica-Oblique' },
-  divider: { height: 0.5, backgroundColor: C.grayLight, marginVertical: 11 },
+  divider: { height: 1, backgroundColor: C.grayLight, marginVertical: 11 },
   row:     { flexDirection: 'row', gap: 8, marginBottom: 8 },
   col:     { flex: 1 },
   metricBox: {
@@ -136,6 +136,7 @@ function projection(initial: number, monthly: number, rate: number, years: numbe
 }
 function assetReturn(a: ManualAsset): number { return a.historicalReturn5Y ?? RISK_RETURN[a.risk] ?? 5; }
 function assetVol(a: ManualAsset): number    { return a.historicalVolatility ?? RISK_VOL[a.risk] ?? 8; }
+function assetReturnSource(a: ManualAsset): '†' | '*' { return a.historicalReturn5Y != null ? '†' : '*'; }
 
 // ─── SVG HELPERS ──────────────────────────────────────────────────────────────
 function polar(cx: number, cy: number, r: number, deg: number): [number, number] {
@@ -758,7 +759,7 @@ function AssetsPage({ d }: { d: ManualPortfolioInput }) {
           <Text style={[S.th, { flex: 2 }]}>Categoria</Text>
           <Text style={[S.th, { flex: 1, textAlign: 'center' }]}>SRRI</Text>
           <Text style={[S.th, { flex: 1, textAlign: 'right' }]}>TER</Text>
-          <Text style={[S.th, { flex: 1, textAlign: 'right' }]}>Ret. est.</Text>
+          <Text style={[S.th, { flex: 1, textAlign: 'right' }]}>Ret.†/*</Text>
           <Text style={[S.th, { flex: 2 }]}>Plataforma</Text>
         </View>
 
@@ -772,7 +773,7 @@ function AssetsPage({ d }: { d: ManualPortfolioInput }) {
             <Text style={[S.tdGray, { flex: 2 }]}>{a.category}</Text>
             <Text style={[S.td, { flex: 1, textAlign: 'center' }]}>{a.risk}/7</Text>
             <Text style={[S.td, { flex: 1, textAlign: 'right' }]}>{a.ter.toFixed(2)}%</Text>
-            <Text style={[S.td, { flex: 1, textAlign: 'right', color: C.green2 }]}>{fPct(assetReturn(a))}</Text>
+            <Text style={[S.td, { flex: 1, textAlign: 'right', color: C.green2 }]}>{fPct(assetReturn(a))}{assetReturnSource(a)}</Text>
             <Text style={[S.tdGray, { flex: 2 }]}>{a.platform}</Text>
           </View>
         ))}
@@ -786,12 +787,13 @@ function AssetsPage({ d }: { d: ManualPortfolioInput }) {
           <Text style={[S.td, S.bold, { flex: 1, textAlign: 'right', color: C.green2 }]}>{fPct(c.nr)}</Text>
           <Text style={[S.tdGray, { flex: 2 }]}></Text>
         </View>
+        <Text style={[S.body2, { fontSize: 6.5, marginBottom: 10 }]}>† Dades historials reals 5A · * Estimació per categoria SRRI</Text>
 
         <View style={S.divider} />
 
         <Text style={[S.tag, { marginBottom: 7 }]}>JUSTIFICACIÓ PER INSTRUMENT</Text>
         {d.assets.filter(a => a.justification).map((a, i) => (
-          <View key={a.isin} style={{ marginBottom: 8 }}>
+          <View key={a.isin} wrap={false} style={{ marginBottom: 8 }}>
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 2 }}>
               <View style={{ width: 8, height: 8, borderRadius: 2, backgroundColor: ASSET_COLORS[i % ASSET_COLORS.length] }} />
               <Text style={[S.body1, S.bold]}>{a.name} · {a.weight}% · {a.category}</Text>
@@ -947,34 +949,24 @@ function SuitabilityPage({ d }: { d: ManualPortfolioInput }) {
         </View>
 
         <View style={{ backgroundColor: C.grayBg, borderWidth: 0.5, borderColor: C.grayLight, padding: 4 }}>
-          <View style={{ flexDirection: 'row' }}>
-            {/* Y-axis label */}
-            <View style={{ width: 30, justifyContent: 'center', alignItems: 'flex-end', paddingRight: 4 }}>
-              <Text style={{ fontSize: 6, color: C.gray, transform: 'rotate(-90deg)' }}>Rendiment</Text>
-            </View>
-            <Svg viewBox={`0 0 ${W} ${H}`} style={{ flex: 1, height: H }}>
-              <Defs>
-                <LinearGradient id="ef-grad" x1="0" y1="0" x2="1" y2="0">
-                  <Stop offset="0" stopColor={C.green2} stopOpacity={0.15} />
-                  <Stop offset="1" stopColor={C.gold} stopOpacity={0.15} />
-                </LinearGradient>
-              </Defs>
-              {/* Grid lines */}
-              {[0.25, 0.5, 0.75].map(f => (
-                <Line key={f} x1={0} y1={toY(maxRet * f).toFixed(1)} x2={W} y2={toY(maxRet * f).toFixed(1)} stroke={C.grayLight} strokeWidth={0.5} />
-              ))}
-              {/* Asset dots */}
-              {d.assets.map((a, i) => {
-                const vol = assetVol(a);
-                const ret = assetReturn(a);
-                return <Circle key={a.isin} cx={toX(vol).toFixed(1)} cy={toY(ret).toFixed(1)} r={5} fill={ASSET_COLORS[i % ASSET_COLORS.length]} fillOpacity={0.75} />;
-              })}
-              {/* Portfolio dot (gold, larger) */}
-              <Circle cx={toX(c.wv).toFixed(1)} cy={toY(c.nr).toFixed(1)} r={8} fill={C.gold} />
-              <Circle cx={toX(c.wv).toFixed(1)} cy={toY(c.nr).toFixed(1)} r={4} fill={C.white} />
-            </Svg>
-          </View>
-          {/* X-axis label */}
+          <Svg viewBox={`0 0 ${W} ${H}`} style={{ width: W, height: H }}>
+            <Defs>
+              <LinearGradient id="ef-grad" x1="0" y1="0" x2="1" y2="0">
+                <Stop offset="0" stopColor={C.green2} stopOpacity={0.15} />
+                <Stop offset="1" stopColor={C.gold} stopOpacity={0.15} />
+              </LinearGradient>
+            </Defs>
+            {[0.25, 0.5, 0.75].map(f => (
+              <Line key={f} x1={0} y1={toY(maxRet * f).toFixed(1)} x2={W} y2={toY(maxRet * f).toFixed(1)} stroke={C.grayLight} strokeWidth={0.5} />
+            ))}
+            {d.assets.map((a, i) => {
+              const vol = assetVol(a);
+              const ret = assetReturn(a);
+              return <Circle key={a.isin} cx={toX(vol).toFixed(1)} cy={toY(ret).toFixed(1)} r={5} fill={ASSET_COLORS[i % ASSET_COLORS.length]} fillOpacity={0.75} />;
+            })}
+            <Circle cx={toX(c.wv).toFixed(1)} cy={toY(c.nr).toFixed(1)} r={8} fill={C.gold} />
+            <Circle cx={toX(c.wv).toFixed(1)} cy={toY(c.nr).toFixed(1)} r={4} fill={C.white} />
+          </Svg>
           <Text style={{ fontSize: 6, color: C.gray, textAlign: 'center', marginTop: 2 }}>Volatilitat (%)</Text>
         </View>
 
@@ -1236,13 +1228,13 @@ function MonteCarloPage({ d }: { d: ManualPortfolioInput }) {
 
   return (
     <Page size="A4" style={S.page}>
-      <Header section="Projecció Monte Carlo" client={d.clientName} />
+      <Header section="Projecció per Escenaris" client={d.clientName} />
       <Footer />
       <View style={S.body}>
-        <Text style={S.tag}>PROJECCIÓ ESTOCÀSTICA</Text>
-        <Text style={S.h2}>Simulació Monte Carlo · {d.horizon} anys</Text>
+        <Text style={S.tag}>PROJECCIÓ PER ESCENARIS</Text>
+        <Text style={S.h2}>Projecció per escenaris · {d.horizon} anys</Text>
         <Text style={[S.body2, { marginBottom: 6 }]}>
-          Projeccions basades en el retorn esperat {fPct(c.nr)} i volatilitat {fPct(c.wv)}. La banda representa el rang de confiança P10–P90.
+          Projecció determinista per interès compost. P50 = retorn net esperat ({fPct(c.nr)}). P10/P90 = P50 ± 0.35×σ ({fPct(c.wv)}). No és simulació estocàstica.
         </Text>
 
         {/* Legend */}
@@ -1390,6 +1382,23 @@ function ConclusionPage({ d, generatedAt }: { d: ManualPortfolioInput; generated
           <Text style={S.body2}>
             El Sharpe Ratio de {c.sharpe.toFixed(2)} i l&apos;alfa de {fPct(c.alpha, true)} vs. benchmark indiquen una compensació risc–rendiment {c.sharpe >= 0.5 ? 'positiva i competitiva' : 'adequada al perfil'}. Es recomana seguir el pla de seguiment establert a l&apos;IPS i revisar anualment.
           </Text>
+        </View>
+
+        <View style={S.divider} />
+        <Text style={S.tag}>METODOLOGIA I FONTS DE DADES</Text>
+        <View style={{ flexDirection: 'row', gap: 8, marginTop: 4, marginBottom: 10 }}>
+          <View style={{ flex: 1, borderWidth: 0.5, borderColor: C.grayLight, padding: 8 }}>
+            <Text style={[S.body2, S.bold, { color: C.dark, marginBottom: 3 }]}>Rendiments dels actius</Text>
+            <Text style={[S.body2, { fontSize: 7, lineHeight: 1.5 }]}>† Dades historials reals 5A de la base de dades. * Estimació per SRRI: 1→2%, 2→3.5%, 3→5%, 4→7%, 5→9.5%, 6→13%, 7→17%. Volatilitat: mateixa font.</Text>
+          </View>
+          <View style={{ flex: 1, borderWidth: 0.5, borderColor: C.grayLight, padding: 8 }}>
+            <Text style={[S.body2, S.bold, { color: C.dark, marginBottom: 3 }]}>Projecció de cartera</Text>
+            <Text style={[S.body2, { fontSize: 7, lineHeight: 1.5 }]}>Interès compost + aportació mensual. P50 = retorn net. P10 = P50 − 0.35σ. P90 = P50 + 0.35σ. Projecció determinista, no simulació estocàstica.</Text>
+          </View>
+          <View style={{ flex: 1, borderWidth: 0.5, borderColor: C.grayLight, padding: 8 }}>
+            <Text style={[S.body2, S.bold, { color: C.dark, marginBottom: 3 }]}>Altres models</Text>
+            <Text style={[S.body2, { fontSize: 7, lineHeight: 1.5 }]}>Correlació estimada per categoria. VaR 95% = −1.645σ. Max Drawdown = −0.7σ. Taxa lliure de risc: 3.5% (BCE). Benchmark: retorns de referència per perfil.</Text>
+          </View>
         </View>
 
         {/* Legal */}
