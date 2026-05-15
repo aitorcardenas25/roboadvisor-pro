@@ -70,7 +70,8 @@ function getComplexityTier(monthlyContribution: number): ComplexityTier {
 
 export function buildPortfolio(
   profile: InvestorProfile,
-  questionnaire: InvestorQuestionnaire
+  questionnaire: InvestorQuestionnaire,
+  riskFreeRate?: number,
 ): Portfolio {
   const investableAmount = questionnaire.currentSavings * (questionnaire.percentageToInvest / 100);
   const tier = getComplexityTier(questionnaire.monthlyContribution);
@@ -89,7 +90,7 @@ export function buildPortfolio(
   }
 
   // Overlay MPT-optimized metrics (allocations/names/rationale unchanged)
-  const opt = optimizeFromProfile(profile);
+  const opt = optimizeFromProfile(profile, riskFreeRate);
   portfolio.optimizationSource = opt.source;
   if (opt.source === 'mpt-optimized') {
     portfolio.expectedReturn     = opt.expectedReturn;

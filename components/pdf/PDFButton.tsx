@@ -32,6 +32,8 @@ const CHART_IDS = [
   'chart-risk',
   'chart-scoring',
   'chart-risk-donut',
+  'chart-frontier',
+  'chart-heatmap',
 ];
 
 type Step = 'idle' | 'charts' | 'pdf' | 'done' | 'error';
@@ -84,7 +86,7 @@ export default function PDFButton({
   };
 
   const labels: Record<Step, string> = {
-    idle:   '📄 Descarregar Informe PDF (8 pàgines)',
+    idle:   '📄 Descarregar Informe PDF (12 pàgines)',
     charts: '📊 Capturant gràfics...',
     pdf:    '⚙️ Generant PDF...',
     done:   '✅ PDF descarregat!',

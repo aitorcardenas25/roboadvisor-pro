@@ -9,8 +9,9 @@ import {
 import { Portfolio }        from '@/lib/portfolio';
 import { PortfolioMetrics } from '@/lib/metrics';
 import { MonteCarloResult, formatMonteCarloValue } from '@/lib/monteCarlo';
-import { FinancialReport }  from '@/lib/report';
+import { FinancialReport, InvestmentPolicyStatement, SuitabilityReport } from '@/lib/report';
 import { HistoricalChartPoint } from '@/lib/metrics';
+import type { SuitabilityStatus } from '@/lib/suitability';
 
 // ─── COLORS ──────────────────────────────────────────────────────────────────
 const C = {
@@ -943,7 +944,162 @@ const PortfolioPage = ({
   );
 };
 
-// ─── PÀGINA 6: ANÀLISI GRÀFICA ────────────────────────────────────────────────
+// ─── PÀGINA 6: IPS ────────────────────────────────────────────────────────────
+
+const IPSPage = ({
+  ips, questionnaire,
+}: {
+  ips:           InvestmentPolicyStatement;
+  questionnaire: InvestorQuestionnaire;
+}) => (
+  <Page size="A4" style={S.page}>
+    <PageHeader section="INVESTMENT POLICY STATEMENT" clientName={questionnaire.clientName} />
+    <View style={S.body}>
+      <SectionHeader tag="IPS" title="INVESTMENT POLICY STATEMENT" />
+
+      <Text style={S.body2}>
+        Document de política d'inversió MiFID II (Art. 54) · Versió {ips.version} · {new Date(ips.generatedAt).toLocaleDateString('ca-ES')}
+      </Text>
+
+      {ips.sections.map((section, i) => (
+        <View key={i} style={{ marginBottom: 8 }}>
+          <Text style={[S.sectionTag, { marginBottom: 3, fontSize: 6.5 }]}>
+            {section.title.toUpperCase()}
+          </Text>
+          <Text style={[S.body2, { marginBottom: 0, fontSize: 8 }]}>
+            {section.content}
+          </Text>
+        </View>
+      ))}
+    </View>
+    <PageFooter />
+  </Page>
+);
+
+// ─── PÀGINA 7: SUITABILITY MIFID II ──────────────────────────────────────────
+
+const SuitabilityPage = ({
+  suitability, questionnaire, charts,
+}: {
+  suitability:   SuitabilityReport;
+  questionnaire: InvestorQuestionnaire;
+  charts:        Record<string, string>;
+}) => {
+  const overallColor = (s: SuitabilityStatus) =>
+    s === 'adequate'   ? C.green2 :
+    s === 'borderline' ? C.amber  : C.red;
+
+  const overallLabel = (s: SuitabilityStatus) =>
+    s === 'adequate'   ? 'ADEQUAT (MiFID II complert)' :
+    s === 'borderline' ? 'LÍMIT (Revisió recomanada)'  : 'NO ADEQUAT (Incompliment)';
+
+  return (
+    <Page size="A4" style={S.page}>
+      <PageHeader section="ADEQUACIÓ MiFID II" clientName={questionnaire.clientName} />
+      <View style={S.body}>
+        <SectionHeader tag="MIFID II" title="ADEQUACIÓ I SUITABILITY (Art. 54)" />
+
+        {/* Resultat global */}
+        <View style={[S.cardGreen, { marginBottom: 12 }]}>
+          <Text style={{ fontSize: 7, color: C.gold, letterSpacing: 2, marginBottom: 6 }}>
+            RESULTAT GLOBAL SUITABILITY
+          </Text>
+          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+            <Text style={{ fontSize: 20, fontFamily: 'Helvetica-Bold', color: C.white }}>
+              {overallLabel(suitability.overall)}
+            </Text>
+            <Text style={{
+              fontSize: 9, fontFamily: 'Helvetica-Bold',
+              color: overallColor(suitability.overall),
+            }}>
+              {suitability.mifidCompliant ? '✓ COMPLERT' : '✗ NO COMPLERT'}
+            </Text>
+          </View>
+        </View>
+
+        {/* Advertències de cartera */}
+        {suitability.warnings.length > 0 && (
+          <View style={[S.cardGold, { marginBottom: 12 }]}>
+            <Text style={[S.sectionTag, { marginBottom: 6 }]}>ADVERTÈNCIES DE CARTERA</Text>
+            {suitability.warnings.map((w, i) => (
+              <View key={i} style={{ flexDirection: 'row', marginBottom: 3 }}>
+                <Text style={{ fontSize: 7.5, color: C.amber, marginRight: 5 }}>⚠</Text>
+                <Text style={[S.body2, { marginBottom: 0, flex: 1, fontSize: 7.5 }]}>{w}</Text>
+              </View>
+            ))}
+          </View>
+        )}
+
+        {/* Taula per producte */}
+        <Text style={[S.sectionTag, { marginBottom: 8 }]}>ADEQUACIÓ PER PRODUCTE</Text>
+        <View style={S.table}>
+          <View style={S.tableHead}>
+            <Text style={[S.tableHeadCell, { flex: 4 }]}>PRODUCTE</Text>
+            <Text style={[S.tableHeadCell, { flex: 1.5, textAlign: 'center' }]}>ADEQUACIÓ</Text>
+            <Text style={[S.tableHeadCell, { flex: 4 }]}>OBSERVACIONS</Text>
+          </View>
+          {suitability.products.map((p, i) => (
+            <View key={i} style={[S.tableRow, i % 2 === 1 ? S.tableRowAlt : {}]}>
+              <Text style={[S.tableCell, { flex: 4, fontSize: 7.5 }]}>{p.productName}</Text>
+              <Text style={[S.tableCell, S.bold, {
+                flex: 1.5, textAlign: 'center', fontSize: 7,
+                color: overallColor(p.status),
+              }]}>
+                {p.status === 'adequate'   ? 'ADEQUAT'  :
+                 p.status === 'borderline' ? 'LÍMIT'    : 'NO ADEQUAT'}
+              </Text>
+              <Text style={[S.tableCellGray, { flex: 4, fontSize: 7 }]}>
+                {p.reasons.length === 0 ? 'Cap observació' : p.reasons.join(' · ')}
+              </Text>
+            </View>
+          ))}
+        </View>
+
+        {/* Frontera eficient — si s'ha capturat el gràfic */}
+        {charts['chart-frontier'] ? (
+          <>
+            <Text style={[S.sectionTag, { marginBottom: 6, marginTop: 8 }]}>
+              FRONTERA EFICIENT (MARKOWITZ MPT)
+            </Text>
+            <Image src={charts['chart-frontier']} style={{ width: '100%' }} />
+            <Text style={S.chartNote}>
+              Frontera eficient calculada per Markowitz Mean-Variance Optimization.
+              El punt verd és el màxim Sharpe (tangència); el punt blau, la mínima variança.
+            </Text>
+          </>
+        ) : null}
+
+        {/* Heatmap correlació — si s'ha capturat */}
+        {charts['chart-heatmap'] ? (
+          <>
+            <Text style={[S.sectionTag, { marginBottom: 6, marginTop: 8 }]}>
+              HEATMAP DE CORRELACIÓ ENTRE ACTIUS
+            </Text>
+            <Image src={charts['chart-heatmap']} style={{ width: '100%' }} />
+            <Text style={S.chartNote}>
+              Correlació entre classes d'actiu: vermell = alta correlació, blau = baixa (diversificació).
+            </Text>
+          </>
+        ) : null}
+
+        {/* Nota metodològica */}
+        <View style={[S.legalBox, { marginTop: 10 }]}>
+          <Text style={S.legalTitle}>NOTA METODOLÒGICA MiFID II</Text>
+          <Text style={S.legalText}>
+            L'avaluació d'adequació s'ha realitzat conforme a l'Article 54 del Reglament Delegat
+            2017/565/UE (MiFID II). S'han verificat: tolerància al risc del client vs. risc del
+            producte, coneixement financer, necessitat de liquiditat, i horitzó temporal. Aquesta
+            avaluació ha de ser revisada anualment o quan es produeixin canvis en la situació
+            financera del client.
+          </Text>
+        </View>
+      </View>
+      <PageFooter />
+    </Page>
+  );
+};
+
+// ─── PÀGINA 8: ANÀLISI GRÀFICA ────────────────────────────────────────────────
 
 const AnalysisPage = ({
   portfolio, metrics, charts, questionnaire,
@@ -1517,7 +1673,20 @@ export function FactorOTCReport({
         charts={charts}
       />
 
-      {/* Pàgina 6: Anàlisi gràfica */}
+      {/* Pàgina 6: IPS */}
+      <IPSPage
+        ips={report.ipsSection}
+        questionnaire={questionnaire}
+      />
+
+      {/* Pàgina 7: Suitability MiFID II */}
+      <SuitabilityPage
+        suitability={report.suitabilitySection}
+        questionnaire={questionnaire}
+        charts={charts}
+      />
+
+      {/* Pàgina 8: Anàlisi gràfica */}
       <AnalysisPage
         portfolio={portfolio}
         metrics={metrics}

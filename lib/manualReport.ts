@@ -349,6 +349,21 @@ export function generateManualReport(d: ManualPortfolioInput): string {
   const debtRatio   = 8.1;
   const wealthMult  = parseFloat((d.initialAmount / Math.max(1, d.initialAmount * 2) * 4).toFixed(1));
 
+  // New optional financial fields
+  const totalDeute     = d.deutes        ?? 0;
+  const totalPatrimoni = d.patrimoni     ?? 0;
+  const efundProvided  = d.fondEmergencia ?? 0;
+  const efundMonthsCurrent = efundProvided > 0
+    ? Math.round(efundProvided / Math.max(1, expenses))
+    : eFundMonthsReal;
+  const debtRatioReal = totalPatrimoni > 0
+    ? parseFloat((totalDeute / Math.max(1, totalPatrimoni) * 100).toFixed(1))
+    : debtRatio;
+  const goalAmount = d.objectiuAmount ?? p50;
+  const goalFeasibility = goalAmount <= p50 ? Math.min(98, probSuccess + 10)
+    : goalAmount <= p90 ? probSuccess
+    : Math.max(30, probSuccess - 15);
+
   // MiFID dimension scores (sum ≈ prof.score)
   const horizonScore = Math.min(20, Math.round(d.horizon / 20 * 20));
   const knowScore    = { conservador: 6, moderat: 8, dinamic: 10, agressiu: 12, custom: 8 }[d.investorProfile] ?? 8;

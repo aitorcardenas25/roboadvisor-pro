@@ -13,6 +13,8 @@ import { MonteCarloResult } from '@/lib/monteCarlo';
 import { FinancialReport }  from '@/lib/report';
 import { ScoringResult }    from '@/lib/scoring';
 import { HistoricalChartPoint } from '@/lib/metrics';
+import EfficientFrontier from '@/components/charts/EfficientFrontier';
+import CorrelationHeatmap from '@/components/charts/CorrelationHeatmap';
 
 const PROFILE_COLORS: Record<string, string> = {
   conservador: '#10b981', moderat: '#3b82f6',
@@ -181,6 +183,22 @@ export default function HiddenCharts({
             wrapperStyle={{ fontSize: 7, lineHeight: '1.2' }}
           />
         </PieChart>
+      </div>
+
+      {/* 9. Frontera eficient (Markowitz) */}
+      <div id="chart-frontier" style={{ width: FW.w, height: 350, background: '#fff', padding: 12 }}>
+        <EfficientFrontier
+          profile={scoring.profile}
+          profileColor={profileColor}
+          portfolioReturn={portfolio.expectedReturn}
+          portfolioVol={portfolio.expectedVolatility}
+          portfolioName={portfolio.name}
+        />
+      </div>
+
+      {/* 10. Heatmap de correlació */}
+      <div id="chart-heatmap" style={{ width: FW.w, background: '#fff', padding: 16 }}>
+        <CorrelationHeatmap profile={scoring.profile} />
       </div>
 
     </div>
