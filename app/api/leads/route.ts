@@ -5,11 +5,14 @@ import { rateLimit, LIMITS, rateLimitResponse } from '@/lib/rateLimiter';
 
 const Schema = z.object({
   name:        z.string().min(2).max(100),
+  lastName:    z.string().max(100).optional(),
   email:       z.email(),
   phone:       z.string().max(20).optional(),
   interest:    z.string().min(1).max(200),
+  profile:     z.string().max(100).optional(),
   message:     z.string().max(1000).optional(),
   gdprConsent: z.boolean().default(false),
+  source:      z.string().max(50).optional(),
 });
 
 function getIp(req: NextRequest): string {
@@ -27,6 +30,10 @@ export async function POST(req: NextRequest) {
   const parsed = Schema.safeParse(body);
   if (!parsed.success) return NextResponse.json({ error: parsed.error.issues[0]?.message ?? 'Dades invàlides' }, { status: 400 });
 
-  const lead = await createLead({ ...parsed.data, source: 'login-form' });
+  const { name, lastName, email, phone, interest, profile, message, gdprConsent, source } = parsed.data;
+  const lead = await createLead({
+    name, lastName, email, phone, interest, profile, message,
+    gdprConsent, source: source ?? 'unknown',
+  });
   return NextResponse.json({ ok: true, id: lead.id }, { status: 201 });
 }
