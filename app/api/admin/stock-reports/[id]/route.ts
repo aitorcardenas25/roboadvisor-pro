@@ -30,7 +30,7 @@ const UpdateSchema = z.object({
   currentPrice:  z.number().nonnegative().nullable().optional(),
   currency:      z.string().optional(),
   status:        z.enum(['draft', 'published']).optional(),
-  visibleTo:     z.enum(['all', 'clients', 'premium']).optional(),
+  visibleTo:     z.enum(['all', 'clients']).optional(),
 });
 
 export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {

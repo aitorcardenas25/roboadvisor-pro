@@ -28,7 +28,7 @@ const CreateSchema = z.object({
   currentPrice:  z.number().nonnegative().optional(),
   currency:      z.string().default('EUR'),
   status:        z.enum(['draft', 'published']).default('draft'),
-  visibleTo:     z.enum(['all', 'clients', 'premium']).default('clients'),
+  visibleTo:     z.enum(['all', 'clients']).default('clients'),
 });
 
 export async function POST(req: NextRequest) {

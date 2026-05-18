@@ -17,7 +17,7 @@ export interface StockReport {
   currentPrice?: number;
   currency:      string;
   status:        'draft' | 'published';
-  visibleTo:     'all' | 'clients' | 'premium';
+  visibleTo:     'all' | 'clients';
   publishedAt?:  string;
   updatedAt:     string;
   createdAt:     string;
@@ -57,16 +57,14 @@ export async function getAllStockReports(): Promise<StockReport[]> {
 }
 
 export async function getPublishedStockReports(role: string): Promise<StockReport[]> {
-  const canSeePremium = role === 'premium' || role === 'admin';
-  const canSeeClients = canSeePremium || role === 'authorized';
+  const isAuthenticated = role === 'client' || role === 'admin';
 
   const db = getDb();
   if (!db) {
     return _db.filter(r => {
       if (r.status !== 'published') return false;
       if (r.visibleTo === 'all') return true;
-      if (r.visibleTo === 'clients') return canSeeClients;
-      if (r.visibleTo === 'premium') return canSeePremium;
+      if (r.visibleTo === 'clients') return isAuthenticated;
       return false;
     }).sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
   }
@@ -80,8 +78,7 @@ export async function getPublishedStockReports(role: string): Promise<StockRepor
     .map(r => rowToReport(r as Record<string, unknown>))
     .filter(r => {
       if (r.visibleTo === 'all') return true;
-      if (r.visibleTo === 'clients') return canSeeClients;
-      if (r.visibleTo === 'premium') return canSeePremium;
+      if (r.visibleTo === 'clients') return isAuthenticated;
       return false;
     });
 }

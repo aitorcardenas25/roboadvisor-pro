@@ -30,7 +30,7 @@ function buildUsersDB(): AppUser[] {
     role:               'admin',
     active:             true,
     createdAt:          '2024-01-01',
-    subscriptionPlan:   'premium',
+    subscriptionPlan:   'active',
     subscriptionStatus: 'active',
   });
 

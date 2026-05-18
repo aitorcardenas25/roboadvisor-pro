@@ -10,7 +10,7 @@ export async function GET() {
   const userId  = session?.user?.id;
   const role    = session?.user?.role;
 
-  if (!userId || (role !== 'authorized' && role !== 'admin')) {
+  if (!userId || (role !== 'client' && role !== 'admin')) {
     return NextResponse.json({ error: 'No autoritzat' }, { status: 401 });
   }
 

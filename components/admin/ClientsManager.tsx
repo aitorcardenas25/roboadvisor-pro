@@ -18,14 +18,11 @@ interface ClientUser {
 }
 
 const ROLE_META: Record<UserRole, { label: string; color: string; bg: string }> = {
-  public:      { label: 'Públic',      color: '#9ca3af', bg: 'rgba(156,163,175,0.1)' },
-  newsletter:  { label: 'Newsletter',  color: '#60a5fa', bg: 'rgba(96,165,250,0.1)'  },
-  authorized:  { label: 'Autoritzat',  color: '#c9a84c', bg: 'rgba(201,168,76,0.1)'  },
-  premium:     { label: 'Premium',     color: '#a78bfa', bg: 'rgba(167,139,250,0.1)' },
-  admin:       { label: 'Admin',       color: '#ef4444', bg: 'rgba(239,68,68,0.1)'   },
+  client: { label: 'Client', color: '#c9a84c', bg: 'rgba(201,168,76,0.1)' },
+  admin:  { label: 'Admin',  color: '#ef4444', bg: 'rgba(239,68,68,0.1)'  },
 };
 
-const ROLES: UserRole[] = ['public', 'newsletter', 'authorized', 'premium', 'admin'];
+const ROLES: UserRole[] = ['client', 'admin'];
 
 const PLAN_META: Record<string, { label: string; color: string }> = {
   free:    { label: 'Free',    color: '#9ca3af' },
@@ -55,7 +52,7 @@ interface NewClientForm {
   name: string; email: string; username: string; password: string; role: UserRole;
 }
 
-const EMPTY_FORM: NewClientForm = { name: '', email: '', username: '', password: '', role: 'authorized' };
+const EMPTY_FORM: NewClientForm = { name: '', email: '', username: '', password: '', role: 'client' };
 
 export default function ClientsManager() {
   const [users, setUsers]       = useState<ClientUser[]>([]);
@@ -144,7 +141,7 @@ export default function ClientsManager() {
   }
 
   const activeCount = users.filter(u => u.active).length;
-  const authorizedCount = users.filter(u => u.active && (u.role === 'authorized' || u.role === 'premium' || u.role === 'admin')).length;
+  const clientCount = users.filter(u => u.active && (u.role === 'client' || u.role === 'admin')).length;
 
   return (
     <div>
@@ -153,7 +150,7 @@ export default function ClientsManager() {
         <div>
           <h2 className="text-white text-xl font-bold mb-1">Gestió de Clients</h2>
           <p className="text-white/40 text-sm">
-            {activeCount} usuaris actius · {authorizedCount} amb accés al dashboard
+            {activeCount} usuaris actius · {clientCount} clients amb accés
           </p>
         </div>
         <button

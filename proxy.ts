@@ -1,7 +1,7 @@
 import { withAuth } from 'next-auth/middleware';
 import { NextResponse } from 'next/server';
 
-const CLIENT_ROLES = new Set(['authorized', 'premium', 'admin']);
+const CLIENT_ROLES = new Set(['client', 'admin']);
 
 export default withAuth(
   function proxy(req) {
@@ -13,11 +13,11 @@ export default withAuth(
       return NextResponse.redirect(new URL('/admin', req.url));
     }
 
-    // Client-only routes: authorized or admin
-    const clientRoutes = ['/cartera', '/accions', '/informe-bursatil', '/client/'];
+    // Client-only routes: client or admin
+    const clientRoutes = ['/client/cartera', '/client/seguiment-accions'];
     for (const route of clientRoutes) {
       if (pathname.startsWith(route) && !CLIENT_ROLES.has(role ?? '')) {
-        return NextResponse.redirect(new URL('/acces-restringit', req.url));
+        return NextResponse.redirect(new URL('/login', req.url));
       }
     }
 
@@ -28,25 +28,27 @@ export default withAuth(
       authorized({ token, req }) {
         const { pathname } = req.nextUrl;
 
-        // Always public
+        // Always public (visitor access)
         if (
           pathname === '/' ||
           pathname === '/login' ||
           pathname === '/admin' ||
+          pathname === '/privacitat' ||
+          pathname === '/cookies' ||
           pathname.startsWith('/noticies') ||
           pathname.startsWith('/comparador') ||
+          pathname.startsWith('/client/carteres-model') ||
           pathname.startsWith('/acces-restringit') ||
           pathname.startsWith('/api/noticies') ||
           pathname.startsWith('/api/fons') ||
           pathname.startsWith('/api/newsletter/subscribe') ||
-          pathname.startsWith('/api/leads')
+          pathname.startsWith('/api/leads') ||
+          pathname.startsWith('/api/health') ||
+          pathname.startsWith('/checkout')
         ) return true;
 
-        // Require valid session
+        // Require valid session for private areas
         if (pathname.startsWith('/admin/'))             return !!token;
-        if (pathname.startsWith('/cartera'))            return !!token;
-        if (pathname.startsWith('/accions'))            return !!token;
-        if (pathname.startsWith('/informe-bursatil'))   return !!token;
         if (pathname.startsWith('/client/'))            return !!token;
         if (pathname.startsWith('/api/admin/'))         return !!token;
         if (pathname.startsWith('/api/client/'))        return !!token;
@@ -65,11 +67,6 @@ export const config = {
   matcher: [
     '/login',
     '/admin/:path*',
-    '/cartera/:path*',
-    '/accions/:path*',
-    '/accions',
-    '/informe-bursatil',
-    '/informe-bursatil/:path*',
     '/client/:path*',
     '/api/admin/:path*',
     '/api/portfolios/:path*',

@@ -5,7 +5,7 @@ import { getPublishedStockReports } from '@/lib/stockReports';
 
 export async function GET(_req: NextRequest) {
   const session = await getServerSession(authOptions);
-  const role = (session?.user as { role?: string } | undefined)?.role ?? 'public';
+  const role = (session?.user as { role?: string } | undefined)?.role ?? '';
   const reports = await getPublishedStockReports(role);
   return NextResponse.json({ reports });
 }
