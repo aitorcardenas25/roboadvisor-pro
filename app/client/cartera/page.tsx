@@ -1,13 +1,14 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useSession, signOut } from 'next-auth/react';
+import { useSession } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
 import {
-  PieChart, Pie, Cell, Tooltip as ReTooltip, ResponsiveContainer,
-  AreaChart, Area, XAxis, YAxis, CartesianGrid,
+  PieChart, Pie, Cell, Tooltip as ReTT, ResponsiveContainer,
+  LineChart, Line, XAxis, YAxis, CartesianGrid,
 } from 'recharts';
-import type { ClientPortfolio, ClientHolding, PortfolioMetrics } from '@/lib/clientPortfolios';
+import type { ClientPortfolio, ClientTransaction, OperationType } from '@/lib/clientPortfolios';
+import { computeMetrics } from '@/lib/clientPortfolios';
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -19,57 +20,72 @@ function fEur(n: number): string {
 }
 function fPct(n: number): string { return `${n >= 0 ? '+' : ''}${n.toFixed(2)}%`; }
 
-function computeMetrics(p: ClientPortfolio): PortfolioMetrics {
-  const totalInvested = p.holdings.reduce((s, h) => s + h.avgEntryPrice * h.quantity, 0);
-  const currentValue  = p.holdings.reduce((s, h) => s + h.currentPrice  * h.quantity, 0);
-  const pnlEur = currentValue - totalInvested;
-  return {
-    totalInvested: Math.round(totalInvested * 100) / 100,
-    currentValue:  Math.round(currentValue  * 100) / 100,
-    pnlEur:        Math.round(pnlEur * 100) / 100,
-    pnlPct:        totalInvested > 0 ? Math.round((pnlEur / totalInvested) * 10000) / 100 : 0,
-    holdingCount:  p.holdings.length,
-  };
-}
+const ASSET_COLORS = ['#c9a84c', '#60a5fa', '#34d399', '#f97316', '#a78bfa', '#f472b6', '#38bdf8', '#fb923c', '#4ade80', '#e879f9'];
 
-const ASSET_COLORS = [
-  '#c9a84c', '#60a5fa', '#34d399', '#f97316', '#a78bfa',
-  '#f472b6', '#38bdf8', '#fb923c', '#4ade80', '#e879f9',
-];
+const OP_META: Record<OperationType, { label: string; color: string; bg: string }> = {
+  buy:        { label: 'Compra',      color: '#10b981', bg: 'rgba(16,185,129,0.12)'  },
+  sell:       { label: 'Venda',       color: '#ef4444', bg: 'rgba(239,68,68,0.12)'   },
+  deposit:    { label: 'Aportació',   color: '#60a5fa', bg: 'rgba(96,165,250,0.12)'  },
+  withdrawal: { label: 'Retirada',    color: '#f97316', bg: 'rgba(249,115,22,0.12)'  },
+  rebalance:  { label: 'Rebalanceig', color: '#a78bfa', bg: 'rgba(167,139,250,0.12)' },
+};
 
-// ─── Sub-components ───────────────────────────────────────────────────────────
+// ─── KPI card ─────────────────────────────────────────────────────────────────
 
-function KpiCard({ label, value, sub, positive }: { label: string; value: string; sub?: string; positive?: boolean }) {
-  const color = positive === undefined ? '#c9a84c' : positive ? '#10b981' : '#ef4444';
+function KpiCard({ label, value, sub, colored, positive }: { label: string; value: string; sub?: string; colored?: boolean; positive?: boolean }) {
+  const color = colored
+    ? (positive ? '#10b981' : '#ef4444')
+    : '#c9a84c';
   return (
     <div className="bg-[#0d1f1a] border border-white/10 rounded-xl p-5">
       <div className="font-bold text-xl" style={{ color }}>{value}</div>
-      {sub && <div className="text-xs mt-0.5" style={{ color }}>{sub}</div>}
+      {sub && <div className="text-xs mt-0.5 text-white/30">{sub}</div>}
       <div className="text-white/40 text-xs mt-1.5">{label}</div>
+    </div>
+  );
+}
+
+// ─── Empty state ──────────────────────────────────────────────────────────────
+
+function EmptyState({ name }: { name: string }) {
+  return (
+    <div className="min-h-screen bg-[#0a0f0d] flex items-center justify-center px-4"
+      style={{ backgroundImage: 'radial-gradient(ellipse at 50% 0%, rgba(26,58,42,0.4) 0%, transparent 70%)' }}>
+      <div className="text-center max-w-sm">
+        <div className="w-16 h-16 bg-[#1a3a2a] rounded-2xl flex items-center justify-center mx-auto mb-6">
+          <span className="text-[#c9a84c] text-2xl">💼</span>
+        </div>
+        <h1 className="text-white font-bold text-xl mb-2">Hola, {name}</h1>
+        <p className="text-white/40 text-sm leading-relaxed">
+          El teu assessor encara no t&apos;ha assignat cap cartera. En breu rebràs accés a la teva àrea personal.
+        </p>
+      </div>
     </div>
   );
 }
 
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
+type Tab = 'overview' | 'holdings' | 'transaccions' | 'notes';
+
 export default function ClientCarteraPage() {
   const { data: session, status } = useSession();
-  const router = useRouter();
+  const router                    = useRouter();
   const [portfolio, setPortfolio] = useState<ClientPortfolio | null>(null);
   const [loading, setLoading]     = useState(true);
-  const [activeTab, setActiveTab] = useState<'overview' | 'holdings' | 'notes'>('overview');
+  const [activeTab, setActiveTab] = useState<Tab>('overview');
 
   useEffect(() => {
     if (status === 'unauthenticated') { router.push('/login'); return; }
     if (status === 'authenticated') {
       fetch('/api/client/portfolio')
         .then(r => r.json())
-        .then(d => { setPortfolio(d.portfolio ?? null); setLoading(false); })
+        .then((d: { portfolio: ClientPortfolio | null }) => { setPortfolio(d.portfolio ?? null); setLoading(false); })
         .catch(() => setLoading(false));
     }
   }, [status, router]);
 
-  const userName = session?.user?.name ?? 'Client';
+  const userName = (session?.user as { name?: string } | undefined)?.name ?? 'Client';
 
   if (status === 'loading' || loading) {
     return (
@@ -79,352 +95,284 @@ export default function ClientCarteraPage() {
     );
   }
 
-  return (
-    <div className="min-h-screen bg-[#0a0f0d]">
+  if (!portfolio) return <EmptyState name={userName} />;
 
-      {/* Header */}
-      <header className="sticky top-0 z-10 bg-[#0d1f1a]/90 backdrop-blur-sm border-b border-white/10">
-        <div className="max-w-6xl mx-auto px-6 h-14 flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <div className="w-4 h-4 border border-[#c9a84c]/60 rotate-45 flex items-center justify-center">
-              <div className="w-1.5 h-1.5 bg-[#c9a84c]" />
-            </div>
-            <span className="text-white font-black text-sm">FACTOR</span>
-            <span className="text-[#c9a84c] text-sm">OTC</span>
-          </div>
-          <div className="flex items-center gap-4">
-            <span className="text-white/40 text-sm hidden sm:block">{userName}</span>
-            <button
-              onClick={() => signOut({ callbackUrl: '/login' })}
-              className="text-white/30 hover:text-white transition-colors text-xs">
-              Sortir
-            </button>
-          </div>
-        </div>
-      </header>
+  const metrics     = computeMetrics(portfolio);
+  const totalValue  = metrics.currentValue;
 
-      <div className="max-w-6xl mx-auto px-6 py-10">
+  // Pie chart data by asset
+  const pieData = portfolio.holdings
+    .map((h, i) => ({
+      name: h.assetName, value: Math.round(h.currentPrice * h.quantity * 100) / 100, color: ASSET_COLORS[i % ASSET_COLORS.length],
+    }))
+    .filter(d => d.value > 0);
 
-        {/* Page title */}
-        <div className="mb-8">
-          <h1 className="text-2xl font-bold text-white">La meva cartera</h1>
-          <p className="text-white/40 text-sm mt-1">Seguiment de les teves posicions d&apos;inversió · Sols lectura</p>
-        </div>
-
-        {!portfolio ? (
-          <EmptyState />
-        ) : (
-          <PortfolioView portfolio={portfolio} activeTab={activeTab} onTabChange={setActiveTab} />
-        )}
-
-        {/* Legal */}
-        <div className="mt-10 p-4 bg-[#0d1f1a] border border-white/10 rounded-xl">
-          <p className="text-white/25 text-xs leading-relaxed">
-            <strong className="text-white/35">Avís legal:</strong> La informació d&apos;aquesta pàgina té caràcter
-            informatiu i no constitueix assessorament financer personalitzat. Els rendiments mostrats no garanteixen
-            resultats futurs. Factor OTC no és una entitat financera autoritzada per la CNMV.
-          </p>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-// ─── EmptyState ───────────────────────────────────────────────────────────────
-
-function EmptyState() {
-  return (
-    <div className="text-center py-24">
-      <div className="w-16 h-16 border border-[#c9a84c]/30 rounded-full flex items-center justify-center mx-auto mb-6">
-        <svg className="w-7 h-7 text-[#c9a84c]/50" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
-        </svg>
-      </div>
-      <h2 className="text-white font-semibold text-lg mb-2">La teva cartera no és activa encara</h2>
-      <p className="text-white/40 text-sm max-w-sm mx-auto leading-relaxed">
-        L&apos;assessor de Factor OTC ha de configurar la teva cartera personalitzada.
-        Posa&apos;t en contacte per iniciar el procés.
-      </p>
-    </div>
-  );
-}
-
-// ─── PortfolioView ────────────────────────────────────────────────────────────
-
-function PortfolioView({
-  portfolio,
-  activeTab,
-  onTabChange,
-}: {
-  portfolio: ClientPortfolio;
-  activeTab: 'overview' | 'holdings' | 'notes';
-  onTabChange: (t: 'overview' | 'holdings' | 'notes') => void;
-}) {
-  const m = computeMetrics(portfolio);
-
-  return (
-    <>
-      {/* KPI strip */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-8">
-        <KpiCard label="Capital invertit"       value={fEur(m.totalInvested)} />
-        <KpiCard label="Valor actual"            value={fEur(m.currentValue)} />
-        <KpiCard label="Guany / Pèrdua"          value={fEur(m.pnlEur)}   sub={fPct(m.pnlPct)} positive={m.pnlEur >= 0} />
-        <KpiCard label="Posicions obertes"       value={String(m.holdingCount)} />
-      </div>
-
-      {/* Tabs */}
-      <div className="flex gap-1 mb-6 bg-white/5 rounded-xl p-1 w-fit">
-        {([
-          { id: 'overview', label: 'Visió general' },
-          { id: 'holdings', label: 'Posicions'     },
-          { id: 'notes',    label: 'Notes assessor' },
-        ] as const).map(tab => (
-          <button
-            key={tab.id}
-            onClick={() => onTabChange(tab.id)}
-            className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
-              activeTab === tab.id
-                ? 'bg-[#c9a84c] text-[#0d1f1a]'
-                : 'text-white/50 hover:text-white'
-            }`}>
-            {tab.label}
-          </button>
-        ))}
-      </div>
-
-      {activeTab === 'overview'  && <OverviewTab  portfolio={portfolio} metrics={m} />}
-      {activeTab === 'holdings'  && <HoldingsTab  portfolio={portfolio} />}
-      {activeTab === 'notes'     && <NotesTab     portfolio={portfolio} />}
-    </>
-  );
-}
-
-// ─── Overview tab ─────────────────────────────────────────────────────────────
-
-function OverviewTab({ portfolio, metrics }: { portfolio: ClientPortfolio; metrics: PortfolioMetrics }) {
-  const pieData = portfolio.holdings.map((h, i) => ({
-    name:  h.assetName.length > 22 ? h.assetName.slice(0, 22) + '…' : h.assetName,
-    value: Math.round(h.currentPrice * h.quantity * 100) / 100,
-    color: ASSET_COLORS[i % ASSET_COLORS.length],
-  }));
-
-  // Category breakdown
-  const catMap: Record<string, number> = {};
+  // Broker distribution
+  const brokerMap: Record<string, number> = {};
   for (const h of portfolio.holdings) {
-    const cat = h.assetCategory || 'Altres';
-    catMap[cat] = (catMap[cat] ?? 0) + h.currentPrice * h.quantity;
+    const key = h.broker || 'Sense broker';
+    brokerMap[key] = (brokerMap[key] ?? 0) + h.currentPrice * h.quantity;
   }
-  const catData = Object.entries(catMap).map(([name, value], i) => ({
-    name, value: Math.round(value * 100) / 100,
-    color: ASSET_COLORS[(i + 2) % ASSET_COLORS.length],
-  }));
+  const brokerData = Object.entries(brokerMap).sort((a, b) => b[1] - a[1]);
 
-  // Simulated evolution line (from avgEntryPrice to currentPrice over portfolio.updatedAt period)
-  const months = 12;
-  const startVal = metrics.totalInvested;
-  const endVal   = metrics.currentValue;
-  const step     = (endVal - startVal) / (months - 1);
-  const now      = new Date();
-  const chartData = Array.from({ length: months }, (_, i) => {
-    const d = new Date(now.getFullYear(), now.getMonth() - (months - 1 - i), 1);
-    const label = d.toLocaleDateString('ca-ES', { month: 'short', year: '2-digit' });
-    return { month: label, value: Math.round((startVal + step * i) * 100) / 100 };
-  });
+  // Snapshot chart
+  const snapshotChart = [...portfolio.snapshots]
+    .sort((a, b) => a.date.localeCompare(b.date))
+    .map(s => ({ date: s.date, valor: s.totalValue }));
+
+  // Visible notes only
+  const visibleNotes = portfolio.advisorNotes.filter(n => n.isVisibleToClient);
+
+  const TABS: { id: Tab; label: string }[] = [
+    { id: 'overview',     label: 'Resum'       },
+    { id: 'holdings',     label: 'Posicions'   },
+    { id: 'transaccions', label: 'Moviments'   },
+    { id: 'notes',        label: 'Notes'       },
+  ];
 
   return (
-    <div className="space-y-6">
-      {/* Description */}
-      {portfolio.description && (
-        <div className="bg-[#0d1f1a] border border-white/10 rounded-xl p-5">
-          <h3 className="text-white/50 text-xs uppercase tracking-wide mb-2">{portfolio.name}</h3>
-          <p className="text-white/70 text-sm leading-relaxed">{portfolio.description}</p>
+    <div className="min-h-screen bg-[#0a0f0d] px-4 py-8"
+      style={{ backgroundImage: 'radial-gradient(ellipse at 50% 0%, rgba(26,58,42,0.3) 0%, transparent 60%)' }}>
+      <div className="max-w-4xl mx-auto">
+
+        {/* Header */}
+        <div className="flex items-center justify-between mb-8">
+          <div>
+            <h1 className="text-white font-bold text-2xl">{portfolio.name}</h1>
+            <p className="text-white/40 text-sm mt-1">Hola, {userName}</p>
+          </div>
+          <div className="text-right">
+            {metrics.lastUpdated && <p className="text-white/30 text-xs">Preus actualitzats: {metrics.lastUpdated}</p>}
+            {portfolio.nextFollowup && <p className="text-[#c9a84c]/60 text-xs mt-0.5">Proper seguiment: {portfolio.nextFollowup}</p>}
+          </div>
         </div>
-      )}
 
-      {/* Charts row */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        {/* Tabs */}
+        <div className="flex border-b border-white/10 mb-6 gap-1">
+          {TABS.map(t => (
+            <button key={t.id} onClick={() => setActiveTab(t.id)}
+              className={`px-4 py-2.5 text-sm font-medium transition-colors ${
+                activeTab === t.id
+                  ? 'text-[#c9a84c] border-b-2 border-[#c9a84c]'
+                  : 'text-white/40 hover:text-white'
+              }`}>
+              {t.label}
+            </button>
+          ))}
+        </div>
 
-        {/* Allocation pie */}
-        {pieData.length > 0 && (
-          <div className="bg-[#0d1f1a] border border-white/10 rounded-xl p-5">
-            <h3 className="text-white/50 text-xs uppercase tracking-wide mb-4">Distribució per actiu</h3>
-            <ResponsiveContainer width="100%" height={200}>
-              <PieChart>
-                <Pie data={pieData} cx="50%" cy="50%" innerRadius={50} outerRadius={80} dataKey="value" paddingAngle={2}>
-                  {pieData.map((e, i) => <Cell key={i} fill={e.color} stroke="transparent" />)}
-                </Pie>
-                <ReTooltip
-                  contentStyle={{ background: '#0d1f1a', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 8 }}
-                  itemStyle={{ color: 'rgba(255,255,255,0.7)', fontSize: 12 }}
-                  formatter={(v: number) => [fEur(v), '']}
-                />
-              </PieChart>
-            </ResponsiveContainer>
-            <div className="mt-2 space-y-1">
-              {pieData.map((e, i) => (
-                <div key={i} className="flex items-center justify-between text-xs">
-                  <div className="flex items-center gap-2">
-                    <div className="w-2 h-2 rounded-full" style={{ backgroundColor: e.color }} />
-                    <span className="text-white/60">{e.name}</span>
-                  </div>
-                  <span className="text-white/70 font-medium">{fEur(e.value)}</span>
-                </div>
-              ))}
+        {/* ── OVERVIEW ── */}
+        {activeTab === 'overview' && (
+          <div className="space-y-6">
+            {/* KPIs */}
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+              <KpiCard label="Valor actual" value={fEur(metrics.currentValue)} />
+              <KpiCard label="Rendibilitat (€)" value={fEur(metrics.pnlEur)} colored positive={metrics.pnlEur >= 0} />
+              <KpiCard label="Rendibilitat (%)" value={fPct(metrics.pnlPct)} colored positive={metrics.pnlPct >= 0} />
+              <KpiCard
+                label="Inversió neta"
+                value={fEur(metrics.netContributions > 0 ? metrics.netContributions : metrics.totalInvested)}
+                sub={`${metrics.holdingCount} posicion${metrics.holdingCount !== 1 ? 's' : ''}`}
+              />
             </div>
+
+            {/* Evolution chart */}
+            <div className="bg-[#0d1f1a] border border-white/10 rounded-2xl p-6">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-white font-semibold text-sm">Evolució del valor</h3>
+                <span className="text-white/30 text-xs">Basada en snapshots manuals de l&apos;assessor</span>
+              </div>
+              {snapshotChart.length >= 2 ? (
+                <ResponsiveContainer width="100%" height={200}>
+                  <LineChart data={snapshotChart} margin={{ top: 4, right: 8, left: 0, bottom: 4 }}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
+                    <XAxis dataKey="date" tick={{ fill: 'rgba(255,255,255,0.3)', fontSize: 10 }} />
+                    <YAxis tick={{ fill: 'rgba(255,255,255,0.3)', fontSize: 10 }} tickFormatter={(v: number) => `${(v / 1000).toFixed(0)}K`} />
+                    <ReTT
+                      formatter={(v: number) => [fEur(v), 'Valor']}
+                      contentStyle={{ background: '#0d1f1a', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 8 }}
+                      labelStyle={{ color: 'rgba(255,255,255,0.5)' }}
+                      itemStyle={{ color: '#c9a84c' }}
+                    />
+                    <Line type="monotone" dataKey="valor" stroke="#c9a84c" strokeWidth={2} dot={{ r: 3, fill: '#c9a84c' }} />
+                  </LineChart>
+                </ResponsiveContainer>
+              ) : (
+                <div className="flex items-center justify-center h-32 text-white/20 text-sm text-center">
+                  L&apos;assessor encara no ha registrat snapshots d&apos;evolució.<br />
+                  <span className="text-xs block mt-1">El gràfic apareixerà quan hi hagi dades reals.</span>
+                </div>
+              )}
+            </div>
+
+            {/* Pie + Broker */}
+            {totalValue > 0 && (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {/* Asset distribution */}
+                <div className="bg-[#0d1f1a] border border-white/10 rounded-2xl p-6">
+                  <h3 className="text-white font-semibold text-sm mb-4">Distribució per actiu</h3>
+                  <div className="flex items-center gap-4">
+                    <ResponsiveContainer width={120} height={120}>
+                      <PieChart>
+                        <Pie data={pieData} cx="50%" cy="50%" innerRadius={35} outerRadius={55} paddingAngle={2} dataKey="value">
+                          {pieData.map((d, i) => <Cell key={i} fill={d.color} />)}
+                        </Pie>
+                        <ReTT formatter={(v: number) => [fEur(v), '']} contentStyle={{ background: '#0d1f1a', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 8 }} itemStyle={{ color: '#c9a84c' }} />
+                      </PieChart>
+                    </ResponsiveContainer>
+                    <div className="flex-1 space-y-1.5 min-w-0">
+                      {pieData.map((d, i) => (
+                        <div key={i} className="flex items-center justify-between gap-2">
+                          <div className="flex items-center gap-1.5 min-w-0">
+                            <div className="w-2 h-2 rounded-full flex-shrink-0" style={{ backgroundColor: d.color }} />
+                            <span className="text-white/60 text-xs truncate">{d.name}</span>
+                          </div>
+                          <span className="text-white/40 text-xs flex-shrink-0">{totalValue > 0 ? ((d.value / totalValue) * 100).toFixed(1) : 0}%</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Broker distribution */}
+                <div className="bg-[#0d1f1a] border border-white/10 rounded-2xl p-6">
+                  <h3 className="text-white font-semibold text-sm mb-4">Distribució per broker</h3>
+                  <div className="space-y-3">
+                    {brokerData.map(([broker, val], i) => {
+                      const pct = totalValue > 0 ? (val / totalValue) * 100 : 0;
+                      return (
+                        <div key={i}>
+                          <div className="flex items-center justify-between mb-1">
+                            <span className="text-white/60 text-xs">{broker}</span>
+                            <span className="text-white/40 text-xs">{fEur(val)} · {pct.toFixed(1)}%</span>
+                          </div>
+                          <div className="h-1.5 bg-white/5 rounded-full overflow-hidden">
+                            <div className="h-full bg-[#c9a84c] rounded-full" style={{ width: `${pct}%` }} />
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Recommendations */}
+            {portfolio.recommendations && (
+              <div className="bg-[#0d1f1a] border border-[#c9a84c]/20 rounded-2xl p-6">
+                <h3 className="text-[#c9a84c]/80 font-semibold text-sm mb-3">Recomanacions de l&apos;assessor</h3>
+                <p className="text-white/60 text-sm leading-relaxed whitespace-pre-line">{portfolio.recommendations}</p>
+              </div>
+            )}
           </div>
         )}
 
-        {/* Category breakdown */}
-        {catData.length > 0 && (
-          <div className="bg-[#0d1f1a] border border-white/10 rounded-xl p-5">
-            <h3 className="text-white/50 text-xs uppercase tracking-wide mb-4">Distribució per categoria</h3>
-            <div className="space-y-3">
-              {catData.map((c, i) => {
-                const pct = metrics.currentValue > 0 ? (c.value / metrics.currentValue) * 100 : 0;
+        {/* ── HOLDINGS ── */}
+        {activeTab === 'holdings' && (
+          <div className="space-y-3">
+            {portfolio.holdings.length === 0 ? (
+              <div className="text-center py-20 text-white/30">
+                <p>Sense posicions assignades.</p>
+              </div>
+            ) : (
+              portfolio.holdings.map((h, i) => {
+                const val    = h.currentPrice * h.quantity;
+                const cost   = h.avgEntryPrice * h.quantity;
+                const pnl    = val - cost;
+                const pnlPct = cost > 0 ? (pnl / cost) * 100 : 0;
+                const weight = totalValue > 0 ? (val / totalValue) * 100 : 0;
                 return (
-                  <div key={i}>
-                    <div className="flex items-center justify-between text-xs mb-1">
-                      <span className="text-white/70">{c.name}</span>
-                      <span className="text-white/50">{fEur(c.value)} · {pct.toFixed(1)}%</span>
+                  <div key={h.id} className="bg-[#0d1f1a] border border-white/10 rounded-xl p-5">
+                    <div className="flex items-start justify-between gap-4 mb-3">
+                      <div>
+                        <div className="flex items-center gap-2 mb-0.5">
+                          <div className="w-2 h-2 rounded-full flex-shrink-0" style={{ backgroundColor: ASSET_COLORS[i % ASSET_COLORS.length] }} />
+                          <span className="text-white font-semibold text-sm">{h.assetName}</span>
+                          {h.assetSymbol && <span className="text-white/30 text-xs">({h.assetSymbol})</span>}
+                        </div>
+                        <p className="text-white/30 text-xs ml-4">{h.assetCategory} · {h.broker}</p>
+                      </div>
+                      <div className={`text-sm font-bold flex-shrink-0 ${pnl >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
+                        {fPct(pnlPct)}
+                      </div>
                     </div>
-                    <div className="h-1.5 bg-white/5 rounded-full overflow-hidden">
-                      <div className="h-full rounded-full" style={{ width: `${pct}%`, backgroundColor: c.color }} />
+                    <div className="grid grid-cols-4 gap-3 text-center">
+                      <div><div className="text-white font-semibold text-sm">{fEur(val)}</div><div className="text-white/30 text-xs">Valor actual</div></div>
+                      <div><div className={`font-semibold text-sm ${pnl >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>{fEur(pnl)}</div><div className="text-white/30 text-xs">Guany/Pèrdua</div></div>
+                      <div><div className="text-white font-semibold text-sm">{fEur(h.avgEntryPrice)}</div><div className="text-white/30 text-xs">Preu entrada</div></div>
+                      <div><div className="text-white font-semibold text-sm">{weight.toFixed(1)}%</div><div className="text-white/30 text-xs">Pes cartera</div></div>
                     </div>
+                    <div className="mt-3 h-1.5 bg-white/5 rounded-full overflow-hidden">
+                      <div className="h-full rounded-full" style={{ width: `${weight}%`, backgroundColor: ASSET_COLORS[i % ASSET_COLORS.length] }} />
+                    </div>
+                    {h.priceLastUpdated && <p className="text-white/20 text-xs mt-2">Preu actualitzat: {h.priceLastUpdated}</p>}
                   </div>
                 );
-              })}
-            </div>
+              })
+            )}
           </div>
         )}
-      </div>
 
-      {/* Simulated evolution chart */}
-      <div className="bg-[#0d1f1a] border border-white/10 rounded-xl p-5">
-        <div className="flex items-center justify-between mb-1">
-          <h3 className="text-white/50 text-xs uppercase tracking-wide">Evolució estimada (12 mesos)</h3>
-          <span className="text-amber-400/60 text-xs">Simulació lineal · No és rendiment real</span>
-        </div>
-        <ResponsiveContainer width="100%" height={160}>
-          <AreaChart data={chartData} margin={{ top: 4, right: 4, left: -20, bottom: 0 }}>
-            <defs>
-              <linearGradient id="cgr" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="5%"  stopColor="#c9a84c" stopOpacity={0.3} />
-                <stop offset="95%" stopColor="#c9a84c" stopOpacity={0} />
-              </linearGradient>
-            </defs>
-            <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.04)" />
-            <XAxis dataKey="month" tick={{ fill: 'rgba(255,255,255,0.25)', fontSize: 10 }} tickLine={false} axisLine={false} />
-            <YAxis tick={{ fill: 'rgba(255,255,255,0.25)', fontSize: 10 }} tickLine={false} axisLine={false} tickFormatter={v => `${(v/1000).toFixed(0)}k`} />
-            <ReTooltip
-              contentStyle={{ background: '#0d1f1a', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 8 }}
-              itemStyle={{ color: '#c9a84c', fontSize: 12 }}
-              formatter={(v: number) => [fEur(v), 'Valor estimat']}
-            />
-            <Area type="monotone" dataKey="value" stroke="#c9a84c" strokeWidth={1.5} fill="url(#cgr)" dot={false} activeDot={{ r: 3, fill: '#c9a84c' }} />
-          </AreaChart>
-        </ResponsiveContainer>
-      </div>
-
-      {/* Recommendations */}
-      {portfolio.recommendations && (
-        <div className="bg-[#0d1f1a] border-l-4 border-l-[#c9a84c] border border-white/10 rounded-xl p-5">
-          <h3 className="text-[#c9a84c] font-semibold text-sm mb-3">Recomanacions del teu assessor</h3>
-          <p className="text-white/70 text-sm leading-relaxed whitespace-pre-line">{portfolio.recommendations}</p>
-        </div>
-      )}
-    </div>
-  );
-}
-
-// ─── Holdings tab ─────────────────────────────────────────────────────────────
-
-function HoldingsTab({ portfolio }: { portfolio: ClientPortfolio }) {
-  const total = portfolio.holdings.reduce((s, h) => s + h.currentPrice * h.quantity, 0);
-
-  if (portfolio.holdings.length === 0) {
-    return <div className="text-center py-16 text-white/30">Sense posicions obertes.</div>;
-  }
-
-  return (
-    <div className="space-y-3">
-      {portfolio.holdings.map((h: ClientHolding, i: number) => {
-        const invested = h.avgEntryPrice * h.quantity;
-        const current  = h.currentPrice  * h.quantity;
-        const pnl      = current - invested;
-        const pnlPct   = invested > 0 ? (pnl / invested) * 100 : 0;
-        const weight   = total > 0 ? (current / total) * 100 : 0;
-
-        return (
-          <div key={h.id} className="bg-[#0d1f1a] border border-white/10 rounded-xl p-5">
-            <div className="flex items-start justify-between gap-3 mb-3">
-              <div className="flex items-center gap-3">
-                <div className="w-2.5 h-2.5 rounded-full flex-shrink-0" style={{ backgroundColor: ASSET_COLORS[i % ASSET_COLORS.length] }} />
-                <div>
-                  <div className="text-white font-semibold text-sm">{h.assetName}</div>
-                  <div className="flex items-center gap-2 mt-0.5">
-                    <span className="text-white/30 text-xs font-mono">{h.assetIsin}</span>
-                    <span className="text-white/20 text-xs bg-white/5 px-1.5 py-0.5 rounded">{h.assetCategory}</span>
-                    <span className="text-white/20 text-xs">{h.broker}</span>
-                  </div>
-                </div>
+        {/* ── TRANSACCIONS ── */}
+        {activeTab === 'transaccions' && (
+          <div className="space-y-2">
+            {portfolio.transactions.length === 0 ? (
+              <div className="text-center py-20 text-white/30">
+                <p>Sense moviments registrats.</p>
               </div>
-              <div className="text-right flex-shrink-0">
-                <div className={`font-bold text-sm ${pnl >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>{fEur(pnl)}</div>
-                <div className={`text-xs ${pnl >= 0 ? 'text-emerald-400/60' : 'text-red-400/60'}`}>{fPct(pnlPct)}</div>
-              </div>
-            </div>
-
-            <div className="grid grid-cols-2 md:grid-cols-5 gap-3 text-xs">
-              <div><div className="text-white/30 mb-0.5">Quantitat</div><div className="text-white/80">{h.quantity}</div></div>
-              <div><div className="text-white/30 mb-0.5">Preu entrada</div><div className="text-white/80">{fEur(h.avgEntryPrice)}</div></div>
-              <div><div className="text-white/30 mb-0.5">Preu actual</div>
-                <div className="text-white/80">{fEur(h.currentPrice)}
-                  <span className="text-white/20 ml-1">{h.priceLastUpdated}</span>
-                </div>
-              </div>
-              <div><div className="text-white/30 mb-0.5">Valor actual</div><div className="text-white font-medium">{fEur(current)}</div></div>
-              <div><div className="text-white/30 mb-0.5">Pes cartera</div>
-                <div className="text-white/80">{weight.toFixed(1)}%
-                  <div className="mt-1 h-1 bg-white/5 rounded-full overflow-hidden">
-                    <div className="h-full rounded-full" style={{ width: `${weight}%`, backgroundColor: ASSET_COLORS[i % ASSET_COLORS.length] }} />
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {h.notes && <p className="mt-3 text-white/40 text-xs italic leading-relaxed">{h.notes}</p>}
+            ) : (
+              [...portfolio.transactions]
+                .sort((a, b) => b.date.localeCompare(a.date))
+                .map((tx: ClientTransaction) => {
+                  const meta = OP_META[tx.operationType];
+                  return (
+                    <div key={tx.id} className="bg-[#0d1f1a] border border-white/10 rounded-xl p-4 flex items-center justify-between gap-4">
+                      <div className="flex items-center gap-3 min-w-0">
+                        <span className="text-xs px-2 py-0.5 rounded-full font-medium flex-shrink-0"
+                          style={{ color: meta.color, backgroundColor: meta.bg }}>{meta.label}</span>
+                        <div className="min-w-0">
+                          <div className="text-white text-sm truncate">
+                            {tx.assetName || tx.ticker || '—'}
+                            {tx.ticker && tx.assetName && <span className="text-white/30 text-xs ml-1">({tx.ticker})</span>}
+                          </div>
+                          <div className="text-white/30 text-xs">{tx.date}{tx.broker ? ` · ${tx.broker}` : ''}</div>
+                        </div>
+                      </div>
+                      <div className="text-right flex-shrink-0">
+                        <div className="text-white font-medium text-sm">{fEur(tx.totalEur)}</div>
+                        {tx.quantity > 0 && <div className="text-white/30 text-xs">{tx.quantity} × {fEur(tx.priceEur)}</div>}
+                        {tx.commission > 0 && <div className="text-white/20 text-xs">Comissió: {fEur(tx.commission)}</div>}
+                      </div>
+                    </div>
+                  );
+                })
+            )}
           </div>
-        );
-      })}
+        )}
 
-      {/* Summary row */}
-      <div className="bg-white/3 border border-white/10 rounded-xl px-5 py-3 flex items-center justify-between">
-        <span className="text-white/40 text-sm">Total cartera</span>
-        <span className="text-white font-bold">{fEur(total)}</span>
-      </div>
-    </div>
-  );
-}
-
-// ─── Notes tab ────────────────────────────────────────────────────────────────
-
-function NotesTab({ portfolio }: { portfolio: ClientPortfolio }) {
-  const notes = [...portfolio.advisorNotes].reverse();
-  if (notes.length === 0) {
-    return <div className="text-center py-16 text-white/30">L&apos;assessor no ha afegit notes encara.</div>;
-  }
-  return (
-    <div className="space-y-4">
-      {notes.map(n => (
-        <div key={n.id} className="bg-[#0d1f1a] border border-white/10 rounded-xl p-5">
-          <div className="flex items-center gap-2 mb-2">
-            <span className="text-[#c9a84c] text-xs font-medium">{n.author}</span>
-            <span className="text-white/20 text-xs">·</span>
-            <span className="text-white/30 text-xs">{n.date}</span>
+        {/* ── NOTES ── */}
+        {activeTab === 'notes' && (
+          <div className="space-y-3">
+            {visibleNotes.length === 0 ? (
+              <div className="text-center py-20 text-white/30">
+                <p>Sense notes de l&apos;assessor.</p>
+              </div>
+            ) : (
+              visibleNotes.map(note => (
+                <div key={note.id} className="bg-[#0d1f1a] border border-white/10 rounded-xl p-5">
+                  <div className="flex items-center gap-2 mb-2">
+                    <span className="text-white/30 text-xs">{note.author}</span>
+                    <span className="text-white/10 text-xs">·</span>
+                    <span className="text-white/30 text-xs">{note.createdAt.split('T')[0]}</span>
+                  </div>
+                  <p className="text-white/70 text-sm leading-relaxed">{note.text}</p>
+                </div>
+              ))
+            )}
           </div>
-          <p className="text-white/70 text-sm leading-relaxed whitespace-pre-line">{n.text}</p>
-        </div>
-      ))}
+        )}
+
+      </div>
     </div>
   );
 }

@@ -1,39 +1,58 @@
 import { getDb } from './supabase';
 
-// ─── Types ────────────────────────────────────────────────────────────────────
+export type OperationType = 'buy' | 'sell' | 'deposit' | 'withdrawal' | 'rebalance';
 
 export interface ClientHolding {
   id:               string;
+  portfolioId:      string;
   assetIsin:        string;
   assetName:        string;
   assetSymbol?:     string;
   assetCategory:    string;
   broker:           string;
   quantity:         number;
-  avgEntryPrice:    number;   // EUR, weighted average
-  currentPrice:     number;   // EUR, manually updated by admin
+  avgEntryPrice:    number;
+  currentPrice:     number;
   priceLastUpdated: string;
   currency:         string;
   notes?:           string;
+  createdAt:        string;
 }
 
 export interface ClientTransaction {
-  id:        string;
-  holdingId: string;
-  type:      'buy' | 'sell';
-  date:      string;
-  quantity:  number;
-  priceEur:  number;
-  totalEur:  number;
-  broker:    string;
-  notes?:    string;
+  id:            string;
+  portfolioId:   string;
+  holdingId?:    string;
+  operationType: OperationType;
+  ticker?:       string;
+  assetName?:    string;
+  date:          string;
+  quantity:      number;
+  priceEur:      number;
+  totalEur:      number;
+  commission:    number;
+  broker:        string;
+  notes?:        string;
+  createdAt:     string;
+}
+
+export interface PortfolioSnapshot {
+  id:          string;
+  portfolioId: string;
+  date:        string;
+  totalValue:  number;
+  notes?:      string;
+  createdBy:   string;
+  createdAt:   string;
 }
 
 export interface AdvisorNote {
-  id:     string;
-  date:   string;
-  author: string;
-  text:   string;
+  id:                string;
+  portfolioId:       string;
+  text:              string;
+  author:            string;
+  isVisibleToClient: boolean;
+  createdAt:         string;
 }
 
 export interface ClientPortfolio {
@@ -42,105 +61,206 @@ export interface ClientPortfolio {
   clientName:      string;
   name:            string;
   description:     string;
+  recommendations: string;
+  nextFollowup?:   string;
   holdings:        ClientHolding[];
   transactions:    ClientTransaction[];
   advisorNotes:    AdvisorNote[];
-  recommendations: string;
+  snapshots:       PortfolioSnapshot[];
   createdAt:       string;
   updatedAt:       string;
 }
 
 export interface PortfolioMetrics {
-  totalInvested: number;
-  currentValue:  number;
-  pnlEur:        number;
-  pnlPct:        number;
-  holdingCount:  number;
+  totalInvested:    number;
+  currentValue:     number;
+  netContributions: number;
+  pnlEur:           number;
+  pnlPct:           number;
+  holdingCount:     number;
+  lastUpdated:      string | null;
 }
-
-// ─── Computed metrics ─────────────────────────────────────────────────────────
 
 export function computeMetrics(p: ClientPortfolio): PortfolioMetrics {
-  const totalInvested = p.holdings.reduce((s, h) => s + h.avgEntryPrice * h.quantity, 0);
-  const currentValue  = p.holdings.reduce((s, h) => s + h.currentPrice  * h.quantity, 0);
-  const pnlEur = currentValue - totalInvested;
+  const currentValue = p.holdings.reduce((s, h) => s + h.currentPrice * h.quantity, 0);
+
+  let netContributions = 0;
+  let hasTransactions  = false;
+  for (const tx of p.transactions) {
+    if (tx.operationType === 'deposit')    { netContributions += tx.totalEur; hasTransactions = true; }
+    if (tx.operationType === 'withdrawal') { netContributions -= tx.totalEur; hasTransactions = true; }
+    if (tx.operationType === 'buy')        { netContributions += tx.totalEur + tx.commission; hasTransactions = true; }
+    if (tx.operationType === 'sell')       { netContributions -= tx.totalEur - tx.commission; hasTransactions = true; }
+  }
+  const totalInvested = hasTransactions
+    ? netContributions
+    : p.holdings.reduce((s, h) => s + h.avgEntryPrice * h.quantity, 0);
+
+  const pnlEur    = currentValue - totalInvested;
+  const lastUpdated = p.holdings.length > 0
+    ? p.holdings.reduce((best, h) => (h.priceLastUpdated > best ? h.priceLastUpdated : best), '')
+    : null;
+
   return {
-    totalInvested: Math.round(totalInvested * 100) / 100,
-    currentValue:  Math.round(currentValue  * 100) / 100,
-    pnlEur:        Math.round(pnlEur        * 100) / 100,
-    pnlPct:        totalInvested > 0 ? Math.round((pnlEur / totalInvested) * 10000) / 100 : 0,
-    holdingCount:  p.holdings.length,
+    totalInvested:    Math.round(totalInvested    * 100) / 100,
+    currentValue:     Math.round(currentValue     * 100) / 100,
+    netContributions: Math.round(netContributions * 100) / 100,
+    pnlEur:           Math.round(pnlEur           * 100) / 100,
+    pnlPct:           totalInvested > 0 ? Math.round((pnlEur / totalInvested) * 10000) / 100 : 0,
+    holdingCount:     p.holdings.length,
+    lastUpdated:      lastUpdated || null,
   };
 }
 
-// ─── In-memory store (fallback when Supabase not configured) ─────────────────
+// ─── In-memory store ──────────────────────────────────────────────────────────
 
-let _db: ClientPortfolio[] = [];
+let _portfolios: ClientPortfolio[] = [];
 
-// ─── Mapper ───────────────────────────────────────────────────────────────────
+// ─── Row mappers ──────────────────────────────────────────────────────────────
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-function rowToPortfolio(r: Record<string, any>): ClientPortfolio {
+function rowToPortfolio(r: Record<string, unknown>): ClientPortfolio {
   return {
-    id:              r.id,
-    clientId:        r.client_id,
-    clientName:      r.client_name,
-    name:            r.name,
-    description:     r.description ?? '',
-    holdings:        (r.holdings        as ClientHolding[])     ?? [],
-    transactions:    (r.transactions    as ClientTransaction[]) ?? [],
-    advisorNotes:    (r.advisor_notes   as AdvisorNote[])       ?? [],
-    recommendations: r.recommendations ?? '',
-    createdAt:       r.created_at,
-    updatedAt:       r.updated_at,
+    id:              r.id as string,
+    clientId:        r.client_id as string,
+    clientName:      r.client_name as string,
+    name:            r.name as string,
+    description:     (r.description as string) ?? '',
+    recommendations: (r.recommendations as string) ?? '',
+    nextFollowup:    r.next_followup as string | undefined,
+    holdings:        [],
+    transactions:    [],
+    advisorNotes:    [],
+    snapshots:       [],
+    createdAt:       r.created_at as string,
+    updatedAt:       r.updated_at as string,
   };
 }
 
-// ─── CRUD ─────────────────────────────────────────────────────────────────────
+function rowToHolding(r: Record<string, unknown>): ClientHolding {
+  return {
+    id:               r.id as string,
+    portfolioId:      r.portfolio_id as string,
+    assetIsin:        (r.asset_isin as string) ?? '',
+    assetName:        r.asset_name as string,
+    assetSymbol:      r.asset_symbol as string | undefined,
+    assetCategory:    (r.asset_category as string) ?? '',
+    broker:           (r.broker as string) ?? '',
+    quantity:         Number(r.quantity),
+    avgEntryPrice:    Number(r.avg_entry_price),
+    currentPrice:     Number(r.current_price),
+    priceLastUpdated: (r.price_last_updated as string) ?? '',
+    currency:         (r.currency as string) ?? 'EUR',
+    notes:            r.notes as string | undefined,
+    createdAt:        r.created_at as string,
+  };
+}
+
+function rowToTransaction(r: Record<string, unknown>): ClientTransaction {
+  return {
+    id:            r.id as string,
+    portfolioId:   r.portfolio_id as string,
+    holdingId:     r.holding_id as string | undefined,
+    operationType: r.operation_type as OperationType,
+    ticker:        r.ticker as string | undefined,
+    assetName:     r.asset_name as string | undefined,
+    date:          r.date as string,
+    quantity:      Number(r.quantity),
+    priceEur:      Number(r.price_eur),
+    totalEur:      Number(r.total_eur),
+    commission:    Number(r.commission),
+    broker:        (r.broker as string) ?? '',
+    notes:         r.notes as string | undefined,
+    createdAt:     r.created_at as string,
+  };
+}
+
+function rowToSnapshot(r: Record<string, unknown>): PortfolioSnapshot {
+  return {
+    id:          r.id as string,
+    portfolioId: r.portfolio_id as string,
+    date:        r.date as string,
+    totalValue:  Number(r.total_value),
+    notes:       r.notes as string | undefined,
+    createdBy:   (r.created_by as string) ?? 'admin',
+    createdAt:   r.created_at as string,
+  };
+}
+
+function rowToNote(r: Record<string, unknown>): AdvisorNote {
+  return {
+    id:                r.id as string,
+    portfolioId:       r.portfolio_id as string,
+    text:              r.text as string,
+    author:            (r.author as string) ?? 'Admin',
+    isVisibleToClient: Boolean(r.is_visible_to_client),
+    createdAt:         r.created_at as string,
+  };
+}
+
+// ─── Supabase relation loader ─────────────────────────────────────────────────
+
+async function loadPortfolioRelations(
+  p: ClientPortfolio,
+  db: ReturnType<typeof getDb>,
+): Promise<ClientPortfolio> {
+  if (!db) return p;
+  const [h, t, n, s] = await Promise.all([
+    db.from('client_holdings').select('*').eq('portfolio_id', p.id).order('created_at'),
+    db.from('client_transactions').select('*').eq('portfolio_id', p.id).order('date', { ascending: false }),
+    db.from('advisor_notes').select('*').eq('portfolio_id', p.id).order('created_at', { ascending: false }),
+    db.from('portfolio_snapshots').select('*').eq('portfolio_id', p.id).order('date', { ascending: false }),
+  ]);
+  return {
+    ...p,
+    holdings:     (h.data ?? []).map(r => rowToHolding(r as Record<string, unknown>)),
+    transactions: (t.data ?? []).map(r => rowToTransaction(r as Record<string, unknown>)),
+    advisorNotes: (n.data ?? []).map(r => rowToNote(r as Record<string, unknown>)),
+    snapshots:    (s.data ?? []).map(r => rowToSnapshot(r as Record<string, unknown>)),
+  };
+}
+
+// ─── Portfolio CRUD ───────────────────────────────────────────────────────────
 
 export async function getAllClientPortfolios(): Promise<ClientPortfolio[]> {
   const db = getDb();
-  if (!db) return [..._db].sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
+  if (!db) return [..._portfolios].sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
   const { data, error } = await db.from('client_portfolios').select('*').order('updated_at', { ascending: false });
   if (error) throw new Error(error.message);
-  return (data ?? []).map(rowToPortfolio);
+  return Promise.all((data ?? []).map(r => loadPortfolioRelations(rowToPortfolio(r as Record<string, unknown>), db)));
 }
 
 export async function getPortfolioByClientId(clientId: string): Promise<ClientPortfolio | null> {
   const db = getDb();
-  if (!db) return _db.find(p => p.clientId === clientId) ?? null;
+  if (!db) return _portfolios.find(p => p.clientId === clientId) ?? null;
   const { data, error } = await db.from('client_portfolios').select('*').eq('client_id', clientId).maybeSingle();
   if (error) throw new Error(error.message);
-  return data ? rowToPortfolio(data) : null;
+  if (!data) return null;
+  return loadPortfolioRelations(rowToPortfolio(data as Record<string, unknown>), db);
 }
 
 export async function getPortfolioById(id: string): Promise<ClientPortfolio | null> {
   const db = getDb();
-  if (!db) return _db.find(p => p.id === id) ?? null;
+  if (!db) return _portfolios.find(p => p.id === id) ?? null;
   const { data, error } = await db.from('client_portfolios').select('*').eq('id', id).maybeSingle();
   if (error) throw new Error(error.message);
-  return data ? rowToPortfolio(data) : null;
+  if (!data) return null;
+  return loadPortfolioRelations(rowToPortfolio(data as Record<string, unknown>), db);
 }
 
 export async function createClientPortfolio(
-  input: Pick<ClientPortfolio, 'clientId' | 'clientName' | 'name' | 'description' | 'recommendations'>
+  input: Pick<ClientPortfolio, 'clientId' | 'clientName' | 'name' | 'description' | 'recommendations'>,
 ): Promise<ClientPortfolio> {
-  const now = new Date().toISOString().split('T')[0];
+  const now = new Date().toISOString();
   const portfolio: ClientPortfolio = {
-    ...input,
-    id:           `cport-${Date.now()}`,
-    holdings:     [],
-    transactions: [],
-    advisorNotes: [],
-    createdAt:    now,
-    updatedAt:    now,
+    ...input, id: `cport-${Date.now()}`, nextFollowup: undefined,
+    holdings: [], transactions: [], advisorNotes: [], snapshots: [],
+    createdAt: now, updatedAt: now,
   };
   const db = getDb();
-  if (!db) { _db.push(portfolio); return portfolio; }
+  if (!db) { _portfolios.push(portfolio); return portfolio; }
   const { error } = await db.from('client_portfolios').insert({
     id: portfolio.id, client_id: portfolio.clientId, client_name: portfolio.clientName,
     name: portfolio.name, description: portfolio.description,
-    holdings: [], transactions: [], advisor_notes: [],
     recommendations: portfolio.recommendations,
     created_at: portfolio.createdAt, updated_at: portfolio.updatedAt,
   });
@@ -148,40 +268,258 @@ export async function createClientPortfolio(
   return portfolio;
 }
 
-export async function updateClientPortfolio(
+export async function updatePortfolioMeta(
   id: string,
-  updates: Partial<Omit<ClientPortfolio, 'id' | 'clientId' | 'createdAt'>>
+  updates: { name?: string; description?: string; recommendations?: string; nextFollowup?: string },
 ): Promise<ClientPortfolio | null> {
-  const now = new Date().toISOString().split('T')[0];
+  const now = new Date().toISOString();
   const db  = getDb();
   if (!db) {
-    const idx = _db.findIndex(p => p.id === id);
+    const idx = _portfolios.findIndex(p => p.id === id);
     if (idx === -1) return null;
-    _db[idx] = { ..._db[idx], ...updates, updatedAt: now };
-    return _db[idx];
+    _portfolios[idx] = { ..._portfolios[idx], ...updates, updatedAt: now };
+    return _portfolios[idx];
   }
   const patch: Record<string, unknown> = { updated_at: now };
-  const map: Record<string, string> = {
-    name: 'name', description: 'description', recommendations: 'recommendations',
-    holdings: 'holdings', transactions: 'transactions', advisorNotes: 'advisor_notes',
-    clientName: 'client_name',
-  };
-  for (const [k, col] of Object.entries(map)) {
-    if (k in updates) patch[col] = updates[k as keyof typeof updates];
-  }
-  const { data, error } = await db.from('client_portfolios').update(patch).eq('id', id).select().maybeSingle();
-  if (error) throw new Error(error.message);
-  return data ? rowToPortfolio(data) : null;
+  if (updates.name            !== undefined) patch.name             = updates.name;
+  if (updates.description     !== undefined) patch.description      = updates.description;
+  if (updates.recommendations !== undefined) patch.recommendations  = updates.recommendations;
+  if (updates.nextFollowup    !== undefined) patch.next_followup    = updates.nextFollowup;
+  await db.from('client_portfolios').update(patch).eq('id', id);
+  return getPortfolioById(id);
 }
 
 export async function deleteClientPortfolio(id: string): Promise<boolean> {
   const db = getDb();
   if (!db) {
-    const idx = _db.findIndex(p => p.id === id);
+    const idx = _portfolios.findIndex(p => p.id === id);
     if (idx === -1) return false;
-    _db.splice(idx, 1);
+    _portfolios.splice(idx, 1);
     return true;
   }
   const { error } = await db.from('client_portfolios').delete().eq('id', id);
   return !error;
+}
+
+// backward compat shim used by old admin route
+export async function updateClientPortfolio(
+  id: string,
+  updates: Partial<ClientPortfolio>,
+): Promise<ClientPortfolio | null> {
+  return updatePortfolioMeta(id, {
+    name:            updates.name,
+    description:     updates.description,
+    recommendations: updates.recommendations,
+    nextFollowup:    updates.nextFollowup,
+  });
+}
+
+// ─── Holdings ─────────────────────────────────────────────────────────────────
+
+export async function addHolding(
+  portfolioId: string,
+  h: Omit<ClientHolding, 'id' | 'portfolioId' | 'createdAt'>,
+): Promise<ClientHolding> {
+  const now  = new Date().toISOString();
+  const newH: ClientHolding = { ...h, id: `h-${Date.now()}`, portfolioId, createdAt: now };
+  const db   = getDb();
+  if (!db) {
+    const p = _portfolios.find(p => p.id === portfolioId);
+    if (p) { p.holdings.push(newH); p.updatedAt = now; }
+    return newH;
+  }
+  const { error } = await db.from('client_holdings').insert({
+    id: newH.id, portfolio_id: portfolioId,
+    asset_isin: h.assetIsin, asset_name: h.assetName, asset_symbol: h.assetSymbol ?? null,
+    asset_category: h.assetCategory, broker: h.broker, quantity: h.quantity,
+    avg_entry_price: h.avgEntryPrice, current_price: h.currentPrice,
+    price_last_updated: h.priceLastUpdated, currency: h.currency, notes: h.notes ?? null,
+    created_at: now,
+  });
+  if (error) throw new Error(error.message);
+  await db.from('client_portfolios').update({ updated_at: now }).eq('id', portfolioId);
+  return newH;
+}
+
+export async function updateHoldingPrice(holdingId: string, portfolioId: string, currentPrice: number): Promise<void> {
+  const today = new Date().toISOString().split('T')[0];
+  const db    = getDb();
+  if (!db) {
+    const p = _portfolios.find(p => p.id === portfolioId);
+    const h = p?.holdings.find(h => h.id === holdingId);
+    if (h) { h.currentPrice = currentPrice; h.priceLastUpdated = today; }
+    return;
+  }
+  await db.from('client_holdings').update({ current_price: currentPrice, price_last_updated: today }).eq('id', holdingId);
+  await db.from('client_portfolios').update({ updated_at: new Date().toISOString() }).eq('id', portfolioId);
+}
+
+export async function updateHolding(holdingId: string, portfolioId: string, updates: Partial<ClientHolding>): Promise<void> {
+  const now = new Date().toISOString();
+  const db  = getDb();
+  if (!db) {
+    const p = _portfolios.find(p => p.id === portfolioId);
+    if (p) {
+      const idx = p.holdings.findIndex(h => h.id === holdingId);
+      if (idx > -1) p.holdings[idx] = { ...p.holdings[idx], ...updates };
+    }
+    return;
+  }
+  const col: Record<string, string> = {
+    assetIsin: 'asset_isin', assetName: 'asset_name', assetSymbol: 'asset_symbol',
+    assetCategory: 'asset_category', broker: 'broker', quantity: 'quantity',
+    avgEntryPrice: 'avg_entry_price', currentPrice: 'current_price',
+    priceLastUpdated: 'price_last_updated', currency: 'currency', notes: 'notes',
+  };
+  const patch: Record<string, unknown> = {};
+  for (const [k, c] of Object.entries(col)) {
+    if (k in updates) patch[c] = updates[k as keyof typeof updates];
+  }
+  await db.from('client_holdings').update(patch).eq('id', holdingId);
+  await db.from('client_portfolios').update({ updated_at: now }).eq('id', portfolioId);
+}
+
+export async function removeHolding(holdingId: string, portfolioId: string): Promise<void> {
+  const db = getDb();
+  if (!db) {
+    const p = _portfolios.find(p => p.id === portfolioId);
+    if (p) p.holdings = p.holdings.filter(h => h.id !== holdingId);
+    return;
+  }
+  await db.from('client_holdings').delete().eq('id', holdingId);
+  await db.from('client_portfolios').update({ updated_at: new Date().toISOString() }).eq('id', portfolioId);
+}
+
+// ─── Transactions ─────────────────────────────────────────────────────────────
+
+export async function addTransaction(
+  portfolioId: string,
+  tx: Omit<ClientTransaction, 'id' | 'portfolioId' | 'createdAt'>,
+): Promise<ClientTransaction> {
+  const now  = new Date().toISOString();
+  const newTx: ClientTransaction = { ...tx, id: `tx-${Date.now()}`, portfolioId, createdAt: now };
+  const db   = getDb();
+  if (!db) {
+    const p = _portfolios.find(p => p.id === portfolioId);
+    if (p) { p.transactions.push(newTx); p.updatedAt = now; }
+    return newTx;
+  }
+  const { error } = await db.from('client_transactions').insert({
+    id: newTx.id, portfolio_id: portfolioId, holding_id: tx.holdingId ?? null,
+    operation_type: tx.operationType, ticker: tx.ticker ?? null, asset_name: tx.assetName ?? null,
+    date: tx.date, quantity: tx.quantity, price_eur: tx.priceEur,
+    total_eur: tx.totalEur, commission: tx.commission, broker: tx.broker, notes: tx.notes ?? null,
+    created_at: now,
+  });
+  if (error) throw new Error(error.message);
+  await db.from('client_portfolios').update({ updated_at: now }).eq('id', portfolioId);
+  return newTx;
+}
+
+export async function removeTransaction(txId: string, portfolioId: string): Promise<void> {
+  const db = getDb();
+  if (!db) {
+    const p = _portfolios.find(p => p.id === portfolioId);
+    if (p) p.transactions = p.transactions.filter(t => t.id !== txId);
+    return;
+  }
+  await db.from('client_transactions').delete().eq('id', txId);
+  await db.from('client_portfolios').update({ updated_at: new Date().toISOString() }).eq('id', portfolioId);
+}
+
+// ─── Snapshots ────────────────────────────────────────────────────────────────
+
+export async function addSnapshot(
+  portfolioId: string,
+  snap: { date: string; totalValue: number; notes?: string; createdBy?: string },
+): Promise<PortfolioSnapshot> {
+  const now    = new Date().toISOString();
+  const newSnap: PortfolioSnapshot = {
+    id: `snap-${Date.now()}`, portfolioId,
+    date: snap.date, totalValue: snap.totalValue,
+    notes: snap.notes, createdBy: snap.createdBy ?? 'admin', createdAt: now,
+  };
+  const db = getDb();
+  if (!db) {
+    const p = _portfolios.find(p => p.id === portfolioId);
+    if (p) {
+      p.snapshots = [...p.snapshots.filter(s => s.date !== snap.date), newSnap]
+        .sort((a, b) => b.date.localeCompare(a.date));
+      p.updatedAt = now;
+    }
+    return newSnap;
+  }
+  await db.from('portfolio_snapshots').upsert({
+    id: newSnap.id, portfolio_id: portfolioId, date: snap.date,
+    total_value: snap.totalValue, notes: snap.notes ?? null,
+    created_by: snap.createdBy ?? 'admin', created_at: now,
+  }, { onConflict: 'portfolio_id,date' });
+  await db.from('client_portfolios').update({ updated_at: now }).eq('id', portfolioId);
+  return newSnap;
+}
+
+export async function removeSnapshot(snapId: string, portfolioId: string): Promise<void> {
+  const db = getDb();
+  if (!db) {
+    const p = _portfolios.find(p => p.id === portfolioId);
+    if (p) p.snapshots = p.snapshots.filter(s => s.id !== snapId);
+    return;
+  }
+  await db.from('portfolio_snapshots').delete().eq('id', snapId);
+  await db.from('client_portfolios').update({ updated_at: new Date().toISOString() }).eq('id', portfolioId);
+}
+
+// ─── Advisor Notes ────────────────────────────────────────────────────────────
+
+export async function addAdvisorNote(
+  portfolioId: string,
+  note: { text: string; author?: string; isVisibleToClient?: boolean },
+): Promise<AdvisorNote> {
+  const now     = new Date().toISOString();
+  const newNote: AdvisorNote = {
+    id: `note-${Date.now()}`, portfolioId,
+    text: note.text, author: note.author ?? 'Admin Factor OTC',
+    isVisibleToClient: note.isVisibleToClient ?? true, createdAt: now,
+  };
+  const db = getDb();
+  if (!db) {
+    const p = _portfolios.find(p => p.id === portfolioId);
+    if (p) { p.advisorNotes.unshift(newNote); p.updatedAt = now; }
+    return newNote;
+  }
+  const { error } = await db.from('advisor_notes').insert({
+    id: newNote.id, portfolio_id: portfolioId, text: note.text,
+    author: note.author ?? 'Admin Factor OTC',
+    is_visible_to_client: note.isVisibleToClient ?? true, created_at: now,
+  });
+  if (error) throw new Error(error.message);
+  await db.from('client_portfolios').update({ updated_at: now }).eq('id', portfolioId);
+  return newNote;
+}
+
+export async function updateAdvisorNote(
+  noteId: string,
+  portfolioId: string,
+  updates: { text?: string; isVisibleToClient?: boolean },
+): Promise<void> {
+  const db = getDb();
+  if (!db) {
+    const p = _portfolios.find(p => p.id === portfolioId);
+    if (p) { const n = p.advisorNotes.find(n => n.id === noteId); if (n) Object.assign(n, updates); }
+    return;
+  }
+  const patch: Record<string, unknown> = {};
+  if (updates.text !== undefined) patch.text = updates.text;
+  if (updates.isVisibleToClient !== undefined) patch.is_visible_to_client = updates.isVisibleToClient;
+  await db.from('advisor_notes').update(patch).eq('id', noteId);
+}
+
+export async function removeAdvisorNote(noteId: string, portfolioId: string): Promise<void> {
+  const db = getDb();
+  if (!db) {
+    const p = _portfolios.find(p => p.id === portfolioId);
+    if (p) p.advisorNotes = p.advisorNotes.filter(n => n.id !== noteId);
+    return;
+  }
+  await db.from('advisor_notes').delete().eq('id', noteId);
 }

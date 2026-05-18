@@ -131,3 +131,103 @@ CREATE TABLE IF NOT EXISTS audit_log (
 CREATE INDEX IF NOT EXISTS idx_audit_log_user_id    ON audit_log (user_id);
 CREATE INDEX IF NOT EXISTS idx_audit_log_action     ON audit_log (action);
 CREATE INDEX IF NOT EXISTS idx_audit_log_created_at ON audit_log (created_at DESC);
+
+-- ── Client Portfolios ──────────────────────────────────────────────────────
+
+CREATE TABLE IF NOT EXISTS client_portfolios (
+  id              TEXT PRIMARY KEY,
+  client_id       TEXT NOT NULL UNIQUE,
+  client_name     TEXT NOT NULL,
+  name            TEXT NOT NULL,
+  description     TEXT NOT NULL DEFAULT '',
+  recommendations TEXT NOT NULL DEFAULT '',
+  next_followup   TEXT,
+  created_at      TEXT NOT NULL,
+  updated_at      TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_client_portfolios_client ON client_portfolios (client_id);
+
+-- ── Client Holdings ────────────────────────────────────────────────────────
+
+CREATE TABLE IF NOT EXISTS client_holdings (
+  id                 TEXT PRIMARY KEY,
+  portfolio_id       TEXT NOT NULL REFERENCES client_portfolios(id) ON DELETE CASCADE,
+  asset_isin         TEXT NOT NULL DEFAULT '',
+  asset_name         TEXT NOT NULL,
+  asset_symbol       TEXT,
+  asset_category     TEXT NOT NULL DEFAULT '',
+  broker             TEXT NOT NULL DEFAULT '',
+  quantity           NUMERIC NOT NULL DEFAULT 0,
+  avg_entry_price    NUMERIC NOT NULL DEFAULT 0,
+  current_price      NUMERIC NOT NULL DEFAULT 0,
+  price_last_updated TEXT,
+  currency           TEXT NOT NULL DEFAULT 'EUR',
+  notes              TEXT,
+  created_at         TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_holdings_portfolio ON client_holdings (portfolio_id);
+
+-- ── Client Transactions ────────────────────────────────────────────────────
+
+CREATE TABLE IF NOT EXISTS client_transactions (
+  id             TEXT PRIMARY KEY,
+  portfolio_id   TEXT NOT NULL REFERENCES client_portfolios(id) ON DELETE CASCADE,
+  holding_id     TEXT,
+  operation_type TEXT NOT NULL CHECK (operation_type IN ('buy','sell','deposit','withdrawal','rebalance')),
+  ticker         TEXT,
+  asset_name     TEXT,
+  date           TEXT NOT NULL,
+  quantity       NUMERIC NOT NULL DEFAULT 0,
+  price_eur      NUMERIC NOT NULL DEFAULT 0,
+  total_eur      NUMERIC NOT NULL DEFAULT 0,
+  commission     NUMERIC NOT NULL DEFAULT 0,
+  broker         TEXT NOT NULL DEFAULT '',
+  notes          TEXT,
+  created_at     TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_transactions_portfolio ON client_transactions (portfolio_id);
+CREATE INDEX IF NOT EXISTS idx_transactions_date      ON client_transactions (date DESC);
+
+-- ── Portfolio Snapshots (for historical chart) ─────────────────────────────
+
+CREATE TABLE IF NOT EXISTS portfolio_snapshots (
+  id           TEXT PRIMARY KEY,
+  portfolio_id TEXT NOT NULL REFERENCES client_portfolios(id) ON DELETE CASCADE,
+  date         TEXT NOT NULL,
+  total_value  NUMERIC NOT NULL,
+  notes        TEXT,
+  created_by   TEXT NOT NULL DEFAULT 'admin',
+  created_at   TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_snapshots_portfolio ON portfolio_snapshots (portfolio_id);
+CREATE INDEX IF NOT EXISTS idx_snapshots_date      ON portfolio_snapshots (date DESC);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_snapshots_portfolio_date ON portfolio_snapshots (portfolio_id, date);
+
+-- ── Advisor Notes ──────────────────────────────────────────────────────────
+
+CREATE TABLE IF NOT EXISTS advisor_notes (
+  id                   TEXT PRIMARY KEY,
+  portfolio_id         TEXT NOT NULL REFERENCES client_portfolios(id) ON DELETE CASCADE,
+  text                 TEXT NOT NULL,
+  author               TEXT NOT NULL DEFAULT 'Admin Factor OTC',
+  is_visible_to_client BOOLEAN NOT NULL DEFAULT TRUE,
+  created_at           TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_advisor_notes_portfolio ON advisor_notes (portfolio_id);
+
+-- ── Leads ──────────────────────────────────────────────────────────────────
+
+CREATE TABLE IF NOT EXISTS leads (
+  id         TEXT PRIMARY KEY,
+  name       TEXT NOT NULL,
+  email      TEXT NOT NULL,
+  phone      TEXT,
+  interest   TEXT NOT NULL DEFAULT '',
+  message    TEXT,
+  source     TEXT NOT NULL DEFAULT 'landing-form',
+  status     TEXT NOT NULL DEFAULT 'new' CHECK (status IN ('new','contacted','converted','discarded')),
+  created_at TEXT NOT NULL,
+  updated_at TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_leads_status     ON leads (status);
+CREATE INDEX IF NOT EXISTS idx_leads_created_at ON leads (created_at DESC);
