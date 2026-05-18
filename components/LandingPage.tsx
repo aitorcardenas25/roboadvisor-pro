@@ -214,12 +214,11 @@ export default function LandingPage({ onNavigate }: Props) {
   const [showGate, setShowGate]  = useState(false);
   const [showLead, setShowLead]  = useState(false);
 
-  // Show gate only for unauthenticated users who haven't dismissed it this session
+  // Show gate on every load for unauthenticated users
   useEffect(() => {
     if (status === 'loading') return;
     if (session) return; // Already logged in — no gate
-    const seen = sessionStorage.getItem('factor-otc-gate');
-    if (!seen) setShowGate(true);
+    setShowGate(true);
     const t = setTimeout(() => setLoaded(true), 100);
     return () => clearTimeout(t);
   }, [status, session]);
@@ -232,7 +231,6 @@ export default function LandingPage({ onNavigate }: Props) {
   }, [session]);
 
   function dismissGate() {
-    sessionStorage.setItem('factor-otc-gate', '1');
     setShowGate(false);
     setLoaded(true);
   }
