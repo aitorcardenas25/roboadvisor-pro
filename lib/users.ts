@@ -38,7 +38,7 @@ function buildUsersDB(): AppUser[] {
   const extraJSON = process.env.AUTHORIZED_USERS;
   if (extraJSON) {
     try {
-      const extra = JSON.parse(extraJSON) as Partial<Omit<AppUser, 'id' | 'createdAt'>>[];
+      const extra = JSON.parse(extraJSON) as Omit<AppUser, 'id' | 'createdAt'>[];
       extra.forEach((u, i) => {
         users.push({
           ...u,
@@ -70,9 +70,8 @@ export function getAllUsers(): AppUser[] {
   return usersDB.map(u => ({ ...u, password: '***' }));
 }
 
-export function createAuthorizedUser(data: Omit<AppUser, 'id' | 'createdAt' | 'subscriptionPlan' | 'subscriptionStatus' | 'subscriptionSince'> & Partial<Pick<AppUser, 'subscriptionPlan' | 'subscriptionStatus' | 'subscriptionSince'>>): AppUser {
+export function createAuthorizedUser(data: Omit<AppUser, 'id' | 'createdAt'>): AppUser {
   const user: AppUser = {
-    subscriptionPlan: 'free', subscriptionStatus: 'active',
     ...data,
     subscriptionPlan:   data.subscriptionPlan   ?? 'free',
     subscriptionStatus: data.subscriptionStatus ?? 'active',
