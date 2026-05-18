@@ -19,10 +19,11 @@ const ROLE_META: Record<UserRole, { label: string; color: string; bg: string }> 
   public:      { label: 'Públic',      color: '#9ca3af', bg: 'rgba(156,163,175,0.1)' },
   newsletter:  { label: 'Newsletter',  color: '#60a5fa', bg: 'rgba(96,165,250,0.1)'  },
   authorized:  { label: 'Autoritzat',  color: '#c9a84c', bg: 'rgba(201,168,76,0.1)'  },
+  premium:     { label: 'Premium',     color: '#a78bfa', bg: 'rgba(167,139,250,0.1)' },
   admin:       { label: 'Admin',       color: '#ef4444', bg: 'rgba(239,68,68,0.1)'   },
 };
 
-const ROLES: UserRole[] = ['public', 'newsletter', 'authorized', 'admin'];
+const ROLES: UserRole[] = ['public', 'newsletter', 'authorized', 'premium', 'admin'];
 
 function Badge({ role, active }: { role: UserRole; active: boolean }) {
   const meta = ROLE_META[role];

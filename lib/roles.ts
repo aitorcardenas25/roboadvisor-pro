@@ -1,7 +1,7 @@
 // lib/roles.ts
 // Definició de rols i mapa de permisos del sistema
 
-export type UserRole = 'public' | 'newsletter' | 'authorized' | 'admin';
+export type UserRole = 'public' | 'newsletter' | 'authorized' | 'premium' | 'admin';
 
 export interface Permission {
   viewNews:           boolean; // Pàgina pública de notícies
@@ -17,6 +17,18 @@ export interface Permission {
 }
 
 export const ROLE_PERMISSIONS: Record<UserRole, Permission> = {
+  premium: {
+    viewNews:             true,
+    viewFundComparator:   true,
+    subscribeNewsletter:  true,
+    receiveNewsletter:    true,
+    createOwnPortfolio:   true,
+    viewAdminPanel:       false,
+    manageNewsletters:    false,
+    manageFunds:          false,
+    manageUsers:          false,
+    validateOpportunities:false,
+  },
   public: {
     viewNews:             true,
     viewFundComparator:   true,

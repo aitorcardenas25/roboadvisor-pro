@@ -4,14 +4,17 @@
 import { UserRole } from './roles';
 
 export interface AppUser {
-  id:        string;
-  username:  string;
-  password:  string; // en producció: hash bcrypt
-  name:      string;
-  email:     string;
-  role:      UserRole;
-  active:    boolean;
-  createdAt: string;
+  id:                 string;
+  username:           string;
+  password:           string; // en producció: hash bcrypt
+  name:               string;
+  email:              string;
+  role:               UserRole;
+  active:             boolean;
+  createdAt:          string;
+  subscriptionPlan:   'free' | 'active' | 'premium';
+  subscriptionStatus: 'active' | 'inactive' | 'suspended';
+  subscriptionSince?: string;
 }
 
 function buildUsersDB(): AppUser[] {
@@ -19,14 +22,16 @@ function buildUsersDB(): AppUser[] {
 
   // Admin principal des de variables d'entorn
   users.push({
-    id:        '1',
-    username:  process.env.ADMIN_USERNAME  ?? 'admin',
-    password:  process.env.ADMIN_PASSWORD  ?? 'factorOTC2024!',
-    name:      'Admin Factor OTC',
-    email:     process.env.ADMIN_EMAIL     ?? 'admin@factorotc.com',
-    role:      'admin',
-    active:    true,
-    createdAt: '2024-01-01',
+    id:                 '1',
+    username:           process.env.ADMIN_USERNAME  ?? 'admin',
+    password:           process.env.ADMIN_PASSWORD  ?? 'factorOTC2024!',
+    name:               'Admin Factor OTC',
+    email:              process.env.ADMIN_EMAIL     ?? 'admin@factorotc.com',
+    role:               'admin',
+    active:             true,
+    createdAt:          '2024-01-01',
+    subscriptionPlan:   'premium',
+    subscriptionStatus: 'active',
   });
 
   // Usuaris autoritzats addicionals des de variables d'entorn (JSON array)
@@ -35,7 +40,13 @@ function buildUsersDB(): AppUser[] {
     try {
       const extra = JSON.parse(extraJSON) as Omit<AppUser, 'id' | 'createdAt'>[];
       extra.forEach((u, i) => {
-        users.push({ ...u, id: `authorized-${i + 1}`, createdAt: '2024-01-01' });
+        users.push({
+          ...u,
+          id: `authorized-${i + 1}`,
+          createdAt: '2024-01-01',
+          subscriptionPlan:   u.subscriptionPlan   ?? 'free',
+          subscriptionStatus: u.subscriptionStatus ?? 'active',
+        });
       });
     } catch {
       // JSON mal format — ignorar
@@ -62,11 +73,28 @@ export function getAllUsers(): AppUser[] {
 export function createAuthorizedUser(data: Omit<AppUser, 'id' | 'createdAt'>): AppUser {
   const user: AppUser = {
     ...data,
+    subscriptionPlan:   data.subscriptionPlan   ?? 'free',
+    subscriptionStatus: data.subscriptionStatus ?? 'active',
     id:        `user-${Date.now()}`,
     createdAt: new Date().toISOString().split('T')[0],
   };
   usersDB.push(user);
   return { ...user, password: '***' };
+}
+
+export function updateUserSubscription(
+  id: string,
+  plan: AppUser['subscriptionPlan'],
+  status: AppUser['subscriptionStatus'],
+): boolean {
+  const user = usersDB.find(u => u.id === id);
+  if (!user) return false;
+  user.subscriptionPlan   = plan;
+  user.subscriptionStatus = status;
+  if (plan !== 'free' && !user.subscriptionSince) {
+    user.subscriptionSince = new Date().toISOString().split('T')[0];
+  }
+  return true;
 }
 
 export function updateUserRole(id: string, role: UserRole): boolean {

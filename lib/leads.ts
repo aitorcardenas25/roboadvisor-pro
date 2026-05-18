@@ -1,15 +1,16 @@
 import { getDb } from './supabase';
 
 export interface Lead {
-  id:        string;
-  name:      string;
-  email:     string;
-  phone?:    string;
-  interest:  string;
-  message?:  string;
-  source:    string;
-  status:    'new' | 'contacted' | 'converted' | 'discarded';
-  createdAt: string;
+  id:           string;
+  name:         string;
+  email:        string;
+  phone?:       string;
+  interest:     string;
+  message?:     string;
+  source:       string;
+  status:       'new' | 'contacted' | 'converted' | 'discarded';
+  gdprConsent:  boolean;
+  createdAt:    string;
 }
 
 let _db: Lead[] = [];
@@ -17,15 +18,16 @@ let _db: Lead[] = [];
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function rowToLead(r: Record<string, any>): Lead {
   return {
-    id:        r.id,
-    name:      r.name,
-    email:     r.email,
-    phone:     r.phone ?? undefined,
-    interest:  r.interest,
-    message:   r.message ?? undefined,
-    source:    r.source,
-    status:    r.status,
-    createdAt: r.created_at ?? r.createdAt,
+    id:          r.id,
+    name:        r.name,
+    email:       r.email,
+    phone:       r.phone ?? undefined,
+    interest:    r.interest,
+    message:     r.message ?? undefined,
+    source:      r.source,
+    status:      r.status,
+    gdprConsent: Boolean(r.gdpr_consent ?? r.gdprConsent),
+    createdAt:   r.created_at ?? r.createdAt,
   };
 }
 
@@ -38,16 +40,17 @@ export async function getAllLeads(): Promise<Lead[]> {
 }
 
 export async function createLead(
-  data: Pick<Lead, 'name' | 'email' | 'interest' | 'source'> & Partial<Pick<Lead, 'phone' | 'message'>>
+  data: Pick<Lead, 'name' | 'email' | 'interest' | 'source'> & Partial<Pick<Lead, 'phone' | 'message' | 'gdprConsent'>>
 ): Promise<Lead> {
   const now  = new Date().toISOString();
-  const lead: Lead = { ...data, id: `lead-${Date.now()}`, status: 'new', createdAt: now };
+  const lead: Lead = { gdprConsent: false, ...data, id: `lead-${Date.now()}`, status: 'new', createdAt: now };
   const db = getDb();
   if (!db) { _db.push(lead); return lead; }
   const { error } = await db.from('leads').insert({
     id: lead.id, name: lead.name, email: lead.email, phone: lead.phone ?? null,
     interest: lead.interest, message: lead.message ?? null,
-    source: lead.source, status: lead.status, created_at: lead.createdAt,
+    source: lead.source, status: lead.status,
+    gdpr_consent: lead.gdprConsent, created_at: lead.createdAt,
   });
   if (error) throw new Error(error.message);
   return lead;

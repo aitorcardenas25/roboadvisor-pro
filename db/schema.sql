@@ -231,3 +231,28 @@ CREATE TABLE IF NOT EXISTS leads (
 );
 CREATE INDEX IF NOT EXISTS idx_leads_status     ON leads (status);
 CREATE INDEX IF NOT EXISTS idx_leads_created_at ON leads (created_at DESC);
+
+-- ── Informes borsaris ──────────────────────────────────────────────────────
+
+CREATE TABLE IF NOT EXISTS stock_reports (
+  id            TEXT PRIMARY KEY,
+  ticker        TEXT NOT NULL,
+  company       TEXT NOT NULL,
+  sector        TEXT NOT NULL DEFAULT '',
+  rating        TEXT NOT NULL CHECK (rating IN ('buy','hold','avoid','watch')),
+  summary       TEXT NOT NULL DEFAULT '',
+  fundamentals  TEXT NOT NULL DEFAULT '',
+  technicals    TEXT NOT NULL DEFAULT '',
+  risks         TEXT NOT NULL DEFAULT '',
+  conclusion    TEXT NOT NULL DEFAULT '',
+  target_price  NUMERIC,
+  current_price NUMERIC,
+  currency      TEXT NOT NULL DEFAULT 'EUR',
+  status        TEXT NOT NULL DEFAULT 'draft' CHECK (status IN ('draft','published')),
+  visible_to    TEXT NOT NULL DEFAULT 'clients' CHECK (visible_to IN ('all','clients','premium')),
+  published_at  TEXT,
+  updated_at    TEXT NOT NULL,
+  created_at    TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_stock_reports_status ON stock_reports (status);
+CREATE INDEX IF NOT EXISTS idx_stock_reports_ticker ON stock_reports (ticker);

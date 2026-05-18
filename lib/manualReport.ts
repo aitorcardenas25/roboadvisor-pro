@@ -27,8 +27,12 @@ export interface ManualPortfolioInput {
   assets:         ManualAsset[];
   adminNote:      string;
   // NEW — optional financial situation fields
-  monthlyIncome?:   number;  // real income if admin enters it
-  monthlyExpenses?: number;  // real expenses if admin enters it
+  monthlyIncome?:   number;
+  monthlyExpenses?: number;
+  deutes?:          number;
+  patrimoni?:       number;
+  fondEmergencia?:  number;
+  objectiuAmount?:  number;
 }
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
@@ -350,9 +354,10 @@ export function generateManualReport(d: ManualPortfolioInput): string {
   const wealthMult  = parseFloat((d.initialAmount / Math.max(1, d.initialAmount * 2) * 4).toFixed(1));
 
   // New optional financial fields
-  const totalDeute     = d.deutes        ?? 0;
-  const totalPatrimoni = d.patrimoni     ?? 0;
-  const efundProvided  = d.fondEmergencia ?? 0;
+  const totalDeute         = d.deutes         ?? 0;
+  const totalPatrimoni     = d.patrimoni       ?? 0;
+  const efundProvided      = d.fondEmergencia  ?? 0;
+  const eFundMonthsReal    = Math.round(d.initialAmount * 0.3 / Math.max(1, expenses));
   const efundMonthsCurrent = efundProvided > 0
     ? Math.round(efundProvided / Math.max(1, expenses))
     : eFundMonthsReal;
@@ -500,7 +505,6 @@ export function generateManualReport(d: ManualPortfolioInput): string {
   const expW    = Math.round(expPct * 6.4);
   const invW    = Math.round(invPct * 6.4);
   const surpW   = Math.round(surpPct * 6.4);
-  const eFundMonthsReal = Math.round(d.initialAmount * 0.3 / Math.max(1, expenses));
   const page3 = `<section class="page">
   <div class="pad">
     ${header(`${clientFirst} · Situació Financera`)}

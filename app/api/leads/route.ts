@@ -4,11 +4,12 @@ import { createLead } from '@/lib/leads';
 import { rateLimit, LIMITS, rateLimitResponse } from '@/lib/rateLimiter';
 
 const Schema = z.object({
-  name:     z.string().min(2).max(100),
-  email:    z.email(),
-  phone:    z.string().max(20).optional(),
-  interest: z.string().min(1).max(200),
-  message:  z.string().max(1000).optional(),
+  name:        z.string().min(2).max(100),
+  email:       z.email(),
+  phone:       z.string().max(20).optional(),
+  interest:    z.string().min(1).max(200),
+  message:     z.string().max(1000).optional(),
+  gdprConsent: z.boolean().default(false),
 });
 
 function getIp(req: NextRequest): string {
@@ -26,6 +27,6 @@ export async function POST(req: NextRequest) {
   const parsed = Schema.safeParse(body);
   if (!parsed.success) return NextResponse.json({ error: parsed.error.issues[0]?.message ?? 'Dades invàlides' }, { status: 400 });
 
-  const lead = await createLead({ ...parsed.data, source: 'landing-form' });
+  const lead = await createLead({ ...parsed.data, source: 'login-form' });
   return NextResponse.json({ ok: true, id: lead.id }, { status: 201 });
 }

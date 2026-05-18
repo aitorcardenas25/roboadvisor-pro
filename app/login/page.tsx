@@ -8,17 +8,18 @@ import Link from 'next/link';
 // ─── Lead capture form ────────────────────────────────────────────────────────
 
 function LeadForm({ onClose }: { onClose: () => void }) {
-  const [form, setForm]       = useState({ name: '', email: '', phone: '', interest: '', message: '' });
-  const [sending, setSending] = useState(false);
-  const [done, setDone]       = useState(false);
-  const [error, setError]     = useState('');
+  const [form, setForm]           = useState({ name: '', email: '', phone: '', interest: '', message: '' });
+  const [gdprConsent, setGdpr]    = useState(false);
+  const [sending, setSending]     = useState(false);
+  const [done, setDone]           = useState(false);
+  const [error, setError]         = useState('');
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault(); setSending(true); setError('');
     try {
       const res = await fetch('/api/leads', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ...form, source: 'login-form' }),
+        body: JSON.stringify({ ...form, gdprConsent, source: 'login-form' }),
       });
       if (!res.ok) { const d = await res.json(); setError(d.error ?? 'Error'); return; }
       setDone(true);
@@ -86,7 +87,15 @@ function LeadForm({ onClose }: { onClose: () => void }) {
                   rows={2} placeholder="Explica'ns breument la teva situació o dubtes..."
                   className="w-full bg-[#0a0f0d] border border-white/10 rounded-lg px-3 py-2.5 text-white text-sm focus:outline-none focus:border-[#c9a84c]/40 placeholder-white/20 resize-none" />
               </div>
-              <button type="submit" disabled={sending}
+              <label className="flex items-start gap-2 cursor-pointer">
+                <input type="checkbox" required checked={gdprConsent} onChange={e => setGdpr(e.target.checked)}
+                  className="mt-0.5 accent-[#c9a84c] flex-shrink-0" />
+                <span className="text-white/40 text-xs leading-relaxed">
+                  Accepto que Factor OTC utilitzi les meves dades per contactar-me.{' '}
+                  <a href="#" className="text-[#c9a84c]/70 hover:underline">Política de privacitat</a>
+                </span>
+              </label>
+              <button type="submit" disabled={sending || !gdprConsent}
                 className="w-full py-3 bg-[#c9a84c] hover:bg-[#b8963f] text-[#0d1f1a] font-bold text-sm rounded-xl disabled:opacity-50 transition-colors">
                 {sending ? 'Enviant...' : 'Enviar sol·licitud'}
               </button>
