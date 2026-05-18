@@ -38,7 +38,8 @@ export default withAuth(
           pathname.startsWith('/acces-restringit') ||
           pathname.startsWith('/api/noticies') ||
           pathname.startsWith('/api/fons') ||
-          pathname.startsWith('/api/newsletter/subscribe')
+          pathname.startsWith('/api/newsletter/subscribe') ||
+          pathname.startsWith('/api/leads')
         ) return true;
 
         // Require valid session
@@ -48,6 +49,7 @@ export default withAuth(
         if (pathname.startsWith('/informe-bursatil'))   return !!token;
         if (pathname.startsWith('/client/'))            return !!token;
         if (pathname.startsWith('/api/admin/'))         return !!token;
+        if (pathname.startsWith('/api/client/'))        return !!token;
         if (pathname.startsWith('/api/portfolios'))     return !!token;
         if (pathname.startsWith('/api/stocks'))         return !!token;
         if (pathname.startsWith('/api/market-data'))    return !!token;
@@ -76,5 +78,6 @@ export const config = {
     '/api/market-data/:path*',
     '/api/market-data',
     '/api/stock-analysis',
+    '/api/client/:path*',
   ],
 };

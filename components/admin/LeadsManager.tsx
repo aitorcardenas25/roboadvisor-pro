@@ -1,0 +1,134 @@
+'use client';
+
+import { useState, useEffect, useCallback } from 'react';
+import type { Lead } from '@/lib/leads';
+
+const STATUS_META: Record<Lead['status'], { label: string; color: string; bg: string }> = {
+  new:        { label: 'Nou',        color: '#60a5fa', bg: 'rgba(96,165,250,0.15)'  },
+  contacted:  { label: 'Contactat',  color: '#f59e0b', bg: 'rgba(245,158,11,0.15)'  },
+  converted:  { label: 'Convertit',  color: '#10b981', bg: 'rgba(16,185,129,0.15)'  },
+  discarded:  { label: 'Descartat', color: '#6b7280', bg: 'rgba(107,114,128,0.1)'  },
+};
+
+export default function LeadsManager() {
+  const [leads, setLeads]       = useState<Lead[]>([]);
+  const [loading, setLoading]   = useState(true);
+  const [filter, setFilter]     = useState<Lead['status'] | 'all'>('all');
+  const [updating, setUpdating] = useState<string | null>(null);
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    try {
+      const res = await fetch('/api/admin/leads');
+      const { leads: data } = await res.json();
+      setLeads(data ?? []);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => { load(); }, [load]);
+
+  async function setStatus(id: string, status: Lead['status']) {
+    setUpdating(id);
+    await fetch('/api/admin/leads', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id, status }),
+    });
+    setLeads(prev => prev.map(l => l.id === id ? { ...l, status } : l));
+    setUpdating(null);
+  }
+
+  const visible = filter === 'all' ? leads : leads.filter(l => l.status === filter);
+  const counts  = (['new', 'contacted', 'converted', 'discarded'] as const).reduce(
+    (acc, s) => ({ ...acc, [s]: leads.filter(l => l.status === s).length }), {} as Record<Lead['status'], number>
+  );
+
+  return (
+    <div>
+      <div className="flex items-center justify-between mb-6">
+        <div>
+          <h2 className="text-white font-bold text-xl">Leads captats</h2>
+          <p className="text-white/40 text-sm mt-1">{leads.length} lead{leads.length !== 1 ? 's' : ''} totals</p>
+        </div>
+        <button onClick={load} className="text-white/40 hover:text-white transition-colors text-sm">↻ Actualitzar</button>
+      </div>
+
+      {/* Status filter */}
+      <div className="flex flex-wrap gap-2 mb-6">
+        {(['all', 'new', 'contacted', 'converted', 'discarded'] as const).map(s => (
+          <button
+            key={s}
+            onClick={() => setFilter(s)}
+            className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
+              filter === s ? 'bg-[#c9a84c] text-[#0d1f1a]' : 'bg-white/5 text-white/50 hover:bg-white/10'
+            }`}>
+            {s === 'all' ? `Tots (${leads.length})` : `${STATUS_META[s].label} (${counts[s]})`}
+          </button>
+        ))}
+      </div>
+
+      {loading ? (
+        <div className="flex items-center justify-center py-20">
+          <div className="w-6 h-6 border-2 border-[#c9a84c] border-t-transparent rounded-full animate-spin" />
+        </div>
+      ) : visible.length === 0 ? (
+        <div className="text-center py-20 text-white/30">
+          <div className="text-4xl mb-3">📬</div>
+          <p>Encara no hi ha leads{filter !== 'all' ? ` amb estat "${STATUS_META[filter as Lead['status']].label}"` : ''}.</p>
+        </div>
+      ) : (
+        <div className="space-y-3">
+          {visible.map(lead => {
+            const meta = STATUS_META[lead.status];
+            return (
+              <div key={lead.id} className="bg-[#0d1f1a] border border-white/10 rounded-xl p-5">
+                <div className="flex items-start justify-between gap-4">
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-3 mb-1">
+                      <span className="text-white font-semibold text-sm">{lead.name}</span>
+                      <span
+                        className="inline-block text-xs px-2 py-0.5 rounded-full font-medium"
+                        style={{ color: meta.color, backgroundColor: meta.bg }}>
+                        {meta.label}
+                      </span>
+                    </div>
+                    <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-white/40 text-xs">
+                      <a href={`mailto:${lead.email}`} className="hover:text-[#c9a84c] transition-colors">{lead.email}</a>
+                      {lead.phone && <span>{lead.phone}</span>}
+                      <span>Font: {lead.source}</span>
+                      <span>{new Date(lead.createdAt).toLocaleDateString('ca-ES')}</span>
+                    </div>
+                    {lead.interest && (
+                      <p className="mt-2 text-white/60 text-sm">
+                        <span className="text-white/30 text-xs uppercase tracking-wide mr-1">Interès:</span>
+                        {lead.interest}
+                      </p>
+                    )}
+                    {lead.message && (
+                      <p className="mt-1 text-white/40 text-xs italic leading-relaxed">{lead.message}</p>
+                    )}
+                  </div>
+
+                  {/* Status changer */}
+                  <div className="flex-shrink-0">
+                    <select
+                      value={lead.status}
+                      onChange={e => setStatus(lead.id, e.target.value as Lead['status'])}
+                      disabled={updating === lead.id}
+                      className="bg-white/5 border border-white/10 rounded-lg px-2 py-1.5 text-white/70 text-xs focus:outline-none focus:border-[#c9a84c]/40 disabled:opacity-50 cursor-pointer">
+                      {(Object.keys(STATUS_META) as Lead['status'][]).map(s => (
+                        <option key={s} value={s}>{STATUS_META[s].label}</option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
