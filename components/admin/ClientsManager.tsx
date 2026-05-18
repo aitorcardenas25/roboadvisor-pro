@@ -5,14 +5,16 @@ import { motion, AnimatePresence } from 'framer-motion';
 import type { UserRole } from '@/lib/roles';
 
 interface ClientUser {
-  id:        string;
-  username:  string;
-  password:  string;
-  name:      string;
-  email:     string;
-  role:      UserRole;
-  active:    boolean;
-  createdAt: string;
+  id:                 string;
+  username:           string;
+  password:           string;
+  name:               string;
+  email:              string;
+  role:               UserRole;
+  active:             boolean;
+  createdAt:          string;
+  subscriptionPlan?:   'free' | 'active' | 'premium';
+  subscriptionStatus?: 'active' | 'inactive' | 'suspended';
 }
 
 const ROLE_META: Record<UserRole, { label: string; color: string; bg: string }> = {
@@ -24,6 +26,18 @@ const ROLE_META: Record<UserRole, { label: string; color: string; bg: string }> 
 };
 
 const ROLES: UserRole[] = ['public', 'newsletter', 'authorized', 'premium', 'admin'];
+
+const PLAN_META: Record<string, { label: string; color: string }> = {
+  free:    { label: 'Free',    color: '#9ca3af' },
+  active:  { label: 'Actiu',  color: '#c9a84c' },
+  premium: { label: 'Premium',color: '#a78bfa' },
+};
+
+const STATUS_META: Record<string, { label: string; color: string }> = {
+  active:    { label: 'Actiu',     color: '#10b981' },
+  inactive:  { label: 'Inactiu',  color: '#9ca3af' },
+  suspended: { label: 'Suspès',   color: '#ef4444' },
+};
 
 function Badge({ role, active }: { role: UserRole; active: boolean }) {
   const meta = ROLE_META[role];
@@ -116,8 +130,21 @@ export default function ClientsManager() {
     } catch { /* silent */ }
   }
 
+  async function handleSubscriptionChange(id: string, plan: string, status: string) {
+    try {
+      await fetch(`/api/admin/clients/${id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ subscriptionPlan: plan, subscriptionStatus: status }),
+      });
+      setUsers(prev => prev.map(u => u.id === id
+        ? { ...u, subscriptionPlan: plan as ClientUser['subscriptionPlan'], subscriptionStatus: status as ClientUser['subscriptionStatus'] }
+        : u));
+    } catch { /* silent */ }
+  }
+
   const activeCount = users.filter(u => u.active).length;
-  const authorizedCount = users.filter(u => u.active && (u.role === 'authorized' || u.role === 'admin')).length;
+  const authorizedCount = users.filter(u => u.active && (u.role === 'authorized' || u.role === 'premium' || u.role === 'admin')).length;
 
   return (
     <div>
@@ -221,12 +248,13 @@ export default function ClientsManager() {
       ) : (
         <div className="bg-[#0d1f1a] border border-white/10 rounded-xl overflow-hidden">
           {/* Table header */}
-          <div className="grid grid-cols-12 gap-3 px-4 py-2.5 border-b border-white/10 text-white/30 text-xs font-medium uppercase tracking-wide">
+          <div className="grid grid-cols-12 gap-2 px-4 py-2.5 border-b border-white/10 text-white/30 text-xs font-medium uppercase tracking-wide">
             <div className="col-span-3">Client</div>
-            <div className="col-span-3">Email / Usuari</div>
+            <div className="col-span-2">Email / Usuari</div>
             <div className="col-span-2">Rol</div>
-            <div className="col-span-2">Creat</div>
-            <div className="col-span-2 text-right">Accions</div>
+            <div className="col-span-2">Pla</div>
+            <div className="col-span-2">Estat sub.</div>
+            <div className="col-span-1 text-right">—</div>
           </div>
 
           <div className="divide-y divide-white/5">
@@ -234,17 +262,20 @@ export default function ClientsManager() {
               <motion.div
                 key={u.id}
                 layout
-                className={`grid grid-cols-12 gap-3 px-4 py-3 items-center ${!u.active ? 'opacity-40' : ''}`}>
+                className={`grid grid-cols-12 gap-2 px-4 py-3 items-center ${!u.active ? 'opacity-40' : ''}`}>
                 {/* Name + status */}
                 <div className="col-span-3">
                   <div className="flex items-center gap-2">
                     <div className={`w-2 h-2 rounded-full flex-shrink-0 ${u.active ? 'bg-green-400' : 'bg-white/20'}`} />
-                    <span className="text-white text-sm font-medium truncate">{u.name}</span>
+                    <div>
+                      <div className="text-white text-sm font-medium truncate">{u.name}</div>
+                      <div className="text-white/25 text-xs">{u.createdAt}</div>
+                    </div>
                   </div>
                 </div>
 
                 {/* Email + username */}
-                <div className="col-span-3 min-w-0">
+                <div className="col-span-2 min-w-0">
                   <div className="text-white/60 text-xs truncate">{u.email}</div>
                   <div className="text-white/30 text-xs font-mono">@{u.username}</div>
                 </div>
@@ -268,11 +299,44 @@ export default function ClientsManager() {
                   )}
                 </div>
 
-                {/* Created at */}
-                <div className="col-span-2 text-white/30 text-xs">{u.createdAt}</div>
+                {/* Subscription plan */}
+                <div className="col-span-2">
+                  {u.role !== 'admin' ? (
+                    <select
+                      value={u.subscriptionPlan ?? 'free'}
+                      disabled={!u.active}
+                      onChange={e => handleSubscriptionChange(u.id, e.target.value, u.subscriptionStatus ?? 'active')}
+                      className="bg-white/5 border border-white/10 rounded-md px-2 py-1 text-xs text-white focus:outline-none focus:border-[#c9a84c]/50 disabled:opacity-40">
+                      {Object.entries(PLAN_META).map(([v, m]) => (
+                        <option key={v} value={v} style={{ background: '#0d1f1a' }}>{m.label}</option>
+                      ))}
+                    </select>
+                  ) : (
+                    <span className="text-xs px-2 py-0.5 rounded-full" style={{ color: PLAN_META.premium.color, background: 'rgba(167,139,250,0.1)' }}>
+                      Premium
+                    </span>
+                  )}
+                </div>
+
+                {/* Subscription status */}
+                <div className="col-span-2">
+                  {u.role !== 'admin' ? (
+                    <select
+                      value={u.subscriptionStatus ?? 'active'}
+                      disabled={!u.active}
+                      onChange={e => handleSubscriptionChange(u.id, u.subscriptionPlan ?? 'free', e.target.value)}
+                      className="bg-white/5 border border-white/10 rounded-md px-2 py-1 text-xs text-white focus:outline-none focus:border-[#c9a84c]/50 disabled:opacity-40">
+                      {Object.entries(STATUS_META).map(([v, m]) => (
+                        <option key={v} value={v} style={{ background: '#0d1f1a' }}>{m.label}</option>
+                      ))}
+                    </select>
+                  ) : (
+                    <span className="text-xs" style={{ color: STATUS_META.active.color }}>Actiu</span>
+                  )}
+                </div>
 
                 {/* Actions */}
-                <div className="col-span-2 flex items-center justify-end gap-2">
+                <div className="col-span-1 flex items-center justify-end">
                   {u.active && u.role !== 'admin' && (
                     <button
                       onClick={() => handleDeactivate(u.id)}
@@ -284,7 +348,7 @@ export default function ClientsManager() {
                     </button>
                   )}
                   {!u.active && (
-                    <span className="text-white/20 text-xs">Inactiu</span>
+                    <span className="text-white/20 text-xs">Off</span>
                   )}
                 </div>
               </motion.div>
