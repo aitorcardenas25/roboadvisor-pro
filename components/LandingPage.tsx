@@ -307,14 +307,14 @@ export default function LandingPage({ onNavigate }: Props) {
               </svg>
             </button>
 
-            <button
-              onClick={() => onNavigate('admin')}
+            <a
+              href="/login"
               className="px-8 py-3 border border-[#1a3a2a] text-[#2d6a4f] hover:text-[#c9a84c] hover:border-[#2d6a4f]/60 font-medium text-sm tracking-wide rounded-sm transition-colors duration-200 flex items-center gap-2">
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M11 16l-4-4m0 0l4-4m-4 4h14m-5 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h7a3 3 0 013 3v1" />
               </svg>
-              Àrea Admin
-            </button>
+              Accés clients
+            </a>
           </motion.div>
 
           {/* Tool cards */}
@@ -352,6 +352,129 @@ export default function LandingPage({ onNavigate }: Props) {
             </div>
           </motion.div>
         </div>
+
+        {/* ── Serveis ────────────────────────────────────────────────────────── */}
+        <section className="border-t border-[#1a3a2a]/60 px-6 md:px-10 py-16">
+          <div className="max-w-5xl mx-auto">
+            <div className="text-center mb-10">
+              <p className="text-[#2d6a4f]/70 text-xs uppercase tracking-[0.4em] mb-2">Assessorament financer</p>
+              <h2 className="text-white font-black text-2xl md:text-3xl">Tria el pla que t&apos;encaixa</h2>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              {[
+                {
+                  title:    'Informe Inicial',
+                  price:    '20€',
+                  period:   'pagament únic',
+                  desc:     'Diagnosi financera completa del teu perfil inversor amb cartera recomanada i simulació Monte Carlo.',
+                  features: ['Qüestionari de perfil MiFID II', 'Cartera optimitzada Markowitz', 'Simulació a 10/20/30 anys', 'Informe PDF professional'],
+                  cta:      'Sol·licitar informe',
+                  highlight: false,
+                },
+                {
+                  title:    'Seguiment Mensual',
+                  price:    'A consultar',
+                  period:   'per mes',
+                  desc:     'Seguiment continuat de la teva cartera amb revisions mensuals, alertes i accés a informes borsaris.',
+                  features: ['Tot de l\'informe inicial', 'Informe mensual de cartera', 'Accés a informes borsaris', 'Seguiment d\'accions en cartera'],
+                  cta:      'Contactar assessor',
+                  highlight: true,
+                },
+                {
+                  title:    'Assessorament Premium',
+                  price:    'A consultar',
+                  period:   'personalitzat',
+                  desc:     'Servei complet amb reunions periòdiques, estratègia fiscal i accés prioritari a oportunitats de mercat.',
+                  features: ['Tot del seguiment mensual', 'Reunions de revisió trimestral', 'Estratègia fiscal integrada', 'Accés prioritari a oportunitats'],
+                  cta:      'Parla amb un expert',
+                  highlight: false,
+                },
+              ].map(plan => (
+                <div key={plan.title}
+                  className={`relative rounded-2xl p-6 border flex flex-col ${plan.highlight ? 'bg-[#1a3a2a]/50 border-[#c9a84c]/30' : 'bg-white/[0.02] border-white/8'}`}>
+                  {plan.highlight && (
+                    <div className="absolute -top-3 left-1/2 -translate-x-1/2">
+                      <span className="text-[9px] px-3 py-1 bg-[#c9a84c] text-[#0d1f1a] font-bold uppercase tracking-widest rounded-full">Recomanat</span>
+                    </div>
+                  )}
+                  <div className="mb-4">
+                    <h3 className="text-white font-bold text-sm mb-1">{plan.title}</h3>
+                    <div className="flex items-baseline gap-1">
+                      <span className={`text-2xl font-black ${plan.highlight ? 'text-[#c9a84c]' : 'text-white'}`}>{plan.price}</span>
+                      <span className="text-white/30 text-xs">{plan.period}</span>
+                    </div>
+                  </div>
+                  <p className="text-white/40 text-xs leading-relaxed mb-4">{plan.desc}</p>
+                  <ul className="space-y-1.5 mb-6 flex-1">
+                    {plan.features.map(f => (
+                      <li key={f} className="flex items-start gap-2 text-white/50 text-xs">
+                        <svg className="w-3 h-3 text-[#2d6a4f] mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
+                        </svg>
+                        {f}
+                      </li>
+                    ))}
+                  </ul>
+                  <a href="/login"
+                    className={`block text-center py-2.5 text-xs font-semibold rounded-lg transition-all ${plan.highlight ? 'bg-[#c9a84c] hover:bg-[#b8963f] text-[#0d1f1a]' : 'border border-white/10 text-white/60 hover:text-white hover:border-white/20'}`}>
+                    {plan.cta}
+                  </a>
+                </div>
+              ))}
+            </div>
+          </div>
+        </section>
+
+        {/* ── Com funciona ───────────────────────────────────────────────────── */}
+        <section className="border-t border-[#1a3a2a]/60 px-6 md:px-10 py-16" style={{ background: 'linear-gradient(to bottom, rgba(26,58,42,0.1), transparent)' }}>
+          <div className="max-w-3xl mx-auto">
+            <div className="text-center mb-10">
+              <p className="text-[#2d6a4f]/70 text-xs uppercase tracking-[0.4em] mb-2">Procés</p>
+              <h2 className="text-white font-black text-2xl">Com funciona</h2>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              {[
+                {
+                  step: '01',
+                  title: 'Omplis el qüestionari',
+                  desc: 'Respon les preguntes sobre el teu perfil, objectius i tolerància al risc. Pren menys de 5 minuts.',
+                },
+                {
+                  step: '02',
+                  title: 'Rebràs l\'informe',
+                  desc: 'El nostre sistema analitza el teu perfil i genera una cartera optimitzada amb projeccions personalitzades.',
+                },
+                {
+                  step: '03',
+                  title: 'Seguiment continuat',
+                  desc: 'Accedeix al teu dashboard privat, revisa l\'evolució i rep actualitzacions mensuals del teu assessor.',
+                },
+              ].map((s, i) => (
+                <div key={s.step} className="flex gap-4">
+                  <div className="flex flex-col items-center">
+                    <div className="w-8 h-8 rounded-full border border-[#c9a84c]/30 bg-[#c9a84c]/5 flex items-center justify-center flex-shrink-0">
+                      <span className="text-[#c9a84c] font-black text-xs">{s.step}</span>
+                    </div>
+                    {i < 2 && <div className="w-px flex-1 mt-2 bg-gradient-to-b from-[#c9a84c]/20 to-transparent hidden md:block" />}
+                  </div>
+                  <div className="pb-6">
+                    <h3 className="text-white font-semibold text-sm mb-1">{s.title}</h3>
+                    <p className="text-white/35 text-xs leading-relaxed">{s.desc}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+            <div className="text-center mt-8">
+              <a href="/login"
+                className="inline-flex items-center gap-2 px-8 py-3 bg-[#1a3a2a] border border-[#2d6a4f]/50 text-[#c9a84c] font-semibold text-sm rounded-sm hover:bg-[#1f4432] hover:border-[#2d6a4f] transition-colors duration-200">
+                Comença ara
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7l5 5m0 0l-5 5m5-5H6" />
+                </svg>
+              </a>
+            </div>
+          </div>
+        </section>
 
         {/* ── Stats bar ──────────────────────────────────────────────────────── */}
         <div className="border-t border-[#1a3a2a]/80 px-8 py-8 relative" style={{ background: 'linear-gradient(to bottom, rgba(26,58,42,0.15), transparent)' }}>

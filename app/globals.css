@@ -135,6 +135,13 @@ body {
   border-color: rgba(201,168,76,0.25);
 }
 
+/* Monthly report print styles */
+@media print {
+  .no-print { display: none !important; }
+  body { background: white !important; color: black !important; }
+  #monthly-report { box-shadow: none !important; }
+}
+
 /* Noise texture overlay */
 .noise-overlay::before {
   content: '';
