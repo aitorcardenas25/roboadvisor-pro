@@ -122,14 +122,54 @@ function CreateForm({ onCreate }: { onCreate: () => void }) {
 
 // ─── Holdings tab ─────────────────────────────────────────────────────────────
 
+const PRICE_SOURCE_BADGE: Record<string, { label: string; cls: string }> = {
+  fmp:     { label: 'FMP',     cls: 'text-emerald-400/70' },
+  manual:  { label: 'Manual',  cls: 'text-amber-400/70'   },
+  pending: { label: 'Pendent', cls: 'text-white/25'        },
+};
+
 function HoldingsTab({ portfolio, reload }: { portfolio: ClientPortfolio; reload: () => void }) {
-  const emptyH = { assetIsin: '', assetName: '', assetSymbol: '', assetCategory: '', broker: '', quantity: '', avgEntryPrice: '', currentPrice: '', currency: 'EUR', notes: '' };
-  const [form, setForm]     = useState(emptyH);
-  const [saving, setSaving] = useState(false);
+  const emptyH = { assetIsin: '', assetName: '', assetSymbol: '', assetCategory: '', broker: '', quantity: '', avgEntryPrice: '', currency: 'EUR', notes: '' };
+  const [form, setForm]         = useState(emptyH);
+  const [saving, setSaving]     = useState(false);
   const [editPrice, setEditPrice] = useState<{ id: string; value: string } | null>(null);
+  const [refreshing, setRefreshing] = useState(false);
+  const [fetchingPrice, setFetchingPrice] = useState(false);
+  const [fetchedPrice, setFetchedPrice]   = useState<number | null>(null);
+  const [priceSource, setPriceSource]     = useState<'fmp' | 'manual' | 'pending'>('pending');
+  const [priceMsg, setPriceMsg]   = useState('');
+  const [manualPrice, setManualPrice]     = useState('');
+  const [showManualPrice, setShowManualPrice] = useState(false);
+
+  async function lookupPrice(symbol: string) {
+    if (!symbol.trim()) return;
+    setFetchingPrice(true); setPriceMsg(''); setFetchedPrice(null); setShowManualPrice(false);
+    try {
+      const res  = await fetch(`/api/market-data/quote?symbol=${encodeURIComponent(symbol.trim())}`);
+      const data = await res.json() as { quote?: { price?: number } };
+      if (data.quote?.price) {
+        setFetchedPrice(data.quote.price);
+        setPriceSource('fmp');
+        setPriceMsg(`Preu obtingut: ${data.quote.price.toFixed(2)} € (FMP)`);
+        setShowManualPrice(false);
+      } else {
+        setPriceMsg('No s\'ha trobat el preu. Introdueix-lo manualment.');
+        setShowManualPrice(true);
+        setPriceSource('manual');
+      }
+    } catch {
+      setPriceMsg('Error de connexió. Introdueix el preu manualment.');
+      setShowManualPrice(true);
+      setPriceSource('manual');
+    } finally {
+      setFetchingPrice(false);
+    }
+  }
 
   async function addHolding(e: React.FormEvent) {
-    e.preventDefault(); setSaving(true);
+    e.preventDefault();
+    const price = fetchedPrice ?? (parseFloat(manualPrice) || 0);
+    setSaving(true);
     await patchPortfolio(portfolio.id, {
       action: 'add-holding',
       holding: {
@@ -140,18 +180,36 @@ function HoldingsTab({ portfolio, reload }: { portfolio: ClientPortfolio; reload
         broker:        form.broker,
         quantity:      parseFloat(form.quantity),
         avgEntryPrice: parseFloat(form.avgEntryPrice),
-        currentPrice:  parseFloat(form.currentPrice),
+        currentPrice:  price,
+        priceSource:   priceSource,
         currency:      form.currency,
         notes:         form.notes || undefined,
       },
     });
-    setSaving(false); reload(); setForm(emptyH);
+    setSaving(false); reload();
+    setForm(emptyH); setFetchedPrice(null); setManualPrice(''); setPriceMsg(''); setShowManualPrice(false); setPriceSource('pending');
   }
 
   async function savePrice(holdingId: string) {
     if (!editPrice) return;
     await patchPortfolio(portfolio.id, { action: 'update-price', holdingId, currentPrice: parseFloat(editPrice.value) });
     setEditPrice(null); reload();
+  }
+
+  async function refreshSinglePrice(h: { id: string; assetSymbol?: string }) {
+    if (!h.assetSymbol) return;
+    const res  = await fetch(`/api/market-data/quote?symbol=${encodeURIComponent(h.assetSymbol)}`);
+    const data = await res.json() as { quote?: { price?: number } };
+    if (data.quote?.price) {
+      await patchPortfolio(portfolio.id, { action: 'update-price', holdingId: h.id, currentPrice: data.quote.price });
+      reload();
+    }
+  }
+
+  async function refreshAllPrices() {
+    setRefreshing(true);
+    await patchPortfolio(portfolio.id, { action: 'refresh-prices' });
+    setRefreshing(false); reload();
   }
 
   async function removeH(holdingId: string) {
@@ -161,68 +219,85 @@ function HoldingsTab({ portfolio, reload }: { portfolio: ClientPortfolio; reload
   }
 
   const totalVal = portfolio.holdings.reduce((s, h) => s + h.currentPrice * h.quantity, 0);
+  const hasSymbols = portfolio.holdings.some(h => h.assetSymbol);
 
   return (
     <div className="space-y-4">
       {portfolio.holdings.length > 0 && (
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="text-white/30 text-xs uppercase tracking-wide border-b border-white/5">
-                {['Actiu', 'Qttat', 'P.Entrada', 'P.Actual', 'Valor', 'P&L', 'Pes', 'Actualitzat', ''].map(h => (
-                  <th key={h} className={`pb-2 font-medium ${h === 'Actiu' ? 'text-left' : 'text-right'}`}>{h}</th>
-                ))}
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-white/5">
-              {portfolio.holdings.map(h => {
-                const val    = h.currentPrice * h.quantity;
-                const cost   = h.avgEntryPrice * h.quantity;
-                const pnl    = val - cost;
-                const pnlPct = cost > 0 ? (pnl / cost) * 100 : 0;
-                const weight = totalVal > 0 ? (val / totalVal) * 100 : 0;
-                return (
-                  <tr key={h.id}>
-                    <td className="py-2.5 pr-4">
-                      <div className="text-white text-xs font-medium">{h.assetName}</div>
-                      <div className="text-white/30 text-xs">{h.assetSymbol || h.assetIsin || h.assetCategory}</div>
-                    </td>
-                    <td className="py-2.5 text-right text-white/60 text-xs">{h.quantity}</td>
-                    <td className="py-2.5 text-right text-white/60 text-xs">{fEur(h.avgEntryPrice)}</td>
-                    <td className="py-2.5 text-right text-xs">
-                      {editPrice?.id === h.id ? (
-                        <div className="flex items-center gap-1 justify-end">
-                          <input
-                            type="number" step="0.01"
-                            value={editPrice.value}
-                            onChange={e => setEditPrice({ id: h.id, value: e.target.value })}
-                            className="w-20 bg-[#0a0f0d] border border-[#c9a84c]/40 rounded px-2 py-1 text-white text-xs"
-                          />
-                          <button onClick={() => savePrice(h.id)} className="text-[#c9a84c] text-xs hover:underline">✓</button>
-                          <button onClick={() => setEditPrice(null)} className="text-white/30 text-xs hover:text-white">✕</button>
-                        </div>
-                      ) : (
-                        <button onClick={() => setEditPrice({ id: h.id, value: String(h.currentPrice) })}
-                          className="text-white hover:text-[#c9a84c] transition-colors" title="Clic per editar">
-                          {fEur(h.currentPrice)}
-                        </button>
-                      )}
-                    </td>
-                    <td className="py-2.5 text-right text-white text-xs font-medium">{fEur(val)}</td>
-                    <td className={`py-2.5 text-right text-xs font-medium ${pnl >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
-                      {fEur(pnl)} <span className="opacity-70">({fPct(pnlPct)})</span>
-                    </td>
-                    <td className="py-2.5 text-right text-white/40 text-xs">{weight.toFixed(1)}%</td>
-                    <td className="py-2.5 text-right text-white/30 text-xs">{h.priceLastUpdated || '—'}</td>
-                    <td className="py-2.5 pl-2">
-                      <button onClick={() => removeH(h.id)} className="text-white/20 hover:text-red-400 transition-colors text-xs">✕</button>
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
+        <>
+          {hasSymbols && (
+            <div className="flex justify-end">
+              <button onClick={refreshAllPrices} disabled={refreshing} className={BTN_GHOST}>
+                {refreshing ? '↻ Actualitzant...' : '↻ Actualitzar tots els preus'}
+              </button>
+            </div>
+          )}
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="text-white/30 text-xs uppercase tracking-wide border-b border-white/5">
+                  {['Actiu', 'Qttat', 'P.Entrada', 'P.Actual', 'Valor', 'P&L', 'Pes', 'Actualitzat', ''].map(h => (
+                    <th key={h} className={`pb-2 font-medium ${h === 'Actiu' ? 'text-left' : 'text-right'}`}>{h}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-white/5">
+                {portfolio.holdings.map(h => {
+                  const val    = h.currentPrice * h.quantity;
+                  const cost   = h.avgEntryPrice * h.quantity;
+                  const pnl    = val - cost;
+                  const pnlPct = cost > 0 ? (pnl / cost) * 100 : 0;
+                  const weight = totalVal > 0 ? (val / totalVal) * 100 : 0;
+                  const srcBadge = PRICE_SOURCE_BADGE[h.priceSource ?? 'pending'];
+                  return (
+                    <tr key={h.id}>
+                      <td className="py-2.5 pr-4">
+                        <div className="text-white text-xs font-medium">{h.assetName}</div>
+                        <div className="text-white/30 text-xs">{h.assetSymbol || h.assetIsin || h.assetCategory}</div>
+                      </td>
+                      <td className="py-2.5 text-right text-white/60 text-xs">{h.quantity}</td>
+                      <td className="py-2.5 text-right text-white/60 text-xs">{fEur(h.avgEntryPrice)}</td>
+                      <td className="py-2.5 text-right text-xs">
+                        {editPrice?.id === h.id ? (
+                          <div className="flex items-center gap-1 justify-end">
+                            <input
+                              type="number" step="0.01"
+                              value={editPrice.value}
+                              onChange={e => setEditPrice({ id: h.id, value: e.target.value })}
+                              className="w-20 bg-[#0a0f0d] border border-[#c9a84c]/40 rounded px-2 py-1 text-white text-xs"
+                            />
+                            <button onClick={() => savePrice(h.id)} className="text-[#c9a84c] text-xs hover:underline">✓</button>
+                            <button onClick={() => setEditPrice(null)} className="text-white/30 text-xs hover:text-white">✕</button>
+                          </div>
+                        ) : (
+                          <div className="flex items-center gap-1 justify-end">
+                            <button onClick={() => setEditPrice({ id: h.id, value: String(h.currentPrice) })}
+                              className="text-white hover:text-[#c9a84c] transition-colors" title="Clic per editar manualment">
+                              {fEur(h.currentPrice)}
+                            </button>
+                            <span className={`text-xs ${srcBadge.cls}`}>{srcBadge.label}</span>
+                            {h.assetSymbol && (
+                              <button onClick={() => refreshSinglePrice(h)} title="Actualitzar preu" className="text-white/20 hover:text-[#c9a84c] text-xs transition-colors">↻</button>
+                            )}
+                          </div>
+                        )}
+                      </td>
+                      <td className="py-2.5 text-right text-white text-xs font-medium">{fEur(val)}</td>
+                      <td className={`py-2.5 text-right text-xs font-medium ${pnl >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
+                        {fEur(pnl)} <span className="opacity-70">({fPct(pnlPct)})</span>
+                      </td>
+                      <td className="py-2.5 text-right text-white/40 text-xs">{weight.toFixed(1)}%</td>
+                      <td className="py-2.5 text-right text-white/30 text-xs">{h.priceLastUpdated || '—'}</td>
+                      <td className="py-2.5 pl-2">
+                        <button onClick={() => removeH(h.id)} className="text-white/20 hover:text-red-400 transition-colors text-xs">✕</button>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        </>
       )}
 
       <details className="group">
@@ -233,14 +308,49 @@ function HoldingsTab({ portfolio, reload }: { portfolio: ClientPortfolio; reload
             <div><label className={LABEL}>Ticker / ISIN</label><input value={form.assetIsin} onChange={e => setForm(p => ({ ...p, assetIsin: e.target.value }))} placeholder="IE00B4L5Y983" className={INPUT} /></div>
           </div>
           <div className="grid grid-cols-3 gap-3">
-            <div><label className={LABEL}>Símbol</label><input value={form.assetSymbol} onChange={e => setForm(p => ({ ...p, assetSymbol: e.target.value }))} placeholder="IWDA" className={INPUT} /></div>
+            <div>
+              <label className={LABEL}>Símbol (ticker)</label>
+              <input
+                value={form.assetSymbol}
+                onChange={e => { setForm(p => ({ ...p, assetSymbol: e.target.value })); setFetchedPrice(null); setPriceMsg(''); }}
+                onBlur={e => lookupPrice(e.target.value)}
+                placeholder="IWDA"
+                className={INPUT}
+              />
+            </div>
             <div><label className={LABEL}>Categoria *</label><input required value={form.assetCategory} onChange={e => setForm(p => ({ ...p, assetCategory: e.target.value }))} placeholder="ETF RV Global" className={INPUT} /></div>
             <div><label className={LABEL}>Broker *</label><input required value={form.broker} onChange={e => setForm(p => ({ ...p, broker: e.target.value }))} placeholder="Degiro" className={INPUT} /></div>
           </div>
-          <div className="grid grid-cols-4 gap-3">
+
+          {/* Price status */}
+          {(fetchingPrice || priceMsg) && (
+            <div className={`text-xs px-3 py-2 rounded-lg border ${
+              fetchedPrice
+                ? 'text-emerald-400 bg-emerald-500/10 border-emerald-500/20'
+                : priceMsg.includes('manualment')
+                  ? 'text-amber-400 bg-amber-500/10 border-amber-500/20'
+                  : 'text-white/40 bg-white/5 border-white/10'
+            }`}>
+              {fetchingPrice ? '↻ Buscant preu...' : priceMsg}
+            </div>
+          )}
+          {showManualPrice && (
+            <div>
+              <label className={LABEL}>Preu actual (manual) *</label>
+              <input
+                required={showManualPrice && !fetchedPrice}
+                type="number" step="0.01" min="0"
+                value={manualPrice}
+                onChange={e => setManualPrice(e.target.value)}
+                placeholder="0.00"
+                className={INPUT}
+              />
+            </div>
+          )}
+
+          <div className="grid grid-cols-3 gap-3">
             <div><label className={LABEL}>Quantitat *</label><input required type="number" step="0.001" min="0" value={form.quantity} onChange={e => setForm(p => ({ ...p, quantity: e.target.value }))} placeholder="10" className={INPUT} /></div>
             <div><label className={LABEL}>Preu entrada *</label><input required type="number" step="0.01" min="0" value={form.avgEntryPrice} onChange={e => setForm(p => ({ ...p, avgEntryPrice: e.target.value }))} placeholder="85.00" className={INPUT} /></div>
-            <div><label className={LABEL}>Preu actual *</label><input required type="number" step="0.01" min="0" value={form.currentPrice} onChange={e => setForm(p => ({ ...p, currentPrice: e.target.value }))} placeholder="92.50" className={INPUT} /></div>
             <div><label className={LABEL}>Moneda</label>
               <select value={form.currency} onChange={e => setForm(p => ({ ...p, currency: e.target.value }))} className={INPUT}>
                 <option value="EUR">EUR</option><option value="USD">USD</option><option value="GBP">GBP</option>
@@ -248,7 +358,9 @@ function HoldingsTab({ portfolio, reload }: { portfolio: ClientPortfolio; reload
             </div>
           </div>
           <div><label className={LABEL}>Notes</label><input value={form.notes} onChange={e => setForm(p => ({ ...p, notes: e.target.value }))} className={INPUT} /></div>
-          <button type="submit" disabled={saving} className={BTN_GOLD}>{saving ? 'Afegint...' : 'Afegir posició'}</button>
+          <button type="submit" disabled={saving || fetchingPrice || (!fetchedPrice && showManualPrice && !manualPrice)} className={BTN_GOLD}>
+            {saving ? 'Afegint...' : 'Afegir posició'}
+          </button>
         </form>
       </details>
     </div>
@@ -655,6 +767,8 @@ export default function ClientPortfoliosManager() {
   const [loading, setLoading]       = useState(true);
   const [selected, setSelected]     = useState<ClientPortfolio | null>(null);
   const [showCreate, setShowCreate] = useState(false);
+  const [search, setSearch]         = useState('');
+  const [deleting, setDeleting]     = useState<string | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -666,6 +780,26 @@ export default function ClientPortfoliosManager() {
   }, []);
 
   useEffect(() => { load(); }, [load]);
+
+  async function deletePortfolio(p: ClientPortfolio, e: React.MouseEvent) {
+    e.stopPropagation();
+    const warnings: string[] = [];
+    if (p.holdings.length > 0)     warnings.push(`${p.holdings.length} posicions`);
+    if (p.transactions.length > 0) warnings.push(`${p.transactions.length} transaccions`);
+    if (p.advisorNotes.length > 0) warnings.push(`${p.advisorNotes.length} notes`);
+    const detail = warnings.length > 0 ? `\n\nConté: ${warnings.join(', ')}.` : '';
+    if (!confirm(`Eliminar la cartera "${p.name}" de ${p.clientName}?${detail}\n\nAquesta acció no es pot desfer.`)) return;
+    setDeleting(p.id);
+    await fetch(`/api/admin/client-portfolios/${p.id}`, { method: 'DELETE' });
+    setDeleting(null);
+    load();
+  }
+
+  const filtered = portfolios.filter(p => {
+    if (!search.trim()) return true;
+    const q = search.toLowerCase();
+    return p.clientName.toLowerCase().includes(q) || p.clientId.toLowerCase().includes(q) || p.name.toLowerCase().includes(q);
+  });
 
   if (selected) {
     return <PortfolioDetail portfolio={selected} onBack={() => { setSelected(null); load(); }} />;
@@ -690,6 +824,16 @@ export default function ClientPortfoliosManager() {
 
       {showCreate && <CreateForm onCreate={() => { setShowCreate(false); load(); }} />}
 
+      {!loading && portfolios.length > 1 && (
+        <input
+          type="search"
+          value={search}
+          onChange={e => setSearch(e.target.value)}
+          placeholder="Cercar per client, ID o nom de cartera..."
+          className={INPUT + ' mb-4'}
+        />
+      )}
+
       {loading ? (
         <div className="flex items-center justify-center py-20">
           <div className="w-6 h-6 border-2 border-[#c9a84c] border-t-transparent rounded-full animate-spin" />
@@ -699,33 +843,44 @@ export default function ClientPortfoliosManager() {
           <div className="text-4xl mb-3">💼</div>
           <p>Sense carteres. Crea la primera cartera d&apos;un client.</p>
         </div>
+      ) : filtered.length === 0 ? (
+        <p className="text-center py-10 text-white/30 text-sm">Sense resultats per &ldquo;{search}&rdquo;</p>
       ) : (
         <div className="space-y-3">
-          {portfolios.map(p => {
+          {filtered.map(p => {
             const m = computeMetrics(p);
             return (
               <div key={p.id}
                 onClick={() => setSelected(p)}
-                className="bg-[#0d1f1a] border border-white/10 rounded-xl p-5 cursor-pointer hover:border-[#c9a84c]/30 transition-colors">
+                className="bg-[#0d1f1a] border border-white/10 rounded-xl p-5 cursor-pointer hover:border-[#c9a84c]/30 transition-colors group">
                 <div className="flex items-start justify-between gap-4">
                   <div className="min-w-0">
                     <p className="text-white font-semibold">{p.name}</p>
                     <p className="text-white/40 text-sm">{p.clientName} <span className="text-white/20">·</span> <span className="text-white/20 text-xs">{p.clientId}</span></p>
                     {p.nextFollowup && <p className="text-[#c9a84c]/50 text-xs mt-0.5">Seguiment: {p.nextFollowup}</p>}
                   </div>
-                  <div className="flex gap-6 flex-shrink-0 text-right">
-                    <div>
-                      <div className="text-white font-bold">{fEur(m.currentValue)}</div>
-                      <div className="text-white/30 text-xs">Valor actual</div>
+                  <div className="flex items-center gap-4 flex-shrink-0">
+                    <div className="flex gap-6 text-right">
+                      <div>
+                        <div className="text-white font-bold">{fEur(m.currentValue)}</div>
+                        <div className="text-white/30 text-xs">Valor actual</div>
+                      </div>
+                      <div>
+                        <div className={`font-bold ${m.pnlEur >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>{fPct(m.pnlPct)}</div>
+                        <div className="text-white/30 text-xs">{fEur(m.pnlEur)}</div>
+                      </div>
+                      <div>
+                        <div className="text-white/60 text-sm">{m.holdingCount}</div>
+                        <div className="text-white/30 text-xs">posicions</div>
+                      </div>
                     </div>
-                    <div>
-                      <div className={`font-bold ${m.pnlEur >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>{fPct(m.pnlPct)}</div>
-                      <div className="text-white/30 text-xs">{fEur(m.pnlEur)}</div>
-                    </div>
-                    <div>
-                      <div className="text-white/60 text-sm">{m.holdingCount}</div>
-                      <div className="text-white/30 text-xs">posicions</div>
-                    </div>
+                    <button
+                      onClick={e => deletePortfolio(p, e)}
+                      disabled={deleting === p.id}
+                      className="opacity-0 group-hover:opacity-100 text-white/20 hover:text-red-400 transition-all text-sm p-1"
+                      title="Eliminar cartera">
+                      {deleting === p.id ? '...' : '✕'}
+                    </button>
                   </div>
                 </div>
               </div>

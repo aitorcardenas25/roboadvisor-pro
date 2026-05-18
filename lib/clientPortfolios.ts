@@ -14,6 +14,7 @@ export interface ClientHolding {
   avgEntryPrice:    number;
   currentPrice:     number;
   priceLastUpdated: string;
+  priceSource?:     'fmp' | 'manual' | 'pending';
   currency:         string;
   notes?:           string;
   createdAt:        string;
@@ -149,6 +150,7 @@ function rowToHolding(r: Record<string, unknown>): ClientHolding {
     avgEntryPrice:    Number(r.avg_entry_price),
     currentPrice:     Number(r.current_price),
     priceLastUpdated: (r.price_last_updated as string) ?? '',
+    priceSource:      (r.price_source as 'fmp' | 'manual' | 'pending') || undefined,
     currency:         (r.currency as string) ?? 'EUR',
     notes:            r.notes as string | undefined,
     createdAt:        r.created_at as string,
@@ -333,7 +335,8 @@ export async function addHolding(
     asset_isin: h.assetIsin, asset_name: h.assetName, asset_symbol: h.assetSymbol ?? null,
     asset_category: h.assetCategory, broker: h.broker, quantity: h.quantity,
     avg_entry_price: h.avgEntryPrice, current_price: h.currentPrice,
-    price_last_updated: h.priceLastUpdated, currency: h.currency, notes: h.notes ?? null,
+    price_last_updated: h.priceLastUpdated, price_source: h.priceSource ?? 'pending',
+    currency: h.currency, notes: h.notes ?? null,
     created_at: now,
   });
   if (error) throw new Error(error.message);
@@ -341,16 +344,21 @@ export async function addHolding(
   return newH;
 }
 
-export async function updateHoldingPrice(holdingId: string, portfolioId: string, currentPrice: number): Promise<void> {
+export async function updateHoldingPrice(
+  holdingId: string,
+  portfolioId: string,
+  currentPrice: number,
+  priceSource: 'fmp' | 'manual' = 'manual',
+): Promise<void> {
   const today = new Date().toISOString().split('T')[0];
   const db    = getDb();
   if (!db) {
     const p = _portfolios.find(p => p.id === portfolioId);
     const h = p?.holdings.find(h => h.id === holdingId);
-    if (h) { h.currentPrice = currentPrice; h.priceLastUpdated = today; }
+    if (h) { h.currentPrice = currentPrice; h.priceLastUpdated = today; h.priceSource = priceSource; }
     return;
   }
-  await db.from('client_holdings').update({ current_price: currentPrice, price_last_updated: today }).eq('id', holdingId);
+  await db.from('client_holdings').update({ current_price: currentPrice, price_last_updated: today, price_source: priceSource }).eq('id', holdingId);
   await db.from('client_portfolios').update({ updated_at: new Date().toISOString() }).eq('id', portfolioId);
 }
 
