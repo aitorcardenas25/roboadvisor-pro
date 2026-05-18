@@ -8,6 +8,7 @@ import {
   addSnapshot, removeSnapshot,
   addAdvisorNote, updateAdvisorNote, removeAdvisorNote,
 } from '@/lib/clientPortfolios';
+import { fetchPriceBatch } from '@/lib/marketDataService';
 import { z } from 'zod';
 
 type S = { user?: { role?: string } } | null;
@@ -63,6 +64,7 @@ const PatchSchema = z.discriminatedUnion('action', [
   z.object({ action: z.literal('add-advisor-note'),    text: z.string().min(1).max(2000), author: z.string().default('Admin Factor OTC'), isVisibleToClient: z.boolean().default(true) }),
   z.object({ action: z.literal('update-advisor-note'), noteId: z.string(), text: z.string().optional(), isVisibleToClient: z.boolean().optional() }),
   z.object({ action: z.literal('remove-advisor-note'), noteId: z.string() }),
+  z.object({ action: z.literal('refresh-prices') }),
 ]);
 
 export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
@@ -112,6 +114,21 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     case 'remove-advisor-note':
       await removeAdvisorNote(op.noteId, id);
       return NextResponse.json({ ok: true });
+    case 'refresh-prices': {
+      const symbols = portfolio.holdings
+        .filter(h => h.assetSymbol)
+        .map(h => h.assetSymbol!);
+      if (symbols.length > 0) {
+        const prices = await fetchPriceBatch(symbols);
+        await Promise.all(
+          portfolio.holdings
+            .filter(h => h.assetSymbol && prices[h.assetSymbol])
+            .map(h => updateHoldingPrice(h.id, id, prices[h.assetSymbol!]!.price, 'fmp')),
+        );
+      }
+      const updated = await getPortfolioById(id);
+      return NextResponse.json({ portfolio: updated, updated: symbols.length });
+    }
   }
 }
 
