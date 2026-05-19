@@ -21,7 +21,7 @@ export async function POST(req: NextRequest) {
 
   const session = await getServerSession(authOptions);
   const user = session?.user as { role?: string; id?: string; email?: string } | undefined;
-  if (user?.role !== 'admin' && user?.role !== 'authorized')
+  if (user?.role !== 'admin' && user?.role !== 'client')
     return NextResponse.json({ error: 'No autoritzat.' }, { status: 403 });
 
   const v = await validateBody(req, SaveReportSchema);

@@ -6,7 +6,7 @@ import { getActiveStocks }  from '@/lib/stockTracker';
 export async function GET() {
   const session = await getServerSession(authOptions);
   const role = (session?.user as { role?: string })?.role;
-  if (role !== 'authorized' && role !== 'admin') {
+  if (role !== 'client' && role !== 'admin') {
     return NextResponse.json({ error: 'No autoritzat.' }, { status: 403 });
   }
   return NextResponse.json({ stocks: getActiveStocks() });

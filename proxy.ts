@@ -1,7 +1,7 @@
 import { withAuth } from 'next-auth/middleware';
 import { NextResponse } from 'next/server';
 
-const CLIENT_ROLES = new Set(['authorized', 'premium', 'admin']);
+const CLIENT_ROLES = new Set(['client', 'admin']);
 
 export default withAuth(
   function proxy(req) {

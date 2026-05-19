@@ -7,7 +7,7 @@ import { getQuote }          from '@/services/quotes';
 export async function GET(_: NextRequest, { params }: { params: Promise<{ symbol: string }> }) {
   const session = await getServerSession(authOptions);
   const role = (session?.user as { role?: string })?.role;
-  if (role !== 'authorized' && role !== 'admin') {
+  if (role !== 'client' && role !== 'admin') {
     return NextResponse.json({ error: 'No autoritzat.' }, { status: 403 });
   }
 
