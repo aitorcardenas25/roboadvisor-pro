@@ -57,8 +57,8 @@ export async function getAllStockReports(): Promise<StockReport[]> {
 }
 
 export async function getPublishedStockReports(role: string): Promise<StockReport[]> {
-  const canSeePremium = role === 'premium' || role === 'admin';
-  const canSeeClients = canSeePremium || role === 'authorized';
+  const canSeePremium = role === 'admin';
+  const canSeeClients = role === 'client' || role === 'admin';
 
   const db = getDb();
   if (!db) {

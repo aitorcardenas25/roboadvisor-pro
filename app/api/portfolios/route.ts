@@ -4,7 +4,7 @@ import { authOptions } from '@/lib/authOptions';
 import { getActivePortfolios } from '@/lib/adminPortfolios';
 
 function isAuthorized(s: { user?: { role?: string } } | null) {
-  return s?.user?.role === 'authorized' || s?.user?.role === 'admin';
+  return s?.user?.role === 'client' || s?.user?.role === 'admin';
 }
 
 export async function GET() {

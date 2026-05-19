@@ -7,7 +7,7 @@ import {
   PieChart, Pie, Cell, Tooltip as ReTT, ResponsiveContainer,
   LineChart, Line, XAxis, YAxis, CartesianGrid,
 } from 'recharts';
-import type { ClientPortfolio, ClientTransaction, OperationType } from '@/lib/clientPortfolios';
+import type { ClientPortfolio, ClientHolding, ClientTransaction, OperationType } from '@/lib/clientPortfolios';
 import { computeMetrics } from '@/lib/clientPortfolios';
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
@@ -97,6 +97,7 @@ export default function ClientCarteraPage() {
 
   if (!portfolio) return <EmptyState name={userName} />;
 
+  const isPendingH  = (h: ClientHolding) => h.priceSource === 'pending' || (h.currentPrice === 0 && h.quantity === 0);
   const metrics     = computeMetrics(portfolio);
   const totalValue  = metrics.currentValue;
 
@@ -276,36 +277,53 @@ export default function ClientCarteraPage() {
               </div>
             ) : (
               portfolio.holdings.map((h, i) => {
+                const isPending = isPendingH(h);
                 const val    = h.currentPrice * h.quantity;
                 const cost   = h.avgEntryPrice * h.quantity;
                 const pnl    = val - cost;
                 const pnlPct = cost > 0 ? (pnl / cost) * 100 : 0;
                 const weight = totalValue > 0 ? (val / totalValue) * 100 : 0;
+                const srcBadge = h.priceSource === 'fmp' ? { text: 'FMP', cls: 'text-emerald-400/60' }
+                  : h.priceSource === 'manual' ? { text: 'Manual', cls: 'text-amber-400/60' }
+                  : { text: 'Pendent', cls: 'text-white/25' };
                 return (
-                  <div key={h.id} className="bg-[#0d1f1a] border border-white/10 rounded-xl p-5">
+                  <div key={h.id} className={`bg-[#0d1f1a] border rounded-xl p-5 ${isPending ? 'border-white/5 opacity-70' : 'border-white/10'}`}>
                     <div className="flex items-start justify-between gap-4 mb-3">
                       <div>
                         <div className="flex items-center gap-2 mb-0.5">
                           <div className="w-2 h-2 rounded-full flex-shrink-0" style={{ backgroundColor: ASSET_COLORS[i % ASSET_COLORS.length] }} />
                           <span className="text-white font-semibold text-sm">{h.assetName}</span>
                           {h.assetSymbol && <span className="text-white/30 text-xs">({h.assetSymbol})</span>}
+                          <span className={`text-xs ${srcBadge.cls}`}>{srcBadge.text}</span>
                         </div>
-                        <p className="text-white/30 text-xs ml-4">{h.assetCategory} · {h.broker}</p>
+                        <p className="text-white/30 text-xs ml-4">{h.assetCategory}{h.broker ? ` · ${h.broker}` : ''}</p>
                       </div>
-                      <div className={`text-sm font-bold flex-shrink-0 ${pnl >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
-                        {fPct(pnlPct)}
+                      {isPending ? (
+                        <span className="text-xs px-2 py-0.5 rounded-full bg-white/5 text-white/30 flex-shrink-0">Pendent de compra</span>
+                      ) : (
+                        <div className={`text-sm font-bold flex-shrink-0 ${pnl >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
+                          {fPct(pnlPct)}
+                        </div>
+                      )}
+                    </div>
+                    {isPending ? (
+                      <div className="text-center py-3 text-white/25 text-xs">
+                        Posició proposada — l&apos;assessor registrarà les dades quan confirmis la compra
                       </div>
-                    </div>
-                    <div className="grid grid-cols-4 gap-3 text-center">
-                      <div><div className="text-white font-semibold text-sm">{fEur(val)}</div><div className="text-white/30 text-xs">Valor actual</div></div>
-                      <div><div className={`font-semibold text-sm ${pnl >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>{fEur(pnl)}</div><div className="text-white/30 text-xs">Guany/Pèrdua</div></div>
-                      <div><div className="text-white font-semibold text-sm">{fEur(h.avgEntryPrice)}</div><div className="text-white/30 text-xs">Preu entrada</div></div>
-                      <div><div className="text-white font-semibold text-sm">{weight.toFixed(1)}%</div><div className="text-white/30 text-xs">Pes cartera</div></div>
-                    </div>
-                    <div className="mt-3 h-1.5 bg-white/5 rounded-full overflow-hidden">
-                      <div className="h-full rounded-full" style={{ width: `${weight}%`, backgroundColor: ASSET_COLORS[i % ASSET_COLORS.length] }} />
-                    </div>
-                    {h.priceLastUpdated && <p className="text-white/20 text-xs mt-2">Preu actualitzat: {h.priceLastUpdated}</p>}
+                    ) : (
+                      <>
+                        <div className="grid grid-cols-4 gap-3 text-center">
+                          <div><div className="text-white font-semibold text-sm">{fEur(val)}</div><div className="text-white/30 text-xs">Valor actual</div></div>
+                          <div><div className={`font-semibold text-sm ${pnl >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>{fEur(pnl)}</div><div className="text-white/30 text-xs">Guany/Pèrdua</div></div>
+                          <div><div className="text-white font-semibold text-sm">{fEur(h.avgEntryPrice)}</div><div className="text-white/30 text-xs">Preu entrada</div></div>
+                          <div><div className="text-white font-semibold text-sm">{weight.toFixed(1)}%</div><div className="text-white/30 text-xs">Pes cartera</div></div>
+                        </div>
+                        <div className="mt-3 h-1.5 bg-white/5 rounded-full overflow-hidden">
+                          <div className="h-full rounded-full" style={{ width: `${weight}%`, backgroundColor: ASSET_COLORS[i % ASSET_COLORS.length] }} />
+                        </div>
+                        {h.priceLastUpdated && <p className="text-white/20 text-xs mt-2">Preu actualitzat: {h.priceLastUpdated}</p>}
+                      </>
+                    )}
                   </div>
                 );
               })

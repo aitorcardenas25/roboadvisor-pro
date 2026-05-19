@@ -40,7 +40,7 @@ export async function POST(req: NextRequest) {
 
   const user = createAuthorizedUser({
     username, password, name, email,
-    role: (role ?? 'authorized') as UserRole,
+    role: (role ?? 'client') as UserRole,
     active: true,
     subscriptionPlan:   'free',
     subscriptionStatus: 'active',

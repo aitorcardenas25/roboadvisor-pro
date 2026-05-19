@@ -97,6 +97,7 @@ function Select({ value, onChange, options }: {
 
 interface ClientForm {
   clientName: string; clientEmail: string;
+  clientId?: string;
   investorProfile: string; objective: string;
   horizon: number; initialAmount: number; monthlyAmount: number;
   adminNote: string;
@@ -124,6 +125,11 @@ function StepClientData({ form, setForm }: { form: ClientForm; setForm: (f: Clie
           <Label>Email</Label>
           <Input value={form.clientEmail} onChange={set('clientEmail')} placeholder="joan@exemple.cat" type="email" />
         </div>
+      </div>
+      <div>
+        <Label>ID d&apos;usuari (username del client)</Label>
+        <Input value={form.clientId ?? ''} onChange={set('clientId')} placeholder="joan.garcia (el que té per fer login)" />
+        <p className="text-white/25 text-xs font-sans mt-1">Opcional. Si s&apos;especifica, podràs crear la cartera activa directament des d&apos;aquí.</p>
       </div>
       <div className="grid grid-cols-2 gap-4">
         <div>
@@ -478,6 +484,9 @@ export default function ManualReportBuilder() {
   });
   const [assets, setAssets] = useState<AssetRow[]>([]);
   const [genStep, setGenStep] = useState<'idle' | 'rendering' | 'done' | 'error'>('idle');
+  const [portfolioCreated, setPortfolioCreated]     = useState(false);
+  const [creatingPortfolio, setCreatingPortfolio]   = useState(false);
+  const [createdPortfolioId, setCreatedPortfolioId] = useState<string | null>(null);
 
   const canNext = useMemo(() => {
     if (step === 1) return !!form.clientName && !!form.clientEmail && form.horizon > 0 && form.initialAmount > 0;
@@ -526,6 +535,32 @@ export default function ManualReportBuilder() {
       setError(err instanceof Error ? err.message : 'Error generant l\'informe. Torna-ho a intentar.');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const createPortfolioFromReport = async () => {
+    setCreatingPortfolio(true);
+    try {
+      const clientId = form.clientId?.trim() || form.clientEmail.split('@')[0];
+      const res = await fetch('/api/admin/client-portfolios', {
+        method:  'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          clientId,
+          clientName:      form.clientName,
+          name:            `Cartera ${form.clientName}`,
+          description:     `Perfil ${form.investorProfile} · ${form.objective} · Horitzó ${form.horizon} anys`,
+          recommendations: form.adminNote || '',
+          reportAssets:    assets.map(({ _key: _, ...rest }) => rest),
+        }),
+      });
+      if (res.ok) {
+        const data = await res.json() as { portfolio: { id: string } };
+        setCreatedPortfolioId(data.portfolio?.id ?? null);
+        setPortfolioCreated(true);
+      }
+    } catch { /* silent */ } finally {
+      setCreatingPortfolio(false);
     }
   };
 
@@ -592,6 +627,45 @@ export default function ManualReportBuilder() {
           </button>
         )}
       </div>
+
+      {/* Create portfolio from report */}
+      {step === 3 && genStep === 'done' && (
+        <div className="mt-6 bg-[#0d1f1a] border border-[#c9a84c]/25 rounded-2xl p-6">
+          {portfolioCreated ? (
+            <div className="flex items-center gap-3">
+              <span className="text-emerald-400 text-xl">✓</span>
+              <div>
+                <p className="text-white font-semibold text-sm">Cartera activa creada</p>
+                <p className="text-white/40 text-xs mt-0.5">
+                  Ara pots anar a &ldquo;Carteres Clients&rdquo; per registrar les compres reals.
+                  {createdPortfolioId && <span className="text-white/25 ml-1 font-mono">({createdPortfolioId})</span>}
+                </p>
+              </div>
+            </div>
+          ) : (
+            <>
+              <p className="text-white/60 text-sm mb-1 font-sans">
+                <span className="text-[#c9a84c] font-semibold">Pas opcional:</span> Crear cartera de seguiment
+              </p>
+              <p className="text-white/35 text-xs mb-4 font-sans leading-relaxed">
+                Crea la cartera activa del client amb els actius proposats a l&apos;informe.
+                Cada actiu s&apos;afegirà com a &ldquo;pendent de compra&rdquo; fins que l&apos;admin registri les compres reals.
+              </p>
+              {!form.clientId && (
+                <p className="text-amber-400/70 text-xs mb-3 font-sans">
+                  Atenció: no has especificat l&apos;ID d&apos;usuari del client. S&apos;usarà el prefix de l&apos;email com a clientId.
+                </p>
+              )}
+              <button
+                onClick={createPortfolioFromReport}
+                disabled={creatingPortfolio}
+                className="px-5 py-2.5 bg-[#c9a84c] hover:bg-[#b8963f] text-[#0d1f1a] font-bold text-sm rounded-xl disabled:opacity-50 transition-colors font-sans">
+                {creatingPortfolio ? 'Creant cartera...' : '💼 Crear cartera activa'}
+              </button>
+            </>
+          )}
+        </div>
+      )}
     </div>
   );
 }
