@@ -281,7 +281,7 @@ const CRYPTO_RE = /^[A-Z0-9]{2,20}(\/[A-Z]{2,10})?$/i;
 export async function GET(req: NextRequest) {
   const session = await getServerSession(authOptions);
   const role = (session?.user as { role?: string })?.role;
-  if (role !== 'authorized' && role !== 'admin') {
+  if (role !== 'client' && role !== 'admin') {
     return NextResponse.json({ error: 'No autoritzat.' }, { status: 403 });
   }
 

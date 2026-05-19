@@ -129,7 +129,8 @@ const PRICE_SOURCE_BADGE: Record<string, { label: string; cls: string }> = {
 };
 
 function HoldingsTab({ portfolio, reload }: { portfolio: ClientPortfolio; reload: () => void }) {
-  const emptyH = { assetIsin: '', assetName: '', assetSymbol: '', assetCategory: '', broker: '', quantity: '', avgEntryPrice: '', currency: 'EUR', notes: '' };
+  const today = new Date().toISOString().split('T')[0];
+  const emptyH = { assetIsin: '', assetName: '', assetSymbol: '', assetCategory: '', broker: '', quantity: '', avgEntryPrice: '', commission: '', currency: 'EUR', notes: '', date: today };
   const [form, setForm]         = useState(emptyH);
   const [saving, setSaving]     = useState(false);
   const [editPrice, setEditPrice] = useState<{ id: string; value: string } | null>(null);
@@ -168,7 +169,10 @@ function HoldingsTab({ portfolio, reload }: { portfolio: ClientPortfolio; reload
 
   async function addHolding(e: React.FormEvent) {
     e.preventDefault();
-    const price = fetchedPrice ?? (parseFloat(manualPrice) || 0);
+    const price      = fetchedPrice ?? (parseFloat(manualPrice) || 0);
+    const qty        = parseFloat(form.quantity);
+    const entryPrice = parseFloat(form.avgEntryPrice);
+    const total      = Math.round(qty * entryPrice * 100) / 100;
     setSaving(true);
     await patchPortfolio(portfolio.id, {
       action: 'add-holding',
@@ -178,16 +182,34 @@ function HoldingsTab({ portfolio, reload }: { portfolio: ClientPortfolio; reload
         assetSymbol:   form.assetSymbol || undefined,
         assetCategory: form.assetCategory,
         broker:        form.broker,
-        quantity:      parseFloat(form.quantity),
-        avgEntryPrice: parseFloat(form.avgEntryPrice),
+        quantity:      qty,
+        avgEntryPrice: entryPrice,
         currentPrice:  price,
         priceSource:   priceSource,
         currency:      form.currency,
         notes:         form.notes || undefined,
       },
     });
+    // Register buy transaction automatically
+    if (form.date && qty > 0) {
+      await patchPortfolio(portfolio.id, {
+        action: 'add-transaction',
+        transaction: {
+          operationType: 'buy',
+          ticker:        form.assetSymbol || undefined,
+          assetName:     form.assetName,
+          date:          form.date,
+          quantity:      qty,
+          priceEur:      entryPrice,
+          totalEur:      total,
+          commission:    parseFloat(form.commission) || 0,
+          broker:        form.broker,
+          notes:         form.notes || undefined,
+        },
+      });
+    }
     setSaving(false); reload();
-    setForm(emptyH); setFetchedPrice(null); setManualPrice(''); setPriceMsg(''); setShowManualPrice(false); setPriceSource('pending');
+    setForm({ ...emptyH, date: today }); setFetchedPrice(null); setManualPrice(''); setPriceMsg(''); setShowManualPrice(false); setPriceSource('pending');
   }
 
   async function savePrice(holdingId: string) {
@@ -218,98 +240,126 @@ function HoldingsTab({ portfolio, reload }: { portfolio: ClientPortfolio; reload
     reload();
   }
 
-  const totalVal = portfolio.holdings.reduce((s, h) => s + h.currentPrice * h.quantity, 0);
+  const activeHoldings  = portfolio.holdings.filter(h => h.quantity > 0);
+  const pendingHoldings = portfolio.holdings.filter(h => h.quantity === 0);
+  const totalVal   = activeHoldings.reduce((s, h) => s + h.currentPrice * h.quantity, 0);
   const hasSymbols = portfolio.holdings.some(h => h.assetSymbol);
 
   return (
     <div className="space-y-4">
       {portfolio.holdings.length > 0 && (
         <>
-          {hasSymbols && (
-            <div className="flex justify-end">
+          <div className="flex items-center justify-between">
+            <span className="text-white/40 text-xs">{activeHoldings.length} posicions actives{pendingHoldings.length > 0 ? ` · ${pendingHoldings.length} proposades` : ''}</span>
+            {hasSymbols && (
               <button onClick={refreshAllPrices} disabled={refreshing} className={BTN_GHOST}>
                 {refreshing ? '↻ Actualitzant...' : '↻ Actualitzar tots els preus'}
               </button>
+            )}
+          </div>
+
+          {/* Active holdings table */}
+          {activeHoldings.length > 0 && (
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="text-white/30 text-xs uppercase tracking-wide border-b border-white/5">
+                    {['Actiu', 'Qttat', 'P.Compra', 'P.Actual', 'Valor', 'P&L', 'Pes', 'Actualitzat', ''].map(h => (
+                      <th key={h} className={`pb-2 font-medium ${h === 'Actiu' ? 'text-left' : 'text-right'}`}>{h}</th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-white/5">
+                  {activeHoldings.map(h => {
+                    const val      = h.currentPrice * h.quantity;
+                    const cost     = h.avgEntryPrice * h.quantity;
+                    const pnl      = val - cost;
+                    const pnlPct   = cost > 0 ? (pnl / cost) * 100 : 0;
+                    const weight   = totalVal > 0 ? (val / totalVal) * 100 : 0;
+                    const srcBadge = PRICE_SOURCE_BADGE[h.priceSource ?? 'pending'];
+                    return (
+                      <tr key={h.id}>
+                        <td className="py-2.5 pr-4">
+                          <div className="text-white text-xs font-medium">{h.assetName}</div>
+                          <div className="text-white/30 text-xs">{h.assetSymbol || h.assetIsin || h.assetCategory}</div>
+                        </td>
+                        <td className="py-2.5 text-right text-white/60 text-xs">{h.quantity}</td>
+                        <td className="py-2.5 text-right text-white/60 text-xs">{fEur(h.avgEntryPrice)}</td>
+                        <td className="py-2.5 text-right text-xs">
+                          {editPrice?.id === h.id ? (
+                            <div className="flex items-center gap-1 justify-end">
+                              <input
+                                type="number" step="0.01"
+                                value={editPrice.value}
+                                onChange={e => setEditPrice({ id: h.id, value: e.target.value })}
+                                className="w-20 bg-[#0a0f0d] border border-[#c9a84c]/40 rounded px-2 py-1 text-white text-xs"
+                              />
+                              <button onClick={() => savePrice(h.id)} className="text-[#c9a84c] text-xs hover:underline">✓</button>
+                              <button onClick={() => setEditPrice(null)} className="text-white/30 text-xs hover:text-white">✕</button>
+                            </div>
+                          ) : (
+                            <div className="flex items-center gap-1 justify-end">
+                              <button onClick={() => setEditPrice({ id: h.id, value: String(h.currentPrice) })}
+                                className="text-white hover:text-[#c9a84c] transition-colors" title="Clic per editar manualment">
+                                {fEur(h.currentPrice)}
+                              </button>
+                              <span className={`text-xs ${srcBadge.cls}`}>{srcBadge.label}</span>
+                              {h.assetSymbol && (
+                                <button onClick={() => refreshSinglePrice(h)} title="Actualitzar preu" className="text-white/20 hover:text-[#c9a84c] text-xs transition-colors">↻</button>
+                              )}
+                            </div>
+                          )}
+                        </td>
+                        <td className="py-2.5 text-right text-white text-xs font-medium">{fEur(val)}</td>
+                        <td className={`py-2.5 text-right text-xs font-medium ${pnl >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
+                          {fEur(pnl)} <span className="opacity-70">({fPct(pnlPct)})</span>
+                        </td>
+                        <td className="py-2.5 text-right text-white/40 text-xs">{weight.toFixed(1)}%</td>
+                        <td className="py-2.5 text-right text-white/30 text-xs">{h.priceLastUpdated || '—'}</td>
+                        <td className="py-2.5 pl-2">
+                          <button onClick={() => removeH(h.id)} className="text-white/20 hover:text-red-400 transition-colors text-xs">✕</button>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
             </div>
           )}
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="text-white/30 text-xs uppercase tracking-wide border-b border-white/5">
-                  {['Actiu', 'Qttat', 'P.Entrada', 'P.Actual', 'Valor', 'P&L', 'Pes', 'Actualitzat', ''].map(h => (
-                    <th key={h} className={`pb-2 font-medium ${h === 'Actiu' ? 'text-left' : 'text-right'}`}>{h}</th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-white/5">
-                {portfolio.holdings.map(h => {
-                  const val    = h.currentPrice * h.quantity;
-                  const cost   = h.avgEntryPrice * h.quantity;
-                  const pnl    = val - cost;
-                  const pnlPct = cost > 0 ? (pnl / cost) * 100 : 0;
-                  const weight = totalVal > 0 ? (val / totalVal) * 100 : 0;
-                  const srcBadge = PRICE_SOURCE_BADGE[h.priceSource ?? 'pending'];
-                  return (
-                    <tr key={h.id}>
-                      <td className="py-2.5 pr-4">
-                        <div className="text-white text-xs font-medium">{h.assetName}</div>
-                        <div className="text-white/30 text-xs">{h.assetSymbol || h.assetIsin || h.assetCategory}</div>
-                      </td>
-                      <td className="py-2.5 text-right text-white/60 text-xs">{h.quantity}</td>
-                      <td className="py-2.5 text-right text-white/60 text-xs">{fEur(h.avgEntryPrice)}</td>
-                      <td className="py-2.5 text-right text-xs">
-                        {editPrice?.id === h.id ? (
-                          <div className="flex items-center gap-1 justify-end">
-                            <input
-                              type="number" step="0.01"
-                              value={editPrice.value}
-                              onChange={e => setEditPrice({ id: h.id, value: e.target.value })}
-                              className="w-20 bg-[#0a0f0d] border border-[#c9a84c]/40 rounded px-2 py-1 text-white text-xs"
-                            />
-                            <button onClick={() => savePrice(h.id)} className="text-[#c9a84c] text-xs hover:underline">✓</button>
-                            <button onClick={() => setEditPrice(null)} className="text-white/30 text-xs hover:text-white">✕</button>
-                          </div>
-                        ) : (
-                          <div className="flex items-center gap-1 justify-end">
-                            <button onClick={() => setEditPrice({ id: h.id, value: String(h.currentPrice) })}
-                              className="text-white hover:text-[#c9a84c] transition-colors" title="Clic per editar manualment">
-                              {fEur(h.currentPrice)}
-                            </button>
-                            <span className={`text-xs ${srcBadge.cls}`}>{srcBadge.label}</span>
-                            {h.assetSymbol && (
-                              <button onClick={() => refreshSinglePrice(h)} title="Actualitzar preu" className="text-white/20 hover:text-[#c9a84c] text-xs transition-colors">↻</button>
-                            )}
-                          </div>
-                        )}
-                      </td>
-                      <td className="py-2.5 text-right text-white text-xs font-medium">{fEur(val)}</td>
-                      <td className={`py-2.5 text-right text-xs font-medium ${pnl >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
-                        {fEur(pnl)} <span className="opacity-70">({fPct(pnlPct)})</span>
-                      </td>
-                      <td className="py-2.5 text-right text-white/40 text-xs">{weight.toFixed(1)}%</td>
-                      <td className="py-2.5 text-right text-white/30 text-xs">{h.priceLastUpdated || '—'}</td>
-                      <td className="py-2.5 pl-2">
-                        <button onClick={() => removeH(h.id)} className="text-white/20 hover:text-red-400 transition-colors text-xs">✕</button>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
+
+          {/* Proposed (pending) holdings */}
+          {pendingHoldings.length > 0 && (
+            <div>
+              <p className="text-white/30 text-xs uppercase tracking-wide mb-2">Propostes de cartera (pendents de compra)</p>
+              <div className="space-y-1.5">
+                {pendingHoldings.map(h => (
+                  <div key={h.id} className="flex items-center justify-between bg-white/[0.02] border border-white/5 rounded-lg px-4 py-2.5 opacity-60">
+                    <div>
+                      <span className="text-white text-xs font-medium">{h.assetName}</span>
+                      {h.assetSymbol && <span className="text-white/30 text-xs ml-1.5">({h.assetSymbol})</span>}
+                      <span className="text-white/20 text-xs ml-2">{h.assetCategory}</span>
+                      {h.notes && <span className="text-[#c9a84c]/50 text-xs ml-2">{h.notes.split('·')[0]?.trim()}</span>}
+                    </div>
+                    <button onClick={() => removeH(h.id)} className="text-white/20 hover:text-red-400 transition-colors text-xs ml-4">✕</button>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
         </>
       )}
 
       <details className="group">
-        <summary className="cursor-pointer text-[#c9a84c]/70 text-xs hover:text-[#c9a84c] transition-colors select-none">+ Afegir posició</summary>
+        <summary className="cursor-pointer text-[#c9a84c]/70 text-xs hover:text-[#c9a84c] transition-colors select-none">+ Registrar compra real</summary>
         <form onSubmit={addHolding} className="mt-3 bg-[#080e0b] border border-white/5 rounded-xl p-4 space-y-3">
+          <p className="text-white/30 text-xs">Introdueix les dades reals de la compra. El preu actual s&apos;obtindrà automàticament via API.</p>
           <div className="grid grid-cols-2 gap-3">
             <div><label className={LABEL}>Nom actiu *</label><input required value={form.assetName} onChange={e => setForm(p => ({ ...p, assetName: e.target.value }))} placeholder="iShares MSCI World" className={INPUT} /></div>
-            <div><label className={LABEL}>Ticker / ISIN</label><input value={form.assetIsin} onChange={e => setForm(p => ({ ...p, assetIsin: e.target.value }))} placeholder="IE00B4L5Y983" className={INPUT} /></div>
+            <div><label className={LABEL}>ISIN</label><input value={form.assetIsin} onChange={e => setForm(p => ({ ...p, assetIsin: e.target.value }))} placeholder="IE00B4L5Y983" className={INPUT} /></div>
           </div>
           <div className="grid grid-cols-3 gap-3">
             <div>
-              <label className={LABEL}>Símbol (ticker)</label>
+              <label className={LABEL}>Ticker (símbol API)</label>
               <input
                 value={form.assetSymbol}
                 onChange={e => { setForm(p => ({ ...p, assetSymbol: e.target.value })); setFetchedPrice(null); setPriceMsg(''); }}
@@ -322,7 +372,7 @@ function HoldingsTab({ portfolio, reload }: { portfolio: ClientPortfolio; reload
             <div><label className={LABEL}>Broker *</label><input required value={form.broker} onChange={e => setForm(p => ({ ...p, broker: e.target.value }))} placeholder="Degiro" className={INPUT} /></div>
           </div>
 
-          {/* Price status */}
+          {/* Live price status */}
           {(fetchingPrice || priceMsg) && (
             <div className={`text-xs px-3 py-2 rounded-lg border ${
               fetchedPrice
@@ -331,12 +381,12 @@ function HoldingsTab({ portfolio, reload }: { portfolio: ClientPortfolio; reload
                   ? 'text-amber-400 bg-amber-500/10 border-amber-500/20'
                   : 'text-white/40 bg-white/5 border-white/10'
             }`}>
-              {fetchingPrice ? '↻ Buscant preu...' : priceMsg}
+              {fetchingPrice ? '↻ Buscant preu actual...' : priceMsg}
             </div>
           )}
           {showManualPrice && (
             <div>
-              <label className={LABEL}>Preu actual (manual) *</label>
+              <label className={LABEL}>Preu actual de mercat (manual) *</label>
               <input
                 required={showManualPrice && !fetchedPrice}
                 type="number" step="0.01" min="0"
@@ -348,18 +398,28 @@ function HoldingsTab({ portfolio, reload }: { portfolio: ClientPortfolio; reload
             </div>
           )}
 
-          <div className="grid grid-cols-3 gap-3">
-            <div><label className={LABEL}>Quantitat *</label><input required type="number" step="0.001" min="0" value={form.quantity} onChange={e => setForm(p => ({ ...p, quantity: e.target.value }))} placeholder="10" className={INPUT} /></div>
-            <div><label className={LABEL}>Preu entrada *</label><input required type="number" step="0.01" min="0" value={form.avgEntryPrice} onChange={e => setForm(p => ({ ...p, avgEntryPrice: e.target.value }))} placeholder="85.00" className={INPUT} /></div>
+          <div className="grid grid-cols-4 gap-3">
+            <div><label className={LABEL}>Data compra *</label><input required type="date" value={form.date} onChange={e => setForm(p => ({ ...p, date: e.target.value }))} className={INPUT} /></div>
+            <div><label className={LABEL}>Participacions *</label><input required type="number" step="0.001" min="0.001" value={form.quantity} onChange={e => setForm(p => ({ ...p, quantity: e.target.value }))} placeholder="10" className={INPUT} /></div>
+            <div><label className={LABEL}>Preu de compra *</label><input required type="number" step="0.01" min="0" value={form.avgEntryPrice} onChange={e => setForm(p => ({ ...p, avgEntryPrice: e.target.value }))} placeholder="85.00" className={INPUT} /></div>
+            <div><label className={LABEL}>Comissió (€)</label><input type="number" step="0.01" min="0" value={form.commission} onChange={e => setForm(p => ({ ...p, commission: e.target.value }))} placeholder="0.00" className={INPUT} /></div>
+          </div>
+          <div className="grid grid-cols-2 gap-3">
             <div><label className={LABEL}>Moneda</label>
               <select value={form.currency} onChange={e => setForm(p => ({ ...p, currency: e.target.value }))} className={INPUT}>
                 <option value="EUR">EUR</option><option value="USD">USD</option><option value="GBP">GBP</option>
               </select>
             </div>
+            <div><label className={LABEL}>Notes</label><input value={form.notes} onChange={e => setForm(p => ({ ...p, notes: e.target.value }))} className={INPUT} /></div>
           </div>
-          <div><label className={LABEL}>Notes</label><input value={form.notes} onChange={e => setForm(p => ({ ...p, notes: e.target.value }))} className={INPUT} /></div>
+          {form.quantity && form.avgEntryPrice && (
+            <p className="text-white/30 text-xs">
+              Import total: {fEur(parseFloat(form.quantity) * parseFloat(form.avgEntryPrice) || 0)}
+              {form.commission ? ` + ${form.commission} € comissió` : ''}
+            </p>
+          )}
           <button type="submit" disabled={saving || fetchingPrice || (!fetchedPrice && showManualPrice && !manualPrice)} className={BTN_GOLD}>
-            {saving ? 'Afegint...' : 'Afegir posició'}
+            {saving ? 'Registrant...' : 'Registrar compra'}
           </button>
         </form>
       </details>

@@ -1,12 +1,15 @@
+// lib/roles.ts
+// Definició de rols i mapa de permisos del sistema
+
 export type UserRole = 'client' | 'admin';
 
 export interface Permission {
-  viewPublicContent:  boolean; // Notícies, comparador, carteres model, landing
-  viewPrivatePortfolio: boolean; // Cartera pròpia, transaccions, informes, notes
-  viewAdminPanel:     boolean; // Panell d'administració complet
-  manageUsers:        boolean;
-  manageContent:      boolean; // Notícies, fons, newsletters
-  manageReports:      boolean; // Generar i enviar informes
+  viewPublicContent:    boolean;
+  viewPrivatePortfolio: boolean;
+  viewAdminPanel:       boolean;
+  manageUsers:          boolean;
+  manageContent:        boolean;
+  manageReports:        boolean;
 }
 
 export const ROLE_PERMISSIONS: Record<UserRole, Permission> = {
