@@ -4,17 +4,21 @@ import { useState, useEffect, useCallback } from 'react';
 import type { Lead } from '@/lib/leads';
 
 const STATUS_META: Record<Lead['status'], { label: string; color: string; bg: string }> = {
-  new:        { label: 'Nou',        color: '#60a5fa', bg: 'rgba(96,165,250,0.15)'  },
-  contacted:  { label: 'Contactat',  color: '#f59e0b', bg: 'rgba(245,158,11,0.15)'  },
-  converted:  { label: 'Convertit',  color: '#10b981', bg: 'rgba(16,185,129,0.15)'  },
-  discarded:  { label: 'Descartat', color: '#6b7280', bg: 'rgba(107,114,128,0.1)'  },
+  new:              { label: 'Nou',                   color: '#60a5fa', bg: 'rgba(96,165,250,0.15)'  },
+  contacted:        { label: 'Contactat',             color: '#f59e0b', bg: 'rgba(245,158,11,0.15)'  },
+  'preparing-report': { label: 'Preparant informe',  color: '#a78bfa', bg: 'rgba(167,139,250,0.15)' },
+  'report-sent':    { label: 'Informe enviat',        color: '#34d399', bg: 'rgba(52,211,153,0.15)'  },
+  converted:        { label: 'Convertit a client',    color: '#10b981', bg: 'rgba(16,185,129,0.15)'  },
+  discarded:        { label: 'Descartat',             color: '#6b7280', bg: 'rgba(107,114,128,0.1)'  },
 };
 
 export default function LeadsManager() {
-  const [leads, setLeads]       = useState<Lead[]>([]);
-  const [loading, setLoading]   = useState(true);
-  const [filter, setFilter]     = useState<Lead['status'] | 'all'>('all');
-  const [updating, setUpdating] = useState<string | null>(null);
+  const [leads, setLeads]         = useState<Lead[]>([]);
+  const [loading, setLoading]     = useState(true);
+  const [filter, setFilter]       = useState<Lead['status'] | 'all'>('all');
+  const [updating, setUpdating]   = useState<string | null>(null);
+  const [editNotes, setEditNotes] = useState<Record<string, string>>({});
+  const [savingNotes, setSavingNotes] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -40,8 +44,20 @@ export default function LeadsManager() {
     setUpdating(null);
   }
 
+  async function saveNotes(id: string) {
+    const notes = editNotes[id] ?? '';
+    setSavingNotes(id);
+    await fetch('/api/admin/leads', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id, notes }),
+    });
+    setLeads(prev => prev.map(l => l.id === id ? { ...l, notes } : l));
+    setSavingNotes(null);
+  }
+
   const visible = filter === 'all' ? leads : leads.filter(l => l.status === filter);
-  const counts  = (['new', 'contacted', 'converted', 'discarded'] as const).reduce(
+  const counts  = (Object.keys(STATUS_META) as Lead['status'][]).reduce(
     (acc, s) => ({ ...acc, [s]: leads.filter(l => l.status === s).length }), {} as Record<Lead['status'], number>
   );
 
@@ -57,14 +73,21 @@ export default function LeadsManager() {
 
       {/* Status filter */}
       <div className="flex flex-wrap gap-2 mb-6">
-        {(['all', 'new', 'contacted', 'converted', 'discarded'] as const).map(s => (
+        <button
+          onClick={() => setFilter('all')}
+          className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
+            filter === 'all' ? 'bg-[#c9a84c] text-[#0d1f1a]' : 'bg-white/5 text-white/50 hover:bg-white/10'
+          }`}>
+          Tots ({leads.length})
+        </button>
+        {(Object.keys(STATUS_META) as Lead['status'][]).map(s => (
           <button
             key={s}
             onClick={() => setFilter(s)}
             className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
               filter === s ? 'bg-[#c9a84c] text-[#0d1f1a]' : 'bg-white/5 text-white/50 hover:bg-white/10'
             }`}>
-            {s === 'all' ? `Tots (${leads.length})` : `${STATUS_META[s].label} (${counts[s]})`}
+            {STATUS_META[s].label} ({counts[s] ?? 0})
           </button>
         ))}
       </div>
@@ -122,6 +145,28 @@ export default function LeadsManager() {
                         <option key={s} value={s}>{STATUS_META[s].label}</option>
                       ))}
                     </select>
+                  </div>
+                </div>
+
+                {/* Notes */}
+                <div className="mt-3 pt-3 border-t border-white/5">
+                  <label className="block text-white/30 text-[10px] uppercase tracking-widest mb-1.5">Notes internes</label>
+                  <div className="flex gap-2">
+                    <textarea
+                      rows={2}
+                      placeholder="Afegeix notes sobre aquest lead..."
+                      value={editNotes[lead.id] ?? lead.notes ?? ''}
+                      onChange={e => setEditNotes(p => ({ ...p, [lead.id]: e.target.value }))}
+                      className="flex-1 bg-black/20 border border-white/8 rounded-lg px-3 py-2 text-white/60 text-xs resize-none focus:outline-none focus:border-[#c9a84c]/30 placeholder-white/15"
+                    />
+                    {(editNotes[lead.id] !== undefined && editNotes[lead.id] !== (lead.notes ?? '')) && (
+                      <button
+                        onClick={() => saveNotes(lead.id)}
+                        disabled={savingNotes === lead.id}
+                        className="px-3 py-1.5 bg-[#1a3a2a] border border-[#2d6a4f]/40 text-[#c9a84c] text-xs font-medium rounded-lg hover:bg-[#1f4432] transition-colors disabled:opacity-50 self-end">
+                        {savingNotes === lead.id ? '...' : 'Desar'}
+                      </button>
+                    )}
                   </div>
                 </div>
               </div>

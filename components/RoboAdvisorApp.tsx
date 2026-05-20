@@ -5,6 +5,7 @@ const EmailButton = dynamic(
 );
 import { useState, useCallback, useEffect } from 'react';
 import dynamic from 'next/dynamic';
+import LeadForm from '@/components/LeadForm';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   RadarChart, Radar, PolarGrid, PolarAngleAxis, PolarRadiusAxis,
@@ -184,8 +185,9 @@ export default function RoboAdvisorApp({ onBack }: Props) {
   const [report, setReport]         = useState<FinancialReport | null>(null);
   const [historical, setHistorical] = useState<HistoricalChartPoint[]>([]);
   const [activeTab, setActiveTab]   = useState('resum');
-  const [loading, setLoading]       = useState(false);
+  const [loading, setLoading]           = useState(false);
   const [riskFreeRate, setRiskFreeRate] = useState(3.0);
+  const [showLeadForm, setShowLeadForm] = useState(false);
 
   useEffect(() => {
     fetch('/api/risk-free-rate')
@@ -227,6 +229,22 @@ export default function RoboAdvisorApp({ onBack }: Props) {
       setPrevStep(5);
       setStep(6);
       setLoading(false);
+
+      if (q.clientEmail) {
+        fetch('/api/leads', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            name: q.clientName || 'Usuari anònim',
+            email: q.clientEmail,
+            interest: q.financialGoal,
+            profile: sc.profile,
+            source: 'questionnaire',
+            type: 'questionnaire',
+            gdprConsent: true,
+          }),
+        }).catch(() => {});
+      }
     }, 1200);
   }, [q]);
 
@@ -734,6 +752,36 @@ export default function RoboAdvisorApp({ onBack }: Props) {
             ))}
           </motion.div>
         )}
+
+        {/* ── GATE ─────────────────────────────────────────────────────── */}
+        <motion.div
+          className="rounded-2xl border border-amber-200 bg-amber-50 p-6 text-center"
+          initial={{ opacity: 0, y: 16 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.6, duration: 0.5 }}>
+          <div className="text-3xl mb-3">🔒</div>
+          <h3 className="text-gray-800 font-bold text-lg mb-2">La teva cartera optimitzada és a punt</h3>
+          <p className="text-gray-600 text-sm mb-1 max-w-md mx-auto">
+            Hem calculat la teva <strong>cartera Markowitz</strong>, les projeccions a 10–30 anys i l&apos;informe MiFID II complet.
+          </p>
+          <p className="text-gray-500 text-xs mb-5">
+            Per accedir als resultats complets, sol·licita l&apos;informe o accedeix com a client.
+          </p>
+          <div className="flex flex-col sm:flex-row gap-3 justify-center">
+            <button
+              onClick={() => setShowLeadForm(true)}
+              className="inline-flex items-center justify-center gap-2 px-6 py-2.5 bg-amber-500 hover:bg-amber-600 text-white font-bold text-sm rounded-xl transition-colors">
+              Sol·licita l&apos;informe personalitzat
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7l5 5m0 0l-5 5m5-5H6" />
+              </svg>
+            </button>
+            <a href="/login"
+              className="inline-flex items-center justify-center gap-2 px-6 py-2.5 border border-gray-300 hover:border-gray-400 text-gray-600 hover:text-gray-800 font-medium text-sm rounded-xl transition-colors">
+              Ja sóc client — Accedeix
+            </a>
+          </div>
+        </motion.div>
 
         {/* ── TABS ANIMATS ────────────────────────────────────────────────── */}
         <div className="flex flex-wrap gap-2 border-b border-gray-200 pb-2">
@@ -1662,6 +1710,10 @@ export default function RoboAdvisorApp({ onBack }: Props) {
         transition={{ delay: 0.5 }}>
         Factor OTC · Eina de suport a la decisió · No executa operacions reals
       </motion.footer>
+
+      {showLeadForm && (
+        <LeadForm onClose={() => setShowLeadForm(false)} />
+      )}
     </div>
   );
 }
