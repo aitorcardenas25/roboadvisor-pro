@@ -65,17 +65,35 @@ export async function sendReportReady(to: string, name: string, reportUrl: strin
   return error ? { success: false, error: error.message } : { success: true };
 }
 
-export async function sendLeadNotification(lead: { name: string; email: string; interest: string }): Promise<EmailResult> {
-  const subject = `Nou lead: ${lead.name}`;
+export async function sendLeadNotification(lead: {
+  name: string;
+  lastName?: string;
+  email: string;
+  phone?: string;
+  interest: string;
+  type?: string;
+  profile?: string;
+  source?: string;
+}): Promise<EmailResult> {
+  const fullName = [lead.name, lead.lastName].filter(Boolean).join(' ');
+  const subject  = `Nou lead: ${fullName}`;
   if (!resend) { console.log('[email]', subject, ADMIN_EMAIL); return { success: false, error: 'No API key' }; }
+  const originLabel = lead.type === 'questionnaire'   ? 'Qüestionari completat'
+    : lead.type === 'report-request' ? "Sol·licitud d'informe"
+    : lead.source ?? lead.type ?? 'Formulari';
+  const row = (label: string, val: string, highlight = false) =>
+    `<tr><td style="color:rgba(255,255,255,0.45);font-size:12px;padding:5px 8px;white-space:nowrap;">${label}</td><td style="color:${highlight ? '#c9a84c' : '#fff'};padding:5px 8px;">${val}</td></tr>`;
   const body = `
     <h2 style="color:#c9a84c;margin:0 0 16px;">Nou lead capturat</h2>
-    <table style="width:100%;border:1px solid rgba(255,255,255,0.08);border-radius:10px;padding:20px;background:rgba(0,0,0,0.2);">
-      <tr><td style="color:rgba(255,255,255,0.5);font-size:13px;">Nom</td><td style="color:#fff;">${lead.name}</td></tr>
-      <tr><td style="color:rgba(255,255,255,0.5);font-size:13px;padding-top:8px;">Email</td><td style="color:#c9a84c;padding-top:8px;"><a href="mailto:${lead.email}" style="color:#c9a84c;">${lead.email}</a></td></tr>
-      <tr><td style="color:rgba(255,255,255,0.5);font-size:13px;padding-top:8px;">Interès</td><td style="color:#fff;padding-top:8px;">${lead.interest}</td></tr>
+    <table style="width:100%;border:1px solid rgba(255,255,255,0.08);border-radius:10px;overflow:hidden;background:rgba(0,0,0,0.2);">
+      ${row('Nom', fullName)}
+      ${row('Email', `<a href="mailto:${lead.email}" style="color:#c9a84c;">${lead.email}</a>`, true)}
+      ${lead.phone ? row('Telèfon', lead.phone) : ''}
+      ${row('Origen', originLabel)}
+      ${lead.profile ? row('Perfil', lead.profile) : ''}
+      ${row('Interès', lead.interest)}
     </table>
-    <a href="https://factorotc.com/admin" style="display:inline-block;margin:24px 0;padding:10px 24px;background:#1a3a2a;border:1px solid rgba(45,106,79,0.5);color:#c9a84c;font-weight:600;border-radius:10px;text-decoration:none;">Gestionar al panell admin</a>`;
+    <a href="https://factorotc.com/admin" style="display:inline-block;margin:24px 0;padding:10px 24px;background:#1a3a2a;border:1px solid rgba(45,106,79,0.5);color:#c9a84c;font-weight:600;border-radius:10px;text-decoration:none;">Gestionar al panell admin →</a>`;
   const { error } = await resend.emails.send({ from: FROM, to: ADMIN_EMAIL, subject, html: base(subject, body) });
   return error ? { success: false, error: error.message } : { success: true };
 }
