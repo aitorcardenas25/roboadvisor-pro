@@ -1,12 +1,10 @@
-// lib/users.ts
-// Store d'usuaris en memòria. En producció substituir per BD real.
-
+import bcrypt from 'bcryptjs';
+import { getDb } from './supabase';
 import { UserRole } from './roles';
 
 export interface AppUser {
   id:                 string;
   username:           string;
-  password:           string; // en producció: hash bcrypt
   name:               string;
   email:              string;
   role:               UserRole;
@@ -15,14 +13,34 @@ export interface AppUser {
   subscriptionPlan:   'free' | 'active' | 'premium';
   subscriptionStatus: 'active' | 'inactive' | 'suspended';
   subscriptionSince?: string;
+  lastLoginAt?:       string;
 }
 
-function buildUsersDB(): AppUser[] {
-  const users: AppUser[] = [];
+// ── Dev fallback (no Supabase) ─────────────────────────────────────────────
+// Plaintext password comparison — only used when SUPABASE_URL is not set.
+// Never reaches production because Supabase is required in prod.
 
-  // Admin principal des de variables d'entorn
+interface DevUser {
+  id:                 string;
+  username:           string;
+  password:           string;
+  name:               string;
+  email:              string;
+  role:               UserRole;
+  active:             boolean;
+  createdAt:          string;
+  subscriptionPlan:   AppUser['subscriptionPlan'];
+  subscriptionStatus: AppUser['subscriptionStatus'];
+  subscriptionSince?: string;
+}
+
+let devDB: DevUser[] = [];
+
+function buildDevDB(): DevUser[] {
+  const users: DevUser[] = [];
+
   users.push({
-    id:                 '1',
+    id:                 'dev-admin-1',
     username:           process.env.ADMIN_USERNAME  ?? 'admin',
     password:           process.env.ADMIN_PASSWORD  ?? 'factorOTC2024!',
     name:               'Admin Factor OTC',
@@ -34,79 +52,276 @@ function buildUsersDB(): AppUser[] {
     subscriptionStatus: 'active',
   });
 
-  // Usuaris autoritzats addicionals des de variables d'entorn (JSON array)
   const extraJSON = process.env.AUTHORIZED_USERS;
   if (extraJSON) {
     try {
-      const extra = JSON.parse(extraJSON) as Omit<AppUser, 'id' | 'createdAt'>[];
+      const extra = JSON.parse(extraJSON) as Omit<DevUser, 'id' | 'createdAt'>[];
       extra.forEach((u, i) => {
         users.push({
           ...u,
-          id: `authorized-${i + 1}`,
-          createdAt: '2024-01-01',
+          id:                 `dev-user-${i + 1}`,
+          createdAt:          '2024-01-01',
           subscriptionPlan:   u.subscriptionPlan   ?? 'free',
           subscriptionStatus: u.subscriptionStatus ?? 'active',
         });
       });
-    } catch {
-      // JSON mal format — ignorar
-    }
+    } catch { /* JSON mal format — ignorar */ }
   }
 
   return users;
 }
 
-let usersDB: AppUser[] = buildUsersDB();
-
-export function findUserByCredentials(username: string, password: string): AppUser | null {
-  return usersDB.find(u => u.username === username && u.password === password && u.active) ?? null;
+function getDevDB(): DevUser[] {
+  if (devDB.length === 0) devDB = buildDevDB();
+  return devDB;
 }
 
-export function findUserById(id: string): AppUser | null {
-  return usersDB.find(u => u.id === id) ?? null;
-}
-
-export function getAllUsers(): AppUser[] {
-  return usersDB.map(u => ({ ...u, password: '***' }));
-}
-
-export function createAuthorizedUser(data: Omit<AppUser, 'id' | 'createdAt'>): AppUser {
-  const user: AppUser = {
-    ...data,
-    subscriptionPlan:   data.subscriptionPlan   ?? 'free',
-    subscriptionStatus: data.subscriptionStatus ?? 'active',
-    id:        `user-${Date.now()}`,
-    createdAt: new Date().toISOString().split('T')[0],
+function devUserToAppUser(u: DevUser): AppUser {
+  return {
+    id: u.id, username: u.username, name: u.name, email: u.email,
+    role: u.role, active: u.active, createdAt: u.createdAt,
+    subscriptionPlan: u.subscriptionPlan, subscriptionStatus: u.subscriptionStatus,
+    subscriptionSince: u.subscriptionSince,
   };
-  usersDB.push(user);
-  return { ...user, password: '***' };
 }
 
-export function updateUserSubscription(
+// ── Supabase row → AppUser ─────────────────────────────────────────────────
+
+function rowToUser(row: Record<string, unknown>): AppUser {
+  return {
+    id:                 String(row.id),
+    username:           String(row.username),
+    name:               String(row.name ?? ''),
+    email:              String(row.email ?? ''),
+    role:               (row.role as UserRole) ?? 'client',
+    active:             Boolean(row.active),
+    createdAt:          String(row.created_at ?? ''),
+    subscriptionPlan:   (row.subscription_plan as AppUser['subscriptionPlan'])   ?? 'free',
+    subscriptionStatus: (row.subscription_status as AppUser['subscriptionStatus']) ?? 'active',
+    subscriptionSince:  row.subscription_since ? String(row.subscription_since) : undefined,
+    lastLoginAt:        row.last_login_at ? String(row.last_login_at) : undefined,
+  };
+}
+
+// ── findUserByCredentials ──────────────────────────────────────────────────
+
+export async function findUserByCredentials(
+  username: string,
+  password: string,
+): Promise<AppUser | null> {
+  const db = getDb();
+
+  if (!db) {
+    // ⚠️ SECURITY: sense Supabase, la contrasenya es compara en TEXT PLA
+    // (u.password === password), NO amb bcrypt.compare(). bcrypt només
+    // s'aplica al camí de Supabase, més avall. SUPABASE_URL i
+    // SUPABASE_SERVICE_ROLE_KEY han d'estar configurades en QUALSEVOL
+    // entorn que no sigui dev local — aquest fallback no és segur en
+    // staging/producció.
+    const u = getDevDB().find(u => u.username === username && u.password === password && u.active);
+    return u ? devUserToAppUser(u) : null;
+  }
+
+  // Supabase path
+  const { data, error } = await db
+    .from('users')
+    .select('*')
+    .eq('username', username)
+    .eq('active', true)
+    .maybeSingle();
+
+  if (error || !data) {
+    // Lazy admin seeding: if Supabase has no users yet, seed admin from env vars
+    if (!error) await seedAdminIfEmpty(db, username, password);
+    // Re-try after potential seed
+    const retry = await db
+      .from('users')
+      .select('*')
+      .eq('username', username)
+      .eq('active', true)
+      .maybeSingle();
+    if (retry.error || !retry.data) return null;
+    const match = await bcrypt.compare(password, String(retry.data.password_hash));
+    if (!match) return null;
+    await db.from('users').update({ last_login_at: new Date().toISOString() }).eq('id', retry.data.id);
+    return rowToUser(retry.data as Record<string, unknown>);
+  }
+
+  const match = await bcrypt.compare(password, String(data.password_hash));
+  if (!match) return null;
+  await db.from('users').update({ last_login_at: new Date().toISOString() }).eq('id', data.id);
+  return rowToUser(data as Record<string, unknown>);
+}
+
+// ── Lazy admin seeding ─────────────────────────────────────────────────────
+// Creates the admin user in Supabase on first login when the table is empty.
+// Runs at most once; subsequent calls find the row and skip.
+
+async function seedAdminIfEmpty(
+  db: NonNullable<ReturnType<typeof getDb>>,
+  username: string,
+  password: string,
+): Promise<void> {
+  const adminUser = process.env.ADMIN_USERNAME ?? 'admin';
+  if (username !== adminUser) return;
+
+  const { count } = await db.from('users').select('id', { count: 'exact', head: true });
+  if ((count ?? 0) > 0) return;
+
+  const hash = await bcrypt.hash(password, 12);
+  await db.from('users').insert({
+    id:                 `admin-${Date.now()}`,
+    username:           adminUser,
+    password_hash:      hash,
+    name:               'Admin Factor OTC',
+    email:              process.env.ADMIN_EMAIL ?? 'admin@factorotc.com',
+    role:               'admin',
+    active:             true,
+    subscription_plan:   'active',
+    subscription_status: 'active',
+  });
+}
+
+// ── createUser ────────────────────────────────────────────────────────────
+
+export interface CreateUserInput {
+  username:           string;
+  password:           string;
+  name:               string;
+  email:              string;
+  role:               UserRole;
+  active:             boolean;
+  subscriptionPlan:   AppUser['subscriptionPlan'];
+  subscriptionStatus: AppUser['subscriptionStatus'];
+}
+
+export async function createUser(input: CreateUserInput): Promise<AppUser> {
+  const db = getDb();
+  const hash = await bcrypt.hash(input.password, 12);
+
+  if (!db) {
+    const devUser: DevUser = {
+      ...input,
+      password:  input.password,
+      id:        `user-${Date.now()}`,
+      createdAt: new Date().toISOString().split('T')[0],
+    };
+    getDevDB().push(devUser);
+    return devUserToAppUser(devUser);
+  }
+
+  const id = `user-${Date.now()}`;
+  const { data, error } = await db.from('users').insert({
+    id,
+    username:            input.username,
+    password_hash:       hash,
+    name:                input.name,
+    email:               input.email,
+    role:                input.role,
+    active:              input.active,
+    subscription_plan:   input.subscriptionPlan,
+    subscription_status: input.subscriptionStatus,
+  }).select().single();
+
+  if (error || !data) throw new Error(error?.message ?? 'Error creant usuari');
+  return rowToUser(data as Record<string, unknown>);
+}
+
+// Keep legacy export name so existing callers compile without change
+export const createAuthorizedUser = createUser;
+
+// ── getAllUsers ────────────────────────────────────────────────────────────
+
+export async function getAllUsers(): Promise<AppUser[]> {
+  const db = getDb();
+  if (!db) return getDevDB().map(devUserToAppUser);
+
+  const { data, error } = await db.from('users').select(
+    'id,username,name,email,role,active,created_at,subscription_plan,subscription_status,subscription_since,last_login_at'
+  ).order('created_at', { ascending: false });
+
+  if (error || !data) return [];
+  return (data as Record<string, unknown>[]).map(rowToUser);
+}
+
+// ── findUserById ──────────────────────────────────────────────────────────
+
+export async function findUserById(id: string): Promise<AppUser | null> {
+  const db = getDb();
+  if (!db) {
+    const u = getDevDB().find(u => u.id === id);
+    return u ? devUserToAppUser(u) : null;
+  }
+
+  const { data, error } = await db.from('users').select(
+    'id,username,name,email,role,active,created_at,subscription_plan,subscription_status,subscription_since,last_login_at'
+  ).eq('id', id).maybeSingle();
+
+  if (error || !data) return null;
+  return rowToUser(data as Record<string, unknown>);
+}
+
+// ── updateUserSubscription ────────────────────────────────────────────────
+
+export async function updateUserSubscription(
   id: string,
   plan: AppUser['subscriptionPlan'],
   status: AppUser['subscriptionStatus'],
-): boolean {
-  const user = usersDB.find(u => u.id === id);
-  if (!user) return false;
-  user.subscriptionPlan   = plan;
-  user.subscriptionStatus = status;
-  if (plan !== 'free' && !user.subscriptionSince) {
-    user.subscriptionSince = new Date().toISOString().split('T')[0];
+): Promise<boolean> {
+  const db = getDb();
+  if (!db) {
+    const u = getDevDB().find(u => u.id === id);
+    if (!u) return false;
+    u.subscriptionPlan   = plan;
+    u.subscriptionStatus = status;
+    if (plan !== 'free' && !u.subscriptionSince) {
+      u.subscriptionSince = new Date().toISOString().split('T')[0];
+    }
+    return true;
   }
-  return true;
+
+  const update: Record<string, unknown> = {
+    subscription_plan:   plan,
+    subscription_status: status,
+    updated_at:          new Date().toISOString(),
+  };
+  if (plan !== 'free') {
+    const existing = await db.from('users').select('subscription_since').eq('id', id).maybeSingle();
+    if (!existing.data?.subscription_since) {
+      update.subscription_since = new Date().toISOString().split('T')[0];
+    }
+  }
+
+  const { error } = await db.from('users').update(update).eq('id', id);
+  return !error;
 }
 
-export function updateUserRole(id: string, role: UserRole): boolean {
-  const user = usersDB.find(u => u.id === id);
-  if (!user) return false;
-  user.role = role;
-  return true;
+// ── updateUserRole ────────────────────────────────────────────────────────
+
+export async function updateUserRole(id: string, role: UserRole): Promise<boolean> {
+  const db = getDb();
+  if (!db) {
+    const u = getDevDB().find(u => u.id === id);
+    if (!u) return false;
+    u.role = role;
+    return true;
+  }
+
+  const { error } = await db.from('users').update({ role, updated_at: new Date().toISOString() }).eq('id', id);
+  return !error;
 }
 
-export function deactivateUser(id: string): boolean {
-  const user = usersDB.find(u => u.id === id);
-  if (!user) return false;
-  user.active = false;
-  return true;
+// ── deactivateUser ────────────────────────────────────────────────────────
+
+export async function deactivateUser(id: string): Promise<boolean> {
+  const db = getDb();
+  if (!db) {
+    const u = getDevDB().find(u => u.id === id);
+    if (!u) return false;
+    u.active = false;
+    return true;
+  }
+
+  const { error } = await db.from('users').update({ active: false, updated_at: new Date().toISOString() }).eq('id', id);
+  return !error;
 }

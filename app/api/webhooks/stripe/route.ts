@@ -28,7 +28,7 @@ export async function POST(req: Request) {
 
     if (userId) {
       const plan = product === 'monthly_sub' ? 'active' : 'active';
-      updateUserSubscription(userId, plan, 'active');
+      await updateUserSubscription(userId, plan, 'active');
     }
   }
 
@@ -36,7 +36,7 @@ export async function POST(req: Request) {
     const sub = event.data.object;
     const userId = (sub.metadata as Record<string, string>)?.userId;
     if (userId) {
-      updateUserSubscription(userId, 'free', 'inactive');
+      await updateUserSubscription(userId, 'free', 'inactive');
     }
   }
 

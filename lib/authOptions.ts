@@ -13,7 +13,7 @@ export const authOptions: NextAuthOptions = {
       },
       async authorize(credentials) {
         if (!credentials?.username || !credentials?.password) return null;
-        const user = findUserByCredentials(credentials.username, credentials.password);
+        const user = await findUserByCredentials(credentials.username, credentials.password);
         if (!user) return null;
         logAuditEvent('auth.login', { userId: user.id, userEmail: user.email });
         return { id: user.id, name: user.name, email: user.email, role: user.role };

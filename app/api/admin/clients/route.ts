@@ -2,8 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/authOptions';
 import {
-  getAllUsers, createAuthorizedUser, updateUserRole, deactivateUser,
-  AppUser,
+  getAllUsers, createUser, updateUserRole, deactivateUser,
+  type CreateUserInput,
 } from '@/lib/users';
 import type { UserRole } from '@/lib/roles';
 import { logAuditEvent } from '@/lib/auditLog';
@@ -22,7 +22,7 @@ function getIp(req: NextRequest): string {
 export async function GET(_req: NextRequest) {
   const session = await getServerSession(authOptions) as SessionLike;
   if (!isAdmin(session)) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-  return NextResponse.json({ users: getAllUsers() });
+  return NextResponse.json({ users: await getAllUsers() });
 }
 
 export async function POST(req: NextRequest) {
@@ -33,12 +33,12 @@ export async function POST(req: NextRequest) {
   const session = await getServerSession(authOptions) as SessionLike;
   if (!isAdmin(session)) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
-  const body = await req.json() as Partial<Omit<AppUser, 'id' | 'createdAt'>>;
+  const body = await req.json() as Partial<CreateUserInput>;
   const { username, password, name, email, role } = body;
   if (!username || !password || !name || !email)
     return NextResponse.json({ error: 'Falten camps obligatoris' }, { status: 400 });
 
-  const user = createAuthorizedUser({
+  const user = await createUser({
     username, password, name, email,
     role: (role ?? 'client') as UserRole,
     active: true,
@@ -65,7 +65,7 @@ export async function PATCH(req: NextRequest) {
   const { id, role } = await req.json() as { id: string; role: UserRole };
   if (!id || !role) return NextResponse.json({ error: 'Falten camps' }, { status: 400 });
 
-  const ok = updateUserRole(id, role);
+  const ok = await updateUserRole(id, role);
   if (!ok) return NextResponse.json({ error: 'Usuari no trobat' }, { status: 404 });
 
   logAuditEvent('client.role_changed', {
@@ -87,7 +87,7 @@ export async function DELETE(req: NextRequest) {
   const { id } = await req.json() as { id: string };
   if (!id) return NextResponse.json({ error: 'Falta id' }, { status: 400 });
 
-  const ok = deactivateUser(id);
+  const ok = await deactivateUser(id);
   if (!ok) return NextResponse.json({ error: 'Usuari no trobat' }, { status: 404 });
 
   logAuditEvent('client.deactivated', {

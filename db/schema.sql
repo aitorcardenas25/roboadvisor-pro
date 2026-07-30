@@ -106,31 +106,38 @@ CREATE INDEX IF NOT EXISTS idx_newsletters_created_at ON newsletters (created_at
 -- ── Usuaris ────────────────────────────────────────────────────────────────
 
 CREATE TABLE IF NOT EXISTS users (
-  id             TEXT     PRIMARY KEY,
-  username       TEXT     NOT NULL UNIQUE,
-  password_hash  TEXT     NOT NULL,
-  name           TEXT     NOT NULL DEFAULT '',
-  email          TEXT     NOT NULL DEFAULT '',
-  role           TEXT     NOT NULL DEFAULT 'authorized' CHECK (role IN ('admin', 'authorized')),
-  active         BOOLEAN  NOT NULL DEFAULT TRUE,
-  created_at     TEXT     NOT NULL,
-  last_login     TEXT
+  id                  TEXT        PRIMARY KEY,
+  username            TEXT        NOT NULL UNIQUE,
+  password_hash       TEXT        NOT NULL,
+  name                TEXT        NOT NULL DEFAULT '',
+  email               TEXT        NOT NULL DEFAULT '',
+  role                TEXT        NOT NULL DEFAULT 'client' CHECK (role IN ('admin', 'client')),
+  active              BOOLEAN     NOT NULL DEFAULT TRUE,
+  subscription_plan   TEXT        NOT NULL DEFAULT 'free' CHECK (subscription_plan IN ('free', 'active', 'premium')),
+  subscription_status TEXT        NOT NULL DEFAULT 'active' CHECK (subscription_status IN ('active', 'inactive', 'suspended')),
+  subscription_since  TEXT,
+  created_at          TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at          TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  last_login_at       TIMESTAMPTZ
 );
 
 -- ── Audit log ──────────────────────────────────────────────────────────────
 
 CREATE TABLE IF NOT EXISTS audit_log (
-  id          BIGSERIAL  PRIMARY KEY,
+  id          TEXT        PRIMARY KEY,
+  timestamp   TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  action      TEXT        NOT NULL,
   user_id     TEXT,
-  action      TEXT       NOT NULL,
-  resource    TEXT       NOT NULL,
-  metadata    JSONB,
-  created_at  TIMESTAMPTZ NOT NULL DEFAULT NOW()
+  user_email  TEXT,
+  resource    TEXT,
+  metadata    JSONB       NOT NULL DEFAULT '{}',
+  ip          TEXT
 );
 
 CREATE INDEX IF NOT EXISTS idx_audit_log_user_id    ON audit_log (user_id);
 CREATE INDEX IF NOT EXISTS idx_audit_log_action     ON audit_log (action);
-CREATE INDEX IF NOT EXISTS idx_audit_log_created_at ON audit_log (created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_audit_log_timestamp  ON audit_log (timestamp DESC);
+
 
 -- ── Client Portfolios ──────────────────────────────────────────────────────
 

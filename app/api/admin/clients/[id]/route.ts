@@ -23,7 +23,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   const parsed = Schema.safeParse(body);
   if (!parsed.success) return NextResponse.json({ error: parsed.error.issues[0]?.message }, { status: 400 });
 
-  const ok = updateUserSubscription(id, parsed.data.subscriptionPlan, parsed.data.subscriptionStatus);
+  const ok = await updateUserSubscription(id, parsed.data.subscriptionPlan, parsed.data.subscriptionStatus);
   if (!ok) return NextResponse.json({ error: 'Usuari no trobat' }, { status: 404 });
   return NextResponse.json({ ok: true });
 }

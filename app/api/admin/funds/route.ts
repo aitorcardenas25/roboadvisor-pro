@@ -9,9 +9,12 @@ import type { AdminFund } from '@/lib/adminFunds';
 import { validateBody } from '@/lib/validate';
 import { CreateFundSchema, UpdateFundSchema } from '@/lib/schemas';
 
+import { authOptions } from '@/lib/authOptions';
+
 async function checkAuth() {
-  const session = await getServerSession();
-  if (!session) return NextResponse.json({ error: 'No autoritzat' }, { status: 401 });
+  const session = await getServerSession(authOptions);
+  if ((session?.user as { role?: string })?.role !== 'admin')
+    return NextResponse.json({ error: 'No autoritzat' }, { status: 401 });
   return null;
 }
 

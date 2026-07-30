@@ -15,7 +15,7 @@ export async function GET(req: NextRequest) {
   const since  = searchParams.get('since')  ?? undefined;
   const search = searchParams.get('search') ?? undefined;
 
-  const entries = getAuditLog({ limit, action: action ?? undefined, userId, since, search });
+  const entries = await getAuditLog({ limit, action: action ?? undefined, userId, since, search });
   const stats   = auditLogStats();
 
   return NextResponse.json({ entries, stats });

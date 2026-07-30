@@ -1,5 +1,4 @@
-// Audit trail — in-memory store (last 1000 events).
-// Replace with Supabase persistence once the DB is configured.
+import { getDb } from './supabase';
 
 export type AuditAction =
   | 'auth.login'
@@ -55,6 +54,23 @@ export function logAuditEvent(
   _log.unshift(entry);
   if (_log.length > MAX_ENTRIES) _log.pop();
 
+  // Best-effort Supabase persistence (non-blocking)
+  const db = getDb();
+  if (db) {
+    db.from('audit_log').insert({
+      id:         entry.id,
+      timestamp:  entry.timestamp,
+      action:     entry.action,
+      user_id:    entry.userId,
+      user_email: entry.userEmail,
+      resource:   entry.resource,
+      metadata:   entry.metadata,
+      ip:         entry.ip,
+    }).then(({ error }) => {
+      if (error) { /* silent — in-memory fallback is always populated */ }
+    });
+  }
+
   return entry;
 }
 
@@ -66,22 +82,55 @@ export interface GetAuditLogOpts {
   search?:  string;
 }
 
-export function getAuditLog(opts: GetAuditLogOpts = {}): AuditEntry[] {
-  let entries = [..._log];
+export async function getAuditLog(opts: GetAuditLogOpts = {}): Promise<AuditEntry[]> {
+  const db = getDb();
 
+  if (db) {
+    let query = db.from('audit_log').select('*').order('timestamp', { ascending: false });
+    if (opts.action)  query = query.eq('action', opts.action);
+    if (opts.userId)  query = query.eq('user_id', opts.userId);
+    if (opts.since)   query = query.gte('timestamp', opts.since);
+    query = query.limit(opts.limit ?? 100);
+
+    const { data, error } = await query;
+    if (!error && data) {
+      let entries = data.map((r: Record<string, unknown>) => ({
+        id:        r.id as string,
+        timestamp: r.timestamp as string,
+        action:    r.action as AuditAction,
+        userId:    r.user_id as string | null,
+        userEmail: r.user_email as string | null,
+        resource:  r.resource as string | null,
+        metadata:  (r.metadata as Record<string, unknown>) ?? {},
+        ip:        r.ip as string | null,
+      }));
+      if (opts.search) {
+        const q = opts.search.toLowerCase();
+        entries = entries.filter(e =>
+          e.action.includes(q) ||
+          e.userId?.toLowerCase().includes(q) ||
+          e.userEmail?.toLowerCase().includes(q) ||
+          e.resource?.toLowerCase().includes(q),
+        );
+      }
+      return entries;
+    }
+  }
+
+  // Fallback: in-memory
+  let entries = [..._log];
   if (opts.action)  entries = entries.filter(e => e.action  === opts.action);
   if (opts.userId)  entries = entries.filter(e => e.userId  === opts.userId);
   if (opts.since)   entries = entries.filter(e => e.timestamp >= opts.since!);
   if (opts.search) {
     const q = opts.search.toLowerCase();
     entries = entries.filter(e =>
-      e.action.includes(q)    ||
+      e.action.includes(q) ||
       e.userId?.toLowerCase().includes(q) ||
       e.userEmail?.toLowerCase().includes(q) ||
       e.resource?.toLowerCase().includes(q),
     );
   }
-
   return entries.slice(0, opts.limit ?? 100);
 }
 
