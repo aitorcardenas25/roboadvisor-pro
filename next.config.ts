@@ -5,6 +5,8 @@ const withBundleAnalyzer = bundleAnalyzer({
   enabled: process.env.ANALYZE === 'true',
 });
 
+const isDev = process.env.NODE_ENV === 'development';
+
 const SELF          = "'self'";
 const UNSAFE_INLINE = "'unsafe-inline'";
 const UNSAFE_EVAL   = "'unsafe-eval'";  // required by Next.js in dev
@@ -17,7 +19,7 @@ const EXTERNAL_APIS = [
   'https://api.resend.com',
 ].join(' ');
 
-const csp = [
+const cspDirectives = [
   `default-src ${SELF}`,
   `script-src ${SELF} ${UNSAFE_EVAL} ${UNSAFE_INLINE}`,
   `style-src ${SELF} ${UNSAFE_INLINE}`,
@@ -28,8 +30,13 @@ const csp = [
   `object-src 'none'`,
   `base-uri ${SELF}`,
   `form-action ${SELF}`,
-  `upgrade-insecure-requests`,
-].join('; ');
+  // upgrade-insecure-requests only in production:
+  // In development (HTTP localhost), Safari would try to load all Next.js
+  // scripts via https://localhost:3000 which doesn't exist → blank page.
+  ...(!isDev ? ['upgrade-insecure-requests'] : []),
+];
+
+const csp = cspDirectives.join('; ');
 
 const securityHeaders = [
   { key: 'Content-Security-Policy',   value: csp },
@@ -37,7 +44,9 @@ const securityHeaders = [
   { key: 'X-Content-Type-Options',    value: 'nosniff' },
   { key: 'Referrer-Policy',           value: 'strict-origin-when-cross-origin' },
   { key: 'Permissions-Policy',        value: 'camera=(), microphone=(), geolocation=(), payment=()' },
-  { key: 'Strict-Transport-Security', value: 'max-age=63072000; includeSubDomains; preload' },
+  // HSTS only in production (HTTPS). In development, sending HSTS over HTTP
+  // can cause Safari to remember to only use HTTPS for this host.
+  ...(!isDev ? [{ key: 'Strict-Transport-Security', value: 'max-age=63072000; includeSubDomains; preload' }] : []),
   { key: 'X-DNS-Prefetch-Control',    value: 'on' },
 ];
 

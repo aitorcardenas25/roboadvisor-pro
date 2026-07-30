@@ -1,4 +1,4 @@
-const CACHE_NAME = 'factorotc-v1';
+const CACHE_NAME = 'factorotc-v2';
 
 // On install: skip waiting so the new SW activates immediately
 self.addEventListener('install', () => {
@@ -27,14 +27,23 @@ self.addEventListener('fetch', event => {
   event.respondWith(
     fetch(event.request)
       .then(res => {
-        // Cache successful HTML/JS/CSS responses
+        // Cache successful HTML responses only
         if (res.ok && (res.headers.get('content-type') ?? '').includes('text/html')) {
           const clone = res.clone();
           caches.open(CACHE_NAME).then(c => c.put(event.request, clone));
         }
         return res;
       })
-      .catch(() => caches.match(event.request))
+      .catch(() =>
+        // Try cache first; if not cached return a proper offline response
+        // (never return undefined — that causes a TypeError in Safari)
+        caches.match(event.request).then(cached =>
+          cached ?? new Response('Sense connexió. Torna-ho a intentar.', {
+            status: 503,
+            headers: { 'Content-Type': 'text/plain; charset=utf-8' },
+          })
+        )
+      )
   );
 });
 

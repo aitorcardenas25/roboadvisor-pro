@@ -7,11 +7,20 @@ export default function CookieBanner() {
   const [visible, setVisible] = useState(false);
 
   useEffect(() => {
-    if (!localStorage.getItem('cookie-consent')) setVisible(true);
+    try {
+      if (!localStorage.getItem('cookie-consent')) setVisible(true);
+    } catch {
+      // Safari Private mode: localStorage may throw QuotaExceededError
+      setVisible(true);
+    }
   }, []);
 
   function accept() {
-    localStorage.setItem('cookie-consent', 'true');
+    try {
+      localStorage.setItem('cookie-consent', 'true');
+    } catch {
+      // Safari Private mode: ignore write failure
+    }
     setVisible(false);
   }
 

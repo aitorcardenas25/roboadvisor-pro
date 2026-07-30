@@ -49,22 +49,27 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <SessionProviderWrapper>{children}</SessionProviderWrapper>
         <CookieBanner />
         <script dangerouslySetInnerHTML={{ __html: `
-          if ('serviceWorker' in navigator) {
-            navigator.serviceWorker.register('/sw.js').then(reg => {
-              reg.addEventListener('updatefound', () => {
-                const newWorker = reg.installing;
+          (function() {
+            if (!('serviceWorker' in navigator)) return;
+            // Skip SW registration on localhost — avoids Safari issues with
+            // cached stale HTML during development and HMR interference.
+            var h = location.hostname;
+            if (h === 'localhost' || h === '127.0.0.1' || /^192\\.168\\./.test(h) || /^10\\./.test(h)) return;
+            navigator.serviceWorker.register('/sw.js').then(function(reg) {
+              reg.addEventListener('updatefound', function() {
+                var newWorker = reg.installing;
                 if (!newWorker) return;
-                newWorker.addEventListener('statechange', () => {
+                newWorker.addEventListener('statechange', function() {
                   if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
                     newWorker.postMessage({ type: 'SKIP_WAITING' });
-                    navigator.serviceWorker.addEventListener('controllerchange', () => {
+                    navigator.serviceWorker.addEventListener('controllerchange', function() {
                       window.location.reload();
                     }, { once: true });
                   }
                 });
               });
-            });
-          }
+            }).catch(function() {});
+          })();
         `}} />
       </body>
     </html>
