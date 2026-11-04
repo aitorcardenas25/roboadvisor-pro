@@ -138,6 +138,20 @@ CREATE INDEX IF NOT EXISTS idx_audit_log_user_id    ON audit_log (user_id);
 CREATE INDEX IF NOT EXISTS idx_audit_log_action     ON audit_log (action);
 CREATE INDEX IF NOT EXISTS idx_audit_log_timestamp  ON audit_log (timestamp DESC);
 
+-- ── Notificacions admin ────────────────────────────────────────────────────
+
+CREATE TABLE IF NOT EXISTS notifications (
+  id          TEXT        PRIMARY KEY,
+  type        TEXT        NOT NULL,
+  title       TEXT        NOT NULL,
+  message     TEXT        NOT NULL,
+  link        TEXT,
+  read_at     TIMESTAMPTZ,
+  created_at  TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_notifications_read_at    ON notifications (read_at);
+CREATE INDEX IF NOT EXISTS idx_notifications_created_at ON notifications (created_at DESC);
 
 -- ── Client Portfolios ──────────────────────────────────────────────────────
 
@@ -168,6 +182,7 @@ CREATE TABLE IF NOT EXISTS client_holdings (
   avg_entry_price    NUMERIC NOT NULL DEFAULT 0,
   current_price      NUMERIC NOT NULL DEFAULT 0,
   price_last_updated TEXT,
+  price_source       TEXT CHECK (price_source IN ('fmp', 'manual', 'pending')),
   currency           TEXT NOT NULL DEFAULT 'EUR',
   notes              TEXT,
   created_at         TEXT NOT NULL
@@ -225,19 +240,46 @@ CREATE INDEX IF NOT EXISTS idx_advisor_notes_portfolio ON advisor_notes (portfol
 -- ── Leads ──────────────────────────────────────────────────────────────────
 
 CREATE TABLE IF NOT EXISTS leads (
-  id         TEXT PRIMARY KEY,
-  name       TEXT NOT NULL,
-  email      TEXT NOT NULL,
-  phone      TEXT,
-  interest   TEXT NOT NULL DEFAULT '',
-  message    TEXT,
-  source     TEXT NOT NULL DEFAULT 'landing-form',
-  status     TEXT NOT NULL DEFAULT 'new' CHECK (status IN ('new','contacted','converted','discarded')),
-  created_at TEXT NOT NULL,
-  updated_at TEXT NOT NULL
+  id                  TEXT PRIMARY KEY,
+  name                TEXT NOT NULL,
+  last_name           TEXT,
+  email               TEXT NOT NULL,
+  phone               TEXT,
+  interest            TEXT NOT NULL DEFAULT '',
+  profile             TEXT,
+  message             TEXT,
+  source              TEXT NOT NULL DEFAULT 'landing-form',
+  type                TEXT,
+  notes               TEXT,
+  status              TEXT NOT NULL DEFAULT 'new' CHECK (status IN ('new','contacted','preparing-report','report-sent','converted','discarded')),
+  gdpr_consent        BOOLEAN NOT NULL DEFAULT FALSE,
+  questionnaire_data  JSONB,
+  linked_user_id      TEXT,
+  linked_portfolio_id TEXT,
+  created_at          TEXT NOT NULL,
+  updated_at          TEXT NOT NULL
 );
 CREATE INDEX IF NOT EXISTS idx_leads_status     ON leads (status);
 CREATE INDEX IF NOT EXISTS idx_leads_created_at ON leads (created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_leads_email      ON leads (email);
+
+-- ── Informes mensuals ──────────────────────────────────────────────────────
+
+CREATE TABLE IF NOT EXISTS monthly_reports (
+  id           TEXT        PRIMARY KEY,
+  portfolio_id TEXT        NOT NULL,
+  client_id    TEXT,
+  client_name  TEXT        NOT NULL,
+  period_start DATE        NOT NULL,
+  period_end   DATE        NOT NULL,
+  data         JSONB       NOT NULL,
+  sent_at      TIMESTAMPTZ,
+  emailed_at   TIMESTAMPTZ,
+  created_at   TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_monthly_reports_portfolio ON monthly_reports (portfolio_id);
+CREATE INDEX IF NOT EXISTS idx_monthly_reports_created   ON monthly_reports (created_at DESC);
 
 -- ── Informes borsaris ──────────────────────────────────────────────────────
 

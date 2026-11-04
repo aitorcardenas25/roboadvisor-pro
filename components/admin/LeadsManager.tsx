@@ -4,13 +4,20 @@ import { useState, useEffect, useCallback } from 'react';
 import type { Lead } from '@/lib/leads';
 
 const STATUS_META: Record<Lead['status'], { label: string; color: string; bg: string }> = {
-  new:              { label: 'Nou',                   color: '#60a5fa', bg: 'rgba(96,165,250,0.15)'  },
-  contacted:        { label: 'Contactat',             color: '#f59e0b', bg: 'rgba(245,158,11,0.15)'  },
-  'preparing-report': { label: 'Preparant informe',  color: '#a78bfa', bg: 'rgba(167,139,250,0.15)' },
-  'report-sent':    { label: 'Informe enviat',        color: '#34d399', bg: 'rgba(52,211,153,0.15)'  },
-  converted:        { label: 'Convertit a client',    color: '#10b981', bg: 'rgba(16,185,129,0.15)'  },
-  discarded:        { label: 'Descartat',             color: '#6b7280', bg: 'rgba(107,114,128,0.1)'  },
+  new:                { label: 'Nou',                 color: '#60a5fa', bg: 'rgba(96,165,250,0.15)'  },
+  contacted:          { label: 'Contactat',           color: '#f59e0b', bg: 'rgba(245,158,11,0.15)'  },
+  'preparing-report': { label: 'Preparant informe',   color: '#a78bfa', bg: 'rgba(167,139,250,0.15)' },
+  'report-sent':      { label: 'Informe enviat',      color: '#34d399', bg: 'rgba(52,211,153,0.15)'  },
+  converted:          { label: 'Convertit a client',  color: '#10b981', bg: 'rgba(16,185,129,0.15)'  },
+  discarded:          { label: 'Descartat',           color: '#6b7280', bg: 'rgba(107,114,128,0.1)'  },
 };
+
+interface ConvertForm {
+  username: string;
+  password: string;
+  name: string;
+  portfolioName: string;
+}
 
 export default function LeadsManager() {
   const [leads, setLeads]         = useState<Lead[]>([]);
@@ -19,6 +26,13 @@ export default function LeadsManager() {
   const [updating, setUpdating]   = useState<string | null>(null);
   const [editNotes, setEditNotes] = useState<Record<string, string>>({});
   const [savingNotes, setSavingNotes] = useState<string | null>(null);
+
+  // Conversió a client
+  const [convertLead, setConvertLead]   = useState<Lead | null>(null);
+  const [convertForm, setConvertForm]   = useState<ConvertForm>({ username: '', password: '', name: '', portfolioName: '' });
+  const [converting, setConverting]     = useState(false);
+  const [convertError, setConvertError] = useState('');
+  const [convertOk, setConvertOk]       = useState('');
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -54,6 +68,41 @@ export default function LeadsManager() {
     });
     setLeads(prev => prev.map(l => l.id === id ? { ...l, notes } : l));
     setSavingNotes(null);
+  }
+
+  function openConvert(lead: Lead) {
+    const emailPrefix = lead.email.split('@')[0].replace(/[^a-z0-9._-]/gi, '').toLowerCase();
+    setConvertForm({
+      username:      emailPrefix,
+      password:      '',
+      name:          lead.name,
+      portfolioName: `Cartera de ${lead.name}`,
+    });
+    setConvertError('');
+    setConvertOk('');
+    setConvertLead(lead);
+  }
+
+  async function handleConvert(e: React.FormEvent) {
+    e.preventDefault();
+    if (!convertLead) return;
+    setConverting(true); setConvertError('');
+    try {
+      const res = await fetch(`/api/admin/leads/${convertLead.id}/convert`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(convertForm),
+      });
+      const data = await res.json();
+      if (!res.ok) { setConvertError(data.error ?? 'Error en la conversió'); return; }
+      setConvertOk(`Client creat correctament. Usuari: ${convertForm.username}`);
+      setLeads(prev => prev.map(l => l.id === convertLead.id ? { ...l, status: 'converted' } : l));
+      setTimeout(() => { setConvertLead(null); setConvertOk(''); }, 2500);
+    } catch {
+      setConvertError('Error de connexió');
+    } finally {
+      setConverting(false);
+    }
   }
 
   const visible = filter === 'all' ? leads : leads.filter(l => l.status === filter);
@@ -105,17 +154,28 @@ export default function LeadsManager() {
         <div className="space-y-3">
           {visible.map(lead => {
             const meta = STATUS_META[lead.status];
+            const canConvert = lead.status !== 'converted' && lead.status !== 'discarded';
             return (
               <div key={lead.id} className="bg-[#0d1f1a] border border-white/10 rounded-xl p-5">
                 <div className="flex items-start justify-between gap-4">
                   <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-3 mb-1">
+                    <div className="flex items-center gap-3 mb-1 flex-wrap">
                       <span className="text-white font-semibold text-sm">{lead.name}</span>
                       <span
                         className="inline-block text-xs px-2 py-0.5 rounded-full font-medium"
                         style={{ color: meta.color, backgroundColor: meta.bg }}>
                         {meta.label}
                       </span>
+                      {lead.questionnaireData && (
+                        <span className="inline-block text-xs px-2 py-0.5 rounded-full font-medium bg-blue-500/15 text-blue-400">
+                          📋 Qüestionari
+                        </span>
+                      )}
+                      {lead.linkedUserId && (
+                        <span className="inline-block text-xs px-2 py-0.5 rounded-full font-medium bg-green-500/15 text-green-400">
+                          ✓ Vinculat
+                        </span>
+                      )}
                     </div>
                     <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-white/40 text-xs">
                       <a href={`mailto:${lead.email}`} className="hover:text-[#c9a84c] transition-colors">{lead.email}</a>
@@ -134,8 +194,8 @@ export default function LeadsManager() {
                     )}
                   </div>
 
-                  {/* Status changer */}
-                  <div className="flex-shrink-0">
+                  {/* Actions */}
+                  <div className="flex-shrink-0 flex flex-col items-end gap-2">
                     <select
                       value={lead.status}
                       onChange={e => setStatus(lead.id, e.target.value as Lead['status'])}
@@ -145,6 +205,13 @@ export default function LeadsManager() {
                         <option key={s} value={s}>{STATUS_META[s].label}</option>
                       ))}
                     </select>
+                    {canConvert && (
+                      <button
+                        onClick={() => openConvert(lead)}
+                        className="px-2.5 py-1.5 bg-[#c9a84c]/10 border border-[#c9a84c]/30 text-[#c9a84c] text-xs font-medium rounded-lg hover:bg-[#c9a84c]/20 transition-all whitespace-nowrap">
+                        + Convertir a client
+                      </button>
+                    )}
                   </div>
                 </div>
 
@@ -172,6 +239,84 @@ export default function LeadsManager() {
               </div>
             );
           })}
+        </div>
+      )}
+
+      {/* Modal conversió a client */}
+      {convertLead && (
+        <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4">
+          <div className="bg-[#0d1f1a] border border-[#c9a84c]/30 rounded-2xl p-6 w-full max-w-md">
+            <h3 className="text-white font-bold text-lg mb-1">Convertir lead a client</h3>
+            <p className="text-white/40 text-sm mb-5">
+              Crea un compte d'accés per a <span className="text-white">{convertLead.name}</span> ({convertLead.email})
+            </p>
+
+            {convertOk ? (
+              <div className="p-4 bg-green-500/10 border border-green-500/30 rounded-xl text-green-400 text-sm text-center">
+                {convertOk}
+              </div>
+            ) : (
+              <form onSubmit={handleConvert} className="space-y-4">
+                {convertError && (
+                  <div className="p-3 bg-red-500/10 border border-red-500/30 rounded-lg text-red-400 text-sm">{convertError}</div>
+                )}
+                <div>
+                  <label className="block text-white/40 text-xs uppercase tracking-wide mb-1">Nom complet</label>
+                  <input
+                    type="text"
+                    value={convertForm.name}
+                    onChange={e => setConvertForm(p => ({ ...p, name: e.target.value }))}
+                    required
+                    className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#c9a84c]/50"
+                  />
+                </div>
+                <div>
+                  <label className="block text-white/40 text-xs uppercase tracking-wide mb-1">Nom d'usuari (login)</label>
+                  <input
+                    type="text"
+                    value={convertForm.username}
+                    onChange={e => setConvertForm(p => ({ ...p, username: e.target.value }))}
+                    required
+                    className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-white text-sm font-mono focus:outline-none focus:border-[#c9a84c]/50"
+                  />
+                </div>
+                <div>
+                  <label className="block text-white/40 text-xs uppercase tracking-wide mb-1">Contrasenya inicial</label>
+                  <input
+                    type="password"
+                    value={convertForm.password}
+                    onChange={e => setConvertForm(p => ({ ...p, password: e.target.value }))}
+                    required minLength={6}
+                    placeholder="Mínim 6 caràcters"
+                    className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#c9a84c]/50"
+                  />
+                </div>
+                <div>
+                  <label className="block text-white/40 text-xs uppercase tracking-wide mb-1">Nom de la cartera</label>
+                  <input
+                    type="text"
+                    value={convertForm.portfolioName}
+                    onChange={e => setConvertForm(p => ({ ...p, portfolioName: e.target.value }))}
+                    className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#c9a84c]/50"
+                  />
+                </div>
+                <div className="flex gap-3 pt-2">
+                  <button
+                    type="submit"
+                    disabled={converting}
+                    className="flex-1 py-2.5 bg-[#c9a84c] hover:bg-[#b8963f] disabled:opacity-50 text-[#0d1f1a] font-bold text-sm rounded-lg transition-all">
+                    {converting ? 'Creant client...' : 'Crear client'}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setConvertLead(null)}
+                    className="px-4 py-2.5 text-white/40 hover:text-white text-sm transition-colors">
+                    Cancel·lar
+                  </button>
+                </div>
+              </form>
+            )}
+          </div>
         </div>
       )}
     </div>

@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import type { MonthlyReportData } from '@/lib/portfolioReport';
+import type { MonthlyReportRecord } from '@/lib/monthlyReports';
 
 interface PortfolioOption {
   id: string;
@@ -10,11 +11,14 @@ interface PortfolioOption {
 }
 
 export default function MonthlyReportGenerator() {
-  const [portfolios, setPortfolios] = useState<PortfolioOption[]>([]);
-  const [loading, setLoading]       = useState(true);
-  const [generating, setGenerating] = useState(false);
-  const [error, setError]           = useState('');
-  const [report, setReport]         = useState<MonthlyReportData | null>(null);
+  const [portfolios, setPortfolios]     = useState<PortfolioOption[]>([]);
+  const [loading, setLoading]           = useState(true);
+  const [generating, setGenerating]     = useState(false);
+  const [error, setError]               = useState('');
+  const [report, setReport]             = useState<MonthlyReportData | null>(null);
+  const [savedReportId, setSavedReportId] = useState<string | null>(null);
+  const [history, setHistory]           = useState<MonthlyReportRecord[]>([]);
+  const [markingSent, setMarkingSent]   = useState<string | null>(null);
 
   const today   = new Date();
   const y       = today.getFullYear();
@@ -39,7 +43,22 @@ export default function MonthlyReportGenerator() {
     } finally { setLoading(false); }
   }, []);
 
+  const loadHistory = useCallback(async (portfolioId: string) => {
+    if (!portfolioId) return;
+    try {
+      const res  = await fetch(`/api/admin/monthly-reports?portfolioId=${portfolioId}`);
+      const data = await res.json();
+      setHistory(data.reports ?? []);
+    } catch { /* silent */ }
+  }, []);
+
   useEffect(() => { load(); }, [load]);
+
+  useEffect(() => {
+    if (form.portfolioId) loadHistory(form.portfolioId);
+    else setHistory([]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [form.portfolioId, loadHistory]);
 
   async function handleGenerate(e: React.FormEvent) {
     e.preventDefault();
@@ -54,7 +73,22 @@ export default function MonthlyReportGenerator() {
       if (!res.ok) { const d = await res.json(); setError(d.error ?? 'Error'); return; }
       const { report: r } = await res.json();
       setReport(r);
+      setSavedReportId(r.reportId ?? null);
+      loadHistory(form.portfolioId);
     } finally { setGenerating(false); }
+  }
+
+  async function handleMarkSent(id: string) {
+    setMarkingSent(id);
+    try {
+      await fetch('/api/admin/monthly-reports', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id }),
+      });
+      setHistory(prev => prev.map(r => r.id === id ? { ...r, sentAt: new Date().toISOString() } : r));
+      if (savedReportId === id) setSavedReportId(null);
+    } finally { setMarkingSent(null); }
   }
 
   const inputCls = 'w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-white text-sm placeholder-white/20 focus:outline-none focus:border-[#c9a84c]/50';
@@ -64,13 +98,21 @@ export default function MonthlyReportGenerator() {
     const pnlColor = report.metrics.pnlEur >= 0 ? 'text-green-400' : 'text-red-400';
     return (
       <div>
-        <div className="flex items-center gap-3 mb-6 no-print">
-          <button onClick={() => setReport(null)} className="text-white/40 hover:text-white transition-colors">
+        <div className="flex items-center gap-3 mb-6 no-print flex-wrap">
+          <button onClick={() => { setReport(null); setSavedReportId(null); }} className="text-white/40 hover:text-white transition-colors">
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
             </svg>
           </button>
           <h2 className="text-white font-bold text-xl flex-1">Vista prèvia de l&apos;informe</h2>
+          {savedReportId && (
+            <button
+              onClick={() => handleMarkSent(savedReportId)}
+              disabled={markingSent === savedReportId}
+              className="flex items-center gap-2 px-4 py-2 bg-green-600/20 border border-green-500/30 hover:bg-green-600/30 text-green-400 font-semibold text-sm rounded-lg transition-all disabled:opacity-50">
+              {markingSent === savedReportId ? '...' : '✓ Marcar com enviat'}
+            </button>
+          )}
           <button
             onClick={() => window.print()}
             className="flex items-center gap-2 px-4 py-2 bg-[#c9a84c] hover:bg-[#b8963f] text-[#0d1f1a] font-semibold text-sm rounded-lg transition-all">
@@ -187,6 +229,7 @@ export default function MonthlyReportGenerator() {
           <div className="w-6 h-6 border-2 border-[#c9a84c] border-t-transparent rounded-full animate-spin" />
         </div>
       ) : (
+        <>
         <form onSubmit={handleGenerate} className="max-w-xl space-y-5">
           <div>
             <label className={labelCls}>Cartera del client *</label>
@@ -251,6 +294,38 @@ export default function MonthlyReportGenerator() {
             )}
           </button>
         </form>
+
+        {/* Historial d'informes mensuals per la cartera seleccionada */}
+        {history.length > 0 && (
+          <div className="mt-10">
+            <h3 className="text-white/60 text-xs uppercase tracking-widest mb-3">Historial d&apos;informes</h3>
+            <div className="space-y-2">
+              {history.map(r => (
+                <div key={r.id} className="flex items-center justify-between bg-white/3 border border-white/8 rounded-xl px-4 py-3">
+                  <div>
+                    <p className="text-white/70 text-sm">
+                      {new Date(r.periodStart).toLocaleDateString('ca-ES', { month: 'long', year: 'numeric' })}
+                    </p>
+                    <p className="text-white/30 text-xs font-mono mt-0.5">{r.id}</p>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    {r.sentAt ? (
+                      <span className="text-xs text-green-400/70">✓ Enviat {new Date(r.sentAt).toLocaleDateString('ca-ES')}</span>
+                    ) : (
+                      <button
+                        onClick={() => handleMarkSent(r.id)}
+                        disabled={markingSent === r.id}
+                        className="px-3 py-1 bg-green-500/10 border border-green-500/20 text-green-400 text-xs rounded-lg hover:bg-green-500/20 transition-all disabled:opacity-50">
+                        {markingSent === r.id ? '...' : 'Marcar enviat'}
+                      </button>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+        </>
       )}
     </div>
   );

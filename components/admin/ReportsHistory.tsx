@@ -26,7 +26,8 @@ const INITIAL_MOCK: ReportRecord[] = [
 ];
 
 export default function ReportsHistory() {
-  const [reports, setReports]     = useState<ReportRecord[]>(INITIAL_MOCK);
+  const [reports, setReports]     = useState<ReportRecord[]>([]);
+  const [isDemo, setIsDemo]       = useState(false);
   const [loading, setLoading]     = useState(true);
   const [search, setSearch]       = useState('');
   const [filterProfile, setFilterProfile] = useState<string>('all');
@@ -37,9 +38,15 @@ export default function ReportsHistory() {
     fetch('/api/report-registry')
       .then(r => r.ok ? r.json() : null)
       .then(data => {
-        if (data?.reports?.length) setReports([...data.reports, ...INITIAL_MOCK]);
+        if (data?.reports?.length) {
+          setReports(data.reports);
+          setIsDemo(false);
+        } else {
+          setReports(INITIAL_MOCK);
+          setIsDemo(true);
+        }
       })
-      .catch(() => {})
+      .catch(() => { setReports(INITIAL_MOCK); setIsDemo(true); })
       .finally(() => setLoading(false));
   }, []);
 
@@ -99,6 +106,16 @@ export default function ReportsHistory() {
           ⬇️ Exportar CSV
         </motion.button>
       </div>
+
+      {/* Demo notice */}
+      {isDemo && !loading && (
+        <div className="flex items-center gap-3 px-4 py-3 bg-amber-500/8 border border-amber-500/20 rounded-xl">
+          <span className="text-amber-400 text-sm">⚠️</span>
+          <p className="text-amber-400/80 text-xs">
+            <span className="font-semibold">Dades de demostració</span> — Encara no hi ha informes reals generats en aquesta sessió. Genera un informe al qüestionari per veure'l aquí.
+          </p>
+        </div>
+      )}
 
       {/* KPIs */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">

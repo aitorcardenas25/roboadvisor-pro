@@ -13,6 +13,7 @@ const RATING_META: Record<StockRating, { label: string; color: string; bg: strin
 const VISIBLE_TO_META = {
   all:     { label: 'Tots',    color: '#10b981' },
   clients: { label: 'Clients', color: '#c9a84c' },
+  premium: { label: 'Premium', color: '#a78bfa' },
 };
 
 type FormState = Omit<StockReport, 'id' | 'createdAt' | 'updatedAt' | 'publishedAt'>;

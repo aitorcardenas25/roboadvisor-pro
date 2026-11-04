@@ -98,7 +98,7 @@ const STEPS = [
 const BENEFITS = [
   {
     title: 'Algorítmica i sense biaix',
-    desc: 'Teoria Markowitz MPT aplicada al teu perfil real. Matemàtica institucional.',
+    desc: 'Teoria Markowitz MPT aplicada al teu perfil. Cartera optimitzada amb dades reals.',
     iconPath: 'M9 3H5a2 2 0 00-2 2v4m6-6h10a2 2 0 012 2v4M9 3v18m0 0h10a2 2 0 002-2V9M9 21H5a2 2 0 01-2-2V9m0 0h18',
   },
   {
@@ -362,9 +362,8 @@ export default function LandingPage({ onNavigate }: Props) {
 
                   <div className="px-5 pt-4 pb-3 border-b border-[#1a3a2a]/50 flex items-center justify-between">
                     <span className="text-white/50 text-xs uppercase tracking-widest">La meva Cartera</span>
-                    <div className="flex items-center gap-1.5 text-xs text-emerald-400/80">
-                      <div className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
-                      En directe
+                    <div className="flex items-center gap-1.5 text-xs text-white/30">
+                      <span className="text-[9px] px-1.5 py-0.5 rounded border border-white/10 bg-white/3 uppercase tracking-wider">Vista prèvia</span>
                     </div>
                   </div>
 
@@ -763,10 +762,10 @@ export default function LandingPage({ onNavigate }: Props) {
                     </li>
                   ))}
                   <li>
-                    <button onClick={() => setShowLeadForm(true)}
+                    <Link href="/login"
                       className="text-white/38 hover:text-white/65 text-xs transition-colors duration-150">
-                      RoboAdvisor
-                    </button>
+                      RoboAdvisor (clients)
+                    </Link>
                   </li>
                 </ul>
               </div>

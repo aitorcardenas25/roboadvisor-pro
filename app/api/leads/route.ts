@@ -1,8 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { createLead } from '@/lib/leads';
-import { sendLeadNotification } from '@/lib/emails';
+import { sendLeadNotification, sendAccessRequestConfirmation } from '@/lib/emails';
 import { rateLimit, LIMITS, rateLimitResponse } from '@/lib/rateLimiter';
+import { createNotification } from '@/lib/notifications';
 
 const Schema = z.object({
   name:        z.string().min(2).max(100),
@@ -38,5 +39,12 @@ export async function POST(req: NextRequest) {
     gdprConsent, source: source ?? 'unknown', type,
   });
   sendLeadNotification({ name, lastName, email, phone, interest, type, profile, source }).catch(() => {});
+  sendAccessRequestConfirmation(email, name).catch(() => {});
+  createNotification({
+    type:    'new_lead',
+    title:   `Nou lead: ${[name, lastName].filter(Boolean).join(' ')}`,
+    message: `${email} · ${interest}`,
+    link:    '/admin',
+  });
   return NextResponse.json({ ok: true, id: lead.id }, { status: 201 });
 }

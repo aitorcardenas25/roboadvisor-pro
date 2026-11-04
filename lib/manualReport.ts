@@ -151,7 +151,8 @@ function buildMCSVG(p10: number, p50: number, p90: number, totalInvested: number
   const areaBwd = vP10.slice().reverse().map((v, i) => `L${xs[xs.length-1-i].toFixed(0)},${yForVal(v).toFixed(0)}`).join(' ');
   const areaPath = areaFwd + ' ' + areaBwd + ' Z';
 
-  const fmtY = (v: number) => v >= 1e6 ? `${(v/1e6).toFixed(1)}M` : `${Math.round(v/1000)}k`;
+  // Etiquetes de l'eix Y: número complet en format català, sense abreviatures "k"/"M".
+  const fmtY = (v: number) => Math.round(v).toLocaleString('ca-ES') + ' €';
   const labelVals = [maxVal * 0.95, (maxVal + minVal) / 2 * 1.1, (maxVal + minVal) / 2 * 0.7, minVal * 1.05];
   const yLabels = labelVals.map(v => ({ y: yForVal(v).toFixed(0), label: fmtY(v) }));
 

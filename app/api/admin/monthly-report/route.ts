@@ -3,6 +3,7 @@ import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/authOptions';
 import { getPortfolioById } from '@/lib/clientPortfolios';
 import { generateMonthlyReportData } from '@/lib/portfolioReport';
+import { saveMonthlyReport } from '@/lib/monthlyReports';
 import { z } from 'zod';
 
 type S = { user?: { role?: string } } | null;
@@ -34,6 +35,16 @@ export async function POST(req: NextRequest) {
     parsed.data.periodStart,
     parsed.data.periodEnd,
   );
+
+  // Guardar informe (fire-and-forget, no bloqueja la resposta)
+  saveMonthlyReport({
+    portfolioId: portfolio.id,
+    clientId:    portfolio.clientId,
+    clientName:  portfolio.clientName,
+    periodStart: parsed.data.periodStart,
+    periodEnd:   parsed.data.periodEnd,
+    data:        report,
+  }).catch(() => {});
 
   return NextResponse.json({ report });
 }

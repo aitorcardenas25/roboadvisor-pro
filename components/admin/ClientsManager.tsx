@@ -7,7 +7,6 @@ import type { UserRole } from '@/lib/roles';
 interface ClientUser {
   id:                 string;
   username:           string;
-  password:           string;
   name:               string;
   email:              string;
   role:               UserRole;
@@ -54,7 +53,7 @@ interface NewClientForm {
 
 const EMPTY_FORM: NewClientForm = { name: '', email: '', username: '', password: '', role: 'client' };
 
-export default function ClientsManager() {
+export default function ClientsManager({ onViewClient }: { onViewClient?: (id: string) => void }) {
   const [users, setUsers]       = useState<ClientUser[]>([]);
   const [loading, setLoading]   = useState(true);
   const [showForm, setShowForm] = useState(false);
@@ -333,7 +332,17 @@ export default function ClientsManager() {
                 </div>
 
                 {/* Actions */}
-                <div className="col-span-1 flex items-center justify-end">
+                <div className="col-span-1 flex items-center justify-end gap-1">
+                  {onViewClient && (
+                    <button
+                      onClick={() => onViewClient(u.id)}
+                      title="Veure fitxa"
+                      className="p-1.5 text-white/20 hover:text-[#c9a84c] hover:bg-[#c9a84c]/10 rounded-md transition-all">
+                      <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+                      </svg>
+                    </button>
+                  )}
                   {u.active && u.role !== 'admin' && (
                     <button
                       onClick={() => handleDeactivate(u.id)}

@@ -1,7 +1,7 @@
 import { Resend } from 'resend';
 
-const resend = process.env.RESEND_API_KEY ? new Resend(process.env.RESEND_API_KEY) : null;
-const FROM   = 'Factor OTC <noreply@factorotc.com>';
+const resend      = process.env.RESEND_API_KEY ? new Resend(process.env.RESEND_API_KEY) : null;
+const FROM        = `Factor OTC <${process.env.RESEND_FROM_EMAIL ?? process.env.FROM_EMAIL ?? 'noreply@factorotc.com'}>`;
 const ADMIN_EMAIL = process.env.ADMIN_EMAIL ?? 'admin@factorotc.com';
 
 interface EmailResult { success: boolean; error?: string }
@@ -61,6 +61,56 @@ export async function sendReportReady(to: string, name: string, reportUrl: strin
     <p style="color:rgba(255,255,255,0.7);line-height:1.6;">Hola ${name}, l'assessor ha preparat el teu informe financer personalitzat.</p>
     <a href="${reportUrl}" style="display:inline-block;margin:24px 0;padding:12px 28px;background:#c9a84c;color:#0d1f1a;font-weight:700;border-radius:10px;text-decoration:none;">Veure informe</a>
     <p style="color:rgba(255,255,255,0.4);font-size:13px;">L'informe inclou el diagnòstic de la teva situació financera, el teu perfil inversor i la proposta de cartera personalitzada.</p>`;
+  const { error } = await resend.emails.send({ from: FROM, to, subject, html: base(subject, body) });
+  return error ? { success: false, error: error.message } : { success: true };
+}
+
+export async function sendAccessRequestConfirmation(to: string, name: string): Promise<EmailResult> {
+  const subject = 'Hem rebut la teva sol·licitud d\'accés';
+  if (!resend) { console.log('[email]', subject, to); return { success: false, error: 'No API key' }; }
+  const body = `
+    <h2 style="color:#c9a84c;margin:0 0 16px;">Sol·licitud rebuda, ${name}!</h2>
+    <p style="color:rgba(255,255,255,0.7);line-height:1.6;">Hem rebut la teva sol·licitud d'accés a Factor OTC. El nostre equip la revisarà aviat i et contactarà en les properes 24–48 hores.</p>
+    <div style="margin:24px 0;padding:16px;background:rgba(201,168,76,0.08);border:1px solid rgba(201,168,76,0.2);border-radius:10px;">
+      <p style="color:rgba(255,255,255,0.5);font-size:13px;margin:0;">Mentre tant, pots consultar les nostres <strong style="color:#c9a84c;">carteres model</strong> i els darrers <strong style="color:#c9a84c;">informes de mercat</strong> a la nostra web.</p>
+    </div>
+    <p style="color:rgba(255,255,255,0.4);font-size:13px;">Si tens qualsevol dubte, respon directament a aquest email.</p>`;
+  const { error } = await resend.emails.send({ from: FROM, to, subject, html: base(subject, body) });
+  return error ? { success: false, error: error.message } : { success: true };
+}
+
+export async function sendQuestionnaireReceivedToAdmin(lead: {
+  name: string;
+  email: string;
+  profile?: string;
+  leadId: string;
+}): Promise<EmailResult> {
+  const subject = `Qüestionari completat: ${lead.name}`;
+  if (!resend) { console.log('[email]', subject, ADMIN_EMAIL); return { success: false, error: 'No API key' }; }
+  const row = (label: string, val: string, highlight = false) =>
+    `<tr><td style="color:rgba(255,255,255,0.45);font-size:12px;padding:5px 8px;white-space:nowrap;">${label}</td><td style="color:${highlight ? '#c9a84c' : '#fff'};padding:5px 8px;">${val}</td></tr>`;
+  const body = `
+    <h2 style="color:#c9a84c;margin:0 0 16px;">Qüestionari de perfil completat</h2>
+    <table style="width:100%;border:1px solid rgba(255,255,255,0.08);border-radius:10px;overflow:hidden;background:rgba(0,0,0,0.2);">
+      ${row('Nom', lead.name)}
+      ${row('Email', `<a href="mailto:${lead.email}" style="color:#c9a84c;">${lead.email}</a>`, true)}
+      ${lead.profile ? row('Perfil calculat', lead.profile, true) : ''}
+      ${row('ID Lead', lead.leadId)}
+    </table>
+    <a href="https://factorotc.com/admin" style="display:inline-block;margin:24px 0;padding:10px 24px;background:#1a3a2a;border:1px solid rgba(45,106,79,0.5);color:#c9a84c;font-weight:600;border-radius:10px;text-decoration:none;">Veure al panell admin →</a>`;
+  const { error } = await resend.emails.send({ from: FROM, to: ADMIN_EMAIL, subject, html: base(subject, body) });
+  return error ? { success: false, error: error.message } : { success: true };
+}
+
+export async function sendMonthlyReportAvailable(to: string, name: string, period: string): Promise<EmailResult> {
+  const subject = `Informe mensual disponible — ${period}`;
+  if (!resend) { console.log('[email]', subject, to); return { success: false, error: 'No API key' }; }
+  const body = `
+    <h2 style="color:#c9a84c;margin:0 0 16px;">El teu informe mensual ja és disponible</h2>
+    <p style="color:rgba(255,255,255,0.7);line-height:1.6;">Hola ${name}, el teu assessor ha preparat l'informe mensual corresponent al <strong style="color:#c9a84c;">${period}</strong>.</p>
+    <p style="color:rgba(255,255,255,0.6);line-height:1.6;margin-top:12px;">L'informe inclou: valor actual de la cartera, rendiment del mes, principals posicions i comentaris de l'assessor.</p>
+    <a href="https://factorotc.com/client/cartera" style="display:inline-block;margin:24px 0;padding:12px 28px;background:#c9a84c;color:#0d1f1a;font-weight:700;border-radius:10px;text-decoration:none;">Veure la meva cartera</a>
+    <p style="color:rgba(255,255,255,0.4);font-size:13px;">Si tens qualsevol pregunta sobre l'informe, contacta directament amb el teu assessor.</p>`;
   const { error } = await resend.emails.send({ from: FROM, to, subject, html: base(subject, body) });
   return error ? { success: false, error: error.message } : { success: true };
 }
