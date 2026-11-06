@@ -1,7 +1,19 @@
 // app/api/send-report/route.ts
 import { NextRequest, NextResponse } from 'next/server';
 import { Resend } from 'resend';
+import { getServerSession } from 'next-auth';
+import { authOptions } from '@/lib/authOptions';
 import { saveReport } from '@/lib/reportRegistry';
+import { rateLimit, rateLimitResponse } from '@/lib/rateLimiter';
+import { RECOMMENDATIONS_ENABLED } from '@/lib/featureFlags';
+
+type S = { user?: { id?: string; role?: string; email?: string | null } } | null;
+
+const MAX_PDF_BYTES = 10 * 1024 * 1024; // 10 MB
+
+function escapeHtml(s: string): string {
+  return s.replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]!));
+}
 
 function getResend() {
   const key = process.env.RESEND_API_KEY;
@@ -10,6 +22,27 @@ function getResend() {
 }
 
 export async function POST(req: NextRequest) {
+  // Aquest endpoint envia l'informe de cartera recomanada. Mentre les
+  // recomanacions estiguin desactivades, no s'ha de poder fer servir.
+  if (!RECOMMENDATIONS_ENABLED) {
+    return NextResponse.json(
+      { error: 'Funcionalitat desactivada.' },
+      { status: 403 }
+    );
+  }
+
+  // Abans era públic: qualsevol podia enviar un PDF arbitrari a qualsevol
+  // adreça des del nostre domini. Ara cal sessió i hi ha límit de peticions.
+  const session = await getServerSession(authOptions) as S;
+  const userId  = session?.user?.id;
+  const role    = session?.user?.role;
+  if (!userId || (role !== 'client' && role !== 'admin')) {
+    return NextResponse.json({ error: 'No autoritzat' }, { status: 401 });
+  }
+
+  const rl = rateLimit(`send-report:${userId}`, 5, 10 * 60_000);
+  if (!rl.ok) return rateLimitResponse(rl.resetInMs) as unknown as NextResponse;
+
   try {
     const formData = await req.formData();
     const pdfBlob  = formData.get('pdf')        as Blob   | null;
@@ -39,6 +72,21 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    // Un client només pot enviar-se l'informe a la seva pròpia adreça.
+    if (role !== 'admin' && email.toLowerCase() !== (session?.user?.email ?? '').toLowerCase()) {
+      return NextResponse.json(
+        { error: 'Només pots enviar l\'informe al teu propi email.' },
+        { status: 403 }
+      );
+    }
+
+    if (pdfBlob.size > MAX_PDF_BYTES || (pdfBlob.type && pdfBlob.type !== 'application/pdf')) {
+      return NextResponse.json(
+        { error: 'El fitxer ha de ser un PDF de com a màxim 10 MB.' },
+        { status: 400 }
+      );
+    }
+
     if (!process.env.RESEND_API_KEY) {
       return NextResponse.json(
         { error: 'RESEND_API_KEY no configurada. Afegeix-la al .env.local.' },
@@ -59,7 +107,7 @@ export async function POST(req: NextRequest) {
       from:    process.env.RESEND_FROM_EMAIL ?? 'onboarding@resend.dev',
       to:      [email],
       subject: `Factor OTC — Informe Financer Personalitzat — ${clientName}`,
-      html:    buildEmailHTML(clientName, profileLabel, scoreValue, reportDate),
+      html:    buildEmailHTML(escapeHtml(clientName), escapeHtml(profileLabel), escapeHtml(scoreValue), escapeHtml(reportDate)),
       attachments: [
         {
           filename:    fileName,

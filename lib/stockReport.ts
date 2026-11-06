@@ -465,17 +465,8 @@ export function generateStockReport(d: StockReportData): string {
   const s3 = d.price * 0.86;
   const s4 = d.week52Low ?? d.price * 0.75;
 
-  // --- Analyst consensus simulation ---
-  const totalAnalysts = 20 + Math.round(Math.random() * 20);
-  const buyPct  = recoCa === 'COMPRAR' ? 0.60 : recoCa === 'MANTENIR' ? 0.35 : 0.20;
-  const holdPct = recoCa === 'COMPRAR' ? 0.28 : recoCa === 'MANTENIR' ? 0.45 : 0.35;
-  const sellPct = 1 - buyPct - holdPct;
-  const nBuy  = Math.round(totalAnalysts * buyPct);
-  const nHold = Math.round(totalAnalysts * holdPct);
-  const nSell = totalAnalysts - nBuy - nHold;
-  const buyBarW  = Math.round(nBuy  / totalAnalysts * 540);
-  const holdBarW = Math.round(nHold / totalAnalysts * 540);
-  const sellBarW = Math.round(nSell / totalAnalysts * 540);
+  // Abans aquí es generava un "consens d'analistes" amb Math.random() i es
+  // mostrava com si fos real. Eliminat: no tenim dades de consens.
 
   // --- WACC/DCF ---
   const wacc = d.beta != null ? 0.042 + d.beta * 0.055 : 0.092;
@@ -773,17 +764,6 @@ export function generateStockReport(d: StockReportData): string {
       <strong style="color:var(--navy)">Conclusió.</strong> ${d.name || d.ticker} ofereix un perfil de qualitat ${recoCa === 'COMPRAR' ? 'atractiu' : 'acceptable'} amb visibilitat d'EPS. El principal risc és ${si.risks[0]?.toLowerCase() || 'el cicle macroeconòmic adverse'}. La relació rendiment-risc justifica posició ${recoCa === 'COMPRAR' ? '<em>core overweight</em>' : 'neutra'} en carteres diversificades.
     </div>
 
-    <h3 class="sans" style="font-size:12px;letter-spacing:2px;text-transform:uppercase;color:var(--navy);margin:18px 0 8px">Distribució de la recomanació (${totalAnalysts} analistes)</h3>
-    <svg viewBox="0 0 760 70" style="width:100%;height:auto">
-      <g font-family="Arial" font-size="11" fill="#fff">
-        <rect x="40" y="20" width="${buyBarW}" height="32" fill="#15803d"/>
-        <text x="44" y="40">${nBuy} Comprar (${Math.round(buyPct * 100)} %)</text>
-        <rect x="${40 + buyBarW}" y="20" width="${holdBarW}" height="32" fill="#c9a84c"/>
-        <text x="${44 + buyBarW}" y="40">${nHold} Mantenir (${Math.round(holdPct * 100)} %)</text>
-        ${nSell > 0 ? `<rect x="${40 + buyBarW + holdBarW}" y="20" width="${sellBarW}" height="32" fill="#dc2626"/>
-        <text x="${44 + buyBarW + holdBarW}" y="40">${nSell} Vendre</text>` : ''}
-      </g>
-    </svg>
   </div>
   ${ftr(3)}
 </section>`;
@@ -1059,47 +1039,10 @@ export function generateStockReport(d: StockReportData): string {
   ${ftr(9)}
 </section>`;
 
-  // ── PAGE 10: Consens Analistes ───────────────────────────────────────────────
-  const ptLow  = targetFinal * 0.88;
-  const ptHigh = targetFinal * 1.12;
-  const page10 = `<section class="page">
-  <div class="pad">
-    ${hdr('Consens Analistes')}
-    <h2 class="section-num">Secció 6</h2>
-    <h1 class="section">Consens d'analistes</h1>
-    <p class="lead">Recopilació del posicionament i preus objectius de les ${totalAnalysts} cobertures actives de ${d.ticker} i comparativa amb la nostra valoració interna.</p>
-
-    <div class="grid-3">
-      <div class="kpi"><div class="kpi-label">Preu objectiu mig (12m)</div><div class="kpi-val" style="color:var(--gold);font-size:24px">${fPrice(targetFinal, cur)}</div><div class="kpi-sub">Upside ${fPct(upside)} vs spot</div></div>
-      <div class="kpi"><div class="kpi-label">Recomanació FOTC</div><div class="kpi-val" style="font-size:24px;color:${recoColor}">${recoEn}</div><div class="kpi-sub">Convicció ${recoConvicció}</div></div>
-      <div class="kpi"><div class="kpi-label">Cobertures estimades</div><div class="kpi-val" style="font-size:24px">${totalAnalysts}</div><div class="kpi-sub">${nBuy} Buy / ${nHold} Hold / ${nSell} Sell</div></div>
-    </div>
-
-    <h3 class="sans" style="font-size:12px;letter-spacing:2px;text-transform:uppercase;color:var(--navy);margin:22px 0 8px">Distribució dels preus objectiu</h3>
-    <table class="data">
-      <thead><tr><th>Tram</th><th style="text-align:right">N analistes</th><th style="text-align:right">% del total</th><th>Cases representatives</th></tr></thead>
-      <tbody>
-        <tr><td>&gt; ${Math.round(ptHigh)} ${cur} (alcista extrem)</td><td class="num">${Math.round(totalAnalysts * 0.12)}</td><td class="num">${(12).toFixed(1)} %</td><td>Cases bullishes</td></tr>
-        <tr><td>${Math.round(targetFinal * 1.02)} - ${Math.round(ptHigh)} ${cur}</td><td class="num">${Math.round(totalAnalysts * 0.28)}</td><td class="num">${(28).toFixed(1)} %</td><td>Bancs d'inversió majors</td></tr>
-        <tr><td>${Math.round(targetFinal * 0.97)} - ${Math.round(targetFinal * 1.02)} ${cur}</td><td class="num">${Math.round(totalAnalysts * 0.33)}</td><td class="num">${(33).toFixed(1)} %</td><td>Consens central</td></tr>
-        <tr><td>${Math.round(ptLow)} - ${Math.round(targetFinal * 0.97)} ${cur}</td><td class="num">${Math.round(totalAnalysts * 0.18)}</td><td class="num">${(18).toFixed(1)} %</td><td>Cases cauteloses</td></tr>
-        <tr><td>&lt; ${Math.round(ptLow)} ${cur} (cautela)</td><td class="num">${Math.round(totalAnalysts * 0.09)}</td><td class="num">${(9).toFixed(1)} %</td><td>Bears / Cauteles</td></tr>
-      </tbody>
-    </table>
-
-    <h3 class="sans" style="font-size:12px;letter-spacing:2px;text-transform:uppercase;color:var(--navy);margin:22px 0 8px">Estimacions consens (FY+1e)</h3>
-    <div class="grid-3">
-      <div class="kpi"><div class="kpi-label">Vendes consens</div><div class="kpi-val">${fLarge(d.revenue != null ? d.revenue * (1 + revGrowth * 0.9) : null, cur)}</div><div class="kpi-sub">Factor OTC: ${fLarge(d.revenue != null ? d.revenue * (1 + revGrowth) : null, cur)}</div></div>
-      <div class="kpi"><div class="kpi-label">EPS consens</div><div class="kpi-val">${fyEPS[3] > 0 ? fPrice(fyEPS[3] * 0.97, cur) : '—'}</div><div class="kpi-sub">Factor OTC: ${fPrice(fyEPS[3], cur)}</div></div>
-      <div class="kpi"><div class="kpi-label">Marge brut consens</div><div class="kpi-val">${fPct(fyGrossMargin * 100 * 0.998)}</div><div class="kpi-sub">Factor OTC: ${fPct(fyGrossMargin * 100)}</div></div>
-    </div>
-
-    <div class="callout" style="margin-top:14px">
-      <strong style="color:var(--navy)">Nota metodològica.</strong> Els preus objectiu i el consens d'analistes s'han derivat a partir de les mètriques públiques disponibles i l'estimació interna de Factor OTC. Per a dades de consens en temps real, consulta Bloomberg, Refinitiv o Visible Alpha.
-    </div>
-  </div>
-  ${ftr(10)}
-</section>`;
+  // ── PAGE 10: (eliminada) ────────────────────────────────────────────────────
+  // La pàgina "Consens d'analistes" mostrava cobertures i preus objectiu
+  // inventats. S'ha eliminat fins que hi hagi una font de dades real.
+  const page10 = '';
 
   // ── PAGE 11: Catalitzadors i Riscos ────────────────────────────────────────
   const cats = [

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/authOptions';
+import { RECOMMENDATIONS_ENABLED } from '@/lib/featureFlags';
 import {
   type OHLCV,
   computeIndicators,
@@ -307,10 +308,7 @@ export async function GET(req: NextRequest) {
     }
 
     const indicators = computeIndicators(candles);
-    const signal     = generateSignal(candles, indicators, timeframe);
-    const combined   = computeCombined(signal, fundamental, timeframe);
-
-    return NextResponse.json({
+    const payload = {
       symbol, asset_type, timeframe,
       candles: candles.slice(-200),
       indicators: {
@@ -319,8 +317,17 @@ export async function GET(req: NextRequest) {
         ema50:  indicators.ema50.slice(-200),
         ema200: indicators.ema200.slice(-200),
       },
-      signal, fundamental, combined,
-    });
+    };
+
+    // Veredicte Comprar/Vendre amb entrada, stop-loss i take-profit = recomanació
+    // d'inversió. Desactivat per defecte: només es retornen dades i indicadors.
+    if (!RECOMMENDATIONS_ENABLED) {
+      return NextResponse.json({ ...payload, signal: null, fundamental: null, combined: null });
+    }
+
+    const signal     = generateSignal(candles, indicators, timeframe);
+    const combined   = computeCombined(signal, fundamental, timeframe);
+    return NextResponse.json({ ...payload, signal, fundamental, combined });
   } catch (err) {
     console.error('[analysis]', err);
     return NextResponse.json({ error: String(err) }, { status: 502 });

@@ -63,6 +63,7 @@ jobs:
         with:
           name: nextjs-build
           path: .next/
+          include-hidden-files: true   # .next comença per punt: sense això upload-artifact@v4 no puja res
           retention-days: 1
 
   # ── E2E tests ─────────────────────────────────────────────────────────────

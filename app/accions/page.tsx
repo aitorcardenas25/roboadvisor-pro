@@ -18,6 +18,39 @@ const CandlestickChart = dynamic(() => import('@/components/trading/CandlestickC
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
+// Sense recomanacions activades, l'API no retorna veredicte (signal/combined).
+type AnalysisResult = Omit<MarketAnalysis, 'signal' | 'fundamental' | 'combined'> & {
+  signal:      MarketAnalysis['signal'] | null;
+  fundamental: MarketAnalysis['fundamental'] | null;
+  combined:    MarketAnalysis['combined'] | null;
+};
+
+function IndicatorsPanel({ indicators }: { indicators: MarketAnalysis['indicators'] }) {
+  const fmt = (n: number | null | undefined, d = 2) => (n == null || !isFinite(n) ? '—' : n.toFixed(d));
+  const rows: [string, string][] = [
+    ['RSI (14)',    fmt(indicators.rsi, 1)],
+    ['MACD',        indicators.macd ? fmt(indicators.macd.macd, 3) : '—'],
+    ['MACD senyal', indicators.macd ? fmt(indicators.macd.signal, 3) : '—'],
+    ['ATR',         fmt(indicators.atr)],
+    ['Suport',      fmt(indicators.support)],
+    ['Resistència', fmt(indicators.resistance)],
+  ];
+  return (
+    <div className="bg-white/3 border border-white/8 rounded-2xl p-5">
+      <p className="text-white/40 text-xs uppercase tracking-widest mb-3">Indicadors tècnics</p>
+      <div className="grid grid-cols-2 md:grid-cols-3 gap-x-6">
+        {rows.map(([label, value]) => (
+          <div key={label} className="flex items-center justify-between py-2 border-b border-white/5">
+            <span className="text-white/40 text-sm">{label}</span>
+            <span className="font-mono font-semibold text-sm text-white/80">{value}</span>
+          </div>
+        ))}
+      </div>
+      <p className="text-white/30 text-xs mt-3">Dades descriptives. No es mostra cap veredicte de compra o venda.</p>
+    </div>
+  );
+}
+
 interface StockWithQuote extends TrackedStock { quote?: Quote }
 const SIGNAL_ORDER: StockSignal[] = ['oportunitat', 'vigilancia', 'neutral', 'risc-elevat'];
 
@@ -69,7 +102,7 @@ function AnalysisTab() {
   const [symbol, setSymbol]       = useState('');
   const [timeframe, setTimeframe] = useState<Timeframe>('1d');
   const [loading, setLoading]     = useState(false);
-  const [result, setResult]       = useState<MarketAnalysis | null>(null);
+  const [result, setResult]       = useState<AnalysisResult | null>(null);
   const [error, setError]         = useState<string | null>(null);
 
   const runAnalysis = useCallback(async (sym?: string) => {
@@ -82,7 +115,7 @@ function AnalysisTab() {
       const res = await fetch(`/api/analysis?symbol=${encodeURIComponent(s)}&asset_type=${assetType}&timeframe=${timeframe}`);
       const data = await res.json();
       if (!res.ok) { setError(data.error ?? 'Error desconegut'); return; }
-      setResult(data as MarketAnalysis);
+      setResult(data as AnalysisResult);
     } catch (e) {
       setError(String(e));
     } finally {
@@ -220,16 +253,20 @@ function AnalysisTab() {
           {/* Panels */}
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
             <div className="lg:col-span-3">
-              <SignalPanel
-                signal={result.signal}
-                fundamental={result.fundamental}
-                combined={result.combined}
-                rsi={result.indicators.rsi}
-                macd={result.indicators.macd}
-                atr={result.indicators.atr}
-                support={result.indicators.support}
-                resistance={result.indicators.resistance}
-              />
+              {result.signal && result.fundamental && result.combined ? (
+                <SignalPanel
+                  signal={result.signal}
+                  fundamental={result.fundamental}
+                  combined={result.combined}
+                  rsi={result.indicators.rsi}
+                  macd={result.indicators.macd}
+                  atr={result.indicators.atr}
+                  support={result.indicators.support}
+                  resistance={result.indicators.resistance}
+                />
+              ) : (
+                <IndicatorsPanel indicators={result.indicators} />
+              )}
             </div>
           </div>
 

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { stripe, STRIPE_PRICES } from '@/lib/stripe';
 import { z } from 'zod';
+import { RECOMMENDATIONS_ENABLED } from '@/lib/featureFlags';
 
 const Schema = z.object({
   name:  z.string().min(1).max(200),
@@ -8,6 +9,10 @@ const Schema = z.object({
 });
 
 export async function POST(req: NextRequest) {
+  // Cobrar per un informe amb cartera personalitzada = assessorament remunerat.
+  if (!RECOMMENDATIONS_ENABLED) {
+    return NextResponse.json({ error: 'Producte no disponible.' }, { status: 403 });
+  }
   if (!stripe) {
     return NextResponse.json({ error: 'Pagament no configurat', demo: true }, { status: 503 });
   }

@@ -19,7 +19,6 @@ const SECTIONS: ConfigSection[] = [
 
 export default function AdminConfig() {
   const [activeSection, setActiveSection] = useState('apis');
-  const [saved, setSaved]                 = useState(false);
   const [form, setForm]                   = useState({
     // APIs
     fmpApiKey:           '',
@@ -42,11 +41,6 @@ export default function AdminConfig() {
 
   const update = (field: string, value: string) =>
     setForm(prev => ({ ...prev, [field]: value }));
-
-  const handleSave = () => {
-    setSaved(true);
-    setTimeout(() => setSaved(false), 2500);
-  };
 
   const inputCls = "w-full bg-white/10 border border-white/20 rounded-lg px-3 py-2.5 text-white text-sm focus:outline-none focus:border-[#c9a84c]/60 focus:ring-1 focus:ring-[#c9a84c]/30 transition-all placeholder-white/20";
   const labelCls = "block text-white/50 text-xs uppercase tracking-wider mb-1.5";
@@ -356,34 +350,10 @@ export default function AdminConfig() {
             </motion.div>
           </AnimatePresence>
 
-          {/* Botó desar */}
-          <div className="flex justify-end mt-4 gap-3">
-            <motion.button
-              onClick={handleSave}
-              whileHover={{ scale: 1.02 }}
-              whileTap={{ scale: 0.98 }}
-              className={`px-6 py-2.5 rounded-lg font-bold text-sm transition-all ${
-                saved
-                  ? 'bg-emerald-500 text-white'
-                  : 'bg-[#c9a84c] text-[#0d1f1a] hover:bg-[#b8963f]'
-              }`}>
-              <AnimatePresence mode="wait">
-                {saved ? (
-                  <motion.span key="saved"
-                    initial={{ opacity: 0, scale: 0.8 }}
-                    animate={{ opacity: 1, scale: 1 }}
-                    exit={{ opacity: 0 }}>
-                    ✅ Desat!
-                  </motion.span>
-                ) : (
-                  <motion.span key="save"
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}>
-                    Desar canvis
-                  </motion.span>
-                )}
-              </AnimatePresence>
-            </motion.button>
+          {/* Avís: aquesta pantalla no persisteix res */}
+          <div className="mt-4 rounded-lg border border-amber-400/30 bg-amber-400/10 px-4 py-3 text-amber-200 text-xs leading-relaxed">
+            Aquests valors són de consulta. L&apos;app els llegeix de les variables d&apos;entorn
+            (Vercel → Settings → Environment Variables); canviar-los aquí no té cap efecte.
           </div>
         </div>
       </div>

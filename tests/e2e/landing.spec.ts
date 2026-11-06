@@ -24,8 +24,12 @@ test.describe('Landing page', () => {
     await expect(page).not.toHaveURL('/cartera');
   });
 
-  test('unauthenticated access to /admin redirects', async ({ page }) => {
+  test('unauthenticated access to /admin shows the login, not the dashboard', async ({ page }) => {
+    // /admin és públic a proxy.ts a propòsit: sense sessió renderitza el seu
+    // propi formulari d'accés en lloc de redirigir.
     await page.goto('/admin');
-    await expect(page).not.toHaveURL('/admin');
+    await expect(page.getByRole('heading', { name: 'Accés restringit' })).toBeVisible();
+    await expect(page.locator('input[type="password"]')).toBeVisible();
+    await expect(page.getByText('Gestió de Fons')).toHaveCount(0);
   });
 });

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/authOptions';
 import { generateStockReport, type StockReportData } from '@/lib/stockReport';
+import { RECOMMENDATIONS_ENABLED } from '@/lib/featureFlags';
 import { getYahooCrumb } from '@/lib/yahooFinance';
 import { getStockDetail } from '@/lib/stocksData';
 
@@ -189,6 +190,14 @@ async function fetchStockData(ticker: string): Promise<StockReportData> {
 }
 
 export async function GET(req: NextRequest) {
+  // L'informe inclou recomanació COMPRAR/MANTENIR/VENDRE i preu objectiu.
+  if (!RECOMMENDATIONS_ENABLED) {
+    return NextResponse.json(
+      { error: 'L\'informe borsari amb recomanació està desactivat temporalment.' },
+      { status: 403 }
+    );
+  }
+
   const session = await getServerSession(authOptions);
   if (!session) {
     return NextResponse.json({ error: 'Accés no autoritzat. Inicia sessió per generar informes.' }, { status: 401 });
