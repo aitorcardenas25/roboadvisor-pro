@@ -5,7 +5,7 @@ vi.mock('@/lib/supabase', () => ({ getDb: () => null }));
 
 import {
   proposalStats, projection, roundWeights, itemsFromHoldings, fundToItem, fundOptions,
-  validateForApproval, proposalToReportInput, saveDraft, approveProposal, getProposals,
+  validateForApproval, proposalToReportInput, saveDraft, approveProposal, getProposals, checkProposalSuitability,
   __resetProposalsForTests, type ProposalItem, type ProposalParams,
 } from '@/lib/proposals';
 import { buildProposalWorkbook } from '@/lib/proposalExcel';
@@ -177,5 +177,56 @@ describe('informe i Excel', () => {
     const fons = wb.getWorksheet('Fons')!;
     expect(fons.getRow(2).getCell(5).value).toBe(6000);   // 60 % de 10.000 €
     expect(wb.getWorksheet('Projecció')!.rowCount).toBe(12); // capçalera + anys 0..10
+  });
+});
+
+describe('checkProposalSuitability', () => {
+  const q = { financialKnowledge: 'intermedi', liquidityNeed: 'no-necessito', investmentHorizon: 10 };
+
+  it('moderat amb risc mitjà raonable i qüestionari coherent → idònia', () => {
+    const r = checkProposalSuitability({ profile: 'moderat', horizon: 10, items: [item('A', 50, { risk: 5 }), item('B', 50, { risk: 3 })] }, q, 'moderat');
+    expect(r.status).toBe('adequate');
+  });
+  it('conservador amb 100 % SRRI 7 → no idònia', () => {
+    const r = checkProposalSuitability({ profile: 'conservador', horizon: 10, items: [item('A', 100, { risk: 7 })] }, q);
+    expect(r.status).toBe('inadequate');
+    expect(r.issues.map(i => i.message).join(' ')).toMatch(/Risc mitjà SRRI 7\.0/);
+  });
+  it('necessitat de liquiditat amb cartera de risc → no idònia', () => {
+    const r = checkProposalSuitability({ profile: 'agressiu', horizon: 10, items: [item('A', 100, { risk: 6 })] }, { ...q, liquidityNeed: 'necessito-ja' });
+    expect(r.status).toBe('inadequate');
+  });
+  it('horitzó curt amb molta renda variable → no idònia', () => {
+    const r = checkProposalSuitability({ profile: 'agressiu', horizon: 2, items: [item('A', 100, { risk: 6 })] }, q);
+    expect(r.status).toBe('inadequate');
+  });
+  it('sense qüestionari o amb perfil diferent → avís', () => {
+    expect(checkProposalSuitability({ profile: 'moderat', horizon: 10, items: [item('A', 100, { risk: 4 })] }).status).toBe('borderline');
+    const r = checkProposalSuitability({ profile: 'dinamic', horizon: 10, items: [item('A', 100, { risk: 5 })] }, q, 'conservador');
+    expect(r.status).toBe('borderline');
+    expect(r.issues[0].message).toMatch(/conservador/);
+  });
+});
+
+describe('aprovació concurrent (memòria)', () => {
+  beforeEach(() => __resetProposalsForTests());
+
+  it('no aprova si l\'esborrany ha canviat des que es va revisar', async () => {
+    const d = await saveDraft('c1', { ...params, items: [item('A', 100)] });
+    await new Promise(r => setTimeout(r, 2));
+    await saveDraft('c1', { ...params, items: [item('B', 100)] });
+    const r = await approveProposal('c1', d.id, 'x', { expectedUpdatedAt: d.updatedAt });
+    expect(r.ok).toBe(false);
+    expect((await getProposals('c1'))[0].status).toBe('draft');
+  });
+
+  it('desa el resultat d\'idoneïtat i el motiu amb la versió aprovada', async () => {
+    const d = await saveDraft('c1', { ...params, items: [item('A', 100)] });
+    const suitability = { status: 'inadequate' as const, issues: [{ level: 'inadequate' as const, message: 'x' }] };
+    await approveProposal('c1', d.id, 'x', { suitability, suitabilityOverride: 'Ho demana el client', expectedUpdatedAt: d.updatedAt });
+    const [p] = await getProposals('c1');
+    expect(p.status).toBe('approved');
+    expect(p.suitability?.status).toBe('inadequate');
+    expect(p.suitabilityOverride).toBe('Ho demana el client');
   });
 });

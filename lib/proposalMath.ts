@@ -46,6 +46,8 @@ export interface ClientProposal extends ProposalParams {
   updatedAt:   string;
   approvedAt?: string;
   approvedBy?: string;
+  suitability?:         ProposalSuitability;  // resultat en el moment d'aprovar
+  suitabilityOverride?: string;               // motiu si s'aprova tot i no ser idònia
 }
 
 // ─── Estimacions per SRRI ─────────────────────────────────────────────────────
@@ -224,3 +226,64 @@ export function validateForApproval(p: Pick<ClientProposal, 'items' | 'initialAm
   return null;
 }
 
+
+// ─── Idoneïtat (MiFID II, simplificada per a propostes en escala SRRI 1–7) ────
+// Equivalent a lib/suitability.ts (que treballa amb productes del catàleg en
+// escala 1–5) però aplicat a les línies de la proposta, que poden ser fons de
+// fora del catàleg. Es comprova al servidor abans d'aprovar.
+
+export type SuitabilityLevel = 'adequate' | 'borderline' | 'inadequate';
+export interface ProposalSuitability {
+  status: SuitabilityLevel;
+  issues: { level: Exclude<SuitabilityLevel, 'adequate'>; message: string }[];
+}
+
+/** SRRI mitjà ponderat màxim per perfil. */
+export const MAX_AVG_SRRI: Record<ProposalProfile, number> = { conservador: 3, moderat: 4.5, dinamic: 5.5, agressiu: 7 };
+/** SRRI màxim d'un sol fons per perfil. */
+export const MAX_FUND_SRRI: Record<ProposalProfile, number> = { conservador: 5, moderat: 6, dinamic: 7, agressiu: 7 };
+const KNOWLEDGE: Record<string, number> = { cap: 0, basic: 1, intermedi: 2, 'avançat': 3, expert: 4 };
+const PROFILE_LABEL: Record<string, string> = { conservador: 'conservador', moderat: 'moderat', dinamic: 'dinàmic', agressiu: 'agressiu' };
+
+export function checkProposalSuitability(
+  p: Pick<ClientProposal, 'items' | 'profile' | 'horizon'>,
+  questionnaire: Record<string, unknown> = {},
+  leadProfile?: string,
+): ProposalSuitability {
+  const issues: ProposalSuitability['issues'] = [];
+  const weighted = p.items.reduce((s, x) => s + (x.weight || 0) / 100 * x.risk, 0);
+  const label = PROFILE_LABEL[p.profile] ?? p.profile;
+
+  if (weighted > MAX_AVG_SRRI[p.profile] + 1e-9) {
+    issues.push({ level: 'inadequate', message: `Risc mitjà SRRI ${weighted.toFixed(1)} supera el màxim ${MAX_AVG_SRRI[p.profile]} per a perfil ${label}` });
+  }
+  for (const x of p.items) {
+    if (x.weight > 0 && x.risk > MAX_FUND_SRRI[p.profile]) {
+      issues.push({ level: 'inadequate', message: `${x.name || x.isin}: SRRI ${x.risk} massa alt per a perfil ${label} (màx. ${MAX_FUND_SRRI[p.profile]})` });
+    }
+  }
+  const equityWeight = p.items.filter(x => x.risk >= 5).reduce((s, x) => s + (x.weight || 0), 0);
+  if (p.horizon < 3 && equityWeight > 30) {
+    issues.push({ level: 'inadequate', message: `Horitzó de ${p.horizon} anys massa curt per a un ${equityWeight.toFixed(0)} % en fons de risc alt (SRRI ≥ 5)` });
+  }
+
+  const hasQ = Object.keys(questionnaire).some(k => ['financialKnowledge', 'liquidityNeed', 'investmentHorizon'].includes(k));
+  if (!hasQ) {
+    issues.push({ level: 'borderline', message: 'El client no té qüestionari: no es pot comprovar coneixement ni necessitat de liquiditat' });
+  } else {
+    const k = KNOWLEDGE[String(questionnaire.financialKnowledge)] ?? 0;
+    if (k < 2 && p.items.some(x => x.weight > 0 && x.risk >= 5)) {
+      issues.push({ level: 'borderline', message: `Coneixement financer "${questionnaire.financialKnowledge ?? 'desconegut'}": cal explicar bé els fons de risc alt (SRRI ≥ 5)` });
+    }
+    const liq = String(questionnaire.liquidityNeed ?? '');
+    if ((liq === 'necessito-ja' || liq === 'potser-6-mesos') && weighted >= 4) {
+      issues.push({ level: 'inadequate', message: 'El client necessita liquiditat a curt termini i la cartera té risc mitjà o alt' });
+    }
+  }
+  if (leadProfile && (PROFILES as readonly string[]).includes(leadProfile) && leadProfile !== p.profile) {
+    issues.push({ level: 'borderline', message: `El perfil del qüestionari és ${PROFILE_LABEL[leadProfile]}, però la proposta és per a ${label}` });
+  }
+
+  const status: SuitabilityLevel = issues.some(i => i.level === 'inadequate') ? 'inadequate' : issues.length ? 'borderline' : 'adequate';
+  return { status, issues };
+}

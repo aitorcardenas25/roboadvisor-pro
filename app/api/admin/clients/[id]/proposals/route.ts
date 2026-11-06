@@ -11,7 +11,7 @@ import { getLeadByLinkedUser, getLeadByEmail } from '@/lib/leads';
 import { getPortfolioByClientId, computeMetrics } from '@/lib/clientPortfolios';
 import {
   getProposals, saveDraft, approveProposal, fundOptions, fundToItem,
-  itemsFromHoldings, roundWeights, proposalStats, PROFILES, type ProposalItem, type ProposalProfile,
+  itemsFromHoldings, roundWeights, proposalStats, checkProposalSuitability, getProposal, PROFILES, type ProposalItem, type ProposalProfile,
 } from '@/lib/proposals';
 import { buildPortfolio } from '@/lib/portfolio';
 import type { InvestorQuestionnaire } from '@/lib/scoring';
@@ -45,7 +45,11 @@ const ParamsSchema = z.object({
 const PutSchema = ParamsSchema.extend({ items: z.array(ItemSchema).max(40) });
 
 const PostSchema = z.discriminatedUnion('action', [
-  z.object({ action: z.literal('approve'), id: z.string().min(1) }),
+  z.object({
+    action: z.literal('approve'), id: z.string().min(1),
+    expectedUpdatedAt: z.string().optional(),
+    overrideReason: z.string().trim().max(1000).optional(),   // obligatori si no és idònia
+  }),
   z.object({ action: z.literal('suggest'), profile: z.enum(PROFILES), initialAmount: z.number().min(0), monthlyAmount: z.number().min(0) }),
   z.object({ action: z.literal('fromHoldings') }),
 ]);
@@ -74,6 +78,7 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
 
   return NextResponse.json({
     client:    { name: ctx.user.name, email: ctx.user.email },
+    leadProfile: leadProfile ?? null,
     personal:  q,
     proposals: (await getProposals(id)).map(withStats),
     funds:     fundOptions(),
@@ -126,7 +131,22 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     return NextResponse.json({ items: suggestItems(body.profile, body.initialAmount, body.monthlyAmount, ctx.lead?.questionnaireData) });
   }
 
-  const res = await approveProposal(id, body.id, session.user?.email ?? 'admin');
+  // Idoneïtat (MiFID II) al servidor abans de congelar la recomanació
+  const draft = await getProposal(id, body.id);
+  if (!draft) return NextResponse.json({ error: 'Proposta no trobada' }, { status: 404 });
+  const suitability = checkProposalSuitability(draft, ctx.lead?.questionnaireData ?? {}, ctx.lead?.profile);
+  const overrideReason = body.overrideReason?.trim() || undefined;
+  if (suitability.status === 'inadequate' && (!overrideReason || overrideReason.length < 10)) {
+    return NextResponse.json({
+      error: 'La proposta no és idònia per al client. Corregeix-la o escriu el motiu per aprovar-la igualment (mín. 10 caràcters).',
+      suitability,
+    }, { status: 422 });
+  }
+
+  const res = await approveProposal(id, body.id, session.user?.email ?? 'admin', {
+    suitability, expectedUpdatedAt: body.expectedUpdatedAt,
+    suitabilityOverride: suitability.status === 'inadequate' ? overrideReason : undefined,
+  });
   if (!res.ok) return NextResponse.json({ error: res.error }, { status: 422 });
   const p = res.proposal;
 
@@ -140,7 +160,10 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
 
   logAuditEvent('proposal.approved', {
     userId: session.user?.id, userEmail: session.user?.email, resource: p.id,
-    metadata: { clientId: id, version: p.version, funds: p.items.length },
+    metadata: {
+      clientId: id, version: p.version, funds: p.items.length,
+      suitability: suitability.status, override: !!p.suitabilityOverride,
+    },
   });
   return NextResponse.json({ proposal: withStats(p) });
 }

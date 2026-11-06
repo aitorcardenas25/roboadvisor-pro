@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
-  proposalStats, fundToItem, validateForApproval, proposalToReportInput, PROFILES,
+  proposalStats, fundToItem, validateForApproval, proposalToReportInput, checkProposalSuitability, PROFILES,
   type ClientProposal, type ProposalItem, type ProposalParams, type ProposalStats,
 } from '@/lib/proposalMath';
 import { isValidIsin } from '@/lib/fundUniverse';
@@ -10,6 +10,7 @@ import { isValidIsin } from '@/lib/fundUniverse';
 type WithStats = ClientProposal & { stats: ProposalStats };
 interface Data {
   client:    { name: string; email: string };
+  leadProfile: string | null;
   personal:  Record<string, unknown>;
   proposals: WithStats[];
   funds:     { isin: string; name: string; category: string; source: 'advisor' | 'catalog' }[];
@@ -44,6 +45,7 @@ export default function ClientProposal({ clientId }: { clientId: string }) {
   const [msg, setMsg]         = useState<{ ok: boolean; text: string } | null>(null);
   const [fundQuery, setFundQuery] = useState('');
   const [openNote, setOpenNote]   = useState<string | null>(null);
+  const [overrideReason, setOverrideReason] = useState('');
 
   const api = `/api/admin/clients/${clientId}/proposals`;
 
@@ -74,10 +76,15 @@ export default function ClientProposal({ clientId }: { clientId: string }) {
   const latest = data?.proposals[0];
   const editingApproved = latest?.status === 'approved';
   const stats = useMemo(() => params ? proposalStats({ ...params, items }) : null, [params, items]);
+  const suit = useMemo(
+    () => params && data ? checkProposalSuitability({ ...params, items }, data.personal, data.leadProfile ?? undefined) : null,
+    [params, items, data],
+  );
+  const needsOverride = suit?.status === 'inadequate' && overrideReason.trim().length < 10;
   const approvalProblem = params ? validateForApproval({ ...params, items }) : 'Carregant';
 
   if (error) return <p className="text-red-400 text-sm">{error}</p>;
-  if (!data || !params || !stats) return <p className="text-white/40 text-sm">Carregant…</p>;
+  if (!data || !params || !stats || !suit) return <p className="text-white/40 text-sm">Carregant…</p>;
 
   const setP = (patch: Partial<ProposalParams>) => { setParams({ ...params, ...patch }); setDirty(true); };
   const setItem = (i: number, patch: Partial<ProposalItem>) => {
@@ -165,11 +172,15 @@ export default function ClientProposal({ clientId }: { clientId: string }) {
       if (!draft) return;
       const res = await fetch(api, {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action: 'approve', id: draft.id }),
+        body: JSON.stringify({
+          action: 'approve', id: draft.id, expectedUpdatedAt: draft.updatedAt,
+          overrideReason: suit.status === 'inadequate' ? overrideReason : undefined,
+        }),
       });
       const d = await res.json();
       if (!res.ok) { setMsg({ ok: false, text: d.error ?? 'No s\'ha pogut aprovar' }); await load(false); return; }
       const approved = d.proposal as WithStats;
+      setOverrideReason('');
       setBusy('report');
       await generatePdf(approved);
       await downloadExcel(approved).catch(() => setMsg({ ok: false, text: 'Aprovada i PDF generat, però l\'Excel ha fallat. Torna-ho a provar des de l\'historial.' }));
@@ -294,6 +305,30 @@ export default function ClientProposal({ clientId }: { clientId: string }) {
         </p>
       </div>
 
+      {/* Idoneïtat */}
+      <div className={`${card} ${suit.status === 'inadequate' ? 'border-red-500/40' : suit.status === 'borderline' ? 'border-amber-400/30' : ''}`}>
+        <h3 className="text-white/50 text-xs uppercase tracking-widest mb-2">Idoneïtat per al client</h3>
+        {suit.status === 'adequate' ? (
+          <p className="text-green-400 text-sm">Idònia: encaixa amb el perfil, el coneixement i la liquiditat del client.</p>
+        ) : (
+          <ul className="space-y-1">
+            {suit.issues.map((it, i) => (
+              <li key={i} className={`text-xs ${it.level === 'inadequate' ? 'text-red-300' : 'text-amber-200/80'}`}>
+                {it.level === 'inadequate' ? '✕' : '!'} {it.message}
+              </li>
+            ))}
+          </ul>
+        )}
+        {suit.status === 'inadequate' && (
+          <label className="block mt-3 text-white/50 text-xs">
+            Per aprovar-la igualment, escriu el motiu (queda registrat):
+            <textarea value={overrideReason} onChange={e => setOverrideReason(e.target.value)} rows={2}
+              placeholder="p. ex. el client ho ha demanat explícitament després d'explicar-li el risc"
+              className={`${input} w-full mt-1`} />
+          </label>
+        )}
+      </div>
+
       {/* Nota i accions */}
       <div className={card}>
         <label className="text-white/40 text-xs block mb-1">Nota de l&apos;assessor (surt a l&apos;informe)</label>
@@ -305,8 +340,8 @@ export default function ClientProposal({ clientId }: { clientId: string }) {
             className="ml-auto px-4 py-2 rounded-lg bg-white/10 text-white text-sm hover:bg-white/15 disabled:opacity-40">
             {busy === 'save' ? 'Desant…' : 'Desar esborrany'}
           </button>
-          <button disabled={!!busy || !!approvalProblem || (editingApproved && !dirty)} onClick={onApprove}
-            title={approvalProblem ?? (editingApproved && !dirty ? 'Aquesta versió ja està aprovada' : '')}
+          <button disabled={!!busy || !!approvalProblem || needsOverride || (editingApproved && !dirty)} onClick={onApprove}
+            title={approvalProblem ?? (needsOverride ? 'La proposta no és idònia: escriu el motiu' : editingApproved && !dirty ? 'Aquesta versió ja està aprovada' : '')}
             className="px-5 py-2 rounded-lg bg-[#c9a84c] text-[#0d1f1a] text-sm font-bold hover:bg-[#b8963f] disabled:opacity-40">
             {busy === 'approve' ? 'Aprovant…' : busy === 'report' ? 'Generant informe…' : 'Aprovar i generar informe'}
           </button>
@@ -326,6 +361,7 @@ export default function ClientProposal({ clientId }: { clientId: string }) {
                   {p.status === 'approved' ? 'Aprovada' : 'Esborrany'}
                 </span>
                 <span className="text-white/40">{new Date(p.approvedAt ?? p.updatedAt).toLocaleDateString('ca-ES')}</span>
+                {p.suitabilityOverride && <span className="text-red-300" title={p.suitabilityOverride}>No idònia (justificada)</span>}
                 <span className="text-white/50">{p.items.length} fons · {PROFILE_LABEL[p.profile]} · {pct(p.stats.netReturn)} net</span>
                 {p.status === 'approved' && (
                   <span className="ml-auto flex gap-2">
