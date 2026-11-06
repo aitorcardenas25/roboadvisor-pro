@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
-  proposalStats, fundToItem, validateForApproval, proposalToReportInput, checkProposalSuitability, PROFILES,
+  proposalStats, fundToItem, hasPerformanceData, validateForApproval, proposalToReportInput, checkProposalSuitability, PROFILES,
   type ClientProposal, type ProposalItem, type ProposalParams, type ProposalStats,
 } from '@/lib/proposalMath';
 import { isValidIsin } from '@/lib/fundUniverse';
@@ -372,9 +372,9 @@ export default function ClientProposal({ clientId }: { clientId: string }) {
                 <span className="text-white/50">{p.items.length} fons · {PROFILE_LABEL[p.profile]} · {p.stats.complete ? `${pct(p.stats.netReturn)} net` : 'dades incompletes'}</span>
                 {p.status === 'approved' && (
                   <span className="ml-auto flex gap-2">
-                    <button disabled={!!busy} onClick={() => fromHistory(p, 'pdf')} className="text-[#c9a84c] hover:underline disabled:opacity-40">
+                    {p.stats.complete && <button disabled={!!busy} onClick={() => fromHistory(p, 'pdf')} className="text-[#c9a84c] hover:underline disabled:opacity-40">
                       {busy === `pdf-${p.id}` ? 'Generant…' : 'PDF'}
-                    </button>
+                    </button>}
                     <button disabled={!!busy} onClick={() => fromHistory(p, 'excel')} className="text-[#c9a84c] hover:underline disabled:opacity-40">
                       {busy === `excel-${p.id}` ? 'Descarregant…' : 'Excel'}
                     </button>
@@ -411,7 +411,7 @@ function FundRow({ x, i, amount, input, noteOpen, toggleNote, setItem, removeIte
         <td className={td}>
           <input value={x.name} onChange={e => setItem(i, { name: e.target.value })} placeholder="Nom del fons" className={`${input} w-full min-w-[220px]`} />
           <p className="text-white/30 text-[11px] mt-0.5">{x.category || 'Sense categoria'}
-            {(x.historicalReturn5Y == null || x.historicalVolatility == null) && <span className="text-red-300/80"> · sense dades de rendiment</span>}</p>
+            {!hasPerformanceData(x) && <span className="text-red-300/80"> · sense dades de rendiment</span>}</p>
         </td>
         <td className={td}><input type="number" min={0} max={100} step={0.5} value={x.weight}
           onChange={e => setItem(i, { weight: Math.min(100, Math.max(0, Number(e.target.value) || 0)) })} className={`${input} w-16`} /></td>

@@ -11,7 +11,7 @@ import { getLeadByLinkedUser, getLeadByEmail } from '@/lib/leads';
 import { getPortfolioByClientId, computeMetrics } from '@/lib/clientPortfolios';
 import {
   getProposals, saveDraft, approveProposal, fundOptions, fundToItem,
-  itemsFromHoldings, roundWeights, proposalStats, checkProposalSuitability, getProposal, PROFILES, type ProposalItem, type ProposalProfile,
+  itemsFromHoldings, roundWeights, verifiedPerformance, proposalStats, checkProposalSuitability, getProposal, PROFILES, type ProposalItem, type ProposalProfile,
 } from '@/lib/proposals';
 import { buildPortfolio } from '@/lib/portfolio';
 import type { InvestorQuestionnaire } from '@/lib/scoring';
@@ -104,7 +104,10 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
   const parsed = PutSchema.safeParse(await req.json().catch(() => null));
   if (!parsed.success) return NextResponse.json({ error: 'Dades no vàlides', issues: parsed.error.issues }, { status: 400 });
 
-  const saved = await saveDraft(id, parsed.data);
+  // Les dades de rendiment no es prenen del navegador: es tornen a buscar a
+  // la font verificada (fitxes) per ISIN.
+  const items = parsed.data.items.map(x => ({ ...x, ...verifiedPerformance(x.isin) }));
+  const saved = await saveDraft(id, { ...parsed.data, items });
   logAuditEvent('proposal.saved', {
     userId: session.user?.id, userEmail: session.user?.email, resource: saved.id,
     metadata: { clientId: id, version: saved.version, funds: saved.items.length },

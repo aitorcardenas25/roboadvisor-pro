@@ -23,8 +23,9 @@ export interface ProposalItem {
   ter:                   number;   // % anual
   platform:              string;
   justification:         string;
-  historicalReturn5Y?:   number;   // % anual, si el catàleg en té
-  historicalVolatility?: number;   // % anual, si el catàleg en té
+  historicalReturn5Y?:   number;   // % anual, de la fitxa del fons
+  historicalVolatility?: number;   // % anual, de la fitxa del fons
+  performanceSource?:    string;   // d'on surten (p. ex. "Morningstar, 30/09/2026")
 }
 
 export interface ProposalParams {
@@ -54,8 +55,19 @@ export interface ClientProposal extends ProposalParams {
 // Decisió de l'assessor (2026-11-06): CAP rendiment estimat a partir del SRRI.
 // Un fons sense rendibilitat i volatilitat reals (catàleg o fitxa Morningstar a
 // lib/fundUniverse.ts) deixa la proposta sense projecció i no es pot aprovar.
+// Les xifres de lib/products.ts són estimacions acadèmiques, no observacions:
+// NO compten. Només compten les dades amb font (fitxa) de lib/fundUniverse.ts.
 export const hasPerformanceData = (x: ProposalItem) =>
-  Number.isFinite(x.historicalReturn5Y) && Number.isFinite(x.historicalVolatility);
+  Number.isFinite(x.historicalReturn5Y) && Number.isFinite(x.historicalVolatility) && !!x.performanceSource?.trim();
+
+/** Dades de rendiment verificades per a un ISIN (només fitxes amb font). */
+export function verifiedPerformance(rawIsin: string): Pick<ProposalItem, 'historicalReturn5Y' | 'historicalVolatility' | 'performanceSource'> {
+  const a = ADVISOR_FUNDS.find(f => f.isin === rawIsin.trim().toUpperCase());
+  if (a && Number.isFinite(a.return5Y) && Number.isFinite(a.volatility) && a.source?.trim()) {
+    return { historicalReturn5Y: a.return5Y, historicalVolatility: a.volatility, performanceSource: a.source };
+  }
+  return { historicalReturn5Y: undefined, historicalVolatility: undefined, performanceSource: undefined };
+}
 
 function guessSrri(category: string): number {
   if (/monetari|money/i.test(category)) return 1;
@@ -73,7 +85,7 @@ export function fundToItem(rawIsin: string, weight = 0): ProposalItem | null {
       isin, name: p.name, category: p.category, weight,
       risk: p.mifidRiskIndicator ?? Math.min(7, Math.round(p.risk * 1.2)),
       ter: p.ter, platform: '', justification: p.justification,
-      historicalReturn5Y: p.historicalReturn5Y, historicalVolatility: p.historicalVolatility,
+      ...verifiedPerformance(isin), // les estimacions del catàleg no es fan servir
     };
   }
   const a = ADVISOR_FUNDS.find(f => f.isin === isin);
@@ -81,7 +93,7 @@ export function fundToItem(rawIsin: string, weight = 0): ProposalItem | null {
     return {
       isin, name: a.name, category: a.category, weight,
       risk: a.srri ?? guessSrri(a.category), ter: a.ter ?? 0, platform: '', justification: '',
-      historicalReturn5Y: a.return5Y, historicalVolatility: a.volatility,
+      ...verifiedPerformance(isin),
     };
   }
   return null;

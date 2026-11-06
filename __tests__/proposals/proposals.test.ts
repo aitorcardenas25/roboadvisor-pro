@@ -6,13 +6,13 @@ vi.mock('@/lib/supabase', () => ({ getDb: () => null }));
 import {
   proposalStats, projection, roundWeights, itemsFromHoldings, fundToItem, fundOptions,
   validateForApproval, proposalToReportInput, saveDraft, approveProposal, getProposals, checkProposalSuitability,
-  __resetProposalsForTests, type ProposalItem, type ProposalParams,
+  __resetProposalsForTests, hasPerformanceData, type ProposalItem, type ProposalParams,
 } from '@/lib/proposals';
 import { buildProposalWorkbook } from '@/lib/proposalExcel';
 
 const item = (isin: string, weight: number, extra: Partial<ProposalItem> = {}): ProposalItem => ({
   isin, name: isin, category: 'RV Global', weight, risk: 6, ter: 0.5, platform: '', justification: '',
-  historicalReturn5Y: 6, historicalVolatility: 12, ...extra,
+  historicalReturn5Y: 6, historicalVolatility: 12, performanceSource: 'Fitxa test', ...extra,
 });
 const params: ProposalParams = { profile: 'moderat', objective: 'Creixement', horizon: 10, initialAmount: 10000, monthlyAmount: 100, adminNote: '' };
 
@@ -89,6 +89,16 @@ describe('fundToItem / fundOptions', () => {
     expect(f?.name).toMatch(/Vanguard Global Small-Cap/);
     expect(f?.weight).toBe(25);
     expect(f?.risk).toBe(6);
+  });
+  it('les estimacions del catàleg (lib/products.ts) no compten com a dades reals', () => {
+    const f = fundToItem('IE00B03HCZ61', 30); // Vanguard Global Stock (catàleg, dades estimades)
+    expect(f).not.toBeNull();
+    expect(f?.historicalReturn5Y).toBeUndefined();
+    expect(hasPerformanceData(f!)).toBe(false);
+  });
+  it('xifres sense font no compten com a dades reals', () => {
+    expect(hasPerformanceData(item('A', 100, { performanceSource: undefined }))).toBe(false);
+    expect(hasPerformanceData(item('A', 100))).toBe(true);
   });
   it('ISIN desconegut → null', () => {
     expect(fundToItem('US0378331005')).toBeNull();
@@ -173,6 +183,18 @@ describe('informe i Excel', () => {
     expect(input.monthlyExpenses).toBe(1500);
     expect(input.patrimoni).toBe(90000);
     expect(input.assets[0].weight).toBe(100);
+  });
+
+  it('Excel d\'una proposta incompleta: cap xifra de rendiment ni projecció', async () => {
+    const p = await saveDraft('c1', { ...params, items: [item('A', 100, { performanceSource: undefined })] });
+    const wb = new ExcelJS.Workbook();
+    await wb.xlsx.load(await buildProposalWorkbook(p, 'Marta') as unknown as ArrayBuffer);
+    const resum = wb.getWorksheet('Resum')!;
+    const values = resum.getColumn(2).values.filter(v => v != null);
+    expect(values.filter(v => v === 'Dades no disponibles')).toHaveLength(6);
+    const proj = wb.getWorksheet('Projecció')!;
+    expect(proj.rowCount).toBe(2);
+    expect(String(proj.getRow(2).getCell(1).value)).toMatch(/no disponible/);
   });
 
   it('genera un Excel amb resum, fons i projecció', async () => {
