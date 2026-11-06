@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
-  proposalStats, fundToItem, validateForApproval, proposalToReportInput, checkProposalSuitability, PROFILES,
+  proposalStats, fundToItem, hasPerformanceData, validateForApproval, proposalToReportInput, checkProposalSuitability, PROFILES,
   type ClientProposal, type ProposalItem, type ProposalParams, type ProposalStats,
 } from '@/lib/proposalMath';
 import { isValidIsin } from '@/lib/fundUniverse';
@@ -292,17 +292,24 @@ export default function ClientProposal({ clientId }: { clientId: string }) {
       <div className={card}>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           <Metric label="Suma de pesos" value={pct(stats.totalWeight)} tone={stats.weightOk ? 'ok' : 'bad'} />
-          <Metric label="Rendiment net estimat" value={`${pct(stats.netReturn)} / any`} sub={`Brut ${pct(stats.grossReturn)} − TER ${pct(stats.ter)}`} />
-          <Metric label="Volatilitat estimada" value={pct(stats.volatility)} sub={`SRRI mitjà ${stats.risk.toFixed(1)}`} />
+          <Metric label="Rendiment net" value={stats.complete ? `${pct(stats.netReturn)} / any` : '—'} sub={stats.complete ? `Brut ${pct(stats.grossReturn)} − TER ${pct(stats.ter)}` : 'Falten dades'} />
+          <Metric label="Volatilitat" value={stats.complete ? pct(stats.volatility) : '—'} sub={`SRRI mitjà ${stats.risk.toFixed(1)}`} />
           <Metric label={`Total aportat (${params.horizon} anys)`} value={eur(stats.totalInvested)} />
-          <Metric label="Escenari desfavorable" value={eur(stats.p10)} />
-          <Metric label="Escenari central" value={eur(stats.p50)} />
-          <Metric label="Escenari favorable" value={eur(stats.p90)} />
-          <Metric label="Fons" value={String(items.length)} sub={stats.estimatedFunds ? `${stats.estimatedFunds} amb rendiment estimat pel SRRI` : 'Tots amb dades del catàleg'} />
+          <Metric label="Escenari desfavorable" value={stats.complete ? eur(stats.p10) : '—'} />
+          <Metric label="Escenari central" value={stats.complete ? eur(stats.p50) : '—'} />
+          <Metric label="Escenari favorable" value={stats.complete ? eur(stats.p90) : '—'} />
+          <Metric label="Fons" value={String(items.length)} sub={stats.complete ? 'Tots amb dades reals' : `${stats.missing.length} sense dades`} tone={stats.complete ? undefined : 'bad'} />
         </div>
-        <p className="text-white/25 text-[11px] mt-4">
-          Estimacions amb dades històriques del catàleg o, si no n&apos;hi ha, segons el SRRI. Són les mateixes xifres que sortiran a l&apos;informe.
-        </p>
+{stats.complete ? (
+          <p className="text-white/25 text-[11px] mt-4">
+            Rendibilitat i volatilitat històriques anualitzades de cada fons. Són les mateixes xifres que sortiran a l&apos;informe.
+          </p>
+        ) : (
+          <p className="text-red-300/90 text-xs mt-4">
+            Sense projecció: falten rendibilitat i volatilitat reals de {stats.missing.map(m => m.name).join(', ')}.
+            Penja la fitxa del fons (Morningstar) per afegir-les. Fins llavors la proposta es pot desar però no aprovar.
+          </p>
+        )}
       </div>
 
       {/* Idoneïtat */}
@@ -362,12 +369,12 @@ export default function ClientProposal({ clientId }: { clientId: string }) {
                 </span>
                 <span className="text-white/40">{new Date(p.approvedAt ?? p.updatedAt).toLocaleDateString('ca-ES')}</span>
                 {p.suitabilityOverride && <span className="text-red-300" title={p.suitabilityOverride}>No idònia (justificada)</span>}
-                <span className="text-white/50">{p.items.length} fons · {PROFILE_LABEL[p.profile]} · {pct(p.stats.netReturn)} net</span>
+                <span className="text-white/50">{p.items.length} fons · {PROFILE_LABEL[p.profile]} · {p.stats.complete ? `${pct(p.stats.netReturn)} net` : 'dades incompletes'}</span>
                 {p.status === 'approved' && (
                   <span className="ml-auto flex gap-2">
-                    <button disabled={!!busy} onClick={() => fromHistory(p, 'pdf')} className="text-[#c9a84c] hover:underline disabled:opacity-40">
+                    {p.stats.complete && <button disabled={!!busy} onClick={() => fromHistory(p, 'pdf')} className="text-[#c9a84c] hover:underline disabled:opacity-40">
                       {busy === `pdf-${p.id}` ? 'Generant…' : 'PDF'}
-                    </button>
+                    </button>}
                     <button disabled={!!busy} onClick={() => fromHistory(p, 'excel')} className="text-[#c9a84c] hover:underline disabled:opacity-40">
                       {busy === `excel-${p.id}` ? 'Descarregant…' : 'Excel'}
                     </button>
@@ -404,7 +411,7 @@ function FundRow({ x, i, amount, input, noteOpen, toggleNote, setItem, removeIte
         <td className={td}>
           <input value={x.name} onChange={e => setItem(i, { name: e.target.value })} placeholder="Nom del fons" className={`${input} w-full min-w-[220px]`} />
           <p className="text-white/30 text-[11px] mt-0.5">{x.category || 'Sense categoria'}
-            {x.historicalReturn5Y == null && <span className="text-amber-300/70"> · rendiment estimat pel SRRI</span>}</p>
+            {!hasPerformanceData(x) && <span className="text-red-300/80"> · sense dades de rendiment</span>}</p>
         </td>
         <td className={td}><input type="number" min={0} max={100} step={0.5} value={x.weight}
           onChange={e => setItem(i, { weight: Math.min(100, Math.max(0, Number(e.target.value) || 0)) })} className={`${input} w-16`} /></td>

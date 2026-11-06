@@ -12,6 +12,13 @@ export interface UniverseFund {
   isin:     string;
   name:     string;
   category: string;
+  // Dades de la fitxa del fons (Morningstar o gestora). Sense return5Y i
+  // volatility el fons no té projecció i la proposta no es pot aprovar.
+  return5Y?:   number;   // rendibilitat anualitzada 5 anys (%)
+  volatility?: number;   // desviació estàndard anualitzada (%)
+  ter?:        number;   // despeses corrents (%)
+  srri?:       1 | 2 | 3 | 4 | 5 | 6 | 7;
+  source?:     string;   // p. ex. "Morningstar, fitxa 30/09/2026"
 }
 
 export const ADVISOR_FUNDS: UniverseFund[] = [

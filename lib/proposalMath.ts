@@ -23,8 +23,9 @@ export interface ProposalItem {
   ter:                   number;   // % anual
   platform:              string;
   justification:         string;
-  historicalReturn5Y?:   number;   // % anual, si el catàleg en té
-  historicalVolatility?: number;   // % anual, si el catàleg en té
+  historicalReturn5Y?:   number;   // % anual, de la fitxa del fons
+  historicalVolatility?: number;   // % anual, de la fitxa del fons
+  performanceSource?:    string;   // d'on surten (p. ex. "Morningstar, 30/09/2026")
 }
 
 export interface ProposalParams {
@@ -50,12 +51,23 @@ export interface ClientProposal extends ProposalParams {
   suitabilityOverride?: string;               // motiu si s'aprova tot i no ser idònia
 }
 
-// ─── Estimacions per SRRI ─────────────────────────────────────────────────────
-// Mateixes taules que fa servir l'informe PDF (components/pdf/ManualReportPDF),
-// perquè el que veu l'assessor a pantalla coincideixi amb l'informe. Només
-// s'usen quan el fons no té dades històriques al catàleg.
-export const SRRI_RETURN: Record<number, number> = { 1: 2, 2: 3.5, 3: 5, 4: 7, 5: 9.5, 6: 13, 7: 17 };
-export const SRRI_VOL:    Record<number, number> = { 1: 1, 2: 3,   3: 6, 4: 11, 5: 16,  6: 22, 7: 30 };
+// ─── Dades de rendiment ───────────────────────────────────────────────────────
+// Decisió de l'assessor (2026-11-06): CAP rendiment estimat a partir del SRRI.
+// Un fons sense rendibilitat i volatilitat reals (catàleg o fitxa Morningstar a
+// lib/fundUniverse.ts) deixa la proposta sense projecció i no es pot aprovar.
+// Les xifres de lib/products.ts són estimacions acadèmiques, no observacions:
+// NO compten. Només compten les dades amb font (fitxa) de lib/fundUniverse.ts.
+export const hasPerformanceData = (x: ProposalItem) =>
+  Number.isFinite(x.historicalReturn5Y) && Number.isFinite(x.historicalVolatility) && !!x.performanceSource?.trim();
+
+/** Dades de rendiment verificades per a un ISIN (només fitxes amb font). */
+export function verifiedPerformance(rawIsin: string): Pick<ProposalItem, 'historicalReturn5Y' | 'historicalVolatility' | 'performanceSource'> {
+  const a = ADVISOR_FUNDS.find(f => f.isin === rawIsin.trim().toUpperCase());
+  if (a && Number.isFinite(a.return5Y) && Number.isFinite(a.volatility) && a.source?.trim()) {
+    return { historicalReturn5Y: a.return5Y, historicalVolatility: a.volatility, performanceSource: a.source };
+  }
+  return { historicalReturn5Y: undefined, historicalVolatility: undefined, performanceSource: undefined };
+}
 
 function guessSrri(category: string): number {
   if (/monetari|money/i.test(category)) return 1;
@@ -73,12 +85,16 @@ export function fundToItem(rawIsin: string, weight = 0): ProposalItem | null {
       isin, name: p.name, category: p.category, weight,
       risk: p.mifidRiskIndicator ?? Math.min(7, Math.round(p.risk * 1.2)),
       ter: p.ter, platform: '', justification: p.justification,
-      historicalReturn5Y: p.historicalReturn5Y, historicalVolatility: p.historicalVolatility,
+      ...verifiedPerformance(isin), // les estimacions del catàleg no es fan servir
     };
   }
   const a = ADVISOR_FUNDS.find(f => f.isin === isin);
   if (a) {
-    return { isin, name: a.name, category: a.category, weight, risk: guessSrri(a.category), ter: 0, platform: '', justification: '' };
+    return {
+      isin, name: a.name, category: a.category, weight,
+      risk: a.srri ?? guessSrri(a.category), ter: a.ter ?? 0, platform: '', justification: '',
+      ...verifiedPerformance(isin),
+    };
   }
   return null;
 }
@@ -107,7 +123,8 @@ export interface ProposalStats {
   netReturn:        number;   // brut − TER, mínim 0
   volatility:       number;   // % anual ponderat (sense diversificació: conservador)
   risk:             number;   // SRRI ponderat
-  estimatedFunds:   number;   // fons sense dades històriques (estimats per SRRI)
+  complete:         boolean;  // tots els fons tenen rendiment i volatilitat reals
+  missing:          { isin: string; name: string }[];  // fons sense aquestes dades
   totalInvested:    number;   // aportat al final de l'horitzó
   p10: number; p50: number; p90: number;
   yearly: { year: number; invested: number; p10: number; p50: number; p90: number }[];
@@ -129,8 +146,11 @@ export function projection(initial: number, monthly: number, annualRatePct: numb
  */
 export function proposalStats(p: Pick<ClientProposal, 'items' | 'horizon' | 'initialAmount' | 'monthlyAmount'>): ProposalStats {
   const w = (x: ProposalItem) => (x.weight || 0) / 100;
-  const ret = (x: ProposalItem) => x.historicalReturn5Y ?? SRRI_RETURN[Math.round(x.risk)] ?? 5;
-  const vol = (x: ProposalItem) => x.historicalVolatility ?? SRRI_VOL[Math.round(x.risk)] ?? 8;
+  // Rendiment i volatilitat només dels fons amb dades: si en falta algun,
+  // complete = false i la UI / l'aprovació no fan servir aquestes xifres.
+  const ret = (x: ProposalItem) => x.historicalReturn5Y ?? 0;
+  const vol = (x: ProposalItem) => x.historicalVolatility ?? 0;
+  const missing = p.items.filter(x => !hasPerformanceData(x)).map(x => ({ isin: x.isin, name: x.name || x.isin }));
 
   const totalWeight = p.items.reduce((s, x) => s + (x.weight || 0), 0);
   const grossReturn = p.items.reduce((s, x) => s + w(x) * ret(x), 0);
@@ -154,7 +174,7 @@ export function proposalStats(p: Pick<ClientProposal, 'items' | 'horizon' | 'ini
   return {
     totalWeight, weightOk: Math.abs(totalWeight - 100) < 0.01,
     grossReturn, ter, netReturn, volatility, risk,
-    estimatedFunds: p.items.filter(x => x.historicalReturn5Y == null || x.historicalVolatility == null).length,
+    complete: missing.length === 0, missing,
     totalInvested: last.invested, p10: last.p10, p50: last.p50, p90: last.p90, yearly,
   };
 }
@@ -218,6 +238,7 @@ export function proposalToReportInput(
 export function validateForApproval(p: Pick<ClientProposal, 'items' | 'initialAmount' | 'monthlyAmount' | 'horizon'>): string | null {
   if (!p.items.length) return 'La proposta no té cap fons';
   const s = proposalStats(p);
+  if (!s.complete) return `Falten rendibilitat i volatilitat reals de: ${s.missing.map(m => m.name).join(', ')}. Cal la fitxa (p. ex. Morningstar).`;
   if (!s.weightOk) return `Els pesos sumen ${s.totalWeight.toFixed(2)} %, han de sumar 100 %`;
   if (p.items.some(x => x.weight <= 0)) return 'Hi ha fons amb pes 0: treu-los o dona\'ls pes';
   if (new Set(p.items.map(x => x.isin)).size !== p.items.length) return 'Hi ha fons repetits';

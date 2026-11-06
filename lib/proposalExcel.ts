@@ -24,7 +24,10 @@ export async function buildProposalWorkbook(p: ClientProposal, clientName: strin
   r.columns = [{ width: 34 }, { width: 28 }];
   r.addRow(['FACTOR OTC · Proposta de cartera']).font = { bold: true, size: 14, color: { argb: GREEN } };
   r.addRow([]);
-  const rows: [string, string | number, string?][] = [
+  // Sense dades verificades de tots els fons no s'escriu cap xifra de rendiment
+  type Row = [string, string | number, string?];
+  const perf = (r: Row): Row[] => [s.complete ? r : [r[0], 'Dades no disponibles']];
+  const rows: Row[] = [
     ['Client', clientName],
     ['Versió', p.version],
     ['Estat', p.status === 'approved' ? 'Aprovada' : 'Esborrany'],
@@ -34,15 +37,15 @@ export async function buildProposalWorkbook(p: ClientProposal, clientName: strin
     ['Horitzó (anys)', p.horizon],
     ['Import inicial', p.initialAmount, EUR],
     ['Aportació mensual', p.monthlyAmount, EUR],
-    ['Rendiment brut estimat (anual)', s.grossReturn, PCT],
+    ...perf(['Rendiment brut (anual)', s.grossReturn, PCT]),
     ['Cost (TER) ponderat', s.ter, PCT],
-    ['Rendiment net estimat (anual)', s.netReturn, PCT],
-    ['Volatilitat estimada (anual)', s.volatility, PCT],
+    ...perf(['Rendiment net (anual)', s.netReturn, PCT]),
+    ...perf(['Volatilitat (anual)', s.volatility, PCT]),
     ['Risc SRRI ponderat (1–7)', Number(s.risk.toFixed(1))],
     [`Total aportat en ${p.horizon} anys`, s.totalInvested, EUR],
-    ['Escenari desfavorable (P10)', s.p10, EUR],
-    ['Escenari central (P50)', s.p50, EUR],
-    ['Escenari favorable (P90)', s.p90, EUR],
+    ...perf(['Escenari desfavorable (P10)', s.p10, EUR]),
+    ...perf(['Escenari central (P50)', s.p50, EUR]),
+    ...perf(['Escenari favorable (P90)', s.p90, EUR]),
   ];
   for (const [k, v, fmt] of rows) {
     const row = r.addRow([k, v]);
@@ -52,11 +55,11 @@ export async function buildProposalWorkbook(p: ClientProposal, clientName: strin
   if (p.adminNote) { r.addRow([]); r.addRow(['Nota de l\'assessor']).font = { bold: true }; r.addRow([p.adminNote]); }
   r.addRow([]);
   r.addRow([
-    'Les rendibilitats són estimacions (dades històriques del catàleg o, si no n\'hi ha, segons el nivell de risc SRRI). ' +
+    'Rendibilitats i volatilitats històriques anualitzades de cada fons (catàleg o fitxa del fons). ' +
     'Rendiments passats no garanteixen rendiments futurs.',
   ]).font = { italic: true, size: 9, color: { argb: 'FF6C6C6C' } };
-  if (s.estimatedFunds > 0) {
-    r.addRow([`${s.estimatedFunds} fons sense dades històriques: rendiment i volatilitat estimats pel seu SRRI.`]).font = { italic: true, size: 9, color: { argb: GOLD } };
+  if (!s.complete) {
+    r.addRow([`Falten dades reals de ${s.missing.length} fons: no s'inclouen xifres de rendiment ni projecció.`]).font = { italic: true, size: 9, color: { argb: GOLD } };
   }
 
   // ── Fons ──
@@ -88,7 +91,8 @@ export async function buildProposalWorkbook(p: ClientProposal, clientName: strin
   ];
   header(y.getRow(1));
   const startYear = new Date(p.approvedAt ?? p.updatedAt).getFullYear();
-  for (const pt of s.yearly) {
+  if (!s.complete) y.addRow(['Projecció no disponible: falten dades de rendiment verificades.']);
+  else for (const pt of s.yearly) {
     const row = y.addRow([startYear + pt.year, pt.invested, pt.p10, pt.p50, pt.p90]);
     for (let c = 2; c <= 5; c++) row.getCell(c).numFmt = EUR;
   }
