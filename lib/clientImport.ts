@@ -175,8 +175,10 @@ export function parseDate(v: Raw): string | null {
   }
   m = s.match(/^(\d{4})-(\d{2})-(\d{2})$/);
   if (m) {
-    const d = new Date(`${s}T00:00:00Z`);
-    return isNaN(d.getTime()) ? null : s;
+    const [, yy, mm, dd] = m.map(Number);
+    const d = new Date(Date.UTC(yy, mm - 1, dd));
+    // JS normalitza 2024-02-31 a 2 de març: es rebutja si els components no quadren
+    return d.getUTCFullYear() === yy && d.getUTCMonth() === mm - 1 && d.getUTCDate() === dd ? s : null;
   }
   return null;
 }
@@ -271,12 +273,20 @@ export async function parseClientWorkbook(data: ArrayBuffer | Buffer): Promise<I
       if (needsAsset && !isValidIsin(isinRaw)) errs.push(`ISIN "${isinRaw || '(buit)'}" no vàlid`);
       if (!needsAsset && isinRaw && !isValidIsin(isinRaw)) errs.push(`ISIN "${isinRaw}" no vàlid`);
 
-      const qty   = parseNumber(row.getCell(5).value) ?? 0;
-      const price = parseNumber(row.getCell(6).value) ?? 0;
-      let total   = parseNumber(row.getCell(7).value);
-      const comm  = parseNumber(row.getCell(8).value) ?? 0;
+      // Cel·la buida = 0 / no informat; cel·la plena que no és un número = error
+      const num = (c: number, label: string): number | null => {
+        const raw = row.getCell(c).value;
+        if (str(raw) === '') return null;
+        const n = parseNumber(raw);
+        if (n === null) errs.push(`${label} "${str(raw)}" no és un número`);
+        return n;
+      };
+      const qty   = num(5, 'participacions') ?? 0;
+      const price = num(6, 'preu') ?? 0;
+      let total   = num(7, 'import total');
+      const comm  = num(8, 'comissió') ?? 0;
       if (total === null && qty > 0 && price > 0) total = Math.round(qty * price * 100) / 100;
-      if (total === null || total <= 0) errs.push('falta l\'import total (o participacions × preu)');
+      if ((total === null || total <= 0) && !errs.some(e => e.startsWith('import total'))) errs.push('falta l\'import total (o participacions × preu)');
       if (needsAsset && qty <= 0) errs.push('participacions han de ser > 0');
       if (comm < 0) errs.push('comissió negativa');
       if (errs.length) { res.errors.push({ sheet: SHEET.tx, row: r, message: errs.join('; ') }); return; }

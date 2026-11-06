@@ -106,3 +106,21 @@ describe('parseClientWorkbook', () => {
     expect(r.errors[0].message).toMatch(/no és un fitxer Excel/i);
   });
 });
+
+describe('regressions de revisió', () => {
+  it('rebutja dates ISO impossibles', () => {
+    expect(parseDate('2024-02-31')).toBeNull();
+    expect(parseDate('2024-02-29')).toBe('2024-02-29');
+  });
+
+  it('una cel·la numèrica plena però no vàlida és error, no zero', async () => {
+    const wb = new ExcelJS.Workbook();
+    await wb.xlsx.load(await buildTemplate() as unknown as ArrayBuffer);
+    const ws = wb.getWorksheet('Moviments')!;
+    ['15/01/2024', 'Compra', 'IE00B42W4L06', '', 10, 250, null, '10 euros', 'MyInvestor']
+      .forEach((v, i) => { ws.getRow(2).getCell(i + 1).value = v as ExcelJS.CellValue; });
+    const r = await parseClientWorkbook((await wb.xlsx.writeBuffer()) as ArrayBuffer);
+    expect(r.transactions).toHaveLength(0);
+    expect(r.errors[0].message).toMatch(/comissió "10 euros" no és un número/);
+  });
+});

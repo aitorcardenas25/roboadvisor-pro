@@ -88,28 +88,42 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     description: 'Creada des de la importació d\'Excel', recommendations: '',
   });
 
-  if (replace && existing) {
-    for (const h of existing.holdings)     await removeHolding(h.id, portfolio.id);
-    for (const t of existing.transactions) await removeTransaction(t.id, portfolio.id);
-  }
-
+  // Primer s'insereixen les files noves i només després s'esborren les antigues:
+  // si una inserció falla, es desfà el que s'ha afegit i la cartera queda com estava.
+  const oldHoldings = replace && existing ? existing.holdings.map(h => h.id) : [];
+  const oldTxs      = replace && existing ? existing.transactions.map(t => t.id) : [];
+  const newHoldings: string[] = [];
+  const newTxs: string[] = [];
   const now = new Date().toISOString();
-  for (const h of result.holdings) {
-    await addHolding(portfolio.id, {
-      assetIsin: h.isin, assetName: h.name, assetCategory: h.category, broker: h.broker,
-      quantity: h.quantity, avgEntryPrice: h.avgEntryPrice,
-      // Fins que no es refresquin preus de mercat, el valor actual = cost (preu pendent)
-      currentPrice: h.avgEntryPrice, priceLastUpdated: now, priceSource: 'pending',
-      currency: h.currency, notes: h.notes,
-    });
+  try {
+    for (const h of result.holdings) {
+      const created = await addHolding(portfolio.id, {
+        assetIsin: h.isin, assetName: h.name, assetCategory: h.category, broker: h.broker,
+        quantity: h.quantity, avgEntryPrice: h.avgEntryPrice,
+        // Fins que no es refresquin preus de mercat, el valor actual = cost (preu pendent)
+        currentPrice: h.avgEntryPrice, priceLastUpdated: now, priceSource: 'pending',
+        currency: h.currency, notes: h.notes,
+      });
+      newHoldings.push(created.id);
+    }
+    for (const t of result.transactions) {
+      const created = await addTransaction(portfolio.id, {
+        operationType: t.operationType, ticker: t.isin, assetName: t.name, date: t.date,
+        quantity: t.quantity, priceEur: t.priceEur, totalEur: t.totalEur,
+        commission: t.commission, broker: t.broker, notes: t.notes,
+      });
+      newTxs.push(created.id);
+    }
+  } catch (err) {
+    await Promise.allSettled([
+      ...newHoldings.map(hid => removeHolding(hid, portfolio.id)),
+      ...newTxs.map(tid => removeTransaction(tid, portfolio.id)),
+    ]);
+    console.error('[import] error inserint, s\'ha desfet la importació:', err instanceof Error ? err.message : err);
+    return NextResponse.json({ error: 'No s\'ha pogut desar la importació; la cartera no s\'ha modificat.' }, { status: 500 });
   }
-  for (const t of result.transactions) {
-    await addTransaction(portfolio.id, {
-      operationType: t.operationType, ticker: t.isin, assetName: t.name, date: t.date,
-      quantity: t.quantity, priceEur: t.priceEur, totalEur: t.totalEur,
-      commission: t.commission, broker: t.broker, notes: t.notes,
-    });
-  }
+  for (const hid of oldHoldings) await removeHolding(hid, portfolio.id);
+  for (const tid of oldTxs)      await removeTransaction(tid, portfolio.id);
 
   let personalSaved = false;
   if (lead && Object.keys(result.personal).length) {
