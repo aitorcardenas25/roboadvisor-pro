@@ -1,5 +1,9 @@
 import { getDb } from './supabase';
 
+// Sufix aleatori per evitar IDs repetits quan s'afegeixen moltes files en el
+// mateix mil·lisegon (p. ex. una importació d'Excel).
+const rid = () => globalThis.crypto.randomUUID().slice(0, 8);
+
 export type OperationType = 'buy' | 'sell' | 'deposit' | 'withdrawal' | 'rebalance';
 
 export interface ClientHolding {
@@ -254,7 +258,7 @@ export async function createClientPortfolio(
 ): Promise<ClientPortfolio> {
   const now = new Date().toISOString();
   const portfolio: ClientPortfolio = {
-    ...input, id: `cport-${Date.now()}`, nextFollowup: undefined,
+    ...input, id: `cport-${Date.now()}-${rid()}`, nextFollowup: undefined,
     holdings: [], transactions: [], advisorNotes: [], snapshots: [],
     createdAt: now, updatedAt: now,
   };
@@ -323,7 +327,7 @@ export async function addHolding(
   h: Omit<ClientHolding, 'id' | 'portfolioId' | 'createdAt'>,
 ): Promise<ClientHolding> {
   const now  = new Date().toISOString();
-  const newH: ClientHolding = { ...h, id: `h-${Date.now()}`, portfolioId, createdAt: now };
+  const newH: ClientHolding = { ...h, id: `h-${Date.now()}-${rid()}`, portfolioId, createdAt: now };
   const db   = getDb();
   if (!db) {
     const p = _portfolios.find(p => p.id === portfolioId);
@@ -405,7 +409,7 @@ export async function addTransaction(
   tx: Omit<ClientTransaction, 'id' | 'portfolioId' | 'createdAt'>,
 ): Promise<ClientTransaction> {
   const now  = new Date().toISOString();
-  const newTx: ClientTransaction = { ...tx, id: `tx-${Date.now()}`, portfolioId, createdAt: now };
+  const newTx: ClientTransaction = { ...tx, id: `tx-${Date.now()}-${rid()}`, portfolioId, createdAt: now };
   const db   = getDb();
   if (!db) {
     const p = _portfolios.find(p => p.id === portfolioId);
@@ -443,7 +447,7 @@ export async function addSnapshot(
 ): Promise<PortfolioSnapshot> {
   const now    = new Date().toISOString();
   const newSnap: PortfolioSnapshot = {
-    id: `snap-${Date.now()}`, portfolioId,
+    id: `snap-${Date.now()}-${rid()}`, portfolioId,
     date: snap.date, totalValue: snap.totalValue,
     notes: snap.notes, createdBy: snap.createdBy ?? 'admin', createdAt: now,
   };
@@ -485,7 +489,7 @@ export async function addAdvisorNote(
 ): Promise<AdvisorNote> {
   const now     = new Date().toISOString();
   const newNote: AdvisorNote = {
-    id: `note-${Date.now()}`, portfolioId,
+    id: `note-${Date.now()}-${rid()}`, portfolioId,
     text: note.text, author: note.author ?? 'Admin Factor OTC',
     isVisibleToClient: note.isVisibleToClient ?? true, createdAt: now,
   };
