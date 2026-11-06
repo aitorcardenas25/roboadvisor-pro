@@ -12,6 +12,11 @@ import { MonteCarloResult, formatMonteCarloValue } from '@/lib/monteCarlo';
 import { FinancialReport, InvestmentPolicyStatement, SuitabilityReport } from '@/lib/report';
 import { HistoricalChartPoint } from '@/lib/metrics';
 import type { SuitabilityStatus } from '@/lib/suitability';
+import { analyzePersonalFinance } from '@/lib/personalFinance';
+import { BalanceSheetPage } from './personal/BalanceSheetPage';
+import { CashFlowPage } from './personal/CashFlowPage';
+import { RatiosPage } from './personal/RatiosPage';
+import { DiagnosisPage } from './personal/DiagnosisPage';
 
 // ─── COLORS ──────────────────────────────────────────────────────────────────
 const C = {
@@ -1630,6 +1635,7 @@ export function FactorOTCReport({
   metrics, monteCarlo, report,
   charts = {}, historical = [],
 }: FactorOTCReportProps) {
+  const personalFinance = analyzePersonalFinance(questionnaire, scoring);
   return (
     <Document
       title={`Factor OTC — Informe Financer — ${questionnaire.clientName || getProfileLabel(scoring.profile)}`}
@@ -1665,6 +1671,16 @@ export function FactorOTCReport({
         questionnaire={questionnaire}
         scoring={scoring}
       />
+
+      {/* Bloc de finances personals (opcional: només si hi ha prou dades) */}
+      {personalFinance && (
+        <>
+          <BalanceSheetPage questionnaire={questionnaire} analysis={personalFinance} />
+          <CashFlowPage questionnaire={questionnaire} analysis={personalFinance} />
+          <RatiosPage questionnaire={questionnaire} analysis={personalFinance} />
+          <DiagnosisPage questionnaire={questionnaire} analysis={personalFinance} />
+        </>
+      )}
 
       {/* Pàgina 5: Composició cartera */}
       <PortfolioPage
