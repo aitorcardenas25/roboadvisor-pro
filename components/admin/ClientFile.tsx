@@ -6,6 +6,7 @@ import type { Lead } from '@/lib/leads';
 import type { ReportRecord } from '@/lib/reportRegistry';
 import type { MonthlyReportRecord } from '@/lib/monthlyReports';
 import type { AuditEntry } from '@/lib/auditLog';
+import ClientImport from './ClientImport';
 
 interface ClientUser {
   id: string; name: string; email: string; username: string;
@@ -22,10 +23,11 @@ interface ClientFileData {
   audit:     AuditEntry[];
 }
 
-type Tab = 'personal' | 'questionnaire' | 'portfolio' | 'transactions' | 'snapshots' | 'notes' | 'monthly' | 'audit';
+type Tab = 'personal' | 'import' | 'questionnaire' | 'portfolio' | 'transactions' | 'snapshots' | 'notes' | 'monthly' | 'audit';
 
 const TABS: { id: Tab; label: string }[] = [
   { id: 'personal',      label: 'Dades'         },
+  { id: 'import',        label: 'Importar Excel' },
   { id: 'questionnaire', label: 'Qüestionari'    },
   { id: 'portfolio',     label: 'Cartera activa' },
   { id: 'transactions',  label: 'Compres'        },
@@ -57,8 +59,10 @@ export default function ClientFile({
   const [error, setError]     = useState('');
   const [tab, setTab]         = useState<Tab>('personal');
 
-  const load = useCallback(async () => {
-    setLoading(true); setError('');
+  // silent = refresc en segon pla (no desmunta la pestanya activa)
+  const load = useCallback(async (silent = false) => {
+    if (!silent) setLoading(true);
+    setError('');
     try {
       const res = await fetch(`/api/admin/clients/${clientId}/full`);
       if (!res.ok) { setError('No s\'ha pogut carregar el client'); return; }
@@ -114,7 +118,7 @@ export default function ClientFile({
           </div>
           <p className="text-white/40 text-sm">{user.email} · @{user.username}</p>
         </div>
-        <button onClick={load} className="text-white/30 hover:text-white text-xs transition-colors">↻</button>
+        <button onClick={() => load()} className="text-white/30 hover:text-white text-xs transition-colors">↻</button>
       </div>
 
       {/* KPIs ràpids */}
@@ -196,6 +200,9 @@ export default function ClientFile({
             )}
           </div>
         )}
+
+        {/* IMPORTAR EXCEL */}
+        {tab === 'import' && <ClientImport clientId={clientId} onImported={() => load(true)} />}
 
         {/* QÜESTIONARI */}
         {tab === 'questionnaire' && (

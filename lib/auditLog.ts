@@ -8,6 +8,7 @@ export type AuditAction =
   | 'portfolio.created'
   | 'portfolio.updated'
   | 'portfolio.deleted'
+  | 'portfolio.imported'
   | 'client.created'
   | 'client.role_changed'
   | 'client.deactivated'
