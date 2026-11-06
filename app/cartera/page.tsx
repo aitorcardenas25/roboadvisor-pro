@@ -50,21 +50,20 @@ function WeightBar({ weight, total = 100 }: { weight: number; total?: number }) 
   );
 }
 
-interface SimulatedPoint { month: string; value: number }
+interface ProjectedPoint { month: string; value: number }
 
-function buildSimulatedHistory(portfolio: AdminPortfolio): SimulatedPoint[] {
+// Projecció teòrica determinista: capitalitza el retorn esperat mensual sobre
+// 10.000 € durant els propers 24 mesos. No és rendiment històric ni inclou
+// volatilitat (abans s'hi afegia soroll aleatori, que semblava una sèrie real).
+function buildProjectedPath(portfolio: AdminPortfolio): ProjectedPoint[] {
   const annualReturn = portfolio.expectedReturn ?? 5;
-  const monthlyReturn = annualReturn / 12 / 100;
-  const vol = (portfolio.expectedVol ?? 8) / 100;
-  const points: SimulatedPoint[] = [];
-  let value = 10000;
+  const monthlyReturn = Math.pow(1 + annualReturn / 100, 1 / 12) - 1;
+  const points: ProjectedPoint[] = [];
   const now = new Date();
-  for (let i = 23; i >= 0; i--) {
-    const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+  for (let i = 0; i <= 24; i++) {
+    const d = new Date(now.getFullYear(), now.getMonth() + i, 1);
     const label = d.toLocaleDateString('ca-ES', { month: 'short', year: '2-digit' });
-    const noise = (Math.random() - 0.48) * vol * 0.4;
-    value = value * (1 + monthlyReturn + noise);
-    points.push({ month: label, value: Math.round(value) });
+    points.push({ month: label, value: Math.round(10000 * Math.pow(1 + monthlyReturn, i)) });
   }
   return points;
 }
@@ -115,7 +114,7 @@ function PortfolioCard({ p, onClick, rf }: { p: AdminPortfolio; onClick: () => v
 
 function PortfolioDetail({ p, onBack, rf }: { p: AdminPortfolio; onBack: () => void; rf: number }) {
   const meta = PROFILE_META[p.recommendedProfile] ?? PROFILE_META.default;
-  const history = buildSimulatedHistory(p);
+  const history = buildProjectedPath(p);
   const gain = history.length >= 2
     ? ((history[history.length - 1].value - history[0].value) / history[0].value * 100).toFixed(1)
     : '—';
@@ -163,7 +162,7 @@ function PortfolioDetail({ p, onBack, rf }: { p: AdminPortfolio; onBack: () => v
           { label: 'Volatilitat',     value: fmt(p.expectedVol),    color: '#c9a84c' },
           { label: 'Sharpe',          value: sr != null ? sr.toFixed(2) : '—', color: sr == null ? undefined : sr >= 1 ? '#4ade80' : sr >= 0.5 ? '#fb923c' : '#f87171' },
           { label: 'Horitzó',         value: p.horizon,             color: '#c9a84c' },
-          { label: 'Rendiment 2a',    value: `+${gain}%`,           color: '#c9a84c' },
+          { label: 'Esperat 2a',      value: `+${gain}%`,           color: '#c9a84c' },
         ].map(kpi => (
           <div key={kpi.label} className="bg-[#0d1f1a] border border-white/10 rounded-lg p-3 text-center">
             <div className="font-bold text-lg" style={{ color: kpi.color ?? '#c9a84c' }}>{kpi.value}</div>
@@ -175,10 +174,10 @@ function PortfolioDetail({ p, onBack, rf }: { p: AdminPortfolio; onBack: () => v
       {/* Charts row */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
 
-        {/* Simulated evolution */}
+        {/* Projected path (theoretical) */}
         <div className="bg-[#0d1f1a] border border-white/10 rounded-xl p-4">
           <h3 className="text-white/60 text-xs font-medium uppercase tracking-wide mb-3">
-            Evolució simulada (24 mesos)
+            Projecció teòrica (24 mesos)
           </h3>
           <ResponsiveContainer width="100%" height={180}>
             <AreaChart data={history} margin={{ top: 4, right: 4, left: -20, bottom: 0 }}>
@@ -205,7 +204,7 @@ function PortfolioDetail({ p, onBack, rf }: { p: AdminPortfolio; onBack: () => v
             </AreaChart>
           </ResponsiveContainer>
           <p className="text-white/20 text-xs mt-2">
-            Simulació basada en retorn esperat anual de {fmt(p.expectedReturn)} amb soroll aleatori. No és rentabilitat real.
+            Projecció de 10.000 € al retorn esperat anual de {fmt(p.expectedReturn)}, sense volatilitat. No és rentabilitat real ni garantida.
           </p>
         </div>
 

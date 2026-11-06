@@ -6,7 +6,7 @@ import { motion } from 'framer-motion';
 import {
   BarChart, Bar, PieChart, Pie, Cell,
   XAxis, YAxis, CartesianGrid, Tooltip,
-  ResponsiveContainer, Legend, LineChart, Line,
+  ResponsiveContainer, Legend,
 } from 'recharts';
 import type { ClientPortfolio } from '@/lib/clientPortfolios';
 
@@ -326,27 +326,14 @@ export default function AdminStats({ stats, onNavigate }: Props) {
 
         <motion.div className="bg-[#0d1f1a] border border-white/10 rounded-xl p-5"
           initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.45 }}>
-          <div className="flex items-start justify-between mb-0.5">
-            <h3 className="text-white font-semibold text-sm">Evolució TER mitjà</h3>
-            <DemoBadge />
+          <h3 className="text-white font-semibold text-sm mb-0.5">TER mitjà actual</h3>
+          <p className="text-white/40 text-xs mb-4">Cost mitjà ponderat dels fons del catàleg</p>
+          <div className="flex items-baseline gap-2 h-[175px] items-center justify-center">
+            <span className="text-[#c9a84c] font-black text-4xl">
+              {stats?.avgTER != null ? `${stats.avgTER}%` : '—'}
+            </span>
           </div>
-          <p className="text-white/40 text-xs mb-4">Cost mitjà ponderat dels fons</p>
-          <ResponsiveContainer width="100%" height={175}>
-            <LineChart data={[
-              { mes: 'Gen', ter: 0.72 }, { mes: 'Feb', ter: 0.68 },
-              { mes: 'Mar', ter: 0.65 }, { mes: 'Abr', ter: 0.63 },
-              { mes: 'Mai', ter: 0.61 }, { mes: 'Jun', ter: stats?.avgTER ?? 0.58 },
-            ]} margin={{ left: -15 }}>
-              <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.04)" />
-              <XAxis dataKey="mes" tick={{ fontSize: 11, fill: '#6b7280' }} axisLine={false} tickLine={false} />
-              <YAxis tick={{ fontSize: 10, fill: '#6b7280' }} tickFormatter={v => `${v}%`}
-                domain={[0.4, 0.8]} axisLine={false} tickLine={false} />
-              <Tooltip {...tooltipStyle} formatter={(v: number) => [`${v.toFixed(2)}%`, 'TER mitjà']} />
-              <Line type="monotone" dataKey="ter" stroke="#c9a84c" strokeWidth={2}
-                dot={{ fill: '#c9a84c', r: 3, strokeWidth: 0 }}
-                activeDot={{ r: 5, fill: '#c9a84c' }} />
-            </LineChart>
-          </ResponsiveContainer>
+          <p className="text-white/25 text-xs">L&apos;evolució mensual es mostrarà quan hi hagi històric desat.</p>
         </motion.div>
       </div>
 
