@@ -52,11 +52,11 @@ export async function buildProposalWorkbook(p: ClientProposal, clientName: strin
   if (p.adminNote) { r.addRow([]); r.addRow(['Nota de l\'assessor']).font = { bold: true }; r.addRow([p.adminNote]); }
   r.addRow([]);
   r.addRow([
-    'Les rendibilitats són estimacions (dades històriques del catàleg o, si no n\'hi ha, segons el nivell de risc SRRI). ' +
+    'Rendibilitats i volatilitats històriques anualitzades de cada fons (catàleg o fitxa del fons). ' +
     'Rendiments passats no garanteixen rendiments futurs.',
   ]).font = { italic: true, size: 9, color: { argb: 'FF6C6C6C' } };
-  if (s.estimatedFunds > 0) {
-    r.addRow([`${s.estimatedFunds} fons sense dades històriques: rendiment i volatilitat estimats pel seu SRRI.`]).font = { italic: true, size: 9, color: { argb: GOLD } };
+  if (!s.complete) {
+    r.addRow([`Falten dades reals de ${s.missing.length} fons: les xifres de rendiment i projecció no són vàlides.`]).font = { italic: true, size: 9, color: { argb: GOLD } };
   }
 
   // ── Fons ──

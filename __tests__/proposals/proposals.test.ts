@@ -11,7 +11,8 @@ import {
 import { buildProposalWorkbook } from '@/lib/proposalExcel';
 
 const item = (isin: string, weight: number, extra: Partial<ProposalItem> = {}): ProposalItem => ({
-  isin, name: isin, category: 'RV Global', weight, risk: 6, ter: 0.5, platform: '', justification: '', ...extra,
+  isin, name: isin, category: 'RV Global', weight, risk: 6, ter: 0.5, platform: '', justification: '',
+  historicalReturn5Y: 6, historicalVolatility: 12, ...extra,
 });
 const params: ProposalParams = { profile: 'moderat', objective: 'Creixement', horizon: 10, initialAmount: 10000, monthlyAmount: 100, adminNote: '' };
 
@@ -35,17 +36,23 @@ describe('proposalStats', () => {
     expect(s.ter).toBeCloseTo(0.32, 10);
     expect(s.netReturn).toBeCloseTo(5.68, 10);
     expect(s.volatility).toBeCloseTo(11, 10);
-    expect(s.estimatedFunds).toBe(0);
+    expect(s.complete).toBe(true);
     expect(s.yearly).toHaveLength(11);
     expect(s.totalInvested).toBe(10000 + 100 * 120);
     expect(s.p10).toBeLessThan(s.p50);
     expect(s.p50).toBeLessThan(s.p90);
   });
-  it('sense dades històriques fa servir les taules SRRI i ho compta', () => {
-    const s = proposalStats({ ...params, items: [item('A', 100, { risk: 4, ter: 0 })] });
-    expect(s.grossReturn).toBe(7);
-    expect(s.volatility).toBe(11);
-    expect(s.estimatedFunds).toBe(1);
+  it('sense dades reals no s\'inventa el rendiment pel SRRI: proposta incompleta', () => {
+    const s = proposalStats({ ...params, items: [
+      item('A', 50),
+      item('B', 50, { name: 'Fons B', historicalReturn5Y: undefined, historicalVolatility: undefined }),
+    ] });
+    expect(s.complete).toBe(false);
+    expect(s.missing).toEqual([{ isin: 'B', name: 'Fons B' }]);
+  });
+  it('no es pot aprovar una proposta sense dades reals de tots els fons', () => {
+    const items = [item('A', 50), item('B', 50, { name: 'Fons B', historicalVolatility: undefined })];
+    expect(validateForApproval({ ...params, items })).toMatch(/Falten rendibilitat i volatilitat reals de: Fons B/);
   });
   it('detecta pesos que no sumen 100', () => {
     expect(proposalStats({ ...params, items: [item('A', 50), item('B', 30)] }).weightOk).toBe(false);
