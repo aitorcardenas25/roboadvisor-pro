@@ -67,13 +67,16 @@ export const CashFlowWaterfall = ({ cashFlow }: { cashFlow: PersonalCashFlow }) 
   const W = 460, H = 200, baseline = 150, barW = 100;
   const maxPositive = Math.max(cashFlow.grossAnnualIncome, cashFlow.annualExpenses, 1);
   const scale = 130 / maxPositive;
+  // Sota la línia base només hi caben 48 pt: el retall s'aplica només al dèficit.
+  // L'estalvi positiu manté la mateixa escala que ingressos i despeses.
   const clampBelow = (h: number) => Math.min(h, 48);
 
   const incomeH  = cashFlow.grossAnnualIncome * scale;
   const expenseH = cashFlow.annualExpenses * scale;
   const topY     = baseline - incomeH;
 
-  const balanceH   = clampBelow(Math.abs(cashFlow.annualBalance) * scale);
+  const rawBalanceH = Math.abs(cashFlow.annualBalance) * scale;
+  const balanceH   = cashFlow.isDeficit ? clampBelow(rawBalanceH) : rawBalanceH;
   const balanceY   = cashFlow.isDeficit ? baseline : baseline - balanceH;
   const balanceCol = cashFlow.isDeficit ? C.red : C.gold;
 
