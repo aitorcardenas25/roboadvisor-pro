@@ -36,21 +36,45 @@ interface DevUser {
 
 let devDB: DevUser[] = [];
 
+// Contrasenyes d'exemple dels fitxers .env*.example: mai s'han d'acceptar.
+const PLACEHOLDER_PASSWORDS = new Set([
+  'canvia-per-una-contrasenya-segura-aqui!',
+  'canvia-aquesta-contrassenya',
+  'factorOTC2024!',
+]);
+
+/**
+ * Contrasenya d'admin configurada a l'entorn, o null si no és vàlida.
+ * Abans hi havia una contrasenya per defecte escrita al codi (pública a GitHub);
+ * ara, sense ADMIN_PASSWORD (mín. 12 caràcters i no d'exemple) no hi ha admin.
+ */
+function getConfiguredAdminPassword(): string | null {
+  const pwd = process.env.ADMIN_PASSWORD;
+  if (!pwd || pwd.length < 12 || PLACEHOLDER_PASSWORDS.has(pwd)) {
+    console.warn('[users] ADMIN_PASSWORD no configurada o massa feble: usuari admin desactivat.');
+    return null;
+  }
+  return pwd;
+}
+
 function buildDevDB(): DevUser[] {
   const users: DevUser[] = [];
 
-  users.push({
-    id:                 'dev-admin-1',
-    username:           process.env.ADMIN_USERNAME  ?? 'admin',
-    password:           process.env.ADMIN_PASSWORD  ?? 'factorOTC2024!',
-    name:               'Admin Factor OTC',
-    email:              process.env.ADMIN_EMAIL     ?? 'admin@factorotc.com',
-    role:               'admin',
-    active:             true,
-    createdAt:          '2024-01-01',
-    subscriptionPlan:   'active',
-    subscriptionStatus: 'active',
-  });
+  const adminPassword = getConfiguredAdminPassword();
+  if (adminPassword) {
+    users.push({
+      id:                 'dev-admin-1',
+      username:           process.env.ADMIN_USERNAME  ?? 'admin',
+      password:           adminPassword,
+      name:               'Admin Factor OTC',
+      email:              process.env.ADMIN_EMAIL     ?? 'admin@factorotc.com',
+      role:               'admin',
+      active:             true,
+      createdAt:          '2024-01-01',
+      subscriptionPlan:   'active',
+      subscriptionStatus: 'active',
+    });
+  }
 
   const extraJSON = process.env.AUTHORIZED_USERS;
   if (extraJSON) {
@@ -164,6 +188,12 @@ async function seedAdminIfEmpty(
 ): Promise<void> {
   const adminUser = process.env.ADMIN_USERNAME ?? 'admin';
   if (username !== adminUser) return;
+
+  // Només es crea l'admin si la contrasenya coincideix amb ADMIN_PASSWORD.
+  // Abans es desava la contrasenya del PRIMER intent de login, de manera que
+  // qualsevol podia convertir-se en admin si la taula era buida.
+  const adminPassword = getConfiguredAdminPassword();
+  if (!adminPassword || password !== adminPassword) return;
 
   const { count } = await db.from('users').select('id', { count: 'exact', head: true });
   if ((count ?? 0) > 0) return;

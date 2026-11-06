@@ -181,8 +181,12 @@ export function runBacktest(
 
   for (const alloc of portfolio.allocations) {
     const realData = historicalData?.get(alloc.productId);
-    if (realData && realData.length >= months * 0.5) {
-      productReturns.set(alloc.productId, padOrTrimReturns(realData, months));
+    // Només es considera "dades reals" si cobreixen tot el període. Abans, amb
+    // el 50% n'hi havia prou i la resta s'omplia amb rendiments aleatoris
+    // (Math.random) que es comptaven com a reals. Ara, si falten dades, el
+    // producte es marca com a simulat i queda reflectit a dataQuality.
+    if (realData && realData.length >= months) {
+      productReturns.set(alloc.productId, trimReturns(realData, months));
       productsWithData++;
     } else {
       const params = ASSET_CLASS_PARAMS[alloc.product.assetClass] ??
@@ -796,15 +800,8 @@ function simulateMonthlyReturns(
   });
 }
 
-function padOrTrimReturns(returns: number[], targetLength: number): number[] {
-  if (returns.length >= targetLength) return returns.slice(0, targetLength);
-  const padded = [...returns];
-  const mean   = returns.reduce((s, r) => s + r, 0) / returns.length;
-  const std    = Math.sqrt(returns.reduce((s, r) => s + Math.pow(r - mean, 2), 0) / returns.length);
-  while (padded.length < targetLength) {
-    padded.push(mean + std * (Math.random() - 0.5) * 2);
-  }
-  return padded;
+function trimReturns(returns: number[], targetLength: number): number[] {
+  return returns.slice(0, targetLength);
 }
 
 // ─── ROLLING WINDOWS ──────────────────────────────────────────────────────────

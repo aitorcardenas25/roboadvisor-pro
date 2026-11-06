@@ -393,10 +393,10 @@ function buildEstimatedRollingReturns(portfolio: Portfolio): RollingReturn[] {
   ];
 
   return periods.map(({ period, factor }) => {
-    // Afegim un petit factor d'aleatorietat realista (±1.5%)
-    const noise = (Math.random() - 0.5) * 3;
-    const pReturn = Math.round((annualReturn * factor + noise * factor) * 100) / 100;
-    const bReturn = Math.round((benchmarkReturn * factor + noise * factor * 0.8) * 100) / 100;
+    // Estimació determinista a partir del rendiment esperat. Abans s'hi afegia
+    // soroll aleatori (Math.random) perquè semblés una sèrie real: eliminat.
+    const pReturn = Math.round(annualReturn * factor * 100) / 100;
+    const bReturn = Math.round(benchmarkReturn * factor * 100) / 100;
 
     return {
       period,

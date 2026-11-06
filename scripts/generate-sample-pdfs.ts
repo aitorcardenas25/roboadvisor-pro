@@ -15,6 +15,9 @@ import fs from 'node:fs';
 import path from 'node:path';
 import React from 'react';
 import { renderToFile } from '@react-pdf/renderer';
+
+// Els components retornen <Document>, però el tipus de React.createElement no ho reflecteix.
+type PdfElement = Parameters<typeof renderToFile>[0];
 import { chromium } from '@playwright/test';
 
 import { FactorOTCReport } from '../components/pdf/FactorOTCReport';
@@ -359,7 +362,7 @@ async function genFactorOTCReport() {
       questionnaire, scoring, portfolio, metrics, monteCarlo, report,
       charts: {}, // sense captura de gràfics (requereix DOM/navegador real, vegeu README)
       historical,
-    }),
+    }) as unknown as PdfElement,
     outPath,
   );
   log(`  ✓ ${path.relative(process.cwd(), outPath)}`);
@@ -369,7 +372,7 @@ async function genManualReportPDF() {
   log('Informe Manual (admin) — versió react-pdf…');
   const outPath = path.join(OUT_DIR, '02-informe-manual-admin-reactpdf.pdf');
   await renderToFile(
-    React.createElement(ManualReportPDF, { data: manualPortfolioInput, generatedAt: generatedAtLabel }),
+    React.createElement(ManualReportPDF, { data: manualPortfolioInput, generatedAt: generatedAtLabel }) as unknown as PdfElement,
     outPath,
   );
   log(`  ✓ ${path.relative(process.cwd(), outPath)}`);
