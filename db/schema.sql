@@ -305,3 +305,19 @@ CREATE TABLE IF NOT EXISTS stock_reports (
 );
 CREATE INDEX IF NOT EXISTS idx_stock_reports_status ON stock_reports (status);
 CREATE INDEX IF NOT EXISTS idx_stock_reports_ticker ON stock_reports (ticker);
+
+-- ── Propostes de cartera (cartera recomanada per l'assessor, amb versions) ──
+
+CREATE TABLE IF NOT EXISTS client_proposals (
+  id           TEXT PRIMARY KEY,
+  client_id    TEXT NOT NULL,
+  version      INTEGER NOT NULL,
+  status       TEXT NOT NULL DEFAULT 'draft' CHECK (status IN ('draft','approved')),
+  data         JSONB NOT NULL,          -- perfil, horitzó, imports, nota i fons amb pesos
+  approved_at  TEXT,
+  approved_by  TEXT,
+  created_at   TEXT NOT NULL,
+  updated_at   TEXT NOT NULL,
+  UNIQUE (client_id, version)
+);
+CREATE INDEX IF NOT EXISTS idx_client_proposals_client ON client_proposals (client_id, version DESC);

@@ -7,6 +7,7 @@ import type { ReportRecord } from '@/lib/reportRegistry';
 import type { MonthlyReportRecord } from '@/lib/monthlyReports';
 import type { AuditEntry } from '@/lib/auditLog';
 import ClientImport from './ClientImport';
+import ClientProposal from './ClientProposal';
 
 interface ClientUser {
   id: string; name: string; email: string; username: string;
@@ -23,11 +24,12 @@ interface ClientFileData {
   audit:     AuditEntry[];
 }
 
-type Tab = 'personal' | 'import' | 'questionnaire' | 'portfolio' | 'transactions' | 'snapshots' | 'notes' | 'monthly' | 'audit';
+type Tab = 'personal' | 'import' | 'proposal' | 'questionnaire' | 'portfolio' | 'transactions' | 'snapshots' | 'notes' | 'monthly' | 'audit';
 
 const TABS: { id: Tab; label: string }[] = [
   { id: 'personal',      label: 'Dades'         },
   { id: 'import',        label: 'Importar Excel' },
+  { id: 'proposal',      label: 'Proposta'       },
   { id: 'questionnaire', label: 'Qüestionari'    },
   { id: 'portfolio',     label: 'Cartera activa' },
   { id: 'transactions',  label: 'Compres'        },
@@ -152,7 +154,7 @@ export default function ClientFile({
         {tab === 'personal' && (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div className="bg-[#0d1f1a] border border-white/10 rounded-xl p-5">
-              <h3 className="text-white/50 text-xs uppercase tracking-widest mb-4">Usuari d'accés</h3>
+              <h3 className="text-white/50 text-xs uppercase tracking-widest mb-4">Usuari d&apos;accés</h3>
               <dl className="space-y-2.5">
                 {[
                   ['Nom complet', user.name],
@@ -203,6 +205,7 @@ export default function ClientFile({
 
         {/* IMPORTAR EXCEL */}
         {tab === 'import' && <ClientImport clientId={clientId} onImported={() => load(true)} />}
+        {tab === 'proposal' && <ClientProposal clientId={clientId} />}
 
         {/* QÜESTIONARI */}
         {tab === 'questionnaire' && (
