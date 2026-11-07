@@ -6,7 +6,7 @@ vi.mock('@/lib/supabase', () => ({ getDb: () => null }));
 import {
   proposalStats, projection, roundWeights, itemsFromHoldings, fundToItem, fundOptions,
   validateForApproval, proposalToReportInput, saveDraft, approveProposal, getProposals, checkProposalSuitability,
-  __resetProposalsForTests, hasPerformanceData, type ProposalItem, type ProposalParams,
+  __resetProposalsForTests, hasPerformanceData, verifiedPerformance, type ProposalItem, type ProposalParams,
 } from '@/lib/proposals';
 import { buildProposalWorkbook } from '@/lib/proposalExcel';
 
@@ -88,7 +88,7 @@ describe('fundToItem / fundOptions', () => {
     const f = fundToItem('ie00b42w4l06', 25);
     expect(f?.name).toMatch(/Vanguard Global Small-Cap/);
     expect(f?.weight).toBe(25);
-    expect(f?.risk).toBe(6);
+    expect(f?.risk).toBe(4)   // SRRI del KID;
   });
   it('les estimacions del catàleg (lib/products.ts) no compten com a dades reals', () => {
     const f = fundToItem('IE00B03HCZ61', 30); // Vanguard Global Stock (catàleg, dades estimades)
@@ -257,5 +257,18 @@ describe('aprovació concurrent (memòria)', () => {
     expect(p.status).toBe('approved');
     expect(p.suitability?.status).toBe('inadequate');
     expect(p.suitabilityOverride).toBe('Ho demana el client');
+  });
+});
+
+describe('Fitxes carregades (ADVISOR_FUNDS)', () => {
+  it('Invesco LU2305834041 té dades reals amb font', () => {
+    const v = verifiedPerformance('LU2305834041');
+    expect(v.historicalReturn5Y).toBe(3.45);
+    expect(v.historicalVolatility).toBe(17.16);
+    expect(v.performanceSource).toMatch(/Invesco/);
+  });
+  it('un fons sense rendibilitat a 5 anys no compta com a dada real', () => {
+    expect(verifiedPerformance('IE00B42W4L06').historicalReturn5Y).toBeUndefined();
+    expect(fundToItem('IE00B42W4L06', 10)?.ter).toBe(0.3);
   });
 });

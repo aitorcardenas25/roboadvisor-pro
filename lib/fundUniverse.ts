@@ -22,9 +22,14 @@ export interface UniverseFund {
 }
 
 export const ADVISOR_FUNDS: UniverseFund[] = [
-  { isin: 'LU2305834041', name: 'Invesco Continental European Small Cap Equity A EUR Acc', category: 'RV Europa Small Caps' },
-  { isin: 'IE00B42W4L06', name: 'Vanguard Global Small-Cap Index Fund EUR Acc',             category: 'RV Global Small Caps' },
-  { isin: 'IE0031786696', name: 'Vanguard Emerging Markets Stock Index Fund EUR',           category: 'RV Emergents' },
+  {
+    isin: 'LU2305834041', name: 'Invesco Continental European Small Cap Equity A EUR Acc', category: 'RV Europa Small Caps',
+    return5Y: 3.45, volatility: 17.16, ter: 1.83, srri: 4,
+    source: 'Fitxa Invesco 30/09/2026 (rend. 5a: 18,47 % acumulat; TER; SRRI) · Morningstar, desv. estàndard 5a, 07/11/2026',
+  },
+  // Pendent: rendibilitat anualitzada a 5 anys. Sense ella no compta com a dada real.
+  { isin: 'IE00B42W4L06', name: 'Vanguard Global Small-Cap Index Fund EUR Acc', category: 'RV Global Small Caps', volatility: 15.66, ter: 0.30, srri: 4 },
+  { isin: 'IE0031786696', name: 'Vanguard Emerging Markets Stock Index Fund EUR', category: 'RV Emergents', volatility: 15.71, ter: 0.23, srri: 4 },
   { isin: 'IE00B8H6X308', name: 'Federated Hermes Asia ex-Japan Equity Fund F Acc',         category: 'RV Àsia ex-Japó' },
   { isin: 'IE00B3VXGD32', name: 'Polar Capital Biotechnology R Inc',                        category: 'RV Salut / Biotecnologia' },
   { isin: 'IE00BM95B621', name: 'Polar Capital Global Technology Fund R',                   category: 'RV Tecnologia' },
