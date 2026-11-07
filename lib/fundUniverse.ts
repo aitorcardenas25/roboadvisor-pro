@@ -17,19 +17,29 @@ export interface UniverseFund {
   return5Y?:   number;   // rendibilitat anualitzada 5 anys (%)
   volatility?: number;   // desviació estàndard anualitzada (%)
   ter?:        number;   // despeses corrents (%)
+  // SRRI (UCITS, escala de volatilitat). És l'escala dels llindars d'idoneïtat.
+  // NO és el SRI del KID PRIIPs (que també va de 1 a 7 però dona valors més baixos).
   srri?:       1 | 2 | 3 | 4 | 5 | 6 | 7;
+  sri?:        1 | 2 | 3 | 4 | 5 | 6 | 7;   // SRI del KID PRIIPs, només informatiu
   source?:     string;   // p. ex. "Morningstar, fitxa 30/09/2026"
+}
+
+/** SRRI a partir de la volatilitat anualitzada a 5 anys (bandes ESMA/10/673). */
+export function srriFromVolatility(vol: number): 1 | 2 | 3 | 4 | 5 | 6 | 7 {
+  const bands = [0.5, 2, 5, 10, 15, 25];
+  const i = bands.findIndex(b => vol < b);
+  return (i === -1 ? 7 : i + 1) as 1 | 2 | 3 | 4 | 5 | 6 | 7;
 }
 
 export const ADVISOR_FUNDS: UniverseFund[] = [
   {
     isin: 'LU2305834041', name: 'Invesco Continental European Small Cap Equity A EUR Acc', category: 'RV Europa Small Caps',
-    return5Y: 3.45, volatility: 17.16, ter: 1.83, srri: 4,
-    source: 'Fitxa Invesco 30/09/2026 (rend. 5a: 18,47 % acumulat; TER; SRRI) · Morningstar, desv. estàndard 5a, 07/11/2026',
+    return5Y: 3.45, volatility: 17.16, ter: 1.83, srri: 6, sri: 4,
+    source: 'Fitxa Invesco 30/09/2026 (rend. 5a: 18,47 % acumulat; TER; SRI 4) · Morningstar, desv. estàndard 5a, 07/11/2026 (SRRI 6 per bandes ESMA)',
   },
   // Pendent: rendibilitat anualitzada a 5 anys. Sense ella no compta com a dada real.
-  { isin: 'IE00B42W4L06', name: 'Vanguard Global Small-Cap Index Fund EUR Acc', category: 'RV Global Small Caps', volatility: 15.66, ter: 0.30, srri: 4 },
-  { isin: 'IE0031786696', name: 'Vanguard Emerging Markets Stock Index Fund EUR', category: 'RV Emergents', volatility: 15.71, ter: 0.23, srri: 4 },
+  { isin: 'IE00B42W4L06', name: 'Vanguard Global Small-Cap Index Fund EUR Acc', category: 'RV Global Small Caps', volatility: 15.66, ter: 0.30, srri: 6, sri: 4 },
+  { isin: 'IE0031786696', name: 'Vanguard Emerging Markets Stock Index Fund EUR', category: 'RV Emergents', volatility: 15.71, ter: 0.23, srri: 6, sri: 4 },
   { isin: 'IE00B8H6X308', name: 'Federated Hermes Asia ex-Japan Equity Fund F Acc',         category: 'RV Àsia ex-Japó' },
   { isin: 'IE00B3VXGD32', name: 'Polar Capital Biotechnology R Inc',                        category: 'RV Salut / Biotecnologia' },
   { isin: 'IE00BM95B621', name: 'Polar Capital Global Technology Fund R',                   category: 'RV Tecnologia' },
