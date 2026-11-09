@@ -31,11 +31,11 @@ export default function PrivacitatPage() {
       <main className="max-w-3xl mx-auto px-6 py-12">
         <div className="mb-10">
           <h1 className="text-white font-bold text-2xl mb-2">Política de Privacitat</h1>
-          <p className="text-white/30 text-sm">Última actualització: maig 2026</p>
+          <p className="text-white/30 text-sm">Última actualització: novembre 2026</p>
         </div>
 
         <Section title="1. Qui som">
-          <p>Factor OTC és un servei d&apos;assessorament financer independent dirigit a inversors minoristes a Catalunya i Espanya. El responsable del tractament de dades és Factor OTC, contactable a <a href="mailto:privacitat@factorotc.com" className="text-[#c9a84c] hover:underline">privacitat@factorotc.com</a>.</p>
+          <p>Factor OTC és una eina de planificació i seguiment de les finances personals per a particulars a Catalunya i Espanya. Actualment funciona com a prova pilot tancada. El responsable del tractament de dades és Factor OTC, contactable a <a href="mailto:privacitat@factorotc.com" className="text-[#c9a84c] hover:underline">privacitat@factorotc.com</a>.</p>
         </Section>
 
         <Section title="2. Dades que recollim">
@@ -51,10 +51,10 @@ export default function PrivacitatPage() {
         <Section title="3. Com les usem">
           <p>Usem les teves dades per:</p>
           <ul className="list-disc pl-5 space-y-1">
-            <li>Prestar el servei d&apos;assessorament financer i generar informes personalitzats</li>
+            <li>Prestar el servei de planificació i seguiment i generar informes personalitzats</li>
             <li>Gestionar la teva cartera i el seguiment mensual</li>
             <li>Enviar comunicacions relacionades amb el servei (informes, recordatoris, novetats)</li>
-            <li>Complir obligacions legals i regulatòries (MiFID II, CNMV)</li>
+            <li>Complir les obligacions legals que ens siguin aplicables</li>
           </ul>
         </Section>
 
@@ -63,7 +63,7 @@ export default function PrivacitatPage() {
           <ul className="list-disc pl-5 space-y-1">
             <li><strong className="text-white/80">Execució del contracte</strong>: per prestar els serveis contractats</li>
             <li><strong className="text-white/80">Consentiment</strong>: per comunicacions comercials i newsletter</li>
-            <li><strong className="text-white/80">Obligació legal</strong>: per complir requisits regulatoris financers</li>
+            <li><strong className="text-white/80">Obligació legal</strong>: quan una llei ens obligui a conservar o comunicar dades</li>
             <li><strong className="text-white/80">Interès legítim</strong>: per la seguretat i millora del servei</li>
           </ul>
         </Section>
@@ -71,7 +71,7 @@ export default function PrivacitatPage() {
         <Section title="5. Tercers (processadors de dades)">
           <p>Treballem amb els següents proveïdors que actuen com a processadors de dades sota contractes adequats:</p>
           <ul className="list-disc pl-5 space-y-1">
-            <li><strong className="text-white/80">Supabase</strong> — emmagatzematge de dades (UE/EEE)</li>
+            <li><strong className="text-white/80">Supabase</strong> — emmagatzematge de dades</li>
             <li><strong className="text-white/80">Resend</strong> — enviament de correus electrònics</li>
             <li><strong className="text-white/80">Stripe</strong> — processament de pagaments (certificació PCI DSS)</li>
             <li><strong className="text-white/80">Vercel</strong> — allotjament de l&apos;aplicació</li>
@@ -79,7 +79,7 @@ export default function PrivacitatPage() {
         </Section>
 
         <Section title="6. Retenció de dades">
-          <p>Conservem les teves dades mentre siguis client actiu i durant 5 anys posteriors per complir obligacions legals financeres. Les dades de leads no convertits s&apos;eliminen als 2 anys.</p>
+          <p>Conservem les teves dades mentre siguis client actiu i durant el temps que exigeixi la llei un cop deixis de ser-ho. Les dades de leads no convertits s&apos;eliminen als 2 anys.</p>
         </Section>
 
         <Section title="7. Els teus drets (RGPD)">
@@ -91,7 +91,7 @@ export default function PrivacitatPage() {
             <li><strong className="text-white/80">Portabilitat</strong>: rebre les teves dades en format llegible per màquina</li>
             <li><strong className="text-white/80">Oposició</strong>: oposar-te a determinats tractaments</li>
           </ul>
-          <p className="mt-2">Per exercir qualsevol dret, contacta a <a href="mailto:privacitat@factorotc.com" className="text-[#c9a84c] hover:underline">privacitat@factorotc.com</a>. Si ets client, pots descarregar les teves dades i sol·licitar l&apos;eliminació des del teu perfil.</p>
+          <p className="mt-2">Per exercir qualsevol dret, contacta a <a href="mailto:privacitat@factorotc.com" className="text-[#c9a84c] hover:underline">privacitat@factorotc.com</a>. Si ets client, també pots descarregar les teves dades i demanar-ne l&apos;eliminació des de la pàgina <Link href="/client/finances" className="text-[#c9a84c] hover:underline">Les meves finances</Link>.</p>
           <p>Tens dret a presentar reclamació davant l&apos;Agència Espanyola de Protecció de Dades (<a href="https://www.aepd.es" target="_blank" rel="noopener noreferrer" className="text-[#c9a84c] hover:underline">aepd.es</a>).</p>
         </Section>
 

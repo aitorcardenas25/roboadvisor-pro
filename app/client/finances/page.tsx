@@ -4,12 +4,25 @@ import { useEffect, useState } from 'react';
 import { useSession } from 'next-auth/react';
 import Link from 'next/link';
 import BudgetOverview from '@/components/finances/BudgetOverview';
+import FinancesForm from '@/components/finances/FinancesForm';
+import MyDataCard from '@/components/finances/MyDataCard';
+import { analyzeBudget } from '@/lib/budget';
+
+const n = (v: unknown) => (typeof v === 'number' && Number.isFinite(v) ? v : undefined);
+function hasBudget(d: Record<string, unknown>): boolean {
+  return analyzeBudget({
+    monthlyNetIncome: n(d.monthlyNetIncome), monthlyFixedExpenses: n(d.monthlyFixedExpenses),
+    monthlyVariableExpenses: n(d.monthlyVariableExpenses), monthlyExpenses: n(d.monthlyExpenses),
+  }) !== null;
+}
 
 export default function ClientFinancesPage() {
   const { data: session } = useSession();
   const [data, setData]       = useState<Record<string, unknown> | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError]     = useState('');
+  const [editing, setEditing] = useState(false);
+  const [saved, setSaved]     = useState(false);
 
   useEffect(() => {
     fetch('/api/client/finances')
@@ -17,7 +30,12 @@ export default function ClientFinancesPage() {
         if (!r.ok) throw new Error(r.status === 401 ? 'Cal iniciar sessió.' : 'No s\'han pogut carregar les dades.');
         return r.json();
       })
-      .then(j => setData(j.data ?? {}))
+      .then(j => {
+        const d = j.data ?? {};
+        setData(d);
+        // Sense dades suficients per al pressupost: el formulari s'obre directament.
+        if (!hasBudget(d)) setEditing(true);
+      })
       .catch((e: Error) => setError(e.message))
       .finally(() => setLoading(false));
   }, []);
@@ -54,7 +72,25 @@ export default function ClientFinancesPage() {
           </div>
         )}
         {!loading && error && <p className="text-red-400 text-center py-24">{error}</p>}
-        {!loading && !error && <BudgetOverview data={data ?? {}} goalsTitle="Els meus objectius" />}
+        {!loading && !error && (
+          <div className="space-y-6">
+            {editing ? (
+              <FinancesForm data={data ?? {}}
+                onSaved={d => { setData(d); setEditing(false); setSaved(true); }}
+                onCancel={hasBudget(data ?? {}) ? () => setEditing(false) : undefined} />
+            ) : (
+              <div className="flex flex-wrap items-center gap-3">
+                <button type="button" onClick={() => { setEditing(true); setSaved(false); }}
+                  className="px-4 py-2 rounded-lg bg-white/5 text-white/80 text-sm hover:bg-white/10">
+                  Editar les meves dades
+                </button>
+                {saved && <span className="text-green-300/80 text-sm" role="status">Dades desades.</span>}
+              </div>
+            )}
+            {!editing && <BudgetOverview data={data ?? {}} goalsTitle="Els meus objectius" />}
+            <MyDataCard />
+          </div>
+        )}
 
         <p className="text-white/25 text-xs mt-8 leading-relaxed">
           Informació descriptiva calculada amb les dades que has facilitat. No és una recomanació d&apos;inversió.

@@ -148,3 +148,8 @@ export async function getLeadByLinkedUser(userId: string): Promise<Lead | null> 
   const { data } = await db.from('leads').select('*').eq('linked_user_id', userId).maybeSingle();
   return data ? rowToLead(data) : null;
 }
+
+/** Fitxa del client de la sessió: primer per usuari vinculat, després per email. */
+export async function findLeadForUser(userId: string, email?: string | null): Promise<Lead | null> {
+  return (await getLeadByLinkedUser(userId)) ?? (email ? await getLeadByEmail(email) : null);
+}

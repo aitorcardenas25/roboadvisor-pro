@@ -38,7 +38,7 @@ export default function BudgetOverview({ data, goalsTitle = 'Objectius' }: { dat
         <div className={`${card} text-center py-12`}>
           <p className="text-white/60 mb-2">Encara no hi ha prou dades per fer el pressupost.</p>
           <p className="text-white/30 text-sm">Cal com a mínim els ingressos nets mensuals i les despeses (fixes i variables, o el total).
-            S&apos;omplen amb la plantilla Excel (pestanyes &quot;Dades personals&quot; i &quot;Objectius&quot;).</p>
+            Es poden omplir amb el formulari S&apos;omplen amb la plantilla Excel (pestanyes &quot;Dades personals&quot; i &quot;Objectius&quot;).quot;Les meves dadesS&apos;omplen amb la plantilla Excel (pestanyes &quot;Dades personals&quot; i &quot;Objectius&quot;).quot; o amb la plantilla Excel.</p>
         </div>
       )}
       <div className={card}>

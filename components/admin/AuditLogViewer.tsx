@@ -14,6 +14,9 @@ const ACTION_COLORS: Record<string, string> = {
   'client.created':     'text-emerald-400',
   'client.role_changed':'text-yellow-400',
   'client.deactivated': 'text-red-400',
+  'client.finances_updated': 'text-yellow-400',
+  'client.data_exported':    'text-blue-400',
+  'client.deletion_requested': 'text-red-400',
   'newsletter.sent':    'text-purple-400',
   'fund.created':       'text-emerald-400',
   'fund.updated':       'text-yellow-400',
@@ -25,6 +28,7 @@ const ACTIONS: AuditAction[] = [
   'report.generated', 'report.email_sent',
   'portfolio.created', 'portfolio.updated', 'portfolio.deleted',
   'client.created', 'client.role_changed', 'client.deactivated',
+  'client.finances_updated', 'client.data_exported', 'client.deletion_requested',
   'newsletter.sent', 'fund.created', 'fund.updated', 'fund.deleted',
 ];
 
