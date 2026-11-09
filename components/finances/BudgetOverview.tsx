@@ -3,6 +3,7 @@
 // Pas 1: pressupost i fons d'emergència abans de la cartera.
 // Es fa servir a la fitxa del client (admin) i al portal del client.
 // Tot el càlcul és a lib/budget.ts; aquí només es pinta.
+import SavingsSimulator from './SavingsSimulator';
 import { analyzeBudget, NEXT_STEP_TEXT, type BudgetInput, type BudgetStatus } from '@/lib/budget';
 
 interface Goal { horizon: string; description: string; amount?: number; targetYear?: number }
@@ -57,6 +58,8 @@ export default function BudgetOverview({ data, goalsTitle = 'Objectius' }: { dat
           </ul>
         )}
       </div>
+
+      <SavingsSimulator initialSavings={input.currentSavings} monthlyMargin={a?.freeMargin} goals={goals} />
     </div>
   );
 }
@@ -104,7 +107,7 @@ function BudgetBlock({ a }: { a: NonNullable<ReturnType<typeof analyzeBudget>> }
               </li>
             ))}
           </ul>
-          <p className="text-white/30 text-xs mt-4">Regla orientativa (Warren i Tyagi, 2005). No és una norma: serveix per veure on és el client.</p>
+          <p className="text-white/30 text-xs mt-4">Regla orientativa (Warren i Tyagi, 2005). No és una norma, només una referència.</p>
         </div>
       </div>
 
