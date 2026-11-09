@@ -1,5 +1,6 @@
 'use client';
 
+import { PROPOSAL_TEMPLATES, templateItems } from '@/lib/proposalTemplates';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   proposalStats, fundToItem, hasPerformanceData, validateForApproval, proposalToReportInput, checkProposalSuitability, PROFILES,
@@ -103,6 +104,16 @@ export default function ClientProposal({ clientId }: { clientId: string }) {
       setMsg({ ok: true, text: 'ISIN fora de la llista: omple el nom, el SRRI i el TER a mà.' });
     } else { setMsg({ ok: false, text: 'Tria un fons de la llista o escriu un ISIN vàlid' }); return; }
     setFundQuery(''); setDirty(true);
+  };
+
+  const loadTemplate = (id: string) => {
+    if (!id) return;
+    const t = PROPOSAL_TEMPLATES.find(x => x.id === id);
+    const next = templateItems(id);
+    if (!t || !next) { setMsg({ ok: false, text: 'No s\'ha pogut carregar la plantilla.' }); return; }
+    if (items.length && !confirm('Això substituirà els fons de l\'editor. Continuar?')) return;
+    setItems(next); setDirty(true);
+    setMsg({ ok: true, text: `Plantilla "${t.label}" (perfil ${PROFILE_LABEL[t.profile]}). És un punt de partida: revisa-la i ajusta-la.` });
   };
 
   const start = async (action: 'suggest' | 'fromHoldings') => {
@@ -251,6 +262,11 @@ export default function ClientProposal({ clientId }: { clientId: string }) {
             className="px-3 py-1.5 rounded-lg bg-white/10 text-white text-xs hover:bg-white/15 disabled:opacity-40">
             {busy === 'suggest' ? 'Calculant…' : 'Suggerir segons perfil'}
           </button>
+          <select value="" disabled={!!busy} onChange={e => loadTemplate(e.target.value)} aria-label="Carregar plantilla"
+            className="px-2 py-1.5 rounded-lg bg-white/10 text-white text-xs hover:bg-white/15 disabled:opacity-40">
+            <option value="">Plantilla de les sessions…</option>
+            {PROPOSAL_TEMPLATES.map(t => <option key={t.id} value={t.id} title={t.description}>{t.label}</option>)}
+          </select>
           {data.holdings > 0 && (
             <button disabled={!!busy} onClick={() => start('fromHoldings')}
               className="px-3 py-1.5 rounded-lg bg-white/10 text-white text-xs hover:bg-white/15 disabled:opacity-40">
