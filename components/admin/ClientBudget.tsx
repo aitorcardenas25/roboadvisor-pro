@@ -30,21 +30,44 @@ export default function ClientBudget({ data }: { data?: Record<string, unknown> 
   const a = analyzeBudget(input);
   const goals = Array.isArray(q.goals) ? (q.goals as Goal[]) : [];
 
-  if (!a) return (
-    <div className={`${card} text-center py-12`}>
-      <p className="text-white/60 mb-2">Encara no hi ha prou dades per fer el pressupost.</p>
-      <p className="text-white/30 text-sm">Cal com a mínim els ingressos nets mensuals i les despeses. Descarrega la plantilla a
-        &quot;Importar Excel&quot;: el client pot omplir només &quot;Dades personals&quot; i &quot;Objectius&quot;.</p>
+  return (
+    <div className="space-y-6">
+      {a ? <BudgetBlock a={a} /> : (
+        <div className={`${card} text-center py-12`}>
+          <p className="text-white/60 mb-2">Encara no hi ha prou dades per fer el pressupost.</p>
+          <p className="text-white/30 text-sm">Cal com a mínim els ingressos nets mensuals i les despeses (fixes i variables, o el total).
+            Descarrega la plantilla a &quot;Importar Excel&quot;: el client pot omplir només &quot;Dades personals&quot; i &quot;Objectius&quot;.</p>
+        </div>
+      )}
+      <div className={card}>
+        <h3 className="text-white/50 text-xs uppercase tracking-widest mb-4">Objectius del client</h3>
+        {goals.length === 0 ? (
+          <p className="text-white/30 text-sm">Sense objectius. Es poden omplir a la pestanya &quot;Objectius&quot; de la plantilla.</p>
+        ) : (
+          <ul className="space-y-2">
+            {goals.map((g, i) => (
+              <li key={i} className="text-sm">
+                <span className="text-white/40 text-xs block">{HORIZON[g.horizon] ?? g.horizon}</span>
+                <span className="text-white">{g.description}</span>
+                {g.amount ? <span className="text-white/60"> · {eur(g.amount)}</span> : null}
+                {g.targetYear ? <span className="text-white/60"> · {g.targetYear}</span> : null}
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
     </div>
   );
+}
 
+function BudgetBlock({ a }: { a: NonNullable<ReturnType<typeof analyzeBudget>> }) {
   const step = NEXT_STEP_TEXT[a.nextStep];
   const positive = a.lines.filter(l => l.amount > 0);
   const barTotal = positive.reduce((s, l) => s + l.amount, 0) || 1;
   const e = a.emergency;
 
   return (
-    <div className="space-y-6">
+    <>
       <div className={`${card} border-[#c9a84c]/40`}>
         <p className="text-[#c9a84c] text-xs uppercase tracking-widest mb-1">On és ara</p>
         <h3 className="text-white font-bold text-lg">{step.title}</h3>
@@ -101,24 +124,6 @@ export default function ClientBudget({ data }: { data?: Record<string, unknown> 
         )}
         <p className="text-white/40 text-xs">{e.basis}{e.current === null ? ' Falten els estalvis en efectiu per calcular el progrés.' : ''}</p>
       </div>
-
-      <div className={card}>
-        <h3 className="text-white/50 text-xs uppercase tracking-widest mb-4">Objectius del client</h3>
-        {goals.length === 0 ? (
-          <p className="text-white/30 text-sm">Sense objectius. Es poden omplir a la pestanya &quot;Objectius&quot; de la plantilla.</p>
-        ) : (
-          <ul className="space-y-2">
-            {goals.map((g, i) => (
-              <li key={i} className="text-sm">
-                <span className="text-white/40 text-xs block">{HORIZON[g.horizon] ?? g.horizon}</span>
-                <span className="text-white">{g.description}</span>
-                {g.amount ? <span className="text-white/60"> · {eur(g.amount)}</span> : null}
-                {g.targetYear ? <span className="text-white/60"> · {g.targetYear}</span> : null}
-              </li>
-            ))}
-          </ul>
-        )}
-      </div>
-    </div>
+    </>
   );
 }

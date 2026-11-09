@@ -66,11 +66,14 @@ export function analyzeBudget(q: BudgetInput): BudgetAnalysis | null {
   const income = q.monthlyNetIncome;
   if (!income || income <= 0) return null;
 
-  const hasBreakdown = q.monthlyFixedExpenses !== undefined || q.monthlyVariableExpenses !== undefined;
-  const fixed    = hasBreakdown ? (q.monthlyFixedExpenses ?? 0) : (q.monthlyExpenses ?? 0);
-  const variable = hasBreakdown ? (q.monthlyVariableExpenses ?? 0) : 0;
-  const debt     = q.monthlyDebtPayments ?? 0;
+  // Desglossament només si hi ha fixes I variables: una categoria buida és
+  // "no ho sé", no zero. Si falta, es fa servir la despesa total; sense total
+  // no es pot calcular (s'infravaloraria la despesa).
+  const hasBreakdown = q.monthlyFixedExpenses !== undefined && q.monthlyVariableExpenses !== undefined;
   if (!hasBreakdown && q.monthlyExpenses === undefined) return null;
+  const fixed    = hasBreakdown ? q.monthlyFixedExpenses! : q.monthlyExpenses!;
+  const variable = hasBreakdown ? q.monthlyVariableExpenses! : 0;
+  const debt     = q.monthlyDebtPayments ?? 0;
 
   const totalSpending = fixed + variable + debt;
   const freeMargin = income - totalSpending;

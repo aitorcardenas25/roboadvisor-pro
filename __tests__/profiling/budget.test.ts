@@ -35,7 +35,7 @@ describe('analyzeBudget (regla 50/30/20, Warren i Tyagi 2005)', () => {
   });
 
   it('sense estalvis informats no calcula progrés', () => {
-    const a = analyzeBudget({ monthlyNetIncome: 1500, monthlyFixedExpenses: 900 })!;
+    const a = analyzeBudget({ monthlyNetIncome: 1500, monthlyFixedExpenses: 900, monthlyVariableExpenses: 200 })!;
     expect(a.emergency.current).toBeNull();
     expect(a.emergency.progressPct).toBeNull();
     expect(a.nextStep).toBe('fons-emergencia');
@@ -46,5 +46,17 @@ describe('analyzeBudget (regla 50/30/20, Warren i Tyagi 2005)', () => {
     expect(emergencyMonths('autonom').months).toBe(12);
     expect(emergencyMonths('temporal').months).toBe(12);
     expect(emergencyMonths(undefined).months).toBe(6);
+  });
+});
+
+describe('regressions de revisió (PR #34)', () => {
+  it('desglossament incomplet: es fa servir el total, no es posa a zero la categoria que falta', () => {
+    const a = analyzeBudget({ monthlyNetIncome: 2000, monthlyExpenses: 1800, monthlyVariableExpenses: 200, currentSavings: 1500 })!;
+    expect(a.hasBreakdown).toBe(false);
+    expect(a.totalSpending).toBe(1800);
+    expect(a.nextStep).toBe('fons-emergencia');
+  });
+  it('desglossament incomplet i sense total: no calcula', () => {
+    expect(analyzeBudget({ monthlyNetIncome: 2000, monthlyVariableExpenses: 200 })).toBeNull();
   });
 });
