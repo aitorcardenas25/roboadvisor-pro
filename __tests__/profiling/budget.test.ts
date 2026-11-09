@@ -60,3 +60,15 @@ describe('regressions de revisió (PR #34)', () => {
     expect(analyzeBudget({ monthlyNetIncome: 2000, monthlyVariableExpenses: 200 })).toBeNull();
   });
 });
+
+describe('pickFinanceFields (portal del client)', () => {
+  it('només exposa els camps del pressupost i els objectius', async () => {
+    const { pickFinanceFields } = await import('@/lib/budget');
+    const out = pickFinanceFields({
+      monthlyNetIncome: 1500, currentSavings: 2000, goals: [{ horizon: 'curt', description: 'x' }],
+      clientEmail: 'a@b.c', netWorth: 90000, lossTolerance: 'baixa',
+    });
+    expect(Object.keys(out).sort()).toEqual(['currentSavings', 'goals', 'monthlyNetIncome']);
+    expect(pickFinanceFields(undefined)).toEqual({});
+  });
+});

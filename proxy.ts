@@ -14,7 +14,7 @@ export default withAuth(
     }
 
     // Client-only routes: client or admin
-    const clientRoutes = ['/client/cartera', '/client/seguiment-accions'];
+    const clientRoutes = ['/client/cartera', '/client/finances', '/client/seguiment-accions'];
     for (const route of clientRoutes) {
       if (pathname.startsWith(route) && !CLIENT_ROLES.has(role ?? '')) {
         return NextResponse.redirect(new URL('/login', req.url));

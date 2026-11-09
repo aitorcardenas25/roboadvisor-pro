@@ -8,7 +8,7 @@ import type { MonthlyReportRecord } from '@/lib/monthlyReports';
 import type { AuditEntry } from '@/lib/auditLog';
 import ClientImport from './ClientImport';
 import ClientProposal from './ClientProposal';
-import ClientBudget from './ClientBudget';
+import BudgetOverview from '@/components/finances/BudgetOverview';
 
 interface ClientUser {
   id: string; name: string; email: string; username: string;
@@ -206,7 +206,7 @@ export default function ClientFile({
         )}
 
         {/* PAS 1 · FINANCES */}
-        {tab === 'finances' && <ClientBudget data={lead?.questionnaireData} />}
+        {tab === 'finances' && <BudgetOverview data={lead?.questionnaireData} goalsTitle="Objectius del client" />}
 
         {/* IMPORTAR EXCEL */}
         {tab === 'import' && <ClientImport clientId={clientId} onImported={() => load(true)} />}

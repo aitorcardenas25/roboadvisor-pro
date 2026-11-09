@@ -123,3 +123,16 @@ export const NEXT_STEP_TEXT: Record<NextStep, { title: string; detail: string }>
   'fons-emergencia':    { title: 'Pas 2: completar el fons d\'emergència', detail: 'Hi ha marge cada mes, però el coixí encara no cobreix els mesos de referència.' },
   'llest-per-invertir': { title: 'Pas 3: començar a invertir', detail: 'Pressupost amb marge i fons d\'emergència complet. Es pot passar a la proposta de cartera.' },
 };
+
+/** Camps que pinta "Les meves finances". La resta del qüestionari no s'exposa al portal. */
+export const FINANCE_FIELDS = [
+  'monthlyNetIncome', 'monthlyFixedExpenses', 'monthlyVariableExpenses', 'monthlyDebtPayments',
+  'monthlyExpenses', 'currentSavings', 'employmentType', 'goals',
+] as const;
+
+export function pickFinanceFields(q?: Record<string, unknown> | null): Record<string, unknown> {
+  const out: Record<string, unknown> = {};
+  if (!q) return out;
+  for (const k of FINANCE_FIELDS) if (q[k] !== undefined) out[k] = q[k];
+  return out;
+}

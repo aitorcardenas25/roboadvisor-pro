@@ -1,6 +1,7 @@
 'use client';
 
-// Pas 1 de la fitxa: pressupost i fons d'emergència abans de la cartera.
+// Pas 1: pressupost i fons d'emergència abans de la cartera.
+// Es fa servir a la fitxa del client (admin) i al portal del client.
 // Tot el càlcul és a lib/budget.ts; aquí només es pinta.
 import { analyzeBudget, NEXT_STEP_TEXT, type BudgetInput, type BudgetStatus } from '@/lib/budget';
 
@@ -16,7 +17,7 @@ function num(v: unknown): number | undefined {
   return typeof v === 'number' && Number.isFinite(v) ? v : undefined;
 }
 
-export default function ClientBudget({ data }: { data?: Record<string, unknown> }) {
+export default function BudgetOverview({ data, goalsTitle = 'Objectius' }: { data?: Record<string, unknown>; goalsTitle?: string }) {
   const q = data ?? {};
   const input: BudgetInput = {
     monthlyNetIncome:        num(q.monthlyNetIncome),
@@ -36,13 +37,13 @@ export default function ClientBudget({ data }: { data?: Record<string, unknown> 
         <div className={`${card} text-center py-12`}>
           <p className="text-white/60 mb-2">Encara no hi ha prou dades per fer el pressupost.</p>
           <p className="text-white/30 text-sm">Cal com a mínim els ingressos nets mensuals i les despeses (fixes i variables, o el total).
-            Descarrega la plantilla a &quot;Importar Excel&quot;: el client pot omplir només &quot;Dades personals&quot; i &quot;Objectius&quot;.</p>
+            S&apos;omplen amb la plantilla Excel (pestanyes &quot;Dades personals&quot; i &quot;Objectius&quot;).</p>
         </div>
       )}
       <div className={card}>
-        <h3 className="text-white/50 text-xs uppercase tracking-widest mb-4">Objectius del client</h3>
+        <h3 className="text-white/50 text-xs uppercase tracking-widest mb-4">{goalsTitle}</h3>
         {goals.length === 0 ? (
-          <p className="text-white/30 text-sm">Sense objectius. Es poden omplir a la pestanya &quot;Objectius&quot; de la plantilla.</p>
+          <p className="text-white/30 text-sm">Encara no hi ha objectius. S&apos;omplen a la pestanya &quot;Objectius&quot; de la plantilla Excel.</p>
         ) : (
           <ul className="space-y-2">
             {goals.map((g, i) => (
@@ -111,11 +112,11 @@ function BudgetBlock({ a }: { a: NonNullable<ReturnType<typeof analyzeBudget>> }
         <h3 className="text-white/50 text-xs uppercase tracking-widest mb-4">Fons d&apos;emergència</h3>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
           <div><p className="text-white/30 text-xs">Objectiu</p><p className="text-white font-bold">{eur(e.targetAmount)}</p><p className="text-white/30 text-xs">{e.monthsTarget} mesos de despeses</p></div>
-          <div><p className="text-white/30 text-xs">Té ara</p><p className="text-white font-bold">{e.current === null ? '—' : eur(e.current)}</p></div>
+          <div><p className="text-white/30 text-xs">Estalvi actual</p><p className="text-white font-bold">{e.current === null ? '—' : eur(e.current)}</p></div>
           <div><p className="text-white/30 text-xs">Falta</p><p className="text-white font-bold">{e.gap === null ? '—' : eur(e.gap)}</p></div>
           <div><p className="text-white/30 text-xs">Temps per arribar-hi</p><p className="text-white font-bold">
             {e.monthsToTarget === null ? '—' : e.monthsToTarget === 0 ? 'Complet' : `${e.monthsToTarget} mesos`}</p>
-            <p className="text-white/30 text-xs">si hi destina tot el marge</p></div>
+            <p className="text-white/30 text-xs">destinant-hi tot el marge</p></div>
         </div>
         {e.progressPct !== null && (
           <div className="h-2 rounded-full bg-white/10 overflow-hidden mb-2">
