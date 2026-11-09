@@ -68,7 +68,7 @@ export async function createLead(
     interest: lead.interest, profile: lead.profile ?? null,
     message: lead.message ?? null, source: lead.source,
     type: lead.type ?? null, notes: null, status: lead.status,
-    gdpr_consent: lead.gdprConsent, created_at: lead.createdAt,
+    gdpr_consent: lead.gdprConsent, created_at: lead.createdAt, updated_at: lead.createdAt,
   });
   if (error) throw new Error(error.message);
   return lead;
@@ -109,7 +109,7 @@ export async function saveLeadQuestionnaire(
     l.questionnaireData = data;
     return true;
   }
-  const { error } = await db.from('leads').update({ questionnaire_data: data }).eq('id', id);
+  const { error } = await db.from('leads').update({ questionnaire_data: data, updated_at: new Date().toISOString() }).eq('id', id);
   return !error;
 }
 
