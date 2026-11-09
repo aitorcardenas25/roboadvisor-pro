@@ -337,8 +337,10 @@ CREATE INDEX IF NOT EXISTS idx_client_consents_user ON client_consents (user_id,
 CREATE TABLE IF NOT EXISTS client_activity (
   id       BIGSERIAL   PRIMARY KEY,
   user_id  TEXT        NOT NULL,
-  event    TEXT        NOT NULL,                 -- login, finances.view, ... (lib/betaActivity.ts)
+  event    TEXT        NOT NULL,                 -- login, finances.view, ping... (lib/betaActivity.ts)
+  page     TEXT,                                 -- finances | cartera | altres (només per a ping)
   at       TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
+ALTER TABLE client_activity ADD COLUMN IF NOT EXISTS page TEXT;
 CREATE INDEX IF NOT EXISTS idx_client_activity_at   ON client_activity (at DESC);
 CREATE INDEX IF NOT EXISTS idx_client_activity_user ON client_activity (user_id, at DESC);

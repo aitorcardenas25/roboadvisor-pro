@@ -9,6 +9,7 @@ import type { AuditEntry } from '@/lib/auditLog';
 import ClientImport from './ClientImport';
 import ClientProposal from './ClientProposal';
 import BudgetOverview from '@/components/finances/BudgetOverview';
+import OneOffExpenses from '@/components/finances/OneOffExpenses';
 
 interface ClientUser {
   id: string; name: string; email: string; username: string;
@@ -206,7 +207,13 @@ export default function ClientFile({
         )}
 
         {/* PAS 1 · FINANCES */}
-        {tab === 'finances' && <BudgetOverview data={lead?.questionnaireData} goalsTitle="Objectius del client" audience="admin" />}
+        {tab === 'finances' && (
+          <div className="space-y-6">
+            <OneOffExpenses endpoint={`/api/admin/clients/${clientId}/expenses`} data={lead?.questionnaireData ?? {}} audience="admin"
+              onChange={() => load(true)} />
+            <BudgetOverview data={lead?.questionnaireData} goalsTitle="Objectius del client" audience="admin" />
+          </div>
+        )}
 
         {/* IMPORTAR EXCEL */}
         {tab === 'import' && <ClientImport clientId={clientId} onImported={() => load(true)} />}

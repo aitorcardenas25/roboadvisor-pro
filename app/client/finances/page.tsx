@@ -7,6 +7,7 @@ import BudgetOverview from '@/components/finances/BudgetOverview';
 import FinancesForm from '@/components/finances/FinancesForm';
 import MyDataCard from '@/components/finances/MyDataCard';
 import PasswordCard from '@/components/finances/PasswordCard';
+import OneOffExpenses from '@/components/finances/OneOffExpenses';
 import { analyzeBudget } from '@/lib/budget';
 
 const n = (v: unknown) => (typeof v === 'number' && Number.isFinite(v) ? v : undefined);
@@ -87,6 +88,9 @@ export default function ClientFinancesPage() {
                 </button>
                 {saved && <span className="text-green-300/80 text-sm" role="status">Dades desades.</span>}
               </div>
+            )}
+            {!editing && hasBudget(data ?? {}) && (
+              <OneOffExpenses endpoint="/api/client/expenses" data={data ?? {}} onChange={d => setData(d)} />
             )}
             {!editing && <BudgetOverview data={data ?? {}} goalsTitle="Els meus objectius" />}
             <MyDataCard />

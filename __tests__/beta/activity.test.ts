@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach } from 'vitest';
-import { weekStart, summarizeUsage, recordActivity, getActivitySince, __resetActivityForTests, type ActivityRow } from '@/lib/betaActivity';
+import { weekStart, madridDay, summarizeUsage, recordActivity, getActivitySince, __resetActivityForTests, type ActivityRow } from '@/lib/betaActivity';
 
 const clients = [
   { id: 'a', name: 'Anna', email: 'a@x.com' },
@@ -79,6 +79,44 @@ describe('recordActivity (memòria)', () => {
     recordActivity('a', 'finances.view', new Date('2026-11-10T10:00:00Z'));
     recordActivity(undefined, 'login');
     const rows = await getActivitySince(new Date('2026-11-05T00:00:00Z'));
-    expect(rows).toEqual([{ userId: 'a', event: 'finances.view', at: '2026-11-10T10:00:00.000Z' }]);
+    expect(rows).toEqual([{ userId: 'a', event: 'finances.view', at: '2026-11-10T10:00:00.000Z', page: null }]);
+  });
+});
+
+describe('temps connectat', () => {
+  // Dimecres 11/11/2026 12:00 UTC (13:00 a Madrid)
+  const ping = (at: string, page: 'finances' | 'cartera' | 'altres' = 'finances'): ActivityRow => ({ userId: 'a', event: 'ping', at, page });
+  const rows: ActivityRow[] = [
+    // avui: 3 pings en 3 minuts diferents + 1 de repetit al mateix minut
+    ping('2026-11-11T09:00:05Z'), ping('2026-11-11T09:01:10Z'), ping('2026-11-11T09:01:40Z'), ping('2026-11-11T09:02:00Z', 'cartera'),
+    // fa 3 dies: 2 minuts
+    ping('2026-11-08T20:00:00Z'), ping('2026-11-08T20:01:00Z'),
+    // fa 20 dies: 1 minut (només compta a 30 dies)
+    ping('2026-10-22T10:00:00Z', 'altres'),
+    // fa 40 dies: fora
+    ping('2026-10-02T10:00:00Z'),
+    { userId: 'a', event: 'login', at: '2026-11-08T19:59:00Z' },
+    { userId: 'a', event: 'login', at: '2026-09-01T10:00:00Z' },
+  ];
+  const c = summarizeUsage(rows, clients, {}, now, 8).clients.find(x => x.id === 'a')!;
+
+  it('compta minuts diferents, no pings', () => {
+    expect(c.minutes).toEqual({ today: 3, week: 5, month: 6 });
+  });
+
+  it('dies actius i entrades dels darrers 30 dies', () => {
+    expect(c.daysActive30).toBe(3);
+    expect(c.logins30).toBe(1);
+  });
+
+  it('reparteix el temps per secció', () => {
+    expect(c.byPage30).toEqual({ finances: 4, cartera: 1, altres: 1 });
+  });
+
+  it('el dia es compta a l\'hora de Madrid', () => {
+    // 23:30 UTC del 10/11 ja és l'11/11 a Madrid
+    expect(madridDay(new Date('2026-11-10T23:30:00Z'))).toBe('2026-11-11');
+    const r = summarizeUsage([ping('2026-11-10T23:30:00Z')], clients, {}, now, 8).clients.find(x => x.id === 'a')!;
+    expect(r.minutes.today).toBe(1);
   });
 });

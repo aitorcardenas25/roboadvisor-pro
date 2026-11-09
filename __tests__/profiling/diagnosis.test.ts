@@ -61,6 +61,11 @@ describe('diagnose', () => {
     expect(d.actions.some(a => a.title.startsWith('Viatge'))).toBe(false); // ja passat
   });
 
+  it('si falta menys que el marge d\'un mes, demana només el que falta', () => {
+    const d = diagnose({ monthlyNetIncome: 2000, monthlyFixedExpenses: 900, monthlyVariableExpenses: 500, currentSavings: 8000, employmentType: 'indefinit' }, now);
+    expect(d.actions[0].title).toBe('Apartar 400 € i el coixí queda complet');
+  });
+
   it('autònom: objectiu de 12 mesos', () => {
     const d = diagnose({ monthlyNetIncome: 2000, monthlyExpenses: 1000, currentSavings: 6000, employmentType: 'autonom' }, now);
     expect(d.findings[1].detail).toContain('12 mesos');

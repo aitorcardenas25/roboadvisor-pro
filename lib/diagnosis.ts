@@ -133,6 +133,11 @@ function build(a: BudgetAnalysis, q: DiagnosisInput, now: Date): Omit<Diagnosis,
     }
     if (e.gap === null) {
       actions.push({ title: 'Indicar quant estalvi tens', detail: `Sense aquesta dada no es pot saber si el coixí de ${e.monthsTarget} mesos (${eur(e.targetAmount)}) està complet.` });
+    } else if (e.gap > 0 && e.gap <= a.freeMargin) {
+      actions.push({
+        title: `Apartar ${eur(e.gap)} i el coixí queda complet`,
+        detail: `Amb el marge d'un mes (${eur(a.freeMargin)}) n'hi ha prou. Millor en un compte a part i sense risc.`,
+      });
     } else if (e.gap > 0) {
       const months = e.monthsToTarget!;
       actions.push({

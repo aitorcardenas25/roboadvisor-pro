@@ -4,6 +4,7 @@
 // mentre no l'acceptin, la pàgina queda tapada i el servidor no desa dades seves.
 import { useEffect, useState } from 'react';
 import { useSession, signOut } from 'next-auth/react';
+import { usePathname } from 'next/navigation';
 
 interface ConsentPayload {
   required: boolean;
@@ -46,6 +47,21 @@ export default function ConsentGate({ children }: { children: React.ReactNode })
   }
 
   const show = role === 'client' && payload?.required;
+  const pathname = usePathname();
+  const tracking = role === 'client' && payload !== null && !payload.required;
+
+  // Temps connectat: un ping per minut mentre la pàgina és visible (i només amb consentiment).
+  useEffect(() => {
+    if (!tracking) return;
+    const page = pathname?.startsWith('/client/finances') ? 'finances' : pathname?.startsWith('/client/cartera') ? 'cartera' : 'altres';
+    const ping = () => {
+      if (document.visibilityState !== 'visible') return;
+      fetch('/api/client/ping', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ page }), keepalive: true }).catch(() => {});
+    };
+    ping();
+    const id = window.setInterval(ping, 60_000);
+    return () => window.clearInterval(id);
+  }, [tracking, pathname]);
 
   return (
     <>

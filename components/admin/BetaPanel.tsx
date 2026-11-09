@@ -12,6 +12,13 @@ const DIAG: Record<string, { label: string; dot: string }> = {
 };
 const fmtWeek = (d: string) => { const [, m, day] = d.split('-'); return `${day}/${m}`; };
 
+const fmtMin = (m: number) => (m === 0 ? '—' : m < 60 ? `${m} min` : `${Math.floor(m / 60)} h ${m % 60 ? `${m % 60} min` : ''}`.trim());
+function ago(iso: string | null, now: number): { text: string; stale: boolean } {
+  if (!iso) return { text: 'Mai', stale: true };
+  const days = Math.floor((now - Date.parse(iso)) / 86_400_000);
+  return { text: days <= 0 ? 'Avui' : days === 1 ? 'Ahir' : `Fa ${days} dies`, stale: days >= 14 };
+}
+
 function cellClass(n: number) {
   if (n === 0) return 'bg-white/[0.04] text-white/20';
   if (n === 1) return 'bg-emerald-500/25 text-emerald-200';
@@ -39,30 +46,74 @@ export default function BetaPanel() {
   const consented = data.clients.filter(c => c.consentAt).length;
   const thisWeek  = data.weeklyActive[data.weeklyActive.length - 1] ?? 0;
   const lastFull  = data.weeklyActive.length > 1 ? data.weeklyActive[data.weeklyActive.length - 2] : null;
-  const regular   = data.clients.filter(c => c.weeksActive >= Math.ceil(data.weeks.length / 2)).length;
+  const nowMs     = Date.now();
+  const min7      = data.clients.reduce((s, c) => s + c.minutes.week, 0);
+  const active7   = data.clients.filter(c => c.minutes.week > 0).length;
+  const stale     = data.clients.filter(c => ago(c.lastSeen, nowMs).stale).length;
 
   return (
     <div className="space-y-6">
       <div>
-        <h2 className="text-white font-bold text-xl">Beta · ús setmanal</h2>
-        <p className="text-white/40 text-sm">Un client és actiu una setmana si entra almenys un dia. Les xifres de la graella són dies diferents amb activitat.</p>
+        <h2 className="text-white font-bold text-xl">Beta · seguiment de clients</h2>
+        <p className="text-white/40 text-sm">Quant temps es connecta cada client, on el passa i com està la seva situació.</p>
       </div>
 
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
         {[
-          ['Clients a la beta', String(total)],
-          ['Han acceptat el consentiment', `${consented} de ${total}`],
+          ['Clients a la beta', `${total} (${consented} amb consentiment)`],
           ['Actius aquesta setmana', `${thisWeek}${lastFull !== null ? ` (setm. passada: ${lastFull})` : ''}`],
-          [`Actius ≥ ${Math.ceil(data.weeks.length / 2)} de ${data.weeks.length} setmanes`, String(regular)],
+          ['Temps total, darrers 7 dies', `${fmtMin(min7)}${active7 ? ` · ${fmtMin(Math.round(min7 / active7))} per client actiu` : ''}`],
+          ['Sense entrar fa 14 dies o més', `${stale} de ${total}`],
         ].map(([l, v]) => (
           <div key={l} className={card}><p className="text-white/40 text-xs">{l}</p><p className="text-white text-lg font-bold mt-1">{v}</p></div>
         ))}
       </div>
 
+      {total > 0 && (
+        <div className={`${card} overflow-x-auto`}>
+          <h3 className="text-white/50 text-xs uppercase tracking-widest mb-3">Temps connectat</h3>
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="text-white/30 text-xs text-left">
+                <th className="py-1 pr-3 font-normal">Client</th>
+                <th className="py-1 px-2 font-normal text-right">Avui</th>
+                <th className="py-1 px-2 font-normal text-right">7 dies</th>
+                <th className="py-1 px-2 font-normal text-right">30 dies</th>
+                <th className="py-1 px-2 font-normal text-right">Dies actius (30)</th>
+                <th className="py-1 px-2 font-normal text-right">Entrades (30)</th>
+                <th className="py-1 px-2 font-normal">On passa el temps</th>
+                <th className="py-1 px-2 font-normal">Darrer accés</th>
+              </tr>
+            </thead>
+            <tbody>
+              {data.clients.map(c => {
+                const a = ago(c.lastSeen, nowMs);
+                const tot = c.byPage30.finances + c.byPage30.cartera + c.byPage30.altres;
+                const pct = (n: number) => (tot ? Math.round((n / tot) * 100) : 0);
+                return (
+                  <tr key={c.id} className="border-t border-white/5 text-white/70">
+                    <td className="py-2 pr-3 text-white">{c.name}</td>
+                    <td className="py-2 px-2 text-right">{fmtMin(c.minutes.today)}</td>
+                    <td className="py-2 px-2 text-right">{fmtMin(c.minutes.week)}</td>
+                    <td className="py-2 px-2 text-right text-white font-semibold">{fmtMin(c.minutes.month)}</td>
+                    <td className="py-2 px-2 text-right">{c.daysActive30}</td>
+                    <td className="py-2 px-2 text-right">{c.logins30}</td>
+                    <td className="py-2 px-2 text-xs">{tot ? `Finances ${pct(c.byPage30.finances)}% · Cartera ${pct(c.byPage30.cartera)}%` : '—'}</td>
+                    <td className={`py-2 px-2 ${a.stale ? 'text-amber-300/90' : ''}`}>{a.text}</td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+          <p className="text-white/25 text-xs mt-3">Minuts amb la pàgina oberta i visible (es compta un minut per cada minut actiu). En groc, clients que fa 14 dies o més que no entren.</p>
+        </div>
+      )}
+
       {total === 0 ? (
         <div className={`${card} text-center text-white/40`}>Encara no hi ha cap client actiu. Crea&apos;ls a &quot;Clients&quot;.</div>
       ) : (
         <div className={`${card} overflow-x-auto`}>
+          <h3 className="text-white/50 text-xs uppercase tracking-widest mb-3">Setmanes i situació · dies actius per setmana</h3>
           <table className="w-full text-sm">
             <thead>
               <tr className="text-white/30 text-xs text-left">

@@ -20,6 +20,8 @@ export type AuditAction =
   | 'client.consent_accepted'
   | 'client.password_changed'
   | 'client.welcome_sent'
+  | 'client.expense_added'
+  | 'client.expense_removed'
   | 'newsletter.sent'
   | 'fund.created'
   | 'fund.updated'

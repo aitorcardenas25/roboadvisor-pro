@@ -127,7 +127,7 @@ export const NEXT_STEP_TEXT: Record<NextStep, { title: string; detail: string }>
 /** Camps que pinta "Les meves finances". La resta del qüestionari no s'exposa al portal. */
 export const FINANCE_FIELDS = [
   'monthlyNetIncome', 'monthlyFixedExpenses', 'monthlyVariableExpenses', 'monthlyDebtPayments',
-  'monthlyExpenses', 'currentSavings', 'employmentType', 'goals',
+  'monthlyExpenses', 'currentSavings', 'employmentType', 'goals', 'oneOffExpenses',
 ] as const;
 
 export function pickFinanceFields(q?: Record<string, unknown> | null): Record<string, unknown> {
