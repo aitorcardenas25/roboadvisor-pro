@@ -10,7 +10,7 @@ import ExcelJS from 'exceljs';
 import { isValidIsin, lookupIsin } from './fundUniverse';
 import type { OperationType } from './clientPortfolios';
 
-export const TEMPLATE_VERSION = '1';
+export const TEMPLATE_VERSION = '2';
 
 // ─── Definició de la plantilla ───────────────────────────────────────────────
 
@@ -21,8 +21,37 @@ export const PERSONAL_FIELDS = [
   { key: 'currentSavings',  label: 'Estalvis en efectiu (€)' },
   { key: 'netWorth',        label: 'Patrimoni net total (€)' },
   { key: 'totalDebt',       label: 'Deute total pendent (€)' },
+  // v2 — pressupost mensual (fitxa del client de les sessions presencials, 2026)
+  { key: 'monthlyNetIncome',        label: 'Ingressos nets mensuals (€)' },
+  { key: 'monthlyFixedExpenses',    label: 'Despeses fixes al mes: lloguer, factures, menjar (€)' },
+  { key: 'monthlyVariableExpenses', label: 'Despeses variables al mes: oci, roba, imprevistos (€)' },
+  { key: 'monthlyDebtPayments',     label: 'Quotes de deutes al mes (€)' },
+  { key: 'dependents',              label: 'Persones a càrrec (fills, familiars)' },
 ] as const;
 export type PersonalKey = typeof PERSONAL_FIELDS[number]['key'];
+
+/** Camps de resposta tancada (desplegable a l'Excel). Valor desat = codi intern. */
+export const CHOICE_FIELDS = [
+  { key: 'employmentType', label: 'Situació laboral',
+    options: { 'Indefinit': 'indefinit', 'Temporal': 'temporal', 'Autònom': 'autonom', 'Sense feina': 'sense-feina' } },
+  { key: 'selfRiskProfile', label: 'Com et veus invertint',
+    options: { 'Conservador': 'conservador', 'Equilibrat': 'equilibrat', 'Dinàmic': 'dinamic' } },
+  { key: 'selfKnowledge', label: 'Coneixement financer',
+    options: { 'Bàsic': 'basic', 'Mitjà': 'mitja', 'Alt': 'alt' } },
+] as const;
+export type ChoiceKey = typeof CHOICE_FIELDS[number]['key'];
+
+export type PersonalData = Partial<Record<PersonalKey, number>> & Partial<Record<ChoiceKey, string>>;
+
+export type GoalHorizon = 'curt' | 'mitja' | 'llarg';
+export interface ImportedGoal { horizon: GoalHorizon; description: string; amount?: number; targetYear?: number }
+
+const GOAL_HORIZONS: { label: string; code: GoalHorizon }[] = [
+  { label: 'Curt (0-12 mesos)', code: 'curt' },
+  { label: 'Mitjà (1-5 anys)',  code: 'mitja' },
+  { label: 'Llarg (+5 anys)',   code: 'llarg' },
+];
+const GOAL_COLS = ['Termini', 'Què vols aconseguir', 'Import aproximat (€)', 'Any objectiu'];
 
 const HOLDING_COLS = ['ISIN', 'Nom del fons', 'Broker / entitat', 'Categoria', 'Participacions', 'Preu mitjà de compra (€)', 'Moneda', 'Notes'];
 const TX_COLS      = ['Data', 'Tipus', 'ISIN', 'Nom', 'Participacions', 'Preu (€)', 'Import total (€)', 'Comissió (€)', 'Broker / entitat', 'Notes'];
@@ -32,7 +61,7 @@ const TX_TYPES: Record<string, OperationType> = {
   'retirada': 'withdrawal', 'rebalanceig': 'rebalance',
 };
 
-const SHEET = { info: 'Instruccions', personal: 'Dades personals', holdings: 'Posicions', tx: 'Moviments' };
+const SHEET = { info: 'Instruccions', personal: 'Dades personals', goals: 'Objectius', holdings: 'Posicions', tx: 'Moviments' };
 
 export async function buildTemplate(clientName?: string): Promise<Buffer> {
   const wb = new ExcelJS.Workbook();
@@ -54,11 +83,14 @@ export async function buildTemplate(clientName?: string): Promise<Buffer> {
     `FACTOR OTC · Plantilla de dades del client${clientName ? ` · ${clientName}` : ''} · versió ${TEMPLATE_VERSION}`,
     '',
     '1. "Dades personals": omple la columna B. Si no saps un valor, deixa-ho en blanc.',
-    '2. "Posicions": una fila per cada fons o ETF que tens avui, a cada entitat (MyInvestor, Renta 4, banc...).',
+    '   Les preguntes amb desplegable (situació laboral, perfil, coneixement): tria una opció.',
+    '   Si encara no inverteixes, n\'hi ha prou amb "Dades personals" i "Objectius": les altres pestanyes poden quedar buides.',
+    '2. "Objectius": què vols aconseguir a curt, mitjà i llarg termini (p. ex. "fons d\'emergència", "entrada d\'un pis").',
+    '3. "Posicions": una fila per cada fons o ETF que tens avui, a cada entitat (MyInvestor, Renta 4, banc...).',
     '   L\'ISIN és el codi de 12 caràcters que surt a l\'extracte (p. ex. IE00B42W4L06).',
-    '3. "Moviments": cada compra, venda, aportació o retirada amb la seva data. Com més historial, més exacta serà la rendibilitat.',
+    '4. "Moviments": cada compra, venda, aportació o retirada amb la seva data. Com més historial, més exacta serà la rendibilitat.',
     '   Format de data: dd/mm/aaaa. Tipus: Compra, Venda, Aportació, Retirada o Rebalanceig.',
-    '4. No canviïs el nom de les pestanyes ni l\'ordre de les columnes.',
+    '5. No canviïs el nom de les pestanyes ni l\'ordre de les columnes.',
     '',
     'Aquestes dades són personals: torna el fitxer pel canal que t\'indiqui el teu assessor, no per xarxes socials.',
   ].forEach(t => info.addRow([t]));
@@ -66,11 +98,21 @@ export async function buildTemplate(clientName?: string): Promise<Buffer> {
 
   // Dades personals
   const per = wb.addWorksheet(SHEET.personal);
-  per.columns = [{ header: 'Concepte', width: 34 }, { header: 'Valor', width: 18 }, { header: 'codi', width: 18 }];
-  PERSONAL_FIELDS.forEach(f => per.addRow([f.label, null, f.key]));
+  per.columns = [{ header: 'Concepte', width: 52 }, { header: 'Valor', width: 18 }, { header: 'codi', width: 18 }];
+  PERSONAL_FIELDS.forEach(f => { per.addRow([f.label, null, f.key]).getCell(2).numFmt = '#,##0'; });
+  CHOICE_FIELDS.forEach(f => {
+    const row = per.addRow([f.label, null, f.key]);
+    row.getCell(2).dataValidation = { type: 'list', allowBlank: true, formulae: [`"${Object.keys(f.options).join(',')}"`] };
+  });
   per.getColumn(3).hidden = true;
-  per.getColumn(2).numFmt = '#,##0';
   header(per);
+
+  // Objectius (3 files amb el termini ja posat)
+  const goals = wb.addWorksheet(SHEET.goals);
+  goals.columns = GOAL_COLS.map((h, i) => ({ header: h, width: [20, 50, 20, 14][i] }));
+  GOAL_HORIZONS.forEach(g => goals.addRow([g.label]));
+  goals.getColumn(3).numFmt = '#,##0';
+  header(goals);
 
   // Posicions
   const hol = wb.addWorksheet(SHEET.holdings);
@@ -113,7 +155,8 @@ export interface ImportedTransaction {
 }
 
 export interface ImportResult {
-  personal:     Partial<Record<PersonalKey, number>>;
+  personal:     PersonalData;
+  goals:        ImportedGoal[];
   holdings:     ImportedHolding[];
   transactions: ImportedTransaction[];
   errors:       ImportIssue[];
@@ -189,7 +232,7 @@ function rowEmpty(row: ExcelJS.Row, cols: number): boolean {
 }
 
 export async function parseClientWorkbook(data: ArrayBuffer | Buffer): Promise<ImportResult> {
-  const res: ImportResult = { personal: {}, holdings: [], transactions: [], errors: [], warnings: [] };
+  const res: ImportResult = { personal: {}, goals: [], holdings: [], transactions: [], errors: [], warnings: [] };
   const wb = new ExcelJS.Workbook();
   try {
     await wb.xlsx.load(data as ArrayBuffer);
@@ -206,15 +249,55 @@ export async function parseClientWorkbook(data: ArrayBuffer | Buffer): Promise<I
   else {
     per.eachRow((row, r) => {
       if (r === 1) return;
-      const key = str(row.getCell(3).value) as PersonalKey;
-      const field = PERSONAL_FIELDS.find(f => f.key === key)
-        ?? PERSONAL_FIELDS.find(f => f.label === str(row.getCell(1).value));
-      if (!field) return;
+      const key = str(row.getCell(3).value);
+      const label = str(row.getCell(1).value);
       const raw = row.getCell(2).value;
+      const choice = CHOICE_FIELDS.find(f => f.key === key) ?? CHOICE_FIELDS.find(f => f.label === label);
+      if (choice) {
+        const v = str(raw);
+        if (v === '') return;
+        const code = Object.entries(choice.options).find(([l]) => l.toLowerCase() === v.toLowerCase())?.[1];
+        if (!code) res.errors.push({ sheet: SHEET.personal, row: r, message: `"${choice.label}": tria una opció (${Object.keys(choice.options).join(', ')}).` });
+        else res.personal[choice.key] = code;
+        return;
+      }
+      const field = PERSONAL_FIELDS.find(f => f.key === key)
+        ?? PERSONAL_FIELDS.find(f => f.label === label);
+      if (!field) return;
       if (str(raw) === '') return;
       const n = parseNumber(raw);
       if (n === null || n < 0) res.errors.push({ sheet: SHEET.personal, row: r, message: `"${field.label}" ha de ser un número positiu.` });
       else res.personal[field.key] = n;
+    });
+  }
+
+  // Objectius (opcional; les plantilles v1 no la tenen)
+  const goalsWs = wb.getWorksheet(SHEET.goals);
+  if (goalsWs) {
+    const thisYear = new Date().getUTCFullYear();
+    goalsWs.eachRow((row, r) => {
+      if (r === 1) return;
+      const description = str(row.getCell(2).value);
+      const amountRaw = row.getCell(3).value;
+      const yearRaw = row.getCell(4).value;
+      if (!description && str(amountRaw) === '' && str(yearRaw) === '') return;   // només el termini pre-omplert
+      const errs: string[] = [];
+      const hLabel = str(row.getCell(1).value).toLowerCase();
+      const horizon = GOAL_HORIZONS.find(g => g.label.toLowerCase() === hLabel || hLabel.startsWith(g.label.toLowerCase().split(' ')[0]))?.code;
+      if (!horizon) errs.push('termini desconegut (Curt, Mitjà o Llarg)');
+      if (!description) errs.push('falta descriure l\'objectiu');
+      let amount: number | undefined;
+      if (str(amountRaw) !== '') {
+        const n = parseNumber(amountRaw);
+        if (n === null || n <= 0) errs.push('l\'import ha de ser un número positiu'); else amount = n;
+      }
+      let targetYear: number | undefined;
+      if (str(yearRaw) !== '') {
+        const y = parseNumber(yearRaw);
+        if (y === null || !Number.isInteger(y) || y < thisYear || y > thisYear + 60) errs.push('any objectiu no vàlid'); else targetYear = y;
+      }
+      if (errs.length) { res.errors.push({ sheet: SHEET.goals, row: r, message: errs.join('; ') }); return; }
+      res.goals.push({ horizon: horizon!, description, amount, targetYear });
     });
   }
 
@@ -300,7 +383,7 @@ export async function parseClientWorkbook(data: ArrayBuffer | Buffer): Promise<I
     });
   }
 
-  if (!res.holdings.length && !res.transactions.length && !Object.keys(res.personal).length && !res.errors.length)
+  if (!res.holdings.length && !res.transactions.length && !res.goals.length && !Object.keys(res.personal).length && !res.errors.length)
     res.errors.push({ sheet: '—', row: 0, message: 'El fitxer no té cap dada omplerta.' });
 
   return res;

@@ -1,6 +1,6 @@
 // lib/fundUniverse.ts
 // Fons de treball de l'assessor (llista "LLISTAT DE FONS", Drive FACTOR OTC,
-// revisada 2026-11-06). Serveix per reconèixer ISIN a la importació i, a la
+// revisada 2026-11-06) + fons indexats de les carteres de les sessions (2026-11-09). Serveix per reconèixer ISIN a la importació i, a la
 // fase C, per construir propostes. No conté rendiments ni preus: només
 // identificació. Els fons nord-americans de la llista original s'han deixat
 // fora perquè no tenen KID (PRIIPs) i no són comercialitzables a minoristes a
@@ -38,6 +38,16 @@ export const ADVISOR_FUNDS: UniverseFund[] = [
   { isin: 'LU0171301533', name: 'BlackRock GF World Energy Fund A2',                        category: 'RV Energia' },
   { isin: 'LU0714179727', name: 'JPMorgan IF Global Dividend Fund A (div) EUR',             category: 'RV Global Dividends' },
   { isin: 'LU0625737910', name: 'Pictet China Index P EUR',                                 category: 'RV Xina' },
+  // Fons indexats nucli de les carteres proposades a les sessions presencials
+  // (Drive FACTOR OTC, document APUNTS, feb-mar 2026). Afegits 2026-11-09.
+  // Noms tal com consten al document; cal confirmar classe i dades amb la fitxa.
+  { isin: 'LU0996182563', name: 'Amundi Index MSCI World AE Acc',                           category: 'RV Global' },
+  { isin: 'IE0008248803', name: 'Vanguard Eurozone Stock Index Fund EUR Acc',               category: 'RV Eurozona' },
+  { isin: 'LU0389811885', name: 'Amundi Index MSCI Europe AE Acc',                          category: 'RV Europa' },
+  { isin: 'LU0996177134', name: 'Amundi Index MSCI Emerging Markets AE Acc',                category: 'RV Emergents' },
+  { isin: 'IE00B03HCZ61', name: 'Vanguard U.S. Small-Cap Index Fund',                       category: 'RV EUA Small Caps' },
+  { isin: 'IE00B42W3S00', name: 'Vanguard Global Small-Cap Index Fund (classe IE00B42W3S00)', category: 'RV Global Small Caps' },
+  { isin: 'IE00BQQP9G91', name: 'VanEck Gold Miners UCITS ETF',                             category: 'RV Mineres d\'or' },
 ];
 
 /**

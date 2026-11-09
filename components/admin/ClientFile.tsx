@@ -8,6 +8,7 @@ import type { MonthlyReportRecord } from '@/lib/monthlyReports';
 import type { AuditEntry } from '@/lib/auditLog';
 import ClientImport from './ClientImport';
 import ClientProposal from './ClientProposal';
+import ClientBudget from './ClientBudget';
 
 interface ClientUser {
   id: string; name: string; email: string; username: string;
@@ -24,9 +25,10 @@ interface ClientFileData {
   audit:     AuditEntry[];
 }
 
-type Tab = 'personal' | 'import' | 'proposal' | 'questionnaire' | 'portfolio' | 'transactions' | 'snapshots' | 'notes' | 'monthly' | 'audit';
+type Tab = 'finances' | 'personal' | 'import' | 'proposal' | 'questionnaire' | 'portfolio' | 'transactions' | 'snapshots' | 'notes' | 'monthly' | 'audit';
 
 const TABS: { id: Tab; label: string }[] = [
+  { id: 'finances',      label: 'Pas 1 · Finances' },
   { id: 'personal',      label: 'Dades'         },
   { id: 'import',        label: 'Importar Excel' },
   { id: 'proposal',      label: 'Proposta'       },
@@ -59,7 +61,7 @@ export default function ClientFile({
   const [data, setData]       = useState<ClientFileData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError]     = useState('');
-  const [tab, setTab]         = useState<Tab>('personal');
+  const [tab, setTab]         = useState<Tab>('finances');
 
   // silent = refresc en segon pla (no desmunta la pestanya activa)
   const load = useCallback(async (silent = false) => {
@@ -203,6 +205,9 @@ export default function ClientFile({
           </div>
         )}
 
+        {/* PAS 1 · FINANCES */}
+        {tab === 'finances' && <ClientBudget data={lead?.questionnaireData} />}
+
         {/* IMPORTAR EXCEL */}
         {tab === 'import' && <ClientImport clientId={clientId} onImported={() => load(true)} />}
         {tab === 'proposal' && <ClientProposal clientId={clientId} />}
@@ -217,7 +222,7 @@ export default function ClientFile({
                   {Object.entries(lead.questionnaireData).map(([key, val]) => (
                     <div key={key} className="flex items-start justify-between gap-4 py-2 border-b border-white/5">
                       <dt className="text-white/30 text-xs capitalize">{key.replace(/([A-Z])/g, ' $1').trim()}</dt>
-                      <dd className="text-white/70 text-xs text-right">{String(val)}</dd>
+                      <dd className="text-white/70 text-xs text-right">{typeof val === 'object' && val !== null ? `${Array.isArray(val) ? val.length : 1} element(s)` : String(val)}</dd>
                     </div>
                   ))}
                 </div>

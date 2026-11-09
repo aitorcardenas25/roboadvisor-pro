@@ -126,8 +126,11 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   for (const tid of oldTxs)      await removeTransaction(tid, portfolio.id);
 
   let personalSaved = false;
-  if (lead && Object.keys(result.personal).length) {
-    personalSaved = await saveLeadQuestionnaire(lead.id, { ...(lead.questionnaireData ?? {}), ...result.personal });
+  if (lead && (Object.keys(result.personal).length || result.goals.length)) {
+    personalSaved = await saveLeadQuestionnaire(lead.id, {
+      ...(lead.questionnaireData ?? {}), ...result.personal,
+      ...(result.goals.length ? { goals: result.goals } : {}),
+    });
   }
 
   logAuditEvent('portfolio.imported', {
@@ -135,7 +138,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     metadata: {
       clientId: id, file: file.name, replace,
       holdings: result.holdings.length, transactions: result.transactions.length,
-      personalFields: Object.keys(result.personal).length, personalSaved,
+      personalFields: Object.keys(result.personal).length, goals: result.goals.length, personalSaved,
     },
     ip: req.headers.get('x-forwarded-for')?.split(',')[0] ?? undefined,
   });
