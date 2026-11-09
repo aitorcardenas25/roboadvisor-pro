@@ -63,6 +63,8 @@ export interface ClientUsage {
   logins:      number;
   updates:     number;
   consentAt:   string | null;
+  /** L'afegeix la ruta d'admin a partir de la fitxa (lib/diagnosis.ts) */
+  diagnosis?:  { status: 'vermell' | 'ambre' | 'verd' | 'incomplet'; headline: string };
 }
 
 export interface UsageSummary {

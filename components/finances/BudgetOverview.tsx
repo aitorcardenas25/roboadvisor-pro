@@ -4,7 +4,9 @@
 // Es fa servir a la fitxa del client (admin) i al portal del client.
 // Tot el càlcul és a lib/budget.ts; aquí només es pinta.
 import SavingsSimulator from './SavingsSimulator';
-import { analyzeBudget, NEXT_STEP_TEXT, type BudgetInput, type BudgetStatus } from '@/lib/budget';
+import DiagnosisCard from './DiagnosisCard';
+import { diagnose } from '@/lib/diagnosis';
+import { analyzeBudget, type BudgetInput, type BudgetStatus } from '@/lib/budget';
 
 interface Goal { horizon: string; description: string; amount?: number; targetYear?: number }
 
@@ -18,7 +20,7 @@ function num(v: unknown): number | undefined {
   return typeof v === 'number' && Number.isFinite(v) ? v : undefined;
 }
 
-export default function BudgetOverview({ data, goalsTitle = 'Objectius' }: { data?: Record<string, unknown>; goalsTitle?: string }) {
+export default function BudgetOverview({ data, goalsTitle = 'Objectius', audience = 'client' }: { data?: Record<string, unknown>; goalsTitle?: string; audience?: 'client' | 'admin' }) {
   const q = data ?? {};
   const input: BudgetInput = {
     monthlyNetIncome:        num(q.monthlyNetIncome),
@@ -31,20 +33,16 @@ export default function BudgetOverview({ data, goalsTitle = 'Objectius' }: { dat
   };
   const a = analyzeBudget(input);
   const goals = Array.isArray(q.goals) ? (q.goals as Goal[]) : [];
+  const diagnosis = diagnose({ ...input, goals });
 
   return (
     <div className="space-y-6">
-      {a ? <BudgetBlock a={a} /> : (
-        <div className={`${card} text-center py-12`}>
-          <p className="text-white/60 mb-2">Encara no hi ha prou dades per fer el pressupost.</p>
-          <p className="text-white/30 text-sm">Cal com a mínim els ingressos nets mensuals i les despeses (fixes i variables, o el total).
-            Es poden omplir amb el formulari S&apos;omplen amb la plantilla Excel (pestanyes &quot;Dades personals&quot; i &quot;Objectius&quot;).quot;Les meves dadesS&apos;omplen amb la plantilla Excel (pestanyes &quot;Dades personals&quot; i &quot;Objectius&quot;).quot; o amb la plantilla Excel.</p>
-        </div>
-      )}
+      <DiagnosisCard d={diagnosis} audience={audience} />
+      {a && <BudgetBlock a={a} />}
       <div className={card}>
         <h3 className="text-white/50 text-xs uppercase tracking-widest mb-4">{goalsTitle}</h3>
         {goals.length === 0 ? (
-          <p className="text-white/30 text-sm">Encara no hi ha objectius. S&apos;omplen a la pestanya &quot;Objectius&quot; de la plantilla Excel.</p>
+          <p className="text-white/30 text-sm">Encara no hi ha objectius. Es poden afegir al formulari &quot;Les meves dades&quot; o a la pestanya &quot;Objectius&quot; de l&apos;Excel.</p>
         ) : (
           <ul className="space-y-2">
             {goals.map((g, i) => (
@@ -65,18 +63,12 @@ export default function BudgetOverview({ data, goalsTitle = 'Objectius' }: { dat
 }
 
 function BudgetBlock({ a }: { a: NonNullable<ReturnType<typeof analyzeBudget>> }) {
-  const step = NEXT_STEP_TEXT[a.nextStep];
   const positive = a.lines.filter(l => l.amount > 0);
   const barTotal = positive.reduce((s, l) => s + l.amount, 0) || 1;
   const e = a.emergency;
 
   return (
     <>
-      <div className={`${card} border-[#c9a84c]/40`}>
-        <p className="text-[#c9a84c] text-xs uppercase tracking-widest mb-1">On és ara</p>
-        <h3 className="text-white font-bold text-lg">{step.title}</h3>
-        <p className="text-white/60 text-sm mt-1">{step.detail}</p>
-      </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         <div className={card}>

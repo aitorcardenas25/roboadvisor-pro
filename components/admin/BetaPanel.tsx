@@ -6,6 +6,10 @@ import type { UsageSummary } from '@/lib/betaActivity';
 
 const card = 'bg-[#0d1f1a] border border-white/10 rounded-xl p-5';
 const fmtDate = (iso: string | null) => (iso ? new Date(iso).toLocaleDateString('ca-ES', { day: '2-digit', month: '2-digit' }) : '—');
+const DIAG: Record<string, { label: string; dot: string }> = {
+  vermell: { label: 'Cal actuar', dot: 'bg-red-400' }, ambre: { label: 'En camí', dot: 'bg-amber-300' },
+  verd: { label: 'Base sòlida', dot: 'bg-green-400' }, incomplet: { label: 'Falten dades', dot: 'bg-white/30' },
+};
 const fmtWeek = (d: string) => { const [, m, day] = d.split('-'); return `${day}/${m}`; };
 
 function cellClass(n: number) {
@@ -63,6 +67,7 @@ export default function BetaPanel() {
             <thead>
               <tr className="text-white/30 text-xs text-left">
                 <th className="py-1 pr-3 font-normal">Client</th>
+                <th className="py-1 pr-3 font-normal">Diagnòstic</th>
                 {data.weeks.map(w => <th key={w} className="py-1 px-1 font-normal text-center">{fmtWeek(w)}</th>)}
                 <th className="py-1 px-2 font-normal">Darrer accés</th>
                 <th className="py-1 px-2 font-normal">Consentiment</th>
@@ -73,6 +78,14 @@ export default function BetaPanel() {
               {data.clients.map(c => (
                 <tr key={c.id} className="border-t border-white/5">
                   <td className="py-2 pr-3"><div className="text-white">{c.name}</div><div className="text-white/30 text-xs">{c.email}</div></td>
+                  <td className="py-2 pr-3 max-w-[16rem]">
+                    {c.diagnosis && (
+                      <div title={c.diagnosis.headline}>
+                        <span className="flex items-center gap-1.5 text-white/80 text-xs"><span className={`w-2 h-2 rounded-full ${DIAG[c.diagnosis.status].dot}`} />{DIAG[c.diagnosis.status].label}</span>
+                        <span className="text-white/35 text-xs line-clamp-2">{c.diagnosis.headline}</span>
+                      </div>
+                    )}
+                  </td>
                   {c.activeDays.map((n, i) => (
                     <td key={i} className="py-2 px-1 text-center">
                       <span className={`inline-flex w-7 h-7 items-center justify-center rounded ${cellClass(n)}`} title={`${n} dia(es) la setmana del ${fmtWeek(data.weeks[i])}`}>{n || ''}</span>
@@ -84,7 +97,7 @@ export default function BetaPanel() {
                 </tr>
               ))}
               <tr className="border-t border-white/10 text-white/50 text-xs">
-                <td className="py-2 pr-3">Clients actius</td>
+                <td className="py-2 pr-3" colSpan={2}>Clients actius</td>
                 {data.weeklyActive.map((n, i) => <td key={i} className="py-2 px-1 text-center">{n}</td>)}
                 <td colSpan={3} />
               </tr>

@@ -77,7 +77,7 @@ export default function ClientFinancesPage() {
           <div className="space-y-6">
             {editing ? (
               <FinancesForm data={data ?? {}}
-                onSaved={d => { setData(d); setEditing(false); setSaved(true); }}
+                onSaved={d => { setData(d); setEditing(false); setSaved(true); window.scrollTo({ top: 0, behavior: 'smooth' }); }}
                 onCancel={hasBudget(data ?? {}) ? () => setEditing(false) : undefined} />
             ) : (
               <div className="flex flex-wrap items-center gap-3">

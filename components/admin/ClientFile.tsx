@@ -206,7 +206,7 @@ export default function ClientFile({
         )}
 
         {/* PAS 1 · FINANCES */}
-        {tab === 'finances' && <BudgetOverview data={lead?.questionnaireData} goalsTitle="Objectius del client" />}
+        {tab === 'finances' && <BudgetOverview data={lead?.questionnaireData} goalsTitle="Objectius del client" audience="admin" />}
 
         {/* IMPORTAR EXCEL */}
         {tab === 'import' && <ClientImport clientId={clientId} onImported={() => load(true)} />}
