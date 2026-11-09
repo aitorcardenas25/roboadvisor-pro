@@ -3,11 +3,21 @@ import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/authOptions';
 import {
   getAllUsers, createUser, updateUserRole, deactivateUser,
-  type CreateUserInput,
 } from '@/lib/users';
 import type { UserRole } from '@/lib/roles';
 import { logAuditEvent } from '@/lib/auditLog';
 import { rateLimit, LIMITS, rateLimitResponse } from '@/lib/rateLimiter';
+import { sendBetaWelcome } from '@/lib/emails';
+import { z } from 'zod';
+
+const CreateSchema = z.object({
+  username:    z.string().trim().min(3, 'Usuari massa curt').max(60).regex(/^[\w.@-]+$/, 'Usuari: només lletres, números, punt, guió i @'),
+  password:    z.string().min(10, 'La contrasenya ha de tenir com a mínim 10 caràcters').max(200),
+  name:        z.string().trim().min(1, 'Falta el nom').max(120),
+  email:       z.string().trim().email('Correu no vàlid'),
+  role:        z.enum(['client', 'admin']).default('client'),
+  sendWelcome: z.boolean().default(false),
+});
 
 type SessionLike = { user?: { role?: string; id?: string; email?: string } } | null;
 
@@ -33,14 +43,18 @@ export async function POST(req: NextRequest) {
   const session = await getServerSession(authOptions) as SessionLike;
   if (!isAdmin(session)) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
-  const body = await req.json() as Partial<CreateUserInput>;
-  const { username, password, name, email, role } = body;
-  if (!username || !password || !name || !email)
-    return NextResponse.json({ error: 'Falten camps obligatoris' }, { status: 400 });
+  const parsed = CreateSchema.safeParse(await req.json().catch(() => null));
+  if (!parsed.success) return NextResponse.json({ error: parsed.error.issues[0]?.message ?? 'Dades no vàlides' }, { status: 400 });
+  const { username, password, name, email, role, sendWelcome } = parsed.data;
+
+  const existing = await getAllUsers();
+  if (existing.some(u => u.username.toLowerCase() === username.toLowerCase())) {
+    return NextResponse.json({ error: 'Aquest usuari ja existeix' }, { status: 409 });
+  }
 
   const user = await createUser({
     username, password, name, email,
-    role: (role ?? 'client') as UserRole,
+    role: role as UserRole,
     active: true,
     subscriptionPlan:   'free',
     subscriptionStatus: 'active',
@@ -54,7 +68,15 @@ export async function POST(req: NextRequest) {
     ip,
   });
 
-  return NextResponse.json({ user }, { status: 201 });
+  // El correu porta l'usuari i l'enllaç, mai la contrasenya.
+  let welcome: { sent: boolean; error?: string } | undefined;
+  if (sendWelcome && user.role === 'client') {
+    const r = await sendBetaWelcome(user.email, user.name, user.username);
+    welcome = { sent: r.success, error: r.error };
+    logAuditEvent('client.welcome_sent', { userId: session?.user?.id, userEmail: session?.user?.email, resource: user.id, metadata: { ok: r.success, error: r.error }, ip });
+  }
+
+  return NextResponse.json({ user, welcome }, { status: 201 });
 }
 
 export async function PATCH(req: NextRequest) {

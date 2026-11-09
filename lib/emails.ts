@@ -18,7 +18,7 @@ function base(title: string, body: string): string {
 </td></tr>
 <tr><td style="padding:32px;color:#fff;">${body}</td></tr>
 <tr><td style="padding:20px 32px;border-top:1px solid rgba(255,255,255,0.06);font-size:11px;color:rgba(255,255,255,0.3);">
-  Factor OTC · Assessorament financer independent · <a href="https://factorotc.com/privacitat" style="color:#c9a84c;">Política de privacitat</a>
+  Factor OTC · Planificació i seguiment financer · <a href="https://factorotc.com/privacitat" style="color:#c9a84c;">Política de privacitat</a>
 </td></tr>
 </table>
 </td></tr>
@@ -145,5 +145,34 @@ export async function sendLeadNotification(lead: {
     </table>
     <a href="https://factorotc.com/admin" style="display:inline-block;margin:24px 0;padding:10px 24px;background:#1a3a2a;border:1px solid rgba(45,106,79,0.5);color:#c9a84c;font-weight:600;border-radius:10px;text-decoration:none;">Gestionar al panell admin →</a>`;
   const { error } = await resend.emails.send({ from: FROM, to: ADMIN_EMAIL, subject, html: base(subject, body) });
+  return error ? { success: false, error: error.message } : { success: true };
+}
+
+export async function sendDeletionRequestToAdmin(req: { userId: string; email: string; name: string; reason?: string }): Promise<EmailResult> {
+  const subject = `Sol·licitud d'eliminació de dades: ${req.name}`;
+  if (!resend) { console.log('[email]', subject, ADMIN_EMAIL); return { success: false, error: 'No API key' }; }
+  const esc = (s: string) => s.replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]!));
+  const body = `
+    <h2 style="color:#c9a84c;margin:0 0 16px;">Sol·licitud d'eliminació de dades (RGPD art. 17)</h2>
+    <p style="color:rgba(255,255,255,0.7);">El client <strong>${esc(req.name)}</strong> (${esc(req.email)}, usuari ${esc(req.userId)}) demana esborrar les seves dades.</p>
+    ${req.reason ? `<p style="color:rgba(255,255,255,0.7);">Motiu: ${esc(req.reason)}</p>` : ''}
+    <p style="color:rgba(255,255,255,0.5);font-size:13px;">Termini per respondre: 1 mes (RGPD art. 12.3). Comprova abans si alguna llei obliga a conservar part de les dades.</p>`;
+  const { error } = await resend.emails.send({ from: FROM, to: ADMIN_EMAIL, subject, html: base(subject, body) });
+  return error ? { success: false, error: error.message } : { success: true };
+}
+
+export async function sendBetaWelcome(to: string, name: string, username: string): Promise<EmailResult> {
+  const subject = 'Benvingut/da a la beta de Factor OTC';
+  if (!resend) { console.log('[email]', subject, to); return { success: false, error: 'No API key' }; }
+  const esc = (s: string) => s.replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]!));
+  const base_url = (process.env.NEXTAUTH_URL ?? 'https://factorotc.com').replace(/\/$/, '');
+  const first = esc(name.split(' ')[0] || name);
+  const body = `
+    <h2 style="color:#c9a84c;margin:0 0 16px;">Hola, ${first}!</h2>
+    <p style="color:rgba(255,255,255,0.7);line-height:1.6;">Ja tens el compte a la beta privada de Factor OTC. Durant 3 mesos podràs ordenar el pressupost, veure el fons d'emergència que et convé i seguir els teus objectius.</p>
+    <p style="color:rgba(255,255,255,0.7);line-height:1.6;">El teu usuari és <strong style="color:#fff;">${esc(username)}</strong>. La contrasenya te la passo per un altre canal. Quan entris, canvia-la des de "Les meves finances".</p>
+    <a href="${base_url}/login" style="display:inline-block;margin:24px 0;padding:12px 28px;background:#c9a84c;color:#0d1f1a;font-weight:700;border-radius:10px;text-decoration:none;">Entrar a l'app</a>
+    <p style="color:rgba(255,255,255,0.4);font-size:13px;">El primer cop et demanarem que acceptis com tractem les teves dades. Si tens dubtes, respon a aquest correu.</p>`;
+  const { error } = await resend.emails.send({ from: FROM, to, subject, html: base(subject, body) });
   return error ? { success: false, error: error.message } : { success: true };
 }

@@ -124,3 +124,64 @@ describe('regressions de revisió', () => {
     expect(r.errors[0].message).toMatch(/comissió "10 euros" no és un número/);
   });
 });
+
+describe('plantilla v2: pressupost, situació laboral i objectius', () => {
+  const NEW_ISINS = ['LU0996182563', 'IE0008248803', 'LU0389811885', 'LU0996177134', 'IE00B03HCZ61', 'IE00B42W3S00', 'IE00BQQP9G91'];
+
+  it('els 7 fons indexats nous tenen ISIN vàlid i es reconeixen com a fons de l\'assessor', () => {
+    for (const i of NEW_ISINS) {
+      expect(isValidIsin(i)).toBe(true);
+      expect(lookupIsin(i)?.source).toBe('advisor');
+    }
+  });
+
+  it('llegeix pressupost, desplegables i objectius', async () => {
+    const buf = await filled(wb => {
+      const per = wb.getWorksheet('Dades personals')!;
+      const set = (key: string, v: unknown) => per.eachRow(row => { if (row.getCell(3).value === key) row.getCell(2).value = v as ExcelJS.CellValue; });
+      set('monthlyNetIncome', 1500);
+      set('monthlyFixedExpenses', '600');
+      set('monthlyVariableExpenses', 400);
+      set('employmentType', 'autònom');
+      set('selfKnowledge', 'Bàsic');
+      const g = wb.getWorksheet('Objectius')!;
+      g.getCell('B2').value = 'Fons d\'emergència';
+      g.getCell('C2').value = 10000;
+      g.getCell('B3').value = 'Entrada d\'un pis';
+      g.getCell('D3').value = new Date().getUTCFullYear() + 4;
+    });
+    const r = await parseClientWorkbook(buf);
+    expect(r.errors).toEqual([]);
+    expect(r.personal).toMatchObject({
+      monthlyNetIncome: 1500, monthlyFixedExpenses: 600, monthlyVariableExpenses: 400,
+      employmentType: 'autonom', selfKnowledge: 'basic',
+    });
+    expect(r.goals).toEqual([
+      { horizon: 'curt', description: 'Fons d\'emergència', amount: 10000, targetYear: undefined },
+      { horizon: 'mitja', description: 'Entrada d\'un pis', amount: undefined, targetYear: new Date().getUTCFullYear() + 4 },
+    ]);
+  });
+
+  it('opció de desplegable desconeguda i objectiu sense descripció són errors', async () => {
+    const buf = await filled(wb => {
+      const per = wb.getWorksheet('Dades personals')!;
+      per.eachRow(row => { if (row.getCell(3).value === 'employmentType') row.getCell(2).value = 'Funcionari'; });
+      wb.getWorksheet('Objectius')!.getCell('C4').value = 5000;
+    });
+    const r = await parseClientWorkbook(buf);
+    expect(r.errors.map(e => e.sheet)).toEqual(['Dades personals', 'Objectius']);
+    expect(r.errors[0].message).toMatch(/tria una opció/);
+    expect(r.errors[1].message).toMatch(/falta descriure/);
+  });
+
+  it('una plantilla v1 (sense pestanya Objectius) continua funcionant', async () => {
+    const buf = await filled(wb => {
+      wb.removeWorksheet(wb.getWorksheet('Objectius')!.id);
+      wb.getWorksheet('Dades personals')!.getCell('B3').value = 30000;
+    });
+    const r = await parseClientWorkbook(buf);
+    expect(r.errors).toEqual([]);
+    expect(r.goals).toEqual([]);
+    expect(r.personal).toEqual({ annualIncome: 30000 });
+  });
+});

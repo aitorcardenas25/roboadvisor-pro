@@ -48,10 +48,10 @@ function Badge({ role, active }: { role: UserRole; active: boolean }) {
 }
 
 interface NewClientForm {
-  name: string; email: string; username: string; password: string; role: UserRole;
+  name: string; email: string; username: string; password: string; role: UserRole; sendWelcome: boolean;
 }
 
-const EMPTY_FORM: NewClientForm = { name: '', email: '', username: '', password: '', role: 'client' };
+const EMPTY_FORM: NewClientForm = { name: '', email: '', username: '', password: '', role: 'client', sendWelcome: true };
 
 export default function ClientsManager({ onViewClient }: { onViewClient?: (id: string) => void }) {
   const [users, setUsers]       = useState<ClientUser[]>([]);
@@ -91,16 +91,28 @@ export default function ClientsManager({ onViewClient }: { onViewClient?: (id: s
         setError(d.error ?? 'Error creant client');
         return;
       }
-      setSuccess('Client creat correctament');
+      const d = await res.json().catch(() => ({}));
+      setSuccess(d.welcome
+        ? (d.welcome.sent ? 'Client creat i correu de benvinguda enviat. Passa-li la contrasenya per WhatsApp.' : `Client creat, però el correu no s'ha enviat (${d.welcome.error ?? 'error'}).`)
+        : 'Client creat correctament');
       setForm(EMPTY_FORM);
       setShowForm(false);
       await load();
-      setTimeout(() => setSuccess(''), 3000);
+      setTimeout(() => setSuccess(''), 6000);
     } catch {
       setError('Error de connexió');
     } finally {
       setSaving(false);
     }
+  }
+
+  async function handleWelcome(u: ClientUser) {
+    if (!confirm(`Enviar el correu de benvinguda a ${u.email}? Porta l'usuari i l'enllaç, no la contrasenya.`)) return;
+    setError(''); setSuccess('');
+    const res = await fetch(`/api/admin/clients/${u.id}/welcome`, { method: 'POST' });
+    const d = await res.json().catch(() => ({}));
+    if (res.ok) { setSuccess(`Correu de benvinguda enviat a ${u.email}.`); setTimeout(() => setSuccess(''), 6000); }
+    else setError(d.error ?? 'No s\'ha pogut enviar el correu');
   }
 
   async function handleRoleChange(id: string, role: UserRole) {
@@ -187,7 +199,7 @@ export default function ClientsManager({ onViewClient }: { onViewClient?: (id: s
                   ['name',     'Nom complet',   'text',     'Joan Garcia'],
                   ['email',    'Email',          'email',    'joan@exemple.com'],
                   ['username', 'Usuari (login)', 'text',     'joan.garcia'],
-                  ['password', 'Contrasenya',   'password', '·····'],
+                  ['password', 'Contrasenya (mín. 10)', 'password', '·····'],
                 ] as const).map(([field, label, type, ph]) => (
                   <div key={field}>
                     <label className="block text-white/40 text-xs mb-1">{label}</label>
@@ -215,6 +227,11 @@ export default function ClientsManager({ onViewClient }: { onViewClient?: (id: s
                   ))}
                 </select>
               </div>
+              <label className="flex items-center gap-2 mb-4 text-white/60 text-sm">
+                <input type="checkbox" checked={form.sendWelcome}
+                  onChange={e => setForm(prev => ({ ...prev, sendWelcome: e.target.checked }))} />
+                Enviar correu de benvinguda (usuari i enllaç, sense contrasenya)
+              </label>
               <div className="flex gap-3">
                 <button
                   type="submit"
@@ -343,6 +360,17 @@ export default function ClientsManager({ onViewClient }: { onViewClient?: (id: s
                       </svg>
                     </button>
                   )}
+                  {u.active && u.role === 'client' && (
+                    <button
+                      onClick={() => handleWelcome(u)}
+                      title="Enviar correu de benvinguda"
+                      aria-label={`Enviar correu de benvinguda a ${u.name}`}
+                      className="p-1.5 text-white/20 hover:text-blue-300 hover:bg-blue-500/10 rounded-md transition-all">
+                      <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                      </svg>
+                    </button>
+                  )}
                   {u.active && u.role !== 'admin' && (
                     <button
                       onClick={() => handleDeactivate(u.id)}
@@ -366,7 +394,7 @@ export default function ClientsManager({ onViewClient }: { onViewClient?: (id: s
       {/* Info note */}
       <p className="mt-4 text-white/20 text-xs">
         Els usuaris autoritzats poden accedir al dashboard de cartera i al robo-advisor.
-        Els canvis de rol s'apliquen immediatament. Les contrasenyes no es mostren per seguretat.
+        Els canvis de rol s&apos;apliquen immediatament. Les contrasenyes no es mostren per seguretat.
       </p>
     </div>
   );

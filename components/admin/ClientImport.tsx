@@ -10,7 +10,15 @@ type Preview = ImportResult & {
 const PERSONAL_LABELS: Record<string, string> = {
   age: 'Edat', annualIncome: 'Ingressos anuals', monthlyExpenses: 'Despeses mensuals',
   currentSavings: 'Estalvis', netWorth: 'Patrimoni net', totalDebt: 'Deute',
+  monthlyNetIncome: 'Ingressos nets / mes', monthlyFixedExpenses: 'Despeses fixes / mes',
+  monthlyVariableExpenses: 'Despeses variables / mes', monthlyDebtPayments: 'Quotes deutes / mes',
+  dependents: 'Persones a càrrec', employmentType: 'Situació laboral',
+  selfRiskProfile: 'Perfil (segons el client)', selfKnowledge: 'Coneixement',
 };
+const NOT_MONEY = new Set(['age', 'dependents']);
+const HORIZON_LABELS: Record<string, string> = { curt: 'Curt termini', mitja: 'Mitjà termini', llarg: 'Llarg termini' };
+const fmtPersonal = (k: string, v: number | string) =>
+  typeof v === 'string' ? v : NOT_MONEY.has(k) ? String(v) : eur(v);
 const OP_LABELS: Record<string, string> = {
   buy: 'Compra', sell: 'Venda', deposit: 'Aportació', withdrawal: 'Retirada', rebalance: 'Rebalanceig',
 };
@@ -96,6 +104,7 @@ export default function ClientImport({ clientId, onImported }: { clientId: strin
               <span className="text-white/70"><b className="text-white">{preview.holdings.length}</b> posicions</span>
               <span className="text-white/70"><b className="text-white">{preview.transactions.length}</b> moviments</span>
               <span className="text-white/70"><b className="text-white">{Object.keys(preview.personal).length}</b> dades personals</span>
+              <span className="text-white/70"><b className="text-white">{preview.goals.length}</b> objectius</span>
               <span className={preview.errors.length ? 'text-red-400' : 'text-green-400'}>
                 {preview.errors.length ? `${preview.errors.length} errors` : 'Sense errors'}
               </span>
@@ -111,7 +120,7 @@ export default function ClientImport({ clientId, onImported }: { clientId: strin
                 ))}
               </ul>
             )}
-            {!preview.context.hasLead && Object.keys(preview.personal).length > 0 && (
+            {!preview.context.hasLead && (Object.keys(preview.personal).length > 0 || preview.goals.length > 0) && (
               <p className="text-amber-200/80 text-xs mt-3">Aquest client no té lead vinculat: les dades personals no es desaran.</p>
             )}
           </div>
@@ -123,9 +132,23 @@ export default function ClientImport({ clientId, onImported }: { clientId: strin
               <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
                 {Object.entries(preview.personal).map(([k, v]) => (
                   <div key={k}><p className="text-white/30 text-xs">{PERSONAL_LABELS[k] ?? k}</p>
-                    <p className="text-white text-sm">{k === 'age' ? v : eur(v as number)}</p></div>
+                    <p className="text-white text-sm">{fmtPersonal(k, v as number | string)}</p></div>
                 ))}
               </div>
+            </div>
+          )}
+
+          {preview.goals.length > 0 && (
+            <div className={card}>
+              <h4 className="text-white/50 text-xs uppercase tracking-widest mb-3">Objectius</h4>
+              <ul className="space-y-1.5">
+                {preview.goals.map((g, i) => (
+                  <li key={i} className="text-white/80 text-sm">
+                    <span className="text-white/40 text-xs mr-2">{HORIZON_LABELS[g.horizon]}</span>
+                    {g.description}{g.amount ? ` · ${eur(g.amount)}` : ''}{g.targetYear ? ` · ${g.targetYear}` : ''}
+                  </li>
+                ))}
+              </ul>
             </div>
           )}
 

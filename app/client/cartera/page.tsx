@@ -782,6 +782,11 @@ function EmptyPortfolio({ name }: { name: string }) {
         <p className="text-white/35 text-sm leading-relaxed mb-6">
           El teu assessor encara no t&apos;ha assignat cap cartera. Rebràs accés a la teva àrea personal ben aviat.
         </p>
+        <a href="/client/finances"
+          className="inline-flex items-center gap-2 text-sm px-5 py-2.5 rounded-xl bg-[#c9a84c] text-[#0d1f1a] font-semibold hover:bg-[#b8963f] transition-all mb-3">
+          Veure les meves finances →
+        </a>
+        <br />
         <a href="/login"
           className="inline-flex items-center gap-2 text-sm px-5 py-2.5 rounded-xl border border-[#c9a84c]/18 text-[#c9a84c]/60 hover:text-[#c9a84c] hover:bg-[#c9a84c]/5 transition-all">
           ← Tornar a l&apos;inici
@@ -872,6 +877,7 @@ export default function ClientCarteraPage() {
               </svg>
               <span className="hidden sm:inline">Fonts de dades</span>
             </button>
+            <a href="/client/finances" className="text-xs text-white/40 hover:text-[#c9a84c] transition-colors">Les meves finances</a>
             <span className="text-white/28 text-xs">{name}</span>
           </div>
         </div>

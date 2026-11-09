@@ -321,3 +321,43 @@ CREATE TABLE IF NOT EXISTS client_proposals (
   UNIQUE (client_id, version)
 );
 CREATE INDEX IF NOT EXISTS idx_client_proposals_client ON client_proposals (client_id, version DESC);
+
+-- ── Beta privada: consentiment i ús ────────────────────────────────────────
+
+CREATE TABLE IF NOT EXISTS client_consents (
+  id             TEXT        PRIMARY KEY,
+  user_id        TEXT        NOT NULL,
+  version        TEXT        NOT NULL,           -- versió del text acceptat (lib/betaConsent.ts)
+  accepted_at    TIMESTAMPTZ NOT NULL,
+  survey_opt_in  BOOLEAN     NOT NULL DEFAULT FALSE,
+  ip             TEXT
+);
+CREATE INDEX IF NOT EXISTS idx_client_consents_user ON client_consents (user_id, version);
+
+CREATE TABLE IF NOT EXISTS client_activity (
+  id       BIGSERIAL   PRIMARY KEY,
+  user_id  TEXT        NOT NULL,
+  event    TEXT        NOT NULL,                 -- login, finances.view, ping... (lib/betaActivity.ts)
+  page     TEXT,                                 -- finances | cartera | altres (només per a ping)
+  at       TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+ALTER TABLE client_activity ADD COLUMN IF NOT EXISTS page TEXT;
+CREATE INDEX IF NOT EXISTS idx_client_activity_at   ON client_activity (at DESC);
+CREATE INDEX IF NOT EXISTS idx_client_activity_user ON client_activity (user_id, at DESC);
+
+-- ── Seguretat: Row Level Security ──────────────────────────────────────────
+-- L'app només accedeix amb la service_role key (servidor), que no està afectada
+-- per RLS. Activar RLS sense polítiques impedeix llegir res amb la clau pública
+-- (anon), per si mai es filtrés. Supabase avisa si una taula pública no en té.
+DO $$
+DECLARE t TEXT;
+BEGIN
+  FOREACH t IN ARRAY ARRAY[
+    'portfolios','reports','newsletter_subscribers','newsletters','users','audit_log',
+    'notifications','client_portfolios','client_holdings','client_transactions',
+    'portfolio_snapshots','advisor_notes','leads','monthly_reports','stock_reports',
+    'client_proposals','client_consents','client_activity'
+  ] LOOP
+    EXECUTE format('ALTER TABLE %I ENABLE ROW LEVEL SECURITY', t);
+  END LOOP;
+END $$;
