@@ -10,6 +10,8 @@ import { pickFinanceFields } from '@/lib/budget';
 import { FinanceUpdateSchema, applyFinanceUpdate } from '@/lib/clientData';
 import { logAuditEvent } from '@/lib/auditLog';
 import { rateLimit, rateLimitResponse } from '@/lib/rateLimiter';
+import { recordActivity } from '@/lib/betaActivity';
+import { getConsent } from '@/lib/betaConsent';
 
 type S = { user?: { id?: string; email?: string; name?: string; role?: string } } | null;
 
@@ -17,12 +19,13 @@ async function sessionUser() {
   const session = await getServerSession(authOptions) as S;
   const u = session?.user;
   if (!u?.id || (u.role !== 'client' && u.role !== 'admin')) return null;
-  return { id: u.id, email: u.email ?? null, name: u.name ?? null };
+  return { id: u.id, email: u.email ?? null, name: u.name ?? null, role: u.role };
 }
 
 export async function GET() {
   const user = await sessionUser();
   if (!user) return NextResponse.json({ error: 'No autoritzat' }, { status: 401 });
+  if (user.role === 'client') recordActivity(user.id, 'finances.view');
   const lead = await findLeadForUser(user.id, user.email);
   return NextResponse.json({ data: pickFinanceFields(lead?.questionnaireData) }, { headers: { 'Cache-Control': 'no-store' } });
 }
@@ -33,6 +36,11 @@ export async function PUT(req: NextRequest) {
 
   const rl = rateLimit(`client-finances:${user.id}`, 20, 60_000);
   if (!rl.ok) return rateLimitResponse(rl.resetInMs);
+
+  // Sense el consentiment de la beta no es desen dades econòmiques del client.
+  if (user.role === 'client' && !(await getConsent(user.id))) {
+    return NextResponse.json({ error: 'Cal acceptar el consentiment de la beta', code: 'consent_required' }, { status: 403 });
+  }
 
   const body = await req.json().catch(() => null);
   const parsed = FinanceUpdateSchema.safeParse(body);
@@ -57,5 +65,6 @@ export async function PUT(req: NextRequest) {
     userId: user.id, userEmail: user.email ?? undefined, resource: lead.id,
     metadata: { fields: Object.keys(parsed.data), goals: parsed.data.goals?.length },
   });
+  if (user.role === 'client') recordActivity(user.id, 'finances.update');
   return NextResponse.json({ data: pickFinanceFields(next) }, { headers: { 'Cache-Control': 'no-store' } });
 }

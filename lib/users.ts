@@ -355,3 +355,18 @@ export async function deactivateUser(id: string): Promise<boolean> {
   const { error } = await db.from('users').update({ active: false, updated_at: new Date().toISOString() }).eq('id', id);
   return !error;
 }
+
+// ── updatePassword ────────────────────────────────────────────────────────
+
+export async function updatePassword(id: string, password: string): Promise<boolean> {
+  const db = getDb();
+  if (!db) {
+    const u = getDevDB().find(u => u.id === id);
+    if (!u) return false;
+    u.password = password;
+    return true;
+  }
+  const hash = await bcrypt.hash(password, 12);
+  const { error } = await db.from('users').update({ password_hash: hash, updated_at: new Date().toISOString() }).eq('id', id);
+  return !error;
+}

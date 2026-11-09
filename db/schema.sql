@@ -321,3 +321,24 @@ CREATE TABLE IF NOT EXISTS client_proposals (
   UNIQUE (client_id, version)
 );
 CREATE INDEX IF NOT EXISTS idx_client_proposals_client ON client_proposals (client_id, version DESC);
+
+-- ── Beta privada: consentiment i ús ────────────────────────────────────────
+
+CREATE TABLE IF NOT EXISTS client_consents (
+  id             TEXT        PRIMARY KEY,
+  user_id        TEXT        NOT NULL,
+  version        TEXT        NOT NULL,           -- versió del text acceptat (lib/betaConsent.ts)
+  accepted_at    TIMESTAMPTZ NOT NULL,
+  survey_opt_in  BOOLEAN     NOT NULL DEFAULT FALSE,
+  ip             TEXT
+);
+CREATE INDEX IF NOT EXISTS idx_client_consents_user ON client_consents (user_id, version);
+
+CREATE TABLE IF NOT EXISTS client_activity (
+  id       BIGSERIAL   PRIMARY KEY,
+  user_id  TEXT        NOT NULL,
+  event    TEXT        NOT NULL,                 -- login, finances.view, ... (lib/betaActivity.ts)
+  at       TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+CREATE INDEX IF NOT EXISTS idx_client_activity_at   ON client_activity (at DESC);
+CREATE INDEX IF NOT EXISTS idx_client_activity_user ON client_activity (user_id, at DESC);

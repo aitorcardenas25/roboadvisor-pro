@@ -52,6 +52,7 @@ export function buildDataExport(parts: {
   profile:   Record<string, unknown> | null;
   portfolio: unknown;
   proposals: unknown[];
+  consent?:  unknown;
   now?:      Date;
 }) {
   return {
@@ -62,5 +63,6 @@ export function buildDataExport(parts: {
     profile:    parts.profile,
     portfolio:  parts.portfolio ?? null,
     proposals:  parts.proposals,
+    consent:    parts.consent ?? null,
   };
 }

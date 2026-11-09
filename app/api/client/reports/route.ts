@@ -3,6 +3,7 @@ import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/authOptions';
 import { getPortfolioByClientId } from '@/lib/clientPortfolios';
 import { getMonthlyReportsByPortfolio } from '@/lib/monthlyReports';
+import { recordActivity } from '@/lib/betaActivity';
 
 type S = { user?: { id?: string; role?: string } } | null;
 
@@ -16,7 +17,9 @@ export async function GET(req: NextRequest) {
   }
 
   const { searchParams } = req.nextUrl;
-  const portfolioId = searchParams.get('portfolioId');
+  // Només l'admin pot demanar un portfolioId concret: un client sempre veu el seu.
+  const portfolioId = role === 'admin' ? searchParams.get('portfolioId') : null;
+  if (role === 'client') recordActivity(userId, 'reports.view');
 
   // Resolve portfolio — either by explicit ID (admin viewing a specific client)
   // or by session userId (client viewing their own)

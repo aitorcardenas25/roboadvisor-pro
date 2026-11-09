@@ -10,6 +10,8 @@ import { getProposals } from '@/lib/proposals';
 import { buildDataExport } from '@/lib/clientData';
 import { logAuditEvent } from '@/lib/auditLog';
 import { rateLimit, rateLimitResponse } from '@/lib/rateLimiter';
+import { recordActivity } from '@/lib/betaActivity';
+import { getConsent } from '@/lib/betaConsent';
 
 type S = { user?: { id?: string; email?: string; role?: string } } | null;
 
@@ -23,11 +25,12 @@ export async function GET() {
   const rl = rateLimit(`client-export:${userId}`, 5, 60_000);
   if (!rl.ok) return rateLimitResponse(rl.resetInMs);
 
-  const [account, lead, portfolio, proposals] = await Promise.all([
+  const [account, lead, portfolio, proposals, consent] = await Promise.all([
     findUserById(userId),
     findLeadForUser(userId, session?.user?.email),
     getPortfolioByClientId(userId),
     getProposals(userId).catch(() => []),
+    getConsent(userId),
   ]);
 
   const payload = buildDataExport({
@@ -35,8 +38,10 @@ export async function GET() {
     profile:   lead ? { ...lead } : null,
     portfolio,
     proposals,
+    consent,
   });
 
+  if (role === 'client') recordActivity(userId, 'data.export');
   logAuditEvent('client.data_exported', { userId, userEmail: session?.user?.email, resource: lead?.id });
 
   const date = payload.exportedAt.slice(0, 10);

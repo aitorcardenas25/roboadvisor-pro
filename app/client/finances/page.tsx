@@ -6,6 +6,7 @@ import Link from 'next/link';
 import BudgetOverview from '@/components/finances/BudgetOverview';
 import FinancesForm from '@/components/finances/FinancesForm';
 import MyDataCard from '@/components/finances/MyDataCard';
+import PasswordCard from '@/components/finances/PasswordCard';
 import { analyzeBudget } from '@/lib/budget';
 
 const n = (v: unknown) => (typeof v === 'number' && Number.isFinite(v) ? v : undefined);
@@ -89,6 +90,7 @@ export default function ClientFinancesPage() {
             )}
             {!editing && <BudgetOverview data={data ?? {}} goalsTitle="Els meus objectius" />}
             <MyDataCard />
+            <PasswordCard />
           </div>
         )}
 
