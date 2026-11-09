@@ -344,3 +344,20 @@ CREATE TABLE IF NOT EXISTS client_activity (
 ALTER TABLE client_activity ADD COLUMN IF NOT EXISTS page TEXT;
 CREATE INDEX IF NOT EXISTS idx_client_activity_at   ON client_activity (at DESC);
 CREATE INDEX IF NOT EXISTS idx_client_activity_user ON client_activity (user_id, at DESC);
+
+-- ── Seguretat: Row Level Security ──────────────────────────────────────────
+-- L'app només accedeix amb la service_role key (servidor), que no està afectada
+-- per RLS. Activar RLS sense polítiques impedeix llegir res amb la clau pública
+-- (anon), per si mai es filtrés. Supabase avisa si una taula pública no en té.
+DO $$
+DECLARE t TEXT;
+BEGIN
+  FOREACH t IN ARRAY ARRAY[
+    'portfolios','reports','newsletter_subscribers','newsletters','users','audit_log',
+    'notifications','client_portfolios','client_holdings','client_transactions',
+    'portfolio_snapshots','advisor_notes','leads','monthly_reports','stock_reports',
+    'client_proposals','client_consents','client_activity'
+  ] LOOP
+    EXECUTE format('ALTER TABLE %I ENABLE ROW LEVEL SECURITY', t);
+  END LOOP;
+END $$;
