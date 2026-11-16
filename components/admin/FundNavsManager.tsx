@@ -238,7 +238,7 @@ export default function FundNavsManager() {
               )}
               {preview.warnings.length > 0 && (
                 <div className="text-amber-300/80 text-xs space-y-0.5">
-                  {preview.warnings.slice(0, 8).map((w, i) => <p key={i}>Línia {w.line}: {w.message}</p>)}
+                  {preview.warnings.slice(0, 8).map((w, i) => <p key={i}>{w.line ? `Línia ${w.line}: ` : ''}{w.message}</p>)}
                 </div>
               )}
               {preview.funds.length > 0 && (
@@ -321,6 +321,9 @@ export default function FundNavsManager() {
               </div>
               {detail.metrics.missingMonths.length > 0 && (
                 <p className="text-amber-300/80 text-xs">Falten preus d&apos;aquests mesos: {detail.metrics.missingMonths.map(ymLabel).join(', ')}</p>
+              )}
+              {detail.metrics.suspect.length > 0 && (
+                <p className="text-red-300/90 text-xs">Salts sospitosos (més del 40 % d&apos;un preu al següent): {detail.metrics.suspect.map(j => `${fmtDate(j.date)} (${j.change > 0 ? '+' : ''}${j.change} %)`).join(', ')}. Corregeix el preu o esborra&apos;l.</p>
               )}
               {!detail.metrics.usable && detail.metrics.reason && <p className="text-white/40 text-xs">No es fa servir a les propostes: {detail.metrics.reason}.</p>}
               <div className="max-h-80 overflow-y-auto">

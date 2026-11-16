@@ -19,6 +19,13 @@ export interface NavPoint {
 export const MIN_YEARS_FOR_PROPOSALS = 3;
 /** Finestra màxima de càlcul: els últims 5 anys (60 rendiments mensuals). */
 export const MAX_WINDOW_MONTHS = 60;
+/**
+ * Variació màxima creïble entre dos preus seguits d'un fons UCITS. Per sobre,
+ * gairebé sempre és un error en teclejar (una coma de menys, un zero de més)
+ * i el fons no es fa servir fins que es corregeix (validació de qualitat,
+ * AGENTS.md: cap sèrie arriba als càlculs sense validar).
+ */
+export const MAX_MOVE_PCT = 40;
 /** Dies sense preu nou a partir dels quals es considera desactualitzat. */
 export const STALE_DAYS = 45;
 
@@ -138,6 +145,15 @@ export function parseNavText(text: string, opts: { defaultIsin?: string; default
     res.rows.push(row);
   });
 
+  // Salts sospitosos dins el mateix enganxat (probable error en teclejar)
+  const byIsinRows = new Map<string, NavPoint[]>();
+  for (const r of res.rows) byIsinRows.set(r.isin, [...(byIsinRows.get(r.isin) ?? []), r]);
+  for (const [isin, rows] of byIsinRows) {
+    for (const j of suspectMoves(rows)) {
+      res.warnings.push({ line: 0, message: `${isin}: el preu passa de ${j.from} a ${j.to} (${j.change > 0 ? '+' : ''}${j.change} %) el ${fmtDate(j.date)}. Comprova'l.` });
+    }
+  }
+
   // Moneda única per fons dins el mateix enganxat
   const curByIsin = new Map<string, Set<string>>();
   for (const r of res.rows) curByIsin.set(r.isin, (curByIsin.get(r.isin) ?? new Set()).add(r.currency));
@@ -168,9 +184,23 @@ export interface NavMetrics {
   volatility:     number | null;   // % anual
   maxDrawdown:    number | null;   // % (negatiu)
   worst12M:       number | null;   // pitjor rendiment de 12 mesos seguits, %
+  suspect:        SuspectMove[];   // salts de més de MAX_MOVE_PCT dins la finestra
   stale:          boolean;         // l'últim preu té més de STALE_DAYS dies
   usable:         boolean;         // es fa servir a les propostes
   reason:         string | null;   // per què no és usable
+}
+
+export interface SuspectMove { date: string; from: number; to: number; change: number }
+
+/** Preus seguits amb una variació de més de MAX_MOVE_PCT (%). */
+export function suspectMoves(points: Pick<NavPoint, 'date' | 'nav'>[]): SuspectMove[] {
+  const sorted = [...points].filter(p => p.nav > 0).sort((a, b) => a.date.localeCompare(b.date));
+  const out: SuspectMove[] = [];
+  for (let i = 1; i < sorted.length; i++) {
+    const ch = (sorted[i].nav / sorted[i - 1].nav - 1) * 100;
+    if (Math.abs(ch) > MAX_MOVE_PCT) out.push({ date: sorted[i].date, from: sorted[i - 1].nav, to: sorted[i].nav, change: Math.round(ch * 10) / 10 });
+  }
+  return out;
 }
 
 const ym = (iso: string) => iso.slice(0, 7);
@@ -215,7 +245,7 @@ export function computeNavMetrics(points: Pick<NavPoint, 'date' | 'nav'>[], asOf
     points: sorted.length, firstDate: sorted[0]?.date ?? null, lastDate: sorted.at(-1)?.date ?? null,
     lastNav: sorted.at(-1)?.nav ?? null, windowStart: null, months: 0, years: 0, missingMonths: [],
     annualReturn: null, return1Y: null, volatility: null, maxDrawdown: null, worst12M: null,
-    stale: false, usable: false, reason: 'Encara no hi ha preus',
+    suspect: [], stale: false, usable: false, reason: 'Encara no hi ha preus',
   };
   if (!sorted.length) return empty;
   const last = sorted.at(-1)!;
@@ -262,9 +292,11 @@ export function computeNavMetrics(points: Pick<NavPoint, 'date' | 'nav'>[], asOf
     if (before) { const r = (p.nav / before - 1) * 100; worst = worst === null ? r : Math.min(worst, r); }
   }
 
+  const suspect = suspectMoves(sorted.filter(p => p.date >= win[0].date));
   const minMonths = MIN_YEARS_FOR_PROPOSALS * 12;
   let reason: string | null = null;
-  if (months < minMonths) reason = `Calen ${MIN_YEARS_FOR_PROPOSALS} anys de preus mensuals; n'hi ha ${(months / 12).toLocaleString('ca-ES', { maximumFractionDigits: 1 })}`;
+  if (suspect.length) reason = `Variació sospitosa del ${suspect[0].change} % el ${fmtDate(suspect[0].date)}: comprova el preu`;
+  else if (months < minMonths) reason = `Calen ${MIN_YEARS_FOR_PROPOSALS} anys de preus mensuals; n'hi ha ${(months / 12).toLocaleString('ca-ES', { maximumFractionDigits: 1 })}`;
   else if (missingMonths.length) reason = `Falten preus de ${missingMonths.length} ${missingMonths.length === 1 ? 'mes' : 'mesos'}`;
 
   return {
@@ -275,7 +307,7 @@ export function computeNavMetrics(points: Pick<NavPoint, 'date' | 'nav'>[], asOf
     volatility: volatility === null ? null : r2(volatility),
     maxDrawdown: r2(mdd * 100),
     worst12M: worst === null ? null : r2(worst),
-    stale, usable: reason === null && annualReturn !== null && volatility !== null, reason,
+    suspect, stale, usable: reason === null && annualReturn !== null && volatility !== null, reason,
   };
 }
 

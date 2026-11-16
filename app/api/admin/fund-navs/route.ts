@@ -10,7 +10,7 @@ import { authOptions } from '@/lib/authOptions';
 import { logAuditEvent } from '@/lib/auditLog';
 import { computeNavMetrics, isIsin, parseNavText, type NavPoint } from '@/lib/navMath';
 import { currencyConflicts, deleteNavs, getNavs, getNavSummary, upsertNavs, workbookToText } from '@/lib/fundNavs';
-import { syncHoldingsToNavs } from '@/lib/clientPortfolios';
+import { reconcileHoldingsAfterNavDelete, syncHoldingsToNavs } from '@/lib/clientPortfolios';
 
 type S = { user?: { id?: string; email?: string; role?: string } } | null;
 const MAX_BYTES = 5 * 1024 * 1024;
@@ -132,10 +132,16 @@ export async function DELETE(req: NextRequest) {
   if (!date && sp.get('all') !== 'true') return NextResponse.json({ error: 'Cal una data o all=true' }, { status: 400 });
   try {
     const deleted = await deleteNavs(isin, date);
+    // Les posicions que feien servir un preu esborrat tornen a l'últim que queda
+    const last = (await getNavs(isin)).at(-1) ?? null;
+    const holdingsUpdated = deleted ? await reconcileHoldingsAfterNavDelete(isin, date, last).catch(err => {
+      console.error('[fund-navs] no s\'han pogut revisar les posicions:', err instanceof Error ? err.message : err);
+      return 0;
+    }) : 0;
     logAuditEvent('fund.navs_deleted', {
       userId: session.user?.id, userEmail: session.user?.email, resource: isin,
-      metadata: { date: date ?? 'tots', deleted },
+      metadata: { date: date ?? 'tots', deleted, holdingsUpdated },
     });
-    return NextResponse.json({ ok: true, deleted });
+    return NextResponse.json({ ok: true, deleted, holdingsUpdated });
   } catch (err) { return dbError(err); }
 }

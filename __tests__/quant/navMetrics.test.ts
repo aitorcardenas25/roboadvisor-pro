@@ -6,6 +6,7 @@ import {
 } from '@/lib/navMath';
 import { getNavPerformanceMap, getNavSummary, upsertNavs, deleteNavs, getNavs, currencyConflicts, __resetNavsForTests } from '@/lib/fundNavs';
 import { verifiedPerformance, fundToItem, hasPerformanceData } from '@/lib/proposalMath';
+import { createClientPortfolio, addHolding, getAllClientPortfolios, syncHoldingsToNavs, reconcileHoldingsAfterNavDelete } from '@/lib/clientPortfolios';
 
 const ISIN = 'LU0996182563';   // Amundi MSCI World (llista de l'assessor)
 
@@ -196,5 +197,56 @@ describe('fundNavs (memòria) i propostes', () => {
     const item = fundToItem(other, 10, await getNavPerformanceMap());
     expect(item?.name).toMatch(/iShares Core MSCI World/);
     expect(hasPerformanceData(item!)).toBe(true);
+  });
+});
+
+describe('validació de qualitat dels preus', () => {
+  it('un preu mal teclejat bloqueja el fons i es diu quin', () => {
+    const pts = series(40, 0.005);
+    pts[20] = { ...pts[20], nav: 100000 };
+    const m = computeNavMetrics(pts, new Date('2025-03-01T00:00:00Z'));
+    expect(m.usable).toBe(false);
+    expect(m.suspect.length).toBeGreaterThan(0);
+    expect(m.reason).toMatch(/Variació sospitosa/);
+    expect(navPerformance(m)).toBeNull();
+  });
+
+  it('avisa del salt ja en revisar l\'enganxat', () => {
+    const r = parseNavText(`${ISIN}\t30/09/2026\t100\n${ISIN}\t31/10/2026\t1000`);
+    expect(r.warnings.some(w => /Comprova/.test(w.message))).toBe(true);
+  });
+});
+
+describe('preus a les posicions dels clients', () => {
+  const ISIN2 = 'IE0008248803';
+  async function holding(priceSource: 'pending' | 'manual', priceLastUpdated: string) {
+    const p = await createClientPortfolio({ clientId: `c-${Math.random()}`, clientName: 'Prova', name: 'Cartera', description: '', recommendations: '' } as never);
+    return addHolding(p.id, {
+      assetIsin: ISIN2, assetName: 'Vanguard Eurozone', assetCategory: '', broker: '', quantity: 10,
+      avgEntryPrice: 50, currentPrice: 50, priceLastUpdated, priceSource, currency: 'EUR',
+    });
+  }
+  const priceOf = async (id: string) => (await getAllClientPortfolios()).flatMap(p => p.holdings).find(h => h.id === id)!;
+
+  it('un preu provisional d\'importació es substitueix encara que sigui més nou', async () => {
+    const h = await holding('pending', '2026-11-16T10:00:00Z');
+    await syncHoldingsToNavs([{ isin: ISIN2, date: '2026-10-31', nav: 60, currency: 'EUR' }]);
+    expect((await priceOf(h.id)).currentPrice).toBe(60);
+  });
+
+  it('un preu real més nou no es trepitja', async () => {
+    const h = await holding('manual', '2026-11-15');
+    await syncHoldingsToNavs([{ isin: ISIN2, date: '2026-10-31', nav: 60, currency: 'EUR' }]);
+    expect((await priceOf(h.id)).currentPrice).toBe(50);
+  });
+
+  it('esborrar el preu fa tornar a l\'anterior o deixa la posició pendent', async () => {
+    const h = await holding('manual', '2026-10-31');
+    await reconcileHoldingsAfterNavDelete(ISIN2, '2026-10-31', { isin: ISIN2, date: '2026-09-30', nav: 55, currency: 'EUR' });
+    let x = await priceOf(h.id);
+    expect([x.currentPrice, x.priceLastUpdated]).toEqual([55, '2026-09-30']);
+    await reconcileHoldingsAfterNavDelete(ISIN2, undefined, null);
+    x = await priceOf(h.id);
+    expect(x.priceSource).toBe('pending');
   });
 });

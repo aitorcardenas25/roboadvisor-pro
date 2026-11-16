@@ -46,10 +46,12 @@ async function savedCurrencies(isins: string[]): Promise<Map<string, string>> {
     for (const p of _mem.values()) if (isins.includes(p.isin)) out.set(p.isin, p.currency);
     return out;
   }
-  if (!isins.length) return out;
-  const { data, error } = await db.from('fund_navs').select('isin,currency').in('isin', isins).limit(5000);
-  if (error) throw new Error(error.message);
-  for (const r of data ?? []) out.set(String(r.isin), String(r.currency));
+  // Una consulta per ISIN (1 fila): cap límit de files no en pot deixar cap fora.
+  await Promise.all(isins.map(async isin => {
+    const { data, error } = await db.from('fund_navs').select('currency').eq('isin', isin).limit(1);
+    if (error) throw new Error(error.message);
+    if (data?.[0]) out.set(isin, String(data[0].currency));
+  }));
   return out;
 }
 
