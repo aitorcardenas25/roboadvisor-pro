@@ -11,12 +11,13 @@ import { getLeadByLinkedUser, getLeadByEmail } from '@/lib/leads';
 import { getPortfolioByClientId, computeMetrics } from '@/lib/clientPortfolios';
 import {
   getProposals, saveDraft, approveProposal, fundOptions, fundToItem,
-  itemsFromHoldings, roundWeights, verifiedPerformance, proposalStats, checkProposalSuitability, getProposal, PROFILES, type ProposalItem, type ProposalProfile,
+  itemsFromHoldings, roundWeights, verifiedPerformance, proposalStats, checkProposalSuitability, getProposal, PROFILES, type ProposalItem, type ProposalProfile, type NavPerformanceMap,
 } from '@/lib/proposals';
 import { buildPortfolio } from '@/lib/portfolio';
 import type { InvestorQuestionnaire } from '@/lib/scoring';
 import { saveReport } from '@/lib/reportRegistry';
 import { logAuditEvent } from '@/lib/auditLog';
+import { getNavPerformanceMap } from '@/lib/fundNavs';
 
 type S = { user?: { id?: string; email?: string; name?: string; role?: string } } | null;
 
@@ -82,6 +83,7 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
     personal:  q,
     proposals: (await getProposals(id)).map(withStats),
     funds:     fundOptions(),
+    navPerformance: await getNavPerformanceMap(),
     holdings:  ctx.portfolio?.holdings.length ?? 0,
     defaults: {
       profile:       (PROFILES as readonly string[]).includes(leadProfile ?? '') ? leadProfile : 'moderat',
@@ -105,8 +107,9 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
   if (!parsed.success) return NextResponse.json({ error: 'Dades no vàlides', issues: parsed.error.issues }, { status: 400 });
 
   // Les dades de rendiment no es prenen del navegador: es tornen a buscar a
-  // la font verificada (fitxes) per ISIN.
-  const items = parsed.data.items.map(x => ({ ...x, ...verifiedPerformance(x.isin) }));
+  // la font verificada (preus entrats a mà o fitxes) per ISIN.
+  const navs = await getNavPerformanceMap();
+  const items = parsed.data.items.map(x => ({ ...x, ...verifiedPerformance(x.isin, navs) }));
   const saved = await saveDraft(id, { ...parsed.data, items });
   logAuditEvent('proposal.saved', {
     userId: session.user?.id, userEmail: session.user?.email, resource: saved.id,
@@ -127,11 +130,11 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   const body = parsed.data;
 
   if (body.action === 'fromHoldings') {
-    return NextResponse.json({ items: itemsFromHoldings(ctx.portfolio?.holdings ?? []) });
+    return NextResponse.json({ items: itemsFromHoldings(ctx.portfolio?.holdings ?? [], await getNavPerformanceMap()) });
   }
 
   if (body.action === 'suggest') {
-    return NextResponse.json({ items: suggestItems(body.profile, body.initialAmount, body.monthlyAmount, ctx.lead?.questionnaireData) });
+    return NextResponse.json({ items: suggestItems(body.profile, body.initialAmount, body.monthlyAmount, ctx.lead?.questionnaireData, await getNavPerformanceMap()) });
   }
 
   // Idoneïtat (MiFID II) al servidor abans de congelar la recomanació
@@ -172,14 +175,14 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
 }
 
 /** Punt de partida segons perfil, amb el constructor de carteres existent. */
-function suggestItems(profile: ProposalProfile, initialAmount: number, monthlyAmount: number, q?: Record<string, unknown>): ProposalItem[] {
+function suggestItems(profile: ProposalProfile, initialAmount: number, monthlyAmount: number, q?: Record<string, unknown>, navs: NavPerformanceMap = {}): ProposalItem[] {
   const questionnaire = {
     ...(q ?? {}),
     currentSavings: initialAmount, percentageToInvest: 100, monthlyContribution: monthlyAmount,
     esgPreference: (q?.esgPreference as string) ?? 'no-importa',
   } as unknown as InvestorQuestionnaire;
   const portfolio = buildPortfolio(profile, questionnaire);
-  const items = portfolio.allocations.map(a => fundToItem(a.product.isin, a.weight) ?? {
+  const items = portfolio.allocations.map(a => fundToItem(a.product.isin, a.weight, navs) ?? {
     isin: a.product.isin, name: a.product.name, category: a.product.category, weight: a.weight,
     risk: a.product.mifidRiskIndicator ?? 4, ter: a.product.ter, platform: '', justification: a.rationale,
   }).map((it, i) => ({ ...it, justification: portfolio.allocations[i].rationale || it.justification }));

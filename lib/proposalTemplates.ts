@@ -8,7 +8,7 @@
 // No hi ha plantilles conservadores ni moderades: la llista de fons de
 // l'assessor encara no té fons de renda fixa ni monetaris.
 
-import { fundToItem, type ProposalItem, type ProposalProfile } from './proposalMath';
+import { fundToItem, type NavPerformanceMap, type ProposalItem, type ProposalProfile } from './proposalMath';
 
 export interface ProposalTemplate {
   id:          string;
@@ -48,9 +48,9 @@ export const PROPOSAL_TEMPLATES: ProposalTemplate[] = [
 ];
 
 /** Línies de proposta d'una plantilla. Null si la plantilla no existeix o té un fons desconegut. */
-export function templateItems(id: string): ProposalItem[] | null {
+export function templateItems(id: string, navs: NavPerformanceMap = {}): ProposalItem[] | null {
   const t = PROPOSAL_TEMPLATES.find(x => x.id === id);
   if (!t) return null;
-  const items = t.weights.map(w => fundToItem(w.isin, w.weight));
+  const items = t.weights.map(w => fundToItem(w.isin, w.weight, navs));
   return items.every((x): x is ProposalItem => x !== null) ? items : null;
 }

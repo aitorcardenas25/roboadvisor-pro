@@ -366,6 +366,44 @@ export async function updateHoldingPrice(
   await db.from('client_portfolios').update({ updated_at: new Date().toISOString() }).eq('id', portfolioId);
 }
 
+/**
+ * Posa a les posicions dels clients l'últim valor liquidatiu entrat a mà
+ * (lib/fundNavs.ts). Només si la moneda coincideix i el preu que tenen és
+ * més antic: mai no es trepitja un preu més recent. Retorna quantes canvia.
+ */
+export async function syncHoldingsToNavs(latest: { isin: string; date: string; nav: number; currency: string }[]): Promise<number> {
+  if (!latest.length) return 0;
+  const byIsin = new Map(latest.map(l => [l.isin.toUpperCase(), l]));
+  const pick = (h: Pick<ClientHolding, 'assetIsin' | 'currency' | 'priceLastUpdated'>) => {
+    const l = byIsin.get((h.assetIsin ?? '').toUpperCase());
+    if (!l || (h.currency || 'EUR').toUpperCase() !== l.currency.toUpperCase()) return null;
+    return (h.priceLastUpdated ?? '').slice(0, 10) <= l.date ? l : null;
+  };
+  const db = getDb();
+  let n = 0;
+  if (!db) {
+    for (const p of _portfolios) for (const h of p.holdings) {
+      const l = pick(h);
+      if (l) { h.currentPrice = l.nav; h.priceLastUpdated = l.date; h.priceSource = 'manual'; n++; }
+    }
+    return n;
+  }
+  const { data, error } = await db.from('client_holdings')
+    .select('id,portfolio_id,asset_isin,currency,price_last_updated').in('asset_isin', [...byIsin.keys()]);
+  if (error) throw new Error(error.message);
+  const touched = new Set<string>();
+  for (const r of data ?? []) {
+    const l = pick({ assetIsin: String(r.asset_isin), currency: String(r.currency ?? 'EUR'), priceLastUpdated: String(r.price_last_updated ?? '') });
+    if (!l) continue;
+    const { error: e } = await db.from('client_holdings')
+      .update({ current_price: l.nav, price_last_updated: l.date, price_source: 'manual' }).eq('id', r.id);
+    if (e) throw new Error(e.message);
+    touched.add(String(r.portfolio_id)); n++;
+  }
+  if (touched.size) await db.from('client_portfolios').update({ updated_at: new Date().toISOString() }).in('id', [...touched]);
+  return n;
+}
+
 export async function updateHolding(holdingId: string, portfolioId: string, updates: Partial<ClientHolding>): Promise<void> {
   const now = new Date().toISOString();
   const db  = getDb();

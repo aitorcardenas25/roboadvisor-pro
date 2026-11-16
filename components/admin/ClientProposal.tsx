@@ -4,7 +4,8 @@ import { PROPOSAL_TEMPLATES, templateItems } from '@/lib/proposalTemplates';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   proposalStats, fundToItem, hasPerformanceData, validateForApproval, proposalToReportInput, checkProposalSuitability, PROFILES,
-  type ClientProposal, type ProposalItem, type ProposalParams, type ProposalStats,
+  verifiedPerformance,
+  type ClientProposal, type ProposalItem, type ProposalParams, type ProposalStats, type NavPerformanceMap,
 } from '@/lib/proposalMath';
 import { isValidIsin } from '@/lib/fundUniverse';
 
@@ -17,6 +18,7 @@ interface Data {
   funds:     { isin: string; name: string; category: string; source: 'advisor' | 'catalog' }[];
   holdings:  number;
   defaults:  ProposalParams;
+  navPerformance?: NavPerformanceMap;
 }
 
 const OBJECTIVES = [
@@ -62,7 +64,10 @@ export default function ClientProposal({ clientId }: { clientId: string }) {
         if (latest) {
           const { profile, objective, horizon, initialAmount, monthlyAmount, adminNote } = latest;
           setParams({ profile, objective, horizon, initialAmount, monthlyAmount, adminNote });
-          setItems(latest.items);
+          // Un esborrany agafa els preus entrats a mà des de l'últim desament
+          setItems(latest.status === 'draft'
+            ? latest.items.map(x => ({ ...x, ...verifiedPerformance(x.isin, d.navPerformance ?? {}) }))
+            : latest.items);
         } else {
           setParams(d.defaults);
           setItems([]);
@@ -97,7 +102,7 @@ export default function ClientProposal({ clientId }: { clientId: string }) {
     const raw = fundQuery.trim();
     const isin = (raw.match(/[A-Z]{2}[A-Z0-9]{9}\d/i)?.[0] ?? raw).toUpperCase();
     if (items.some(x => x.isin === isin)) { setMsg({ ok: false, text: 'Aquest fons ja és a la proposta' }); return; }
-    const known = fundToItem(isin);
+    const known = fundToItem(isin, 0, data.navPerformance ?? {});
     if (known) { setItems([...items, known]); }
     else if (isValidIsin(isin)) {
       setItems([...items, { isin, name: '', category: '', weight: 0, risk: 5, ter: 0, platform: '', justification: '' }]);
@@ -109,7 +114,7 @@ export default function ClientProposal({ clientId }: { clientId: string }) {
   const loadTemplate = (id: string) => {
     if (!id) return;
     const t = PROPOSAL_TEMPLATES.find(x => x.id === id);
-    const next = templateItems(id);
+    const next = templateItems(id, data.navPerformance ?? {});
     if (!t || !next) { setMsg({ ok: false, text: 'No s\'ha pogut carregar la plantilla.' }); return; }
     if (items.length && !confirm('Això substituirà els fons de l\'editor. Continuar?')) return;
     setItems(next); setDirty(true);
@@ -427,7 +432,9 @@ function FundRow({ x, i, amount, input, noteOpen, toggleNote, setItem, removeIte
         <td className={td}>
           <input value={x.name} onChange={e => setItem(i, { name: e.target.value })} placeholder="Nom del fons" className={`${input} w-full min-w-[220px]`} />
           <p className="text-white/30 text-[11px] mt-0.5">{x.category || 'Sense categoria'}
-            {!hasPerformanceData(x) && <span className="text-red-300/80"> · sense dades de rendiment</span>}</p>
+            {hasPerformanceData(x)
+              ? <span title={x.performanceSource}> · {pct(x.historicalReturn5Y!)} anual, volatilitat {pct(x.historicalVolatility!)}</span>
+              : <span className="text-red-300/80"> · sense dades de rendiment</span>}</p>
         </td>
         <td className={td}><input type="number" min={0} max={100} step={0.5} value={x.weight}
           onChange={e => setItem(i, { weight: Math.min(100, Math.max(0, Number(e.target.value) || 0)) })} className={`${input} w-16`} /></td>
