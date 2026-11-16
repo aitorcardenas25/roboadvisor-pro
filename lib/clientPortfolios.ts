@@ -366,6 +366,80 @@ export async function updateHoldingPrice(
   await db.from('client_portfolios').update({ updated_at: new Date().toISOString() }).eq('id', portfolioId);
 }
 
+type NavRef = { isin: string; date: string; nav: number; currency: string };
+type HoldingPriceView = Pick<ClientHolding, 'assetIsin' | 'currency' | 'priceLastUpdated' | 'priceSource'>;
+type PriceUpdate = { currentPrice?: number; priceLastUpdated?: string; priceSource: 'manual' | 'pending' };
+
+/** Aplica `decide` a les posicions dels ISIN donats (Supabase o memòria). Retorna quantes canvia. */
+async function applyToHoldings(isins: string[], decide: (h: HoldingPriceView) => PriceUpdate | null): Promise<number> {
+  if (!isins.length) return 0;
+  const db = getDb();
+  let n = 0;
+  if (!db) {
+    for (const p of _portfolios) for (const h of p.holdings) {
+      if (!isins.includes((h.assetIsin ?? '').toUpperCase())) continue;
+      const u = decide(h);
+      if (!u) continue;
+      if (u.currentPrice !== undefined) h.currentPrice = u.currentPrice;
+      if (u.priceLastUpdated !== undefined) h.priceLastUpdated = u.priceLastUpdated;
+      h.priceSource = u.priceSource; n++;
+    }
+    return n;
+  }
+  const { data, error } = await db.from('client_holdings')
+    .select('id,portfolio_id,asset_isin,currency,price_last_updated,price_source').in('asset_isin', isins);
+  if (error) throw new Error(error.message);
+  const touched = new Set<string>();
+  for (const r of data ?? []) {
+    const u = decide({
+      assetIsin: String(r.asset_isin), currency: String(r.currency ?? 'EUR'),
+      priceLastUpdated: String(r.price_last_updated ?? ''), priceSource: (r.price_source as ClientHolding['priceSource']) || undefined,
+    });
+    if (!u) continue;
+    const row: Record<string, unknown> = { price_source: u.priceSource };
+    if (u.currentPrice !== undefined) row.current_price = u.currentPrice;
+    if (u.priceLastUpdated !== undefined) row.price_last_updated = u.priceLastUpdated;
+    const { error: e } = await db.from('client_holdings').update(row).eq('id', r.id);
+    if (e) throw new Error(e.message);
+    touched.add(String(r.portfolio_id)); n++;
+  }
+  if (touched.size) await db.from('client_portfolios').update({ updated_at: new Date().toISOString() }).in('id', [...touched]);
+  return n;
+}
+
+const sameCurrency = (h: HoldingPriceView, l: NavRef) => (h.currency || 'EUR').toUpperCase() === l.currency.toUpperCase();
+
+/**
+ * Posa a les posicions dels clients l'últim valor liquidatiu entrat a mà
+ * (lib/fundNavs.ts). Només si la moneda coincideix i el preu que tenen és
+ * més antic o encara és provisional ('pending', p. ex. el preu de compra
+ * d'una importació): mai no es trepitja un preu real més recent.
+ */
+export async function syncHoldingsToNavs(latest: NavRef[]): Promise<number> {
+  const byIsin = new Map(latest.map(l => [l.isin.toUpperCase(), l]));
+  return applyToHoldings([...byIsin.keys()], h => {
+    const l = byIsin.get((h.assetIsin ?? '').toUpperCase());
+    if (!l || !sameCurrency(h, l)) return null;
+    const older = (h.priceLastUpdated ?? '').slice(0, 10) <= l.date;
+    return h.priceSource === 'pending' || older ? { currentPrice: l.nav, priceLastUpdated: l.date, priceSource: 'manual' } : null;
+  });
+}
+
+/**
+ * Després d'esborrar preus d'un fons: les posicions que feien servir un preu
+ * esborrat (manual, de la data esborrada o de qualsevol data si s'han esborrat
+ * tots) passen a l'últim preu que queda o, si no n'hi ha, a 'pending'.
+ */
+export async function reconcileHoldingsAfterNavDelete(isin: string, deletedDate: string | undefined, latest: NavRef | null): Promise<number> {
+  const up = isin.toUpperCase();
+  return applyToHoldings([up], h => {
+    if (h.priceSource !== 'manual') return null;
+    if (deletedDate && (h.priceLastUpdated ?? '').slice(0, 10) !== deletedDate) return null;
+    if (latest && sameCurrency(h, latest)) return { currentPrice: latest.nav, priceLastUpdated: latest.date, priceSource: 'manual' };
+    return { priceSource: 'pending' };
+  });
+}
+
 export async function updateHolding(holdingId: string, portfolioId: string, updates: Partial<ClientHolding>): Promise<void> {
   const now = new Date().toISOString();
   const db  = getDb();

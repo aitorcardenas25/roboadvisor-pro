@@ -22,6 +22,7 @@ import ClientFile                from './ClientFile';
 import NotificationBell          from './NotificationBell';
 import IntegrationsManager        from './IntegrationsManager';
 import BetaPanel                  from './BetaPanel';
+import FundNavsManager            from './FundNavsManager';
 
 interface Props {
   onLogout: () => void;
@@ -34,11 +35,12 @@ interface Stats {
   byRisk: { risk: number; count: number }[];
 }
 
-type Section = 'dashboard' | 'funds' | 'reports' | 'news' | 'newsletter' | 'stocks' | 'portfolios' | 'manual-report' | 'clients' | 'client-portfolios' | 'leads' | 'stock-reports' | 'monthly-report' | 'audit' | 'integrations' | 'config' | 'client-file' | 'beta';
+type Section = 'dashboard' | 'funds' | 'fund-navs' | 'reports' | 'news' | 'newsletter' | 'stocks' | 'portfolios' | 'manual-report' | 'clients' | 'client-portfolios' | 'leads' | 'stock-reports' | 'monthly-report' | 'audit' | 'integrations' | 'config' | 'client-file' | 'beta';
 
 const NAV_ITEMS: { id: Section; iconPath: string; label: string }[] = [
   { id: 'dashboard',  iconPath: 'M4 5a1 1 0 011-1h4a1 1 0 011 1v4a1 1 0 01-1 1H5a1 1 0 01-1-1V5zm10 0a1 1 0 011-1h4a1 1 0 011 1v4a1 1 0 01-1 1h-4a1 1 0 01-1-1V5zM4 15a1 1 0 011-1h4a1 1 0 011 1v4a1 1 0 01-1 1H5a1 1 0 01-1-1v-4zm10 0a1 1 0 011-1h4a1 1 0 011 1v4a1 1 0 01-1 1h-4a1 1 0 01-1-1v-4z', label: 'Dashboard'         },
   { id: 'funds',      iconPath: 'M21 13.255A23.931 23.931 0 0112 15c-3.183 0-6.22-.62-9-1.745M16 6V4a2 2 0 00-2-2h-4a2 2 0 00-2 2v2m4 6h.01M5 20h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z', label: 'Gestió de Fons'    },
+  { id: 'fund-navs',  iconPath: 'M3 3v18h18M7 14l4-4 3 3 5-6', label: 'Preus dels fons'   },
   { id: 'reports',    iconPath: 'M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z', label: 'Historial Informes' },
   { id: 'news',       iconPath: 'M19 20H5a2 2 0 01-2-2V6a2 2 0 012-2h10l6 6v8a2 2 0 01-2 2zM9 13h6M9 17h3', label: 'Notícies'          },
   { id: 'newsletter', iconPath: 'M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z', label: 'Newsletter'         },
@@ -206,6 +208,7 @@ export default function AdminDashboard({ onLogout }: Props) {
               />
             )}
             {activeSection === 'funds'      && <FundsManager />}
+            {activeSection === 'fund-navs'  && <FundNavsManager />}
             {activeSection === 'reports'    && <ReportsHistory />}
             {activeSection === 'news'       && <NewsManager />}
             {activeSection === 'newsletter' && <NewsletterManager />}

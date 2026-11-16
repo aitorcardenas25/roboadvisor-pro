@@ -69,7 +69,7 @@ jobs:
   # ── E2E tests ─────────────────────────────────────────────────────────────
   e2e:
     name: E2E tests (Playwright)
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04   # Playwright encara no instal·la Chromium a ubuntu-latest (26.04)
     needs: build
     env:
       NEXTAUTH_SECRET: ${{ secrets.NEXTAUTH_SECRET || 'ci-secret-minimum-32-characters-long' }}

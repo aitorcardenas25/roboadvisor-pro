@@ -9,6 +9,10 @@
 import { FINANCIAL_PRODUCTS } from './products';
 import { ADVISOR_FUNDS } from './fundUniverse';
 import type { ManualPortfolioInput } from './manualReport';
+import type { NavPerformance } from './navMath';
+
+/** Rendiment calculat amb els preus entrats a mà, per ISIN (lib/fundNavs.ts → getNavPerformanceMap). */
+export type NavPerformanceMap = Record<string, NavPerformance>;
 
 export type ProposalStatus = 'draft' | 'approved';
 export const PROFILES = ['conservador', 'moderat', 'dinamic', 'agressiu'] as const;
@@ -56,13 +60,20 @@ export interface ClientProposal extends ProposalParams {
 // Un fons sense rendibilitat i volatilitat reals (catàleg o fitxa Morningstar a
 // lib/fundUniverse.ts) deixa la proposta sense projecció i no es pot aprovar.
 // Les xifres de lib/products.ts són estimacions acadèmiques, no observacions:
-// NO compten. Només compten les dades amb font (fitxa) de lib/fundUniverse.ts.
+// NO compten. Compten: (1) els preus entrats a mà per l'admin amb prou
+// historial (lib/navMath.ts, preferents perquè són dades pròpies i
+// actualitzades) i (2) les dades amb font (fitxa) de lib/fundUniverse.ts.
 export const hasPerformanceData = (x: ProposalItem) =>
   Number.isFinite(x.historicalReturn5Y) && Number.isFinite(x.historicalVolatility) && !!x.performanceSource?.trim();
 
-/** Dades de rendiment verificades per a un ISIN (només fitxes amb font). */
-export function verifiedPerformance(rawIsin: string): Pick<ProposalItem, 'historicalReturn5Y' | 'historicalVolatility' | 'performanceSource'> {
-  const a = ADVISOR_FUNDS.find(f => f.isin === rawIsin.trim().toUpperCase());
+/** Dades de rendiment verificades per a un ISIN: preus entrats a mà o, si no n'hi ha prou, fitxa amb font. */
+export function verifiedPerformance(rawIsin: string, navs: NavPerformanceMap = {}): Pick<ProposalItem, 'historicalReturn5Y' | 'historicalVolatility' | 'performanceSource'> {
+  const isin = rawIsin.trim().toUpperCase();
+  const n = navs[isin];
+  if (n && Number.isFinite(n.return5Y) && Number.isFinite(n.volatility)) {
+    return { historicalReturn5Y: n.return5Y, historicalVolatility: n.volatility, performanceSource: n.source };
+  }
+  const a = ADVISOR_FUNDS.find(f => f.isin === isin);
   if (a && Number.isFinite(a.return5Y) && Number.isFinite(a.volatility) && a.source?.trim()) {
     return { historicalReturn5Y: a.return5Y, historicalVolatility: a.volatility, performanceSource: a.source };
   }
@@ -77,7 +88,7 @@ function guessSrri(category: string): number {
 }
 
 /** Converteix un ISIN conegut en una línia de proposta amb les dades del catàleg. */
-export function fundToItem(rawIsin: string, weight = 0): ProposalItem | null {
+export function fundToItem(rawIsin: string, weight = 0, navs: NavPerformanceMap = {}): ProposalItem | null {
   const isin = rawIsin.trim().toUpperCase();
   const p = FINANCIAL_PRODUCTS.find(f => f.isin?.toUpperCase() === isin);
   if (p) {
@@ -85,7 +96,7 @@ export function fundToItem(rawIsin: string, weight = 0): ProposalItem | null {
       isin, name: p.name, category: p.category, weight,
       risk: p.mifidRiskIndicator ?? Math.min(7, Math.round(p.risk * 1.2)),
       ter: p.ter, platform: '', justification: p.justification,
-      ...verifiedPerformance(isin), // les estimacions del catàleg no es fan servir
+      ...verifiedPerformance(isin, navs), // les estimacions del catàleg no es fan servir
     };
   }
   const a = ADVISOR_FUNDS.find(f => f.isin === isin);
@@ -93,7 +104,15 @@ export function fundToItem(rawIsin: string, weight = 0): ProposalItem | null {
     return {
       isin, name: a.name, category: a.category, weight,
       risk: a.srri ?? guessSrri(a.category), ter: a.ter ?? 0, platform: '', justification: '',
-      ...verifiedPerformance(isin),
+      ...verifiedPerformance(isin, navs),
+    };
+  }
+  // Fons fora de la llista però amb preus entrats a mà: SRRI i TER a mà.
+  const n = navs[isin];
+  if (n) {
+    return {
+      isin, name: n.name ?? '', category: '', weight, risk: 5, ter: 0, platform: '', justification: '',
+      ...verifiedPerformance(isin, navs),
     };
   }
   return null;
@@ -180,7 +199,7 @@ export function proposalStats(p: Pick<ClientProposal, 'items' | 'horizon' | 'ini
 }
 
 /** Pesos actuals de la cartera real (per valor de mercat), per partir-ne. */
-export function itemsFromHoldings(holdings: { assetIsin: string; assetName: string; assetCategory: string; broker: string; quantity: number; currentPrice: number }[]): ProposalItem[] {
+export function itemsFromHoldings(holdings: { assetIsin: string; assetName: string; assetCategory: string; broker: string; quantity: number; currentPrice: number }[], navs: NavPerformanceMap = {}): ProposalItem[] {
   const total = holdings.reduce((s, h) => s + h.quantity * h.currentPrice, 0);
   if (total <= 0) return [];
   const byIsin = new Map<string, ProposalItem>();
@@ -188,7 +207,7 @@ export function itemsFromHoldings(holdings: { assetIsin: string; assetName: stri
     const value = h.quantity * h.currentPrice;
     const prev = byIsin.get(h.assetIsin);
     if (prev) { prev.weight += value / total * 100; continue; }
-    const base = fundToItem(h.assetIsin) ?? {
+    const base = fundToItem(h.assetIsin, 0, navs) ?? {
       isin: h.assetIsin, name: h.assetName, category: h.assetCategory, weight: 0,
       risk: guessSrri(h.assetCategory), ter: 0, platform: '', justification: '',
     };
@@ -238,7 +257,7 @@ export function proposalToReportInput(
 export function validateForApproval(p: Pick<ClientProposal, 'items' | 'initialAmount' | 'monthlyAmount' | 'horizon'>): string | null {
   if (!p.items.length) return 'La proposta no té cap fons';
   const s = proposalStats(p);
-  if (!s.complete) return `Falten rendibilitat i volatilitat reals de: ${s.missing.map(m => m.name).join(', ')}. Cal la fitxa (p. ex. Morningstar).`;
+  if (!s.complete) return `Falten rendibilitat i volatilitat reals de: ${s.missing.map(m => m.name).join(', ')}. Cal entrar-ne els preus (Admin → Preus dels fons) o la fitxa.`;
   if (!s.weightOk) return `Els pesos sumen ${s.totalWeight.toFixed(2)} %, han de sumar 100 %`;
   if (p.items.some(x => x.weight <= 0)) return 'Hi ha fons amb pes 0: treu-los o dona\'ls pes';
   if (new Set(p.items.map(x => x.isin)).size !== p.items.length) return 'Hi ha fons repetits';

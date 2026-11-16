@@ -345,6 +345,20 @@ ALTER TABLE client_activity ADD COLUMN IF NOT EXISTS page TEXT;
 CREATE INDEX IF NOT EXISTS idx_client_activity_at   ON client_activity (at DESC);
 CREATE INDEX IF NOT EXISTS idx_client_activity_user ON client_activity (user_id, at DESC);
 
+-- ── Preus dels fons entrats a mà (beta, sense API de dades) ───────────────
+-- L'admin hi entra el valor liquidatiu (VL / NAV) de cada fons un cop al mes.
+-- D'aquí surten rendibilitat, volatilitat i caiguda màxima (lib/navMath.ts).
+CREATE TABLE IF NOT EXISTS fund_navs (
+  isin        TEXT          NOT NULL CHECK (isin ~ '^[A-Z]{2}[A-Z0-9]{9}[0-9]$'),
+  nav_date    DATE          NOT NULL,
+  nav         NUMERIC(18,6) NOT NULL CHECK (nav > 0),
+  currency    TEXT          NOT NULL DEFAULT 'EUR',
+  fund_name   TEXT,
+  created_at  TIMESTAMPTZ   NOT NULL DEFAULT NOW(),
+  updated_at  TIMESTAMPTZ   NOT NULL DEFAULT NOW(),
+  PRIMARY KEY (isin, nav_date)
+);
+
 -- ── Seguretat: Row Level Security ──────────────────────────────────────────
 -- L'app només accedeix amb la service_role key (servidor), que no està afectada
 -- per RLS. Activar RLS sense polítiques impedeix llegir res amb la clau pública
@@ -356,7 +370,7 @@ BEGIN
     'portfolios','reports','newsletter_subscribers','newsletters','users','audit_log',
     'notifications','client_portfolios','client_holdings','client_transactions',
     'portfolio_snapshots','advisor_notes','leads','monthly_reports','stock_reports',
-    'client_proposals','client_consents','client_activity'
+    'client_proposals','client_consents','client_activity','fund_navs'
   ] LOOP
     EXECUTE format('ALTER TABLE %I ENABLE ROW LEVEL SECURITY', t);
   END LOOP;

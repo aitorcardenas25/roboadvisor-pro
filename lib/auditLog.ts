@@ -25,7 +25,9 @@ export type AuditAction =
   | 'newsletter.sent'
   | 'fund.created'
   | 'fund.updated'
-  | 'fund.deleted';
+  | 'fund.deleted'
+  | 'fund.navs_saved'
+  | 'fund.navs_deleted';
 
 export interface AuditEntry {
   id:        string;
