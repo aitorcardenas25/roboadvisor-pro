@@ -88,6 +88,100 @@ export function planApplication(items: ApplyItem[], amount: number, date: string
   return { lines: problems.length ? [] : lines, problems };
 }
 
+// ─── Reestructuració d'una cartera amb posicions ─────────────────────────────
+
+export interface RebalanceHolding { id: string; isin: string; name: string; quantity: number }
+
+export interface RebalanceLine {
+  isin:       string;
+  name:       string;
+  category:   string;
+  weight:     number;            // pes objectiu, 0–100 (0 = es ven tot)
+  holdingId?: string;            // posició existent (si no, es crea)
+  side:       'buy' | 'sell';
+  quantity:   number;            // participacions a comprar o vendre (> 0)
+  amount:     number;            // € de l'operació (> 0)
+  nav:        number;
+  navDate:    string;
+  currency:   string;
+  currentQty: number;
+  targetQty:  number;
+}
+
+export interface RebalancePlan {
+  lines:        RebalanceLine[];  // primer les vendes, després les compres
+  problems:     string[];
+  currentValue: number;           // valor de la cartera a la data, amb VL oficials
+  newValue:     number;           // valor després de l'aportació nova
+}
+
+/** Operacions de menys d'1 € no es fan (només soroll d'arrodoniment). */
+export const MIN_TRADE_EUR = 1;
+
+/**
+ * Reestructuració cap als pesos d'una proposta nova: es valora la cartera
+ * actual amb els VL oficials de la data, s'hi suma l'aportació nova i es
+ * calculen les vendes i compres per arribar als pesos objectiu.
+ * Mateixes regles de preu que planApplication (EUR, ≤45 dies).
+ */
+export function planRebalance(items: ApplyItem[], held: RebalanceHolding[], extra: number, date: string, navs: NavPoint[]): RebalancePlan {
+  const problems: string[] = [];
+  if (!(extra >= 0)) problems.push('L\'aportació nova no pot ser negativa.');
+  const active = items.filter(i => i.weight > 0);
+  if (!active.length) problems.push('La proposta no té cap fons amb pes.');
+  const total = active.reduce((s, i) => s + i.weight, 0);
+  if (active.length && Math.abs(total - 100) > 0.5) problems.push(`Els pesos sumen ${round(total, 2)} %, no 100 %.`);
+
+  const open = held.filter(h => h.quantity > 0);
+  const seen = new Set<string>();
+  for (const h of open) {
+    const k = h.isin.toUpperCase();
+    if (seen.has(k)) problems.push(`${h.name} (${k}) és a la cartera en més d'una posició. Unifica-les a "Cartera activa" abans de reestructurar.`);
+    seen.add(k);
+  }
+
+  const by = navsByIsin(navs);
+  const price = new Map<string, NavPoint>();
+  const check = (isin: string, name: string) => {
+    const k = isin.toUpperCase();
+    if (price.has(k)) return;
+    const p = navOnOrBefore(by.get(k), date);
+    if (!p) { problems.push(`${name} (${k}): no hi ha cap valor liquidatiu oficial fins al ${date}.`); return; }
+    if (p.currency.toUpperCase() !== 'EUR') { problems.push(`${name} (${k}): els preus són en ${p.currency}; la cartera es porta en EUR.`); return; }
+    const age = daysBetween(p.date, date);
+    if (age > MAX_PRICE_AGE_DAYS) { problems.push(`${name} (${k}): l'últim valor liquidatiu és del ${p.date} (${age} dies abans). Carrega preus més recents.`); return; }
+    price.set(k, p);
+  };
+  for (const h of open) check(h.isin, h.name);
+  for (const it of active) check(it.isin, it.name);
+  if (problems.length) return { lines: [], problems, currentValue: 0, newValue: 0 };
+
+  const currentValue = round(open.reduce((s, h) => s + h.quantity * price.get(h.isin.toUpperCase())!.nav, 0), 2);
+  const newValue = round(currentValue + extra, 2);
+  if (!(newValue > 0)) return { lines: [], problems: ['La cartera no té valor i no hi ha aportació nova.'], currentValue, newValue };
+
+  const target = new Map(active.map(i => [i.isin.toUpperCase(), i]));
+  const heldBy = new Map(open.map(h => [h.isin.toUpperCase(), h]));
+  const lines: RebalanceLine[] = [];
+  for (const isin of new Set([...heldBy.keys(), ...target.keys()])) {
+    const h = heldBy.get(isin), t = target.get(isin), p = price.get(isin)!;
+    const currentQty = h?.quantity ?? 0;
+    const weight = t?.weight ?? 0;
+    const targetQty = weight > 0 ? round(newValue * weight / 100 / p.nav, 6) : 0;
+    const diff = round(targetQty - currentQty, 6);
+    const amount = round(Math.abs(diff) * p.nav, 2);
+    // Vendre-ho tot sempre es fa; la resta, només si passa d'1 €.
+    if (diff === 0 || (targetQty > 0 && amount < MIN_TRADE_EUR)) continue;
+    lines.push({
+      isin, name: t?.name ?? h!.name, category: t?.category ?? '', weight, holdingId: h?.id,
+      side: diff > 0 ? 'buy' : 'sell', quantity: Math.abs(diff), amount,
+      nav: p.nav, navDate: p.date, currency: p.currency, currentQty, targetQty,
+    });
+  }
+  lines.sort((a, b) => (a.side === b.side ? b.amount - a.amount : a.side === 'sell' ? -1 : 1));
+  return { lines, problems: [], currentValue, newValue };
+}
+
 // ─── Evolució de la cartera real ──────────────────────────────────────────────
 
 export interface ValuationHolding { id: string; assetIsin: string; assetName: string; quantity: number; avgEntryPrice: number; createdAt: string }
@@ -131,6 +225,50 @@ function stepsFor(h: ValuationHolding, txs: ValuationTx[]): Step[] {
   return [{ date: start, qty: h.quantity, cash: h.avgEntryPrice * h.quantity }];
 }
 
+/** Valor i capital aportat en una data; null si algun fons que es té no té preu prou recent. */
+function pointAt(live: ValuationHolding[], steps: Map<string, Step[]>, by: Map<string, NavPoint[]>, d: string): ValuationPoint | null {
+  let value = 0, invested = 0, any = false;
+  for (const h of live) {
+    const st = steps.get(h.id)!.filter(s => s.date <= d);
+    const qty = st.reduce((s, x) => s + x.qty, 0);
+    invested += st.reduce((s, x) => s + x.cash, 0);
+    if (qty <= 1e-9) continue;
+    any = true;
+    const p = navOnOrBefore(by.get(h.assetIsin.toUpperCase()), d);
+    if (!p || daysBetween(p.date, d) > MAX_PRICE_AGE_DAYS) return null;
+    value += qty * p.nav;
+  }
+  return any ? { date: d, value: round(value, 2), invested: round(invested, 2) } : null;
+}
+
+/**
+ * Valor de la cartera en dates concretes (p. ex. inici i final del període d'un
+ * informe), amb les participacions que es tenien aquell dia i el VL oficial
+ * d'aquell dia o de l'anterior amb preu (≤45 dies). Una data sense preu → null.
+ */
+export function valuationAt(holdings: ValuationHolding[], txs: ValuationTx[], navs: NavPoint[], dates: string[]): { points: (ValuationPoint | null)[]; missing: string[] } {
+  const traded = new Set(txs.filter(t => t.holdingId && (t.operationType === 'buy' || t.operationType === 'sell')).map(t => t.holdingId!));
+  const live = holdings.filter(h => h.quantity > 0 || traded.has(h.id));
+  const by = navsByIsin(navs);
+  const missing = live.flatMap(h => {
+    const list = by.get(h.assetIsin.toUpperCase());
+    if (!list?.length) return [h.assetName];
+    const cur = list.find(p => p.currency.toUpperCase() !== 'EUR')?.currency;
+    return cur ? [`${h.assetName} (preus en ${cur})`] : [];
+  });
+  if (missing.length) return { points: dates.map(() => null), missing };
+  const steps = new Map(live.map(h => [h.id, stepsFor(h, txs)]));
+  return {
+    points: dates.map(d => {
+      const pt = pointAt(live, steps, by, d);
+      // Abans de la primera compra la cartera val 0 (no és "sense preu").
+      if (!pt && [...steps.values()].flat().every(s => s.date > d)) return { date: d, value: 0, invested: 0 };
+      return pt;
+    }),
+    missing: [],
+  };
+}
+
 /**
  * Valor de la cartera a cada final de mes (i el dia de la primera compra),
  * amb els valors liquidatius oficials. Un mes on algun fons no té preu
@@ -163,18 +301,8 @@ export function valuationSeries(holdings: ValuationHolding[], txs: ValuationTx[]
 
   const points: ValuationPoint[] = [];
   for (const d of dates) {
-    let value = 0, invested = 0, ok = true, any = false;
-    for (const h of live) {
-      const st = steps.get(h.id)!.filter(s => s.date <= d);
-      const qty = st.reduce((s, x) => s + x.qty, 0);
-      invested += st.reduce((s, x) => s + x.cash, 0);
-      if (qty <= 1e-9) continue;
-      any = true;
-      const p = navOnOrBefore(by.get(h.assetIsin.toUpperCase()), d);
-      if (!p || daysBetween(p.date, d) > MAX_PRICE_AGE_DAYS) { ok = false; break; }
-      value += qty * p.nav;
-    }
-    if (ok && any) points.push({ date: d, value: round(value, 2), invested: round(invested, 2) });
+    const pt = pointAt(live, steps, by, d);
+    if (pt) points.push(pt);
   }
   // Dates repetides (primera compra a final de mes)
   const uniq = points.filter((p, i) => i === 0 || p.date !== points[i - 1].date);

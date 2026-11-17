@@ -37,6 +37,15 @@ export async function getProposals(clientId: string): Promise<ClientProposal[]> 
   return (data ?? []).map(r => rowToProposal(r as Record<string, unknown>));
 }
 
+/** Totes les propostes de tots els clients (per a les estadístiques del Dashboard). */
+export async function getAllProposals(): Promise<ClientProposal[]> {
+  const db = getDb();
+  if (!db) return _mem.map(p => structuredClone(p));
+  const { data, error } = await db.from('client_proposals').select('*');
+  if (error) throw new Error(error.message);
+  return (data ?? []).map(r => rowToProposal(r as Record<string, unknown>));
+}
+
 export async function getProposal(clientId: string, id: string): Promise<ClientProposal | null> {
   return (await getProposals(clientId)).find(p => p.id === id) ?? null;
 }

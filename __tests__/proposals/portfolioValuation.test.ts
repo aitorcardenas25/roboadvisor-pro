@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { planApplication, valuationSeries, monthEnds, navOnOrBefore, navsByIsin, aggregatePeriods, MAX_PRICE_AGE_DAYS } from '@/lib/portfolioValuation';
+import { planApplication, valuationSeries, monthEnds, navOnOrBefore, navsByIsin, aggregatePeriods, MAX_PRICE_AGE_DAYS, planRebalance } from '@/lib/portfolioValuation';
 import type { NavPoint } from '@/lib/navMath';
 
 const nav = (isin: string, date: string, v: number): NavPoint => ({ isin, date, nav: v, currency: 'EUR' });
@@ -147,5 +147,33 @@ describe('valuationSeries (revisió)', () => {
       navs2.map(n => ({ ...n, currency: 'USD' })), '2026-11-17');
     expect(v.points).toEqual([]);
     expect(v.missing).toEqual(['Global USD (preus en USD)']);
+  });
+});
+
+describe('planRebalance', () => {
+  const navs = [
+    { isin: 'AAA', date: '2026-10-30', nav: 10, currency: 'EUR' },
+    { isin: 'BBB', date: '2026-10-30', nav: 20, currency: 'EUR' },
+    { isin: 'CCC', date: '2026-10-30', nav: 5,  currency: 'EUR' },
+  ];
+  const it_ = (isin: string, weight: number) => ({ isin, name: isin, category: 'x', weight });
+
+  it('ven el que surt de la proposta, compra el que entra i no fa operacions de menys d\'1 €', () => {
+    const plan = planRebalance([it_('AAA', 50), it_('CCC', 50)],
+      [{ id: 'h1', isin: 'AAA', name: 'AAA', quantity: 50.04 }, { id: 'h2', isin: 'BBB', name: 'BBB', quantity: 25 }], 0, '2026-10-31', navs);
+    // valor 500,40 + 500 = 1.000,40 → AAA 500,20 € (ja en té 500,40: diferència < 1 €), CCC 500,20 €
+    expect(plan.problems).toEqual([]);
+    expect(plan.currentValue).toBe(1000.4);
+    expect(plan.lines.map(l => [l.side, l.isin, l.quantity, l.amount, l.holdingId])).toEqual([
+      ['sell', 'BBB', 25, 500, 'h2'],
+      ['buy', 'CCC', 100.04, 500.2, undefined],
+    ]);
+  });
+
+  it('atura si falta un preu d\'un fons que ja es té o hi ha dues posicions del mateix fons', () => {
+    const r = planRebalance([it_('AAA', 100)],
+      [{ id: 'h1', isin: 'AAA', name: 'AAA', quantity: 1 }, { id: 'h2', isin: 'aaa', name: 'AAA', quantity: 1 }, { id: 'h3', isin: 'ZZZ', name: 'Z', quantity: 1 }], 0, '2026-10-31', navs);
+    expect(r.lines).toEqual([]);
+    expect(r.problems).toEqual([expect.stringMatching(/més d'una posició/), expect.stringMatching(/ZZZ.*cap valor liquidatiu/)]);
   });
 });
