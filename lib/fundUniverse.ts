@@ -81,6 +81,11 @@ export const ADVISOR_FUNDS: UniverseFund[] = [
   { isin: 'ES0112609005', name: 'Azvalor Blue Chips FI',                                  category: 'RV Global (value)' },
   { isin: 'ES0112602000', name: 'Azvalor Managers FI',                                    category: 'RV Global (fons de gestors)' },
   { isin: 'ES0112601002', name: 'Azvalor Capital FI',                                     category: 'Mixt defensiu (RF > 90 %)' },
+  // Magallanes (classe M, la general; Microcaps classe B). Preus oficials de
+  // magallanesvalue.com (2026-11-17).
+  { isin: 'ES0159201013', name: 'Magallanes Iberian Equity FI Clase M',                   category: 'RV Espanya i Portugal' },
+  { isin: 'ES0159259011', name: 'Magallanes European Equity FI Clase M',                  category: 'RV Europa (value)' },
+  { isin: 'ES0159202011', name: 'Magallanes Microcaps Europe FI Clase B',                 category: 'RV Europa Small Caps' },
   { isin: 'IE00B18GC888', name: 'Vanguard Global Bond Index Fund EUR Hedged Acc',           category: 'RF Global (cobert EUR)' },
   { isin: 'IE00BDBRDM35', name: 'iShares Core Global Aggregate Bond UCITS ETF EUR Hedged Acc', category: 'RF Global (cobert EUR)' },
   { isin: 'IE0007472115', name: 'Vanguard Euro Government Bond Index Fund EUR Acc',         category: 'RF Govern Euro' },
