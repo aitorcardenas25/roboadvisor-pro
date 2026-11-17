@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { planApplication, valuationSeries, monthEnds, navOnOrBefore, navsByIsin, MAX_PRICE_AGE_DAYS } from '@/lib/portfolioValuation';
+import { planApplication, valuationSeries, monthEnds, navOnOrBefore, navsByIsin, aggregatePeriods, MAX_PRICE_AGE_DAYS } from '@/lib/portfolioValuation';
 import type { NavPoint } from '@/lib/navMath';
 
 const nav = (isin: string, date: string, v: number): NavPoint => ({ isin, date, nav: v, currency: 'EUR' });
@@ -85,5 +85,33 @@ describe('utilitats', () => {
     const list = navsByIsin(navs).get(A);
     expect(navOnOrBefore(list, '2026-09-15')?.date).toBe('2026-08-31');
     expect(navOnOrBefore(list, '2026-08-01')).toBeNull();
+  });
+});
+
+describe('aggregatePeriods', () => {
+  const pts = [
+    { date: '2026-01-15', value: 1000, invested: 1000 },
+    { date: '2026-01-31', value: 1010, invested: 1000 },
+    { date: '2026-02-28', value: 1530, invested: 1500 },   // +500 aportats
+    { date: '2026-03-31', value: 1500, invested: 1500 },
+    { date: '2026-04-30', value: 1560, invested: 1500 },
+    { date: '2026-05-12', value: 1580, invested: 1500 },   // període en curs
+  ];
+
+  it('mensual: rendiment de cada mes descomptant les aportacions (Modified Dietz)', () => {
+    const r = aggregatePeriods(pts, 'month');
+    expect(r.map(x => x.date)).toEqual(pts.map(p => p.date));
+    expect(r[0]).toMatchObject({ flow: 1000, gain: 0, periodReturn: null, totalReturn: 0 });
+    expect(r[1]).toMatchObject({ flow: 0, gain: 10, periodReturn: 1 });
+    // feb: (1530 − 1010 − 500) / (1010 + 250) = 1,59 %
+    expect(r[2]).toMatchObject({ flow: 500, gain: 20, periodReturn: 1.59, totalReturn: 2 });
+  });
+
+  it('trimestral i anual: només finals de període, la primera data i l\'última', () => {
+    expect(aggregatePeriods(pts, 'quarter').map(x => x.date)).toEqual(['2026-01-15', '2026-03-31', '2026-05-12']);
+    const q = aggregatePeriods(pts, 'quarter');
+    expect(q[1]).toMatchObject({ flow: 500, gain: 0, periodReturn: 0 });
+    expect(aggregatePeriods(pts, 'year').map(x => x.date)).toEqual(['2026-01-15', '2026-05-12']);
+    expect(aggregatePeriods([], 'month')).toEqual([]);
   });
 });

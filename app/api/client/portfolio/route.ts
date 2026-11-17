@@ -3,8 +3,8 @@ import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/authOptions';
 import { getPortfolioByClientId } from '@/lib/clientPortfolios';
 import { recordActivity } from '@/lib/betaActivity';
-import { getNavs } from '@/lib/fundNavs';
-import { valuationSeries, type Valuation } from '@/lib/portfolioValuation';
+import { loadValuation } from '@/lib/portfolioExcel';
+import type { Valuation } from '@/lib/portfolioValuation';
 
 type S = { user?: { id?: string; role?: string } } | null;
 
@@ -24,9 +24,7 @@ export async function GET() {
   let valuation: Valuation | null = null;
   if (portfolio?.holdings.length) {
     try {
-      const isins = [...new Set(portfolio.holdings.map(h => (h.assetIsin ?? '').toUpperCase()).filter(Boolean))];
-      const navs = (await Promise.all(isins.map(i => getNavs(i)))).flat();
-      valuation = valuationSeries(portfolio.holdings, portfolio.transactions, navs);
+      valuation = await loadValuation(portfolio);
     } catch (err) {
       console.error('[client/portfolio] valoració amb preus oficials:', err instanceof Error ? err.message : err);
     }

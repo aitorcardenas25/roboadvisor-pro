@@ -168,3 +168,48 @@ export function valuationSeries(holdings: ValuationHolding[], txs: ValuationTx[]
   const uniq = points.filter((p, i) => i === 0 || p.date !== points[i - 1].date);
   return { points: uniq, missing: [], source: 'navs' };
 }
+
+// ─── Evolució per períodes (Excel del client) ─────────────────────────────────
+
+export type Period = 'month' | 'quarter' | 'year';
+
+export interface PeriodRow {
+  date:        string;   // final del període (o l'últim preu, si és el període en curs)
+  value:       number;   // valor de mercat
+  invested:    number;   // capital net aportat acumulat
+  flow:        number;   // aportacions netes dins del període
+  gain:        number;   // guany del període en € (sense comptar aportacions)
+  periodReturn: number | null;  // % del període (Modified Dietz)
+  totalReturn: number | null;   // % acumulat sobre el capital aportat
+}
+
+const isPeriodEnd = (d: string, period: Period) => {
+  const m = Number(d.slice(5, 7));
+  const last = new Date(Date.UTC(Number(d.slice(0, 4)), m, 0)).toISOString().slice(0, 10) === d;
+  if (!last) return false;
+  return period === 'month' || (period === 'quarter' ? m % 3 === 0 : m === 12);
+};
+
+/**
+ * Agrupa la sèrie mensual per mesos, trimestres o anys. La rendibilitat de
+ * cada període descompta les aportacions amb el mètode Modified Dietz
+ * (Dietz, 1968), suposant les aportacions a mig període:
+ *   r = (V1 − V0 − CF) / (V0 + CF / 2)
+ */
+export function aggregatePeriods(points: ValuationPoint[], period: Period): PeriodRow[] {
+  if (!points.length) return [];
+  const keep = points.filter((p, i) => i === 0 || i === points.length - 1 || isPeriodEnd(p.date, period));
+  const rows: PeriodRow[] = [];
+  keep.forEach((p, i) => {
+    const prev = i ? keep[i - 1] : null;
+    const flow = prev ? p.invested - prev.invested : p.invested;
+    const gain = prev ? p.value - prev.value - flow : p.value - p.invested;
+    const base = prev ? prev.value + flow / 2 : 0;
+    rows.push({
+      date: p.date, value: p.value, invested: p.invested, flow: round(flow, 2), gain: round(gain, 2),
+      periodReturn: prev && base > 0 ? round(gain / base * 100, 2) : null,
+      totalReturn: p.invested > 0 ? round((p.value / p.invested - 1) * 100, 2) : null,
+    });
+  });
+  return rows;
+}

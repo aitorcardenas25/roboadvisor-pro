@@ -12,6 +12,7 @@ import type {
 } from '@/lib/clientPortfolios';
 import { computeMetrics } from '@/lib/clientPortfolios';
 import type { Valuation } from '@/lib/portfolioValuation';
+import PortfolioExcelButton from '@/components/PortfolioExcelButton';
 import { DataSourceBadge } from '@/components/DataSourceBadge';
 import { DataSourcePanel } from '@/components/DataSourcePanel';
 
@@ -923,6 +924,7 @@ export default function ClientCarteraPage() {
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
               <div className="lg:col-span-2 space-y-5">
                 <EvolutionChart portfolio={portfolio} metrics={metrics} valuation={valuation} />
+                <PortfolioExcelButton baseUrl="/api/client/portfolio/excel" className="justify-end -mt-2" />
                 <DistributionPanel portfolio={portfolio} total={metrics.currentValue} />
               </div>
               <div className="space-y-5">
