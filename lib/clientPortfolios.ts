@@ -461,7 +461,8 @@ export async function updateHolding(holdingId: string, portfolioId: string, upda
   for (const [k, c] of Object.entries(col)) {
     if (k in updates) patch[c] = updates[k as keyof typeof updates];
   }
-  await db.from('client_holdings').update(patch).eq('id', holdingId);
+  const { error } = await db.from('client_holdings').update(patch).eq('id', holdingId);
+  if (error) throw new Error(error.message);
   await db.from('client_portfolios').update({ updated_at: now }).eq('id', portfolioId);
 }
 

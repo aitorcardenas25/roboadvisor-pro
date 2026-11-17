@@ -2,7 +2,7 @@
 // GET  → versions + dades per a l'editor (fons disponibles, valors per defecte)
 // PUT  → desa l'esborrany (crea versió nova si l'última està aprovada)
 // POST → { action: 'approve', id } | { action: 'suggest', profile, ... } | { action: 'fromHoldings' }
-//        | { action: 'apply', id, date, amount, broker } (versió aprovada → cartera activa)
+//        | { action: 'apply', id, date, amount, broker, dryRun? } (versió aprovada → cartera activa: primera inversió o reestructuració)
 import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { z } from 'zod';
@@ -58,8 +58,9 @@ const PostSchema = z.discriminatedUnion('action', [
   z.object({
     action: z.literal('apply'), id: z.string().min(1),
     date:   z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
-    amount: z.number().positive().max(1e9),
+    amount: z.number().min(0).max(1e9),   // primera inversió: import; reestructuració: aportació nova (pot ser 0)
     broker: z.string().trim().max(100).default(''),
+    dryRun: z.boolean().default(false),   // només calcula les operacions
   }),
 ]);
 
@@ -92,7 +93,7 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
     proposals: (await getProposals(id)).map(withStats),
     funds:     fundOptions(),
     navPerformance: await getNavPerformanceMap(),
-    holdings:  ctx.portfolio?.holdings.length ?? 0,
+    holdings:  ctx.portfolio?.holdings.filter(h => h.quantity > 0).length ?? 0,
     defaults: {
       profile:       (PROFILES as readonly string[]).includes(leadProfile ?? '') ? leadProfile : 'moderat',
       objective:     '',
@@ -149,14 +150,17 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     if (body.date > new Date().toISOString().slice(0, 10)) return NextResponse.json({ error: 'La data de compra no pot ser futura' }, { status: 400 });
     const res = await applyProposal({
       clientId: id, clientName: ctx.user.name, proposalId: body.id, date: body.date,
-      amount: body.amount, broker: body.broker, by: session.user?.email ?? 'admin',
+      amount: body.amount, broker: body.broker, by: session.user?.email ?? 'admin', dryRun: body.dryRun,
     });
     if (!res.ok) return NextResponse.json({ error: res.error, problems: res.problems }, { status: res.status });
-    logAuditEvent('proposal.applied', {
+    if (!res.dryRun) logAuditEvent('proposal.applied', {
       userId: session.user?.id, userEmail: session.user?.email, resource: body.id,
-      metadata: { clientId: id, portfolioId: res.portfolioId, funds: res.lines.length, amount: body.amount, date: body.date },
+      metadata: {
+        clientId: id, portfolioId: res.portfolioId, mode: res.mode, operations: res.lines.length,
+        amount: body.amount, date: body.date, valueBefore: res.currentValue, valueAfter: res.newValue,
+      },
     });
-    return NextResponse.json({ ok: true, portfolioId: res.portfolioId, lines: res.lines });
+    return NextResponse.json(res);
   }
 
   // Idoneïtat (MiFID II) al servidor abans de congelar la recomanació

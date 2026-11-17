@@ -8,6 +8,7 @@ import {
   type ClientProposal, type ProposalItem, type ProposalParams, type ProposalStats, type NavPerformanceMap,
 } from '@/lib/proposalMath';
 import { isValidIsin } from '@/lib/fundUniverse';
+import type { RebalanceLine } from '@/lib/portfolioValuation';
 
 type WithStats = ClientProposal & { stats: ProposalStats };
 interface Data {
@@ -27,6 +28,11 @@ const OBJECTIVES = [
 ];
 const PROFILE_LABEL: Record<string, string> = { conservador: 'Conservador', moderat: 'Moderat', dinamic: 'Dinàmic', agressiu: 'Agressiu' };
 
+const eur2 = (n: number) => n.toLocaleString('ca-ES', { style: 'currency', currency: 'EUR', minimumFractionDigits: 2, maximumFractionDigits: 2 });
+const qty = (n: number) => n.toLocaleString('ca-ES', { maximumFractionDigits: 6 });
+const fdate = (d: string) => new Date(d.slice(0, 10) + 'T00:00:00').toLocaleDateString('ca-ES');
+
+interface ApplyPreview { mode: 'first' | 'rebalance'; lines: RebalanceLine[]; currentValue: number; newValue: number }
 const eur = (n: number) => n.toLocaleString('ca-ES', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 });
 const pct = (n: number) => `${n.toLocaleString('ca-ES', { maximumFractionDigits: 2 })} %`;
 const safeName = (s: string) => s.normalize('NFD').replace(/[^\w]+/g, '_').replace(/^_|_$/g, '') || 'client';
@@ -49,7 +55,8 @@ export default function ClientProposal({ clientId, onApplied }: { clientId: stri
   const [fundQuery, setFundQuery] = useState('');
   const [openNote, setOpenNote]   = useState<string | null>(null);
   const [overrideReason, setOverrideReason] = useState('');
-  const [applying, setApplying] = useState<{ id: string; date: string; amount: number; broker: string; problems?: string[] } | null>(null);
+  const [applying, setApplying] = useState<{ id: string; date: string; amount: number; broker: string; problems?: string[]; preview?: ApplyPreview } | null>(null);
+  const rebalance = (data?.holdings ?? 0) > 0;   // la cartera ja té posicions → reestructuració
 
   const api = `/api/admin/clients/${clientId}/proposals`;
 
@@ -217,20 +224,33 @@ export default function ClientProposal({ clientId, onApplied }: { clientId: stri
     finally { setBusy(null); }
   };
 
-  const onApply = async () => {
+  // dryRun = true: calcula les operacions; false: les executa (després de revisar-les).
+  const onApply = async (dryRun: boolean) => {
     if (!applying) return;
     const p = data.proposals.find(x => x.id === applying.id);
-    if (!p || !confirm(`Es crearan a la cartera activa ${p.items.filter(i => i.weight > 0).length} posicions per un total de ${eur(applying.amount)}, comprades al valor liquidatiu oficial del ${new Date(applying.date + 'T00:00:00').toLocaleDateString('ca-ES')} o anterior. Continuar?`)) return;
+    if (!p) return;
+    if (!dryRun) {
+      const pv = applying.preview;
+      if (!pv) return;
+      const sells = pv.lines.filter(l => l.side === 'sell').length, buys = pv.lines.length - sells;
+      const what = pv.mode === 'first'
+        ? `Es crearan ${buys} posicions per un total de ${eur(pv.newValue)}`
+        : `Es registraran ${sells} vendes i ${buys} compres per passar la cartera a la v${p.version}`;
+      if (!confirm(`${what}, al valor liquidatiu oficial del ${fdate(applying.date)} o anterior. Continuar?`)) return;
+    }
     setBusy(`apply-${applying.id}`); setMsg(null);
     try {
       const res = await fetch(api, {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action: 'apply', id: applying.id, date: applying.date, amount: applying.amount, broker: applying.broker }),
+        body: JSON.stringify({ action: 'apply', id: applying.id, date: applying.date, amount: applying.amount, broker: applying.broker, dryRun }),
       });
       const d = await res.json();
-      if (!res.ok) { setApplying(a => a && { ...a, problems: d.problems ?? [] }); setMsg({ ok: false, text: d.error ?? 'No s\'ha pogut passar a la cartera' }); return; }
+      if (!res.ok) { setApplying(a => a && { ...a, problems: d.problems ?? [], preview: undefined }); setMsg({ ok: false, text: d.error ?? 'No s\'ha pogut passar a la cartera' }); return; }
+      if (dryRun) { setApplying(a => a && { ...a, problems: undefined, preview: d as ApplyPreview }); return; }
       setApplying(null);
-      setMsg({ ok: true, text: `Versió ${p.version} passada a la cartera activa: ${d.lines.length} posicions creades. Les trobaràs a "Cartera activa".` });
+      setMsg({ ok: true, text: d.mode === 'first'
+        ? `Versió ${p.version} passada a la cartera activa: ${d.lines.length} posicions creades. Les trobaràs a "Cartera activa".`
+        : `Cartera reestructurada a la v${p.version}: ${d.lines.length} operacions registrades. Les trobaràs a "Cartera activa" i "Compres".` });
       await load(false);
       onApplied?.();   // la fitxa torna a carregar la cartera
     } catch { setMsg({ ok: false, text: 'Error de connexió' }); }
@@ -423,39 +443,86 @@ export default function ClientProposal({ clientId, onApplied }: { clientId: stri
                     {p.appliedAt
                       ? <span className="text-green-400/80">A la cartera des del {new Date(p.appliedAt).toLocaleDateString('ca-ES')}</span>
                       : <button
-                          disabled={!!busy || data.holdings > 0}
-                          title={data.holdings > 0 ? 'La cartera activa ja té posicions: una reestructuració es fa a mà a "Cartera activa"' : undefined}
-                          onClick={() => setApplying(a => a?.id === p.id ? null : { id: p.id, date: new Date().toISOString().slice(0, 10), amount: p.initialAmount, broker: '' })}
+                          disabled={!!busy}
+                          title={rebalance ? 'Calcula les vendes i compres per passar la cartera actual als pesos d\'aquesta versió' : undefined}
+                          onClick={() => setApplying(a => a?.id === p.id ? null : { id: p.id, date: new Date().toISOString().slice(0, 10), amount: rebalance ? 0 : p.initialAmount, broker: '' })}
                           className="text-[#c9a84c] hover:underline disabled:opacity-40">
-                          Passar a cartera activa
+                          {rebalance ? 'Reestructurar la cartera' : 'Passar a cartera activa'}
                         </button>}
                   </span>
                 )}
                 {applying?.id === p.id && (
-                  <div className="w-full mt-2 p-3 rounded-lg bg-white/5 border border-white/10 space-y-2">
-                    <p className="text-white/60">Es compra cada fons al seu valor liquidatiu oficial (Preus dels fons) de la data triada o de l&apos;últim dia anterior amb preu.</p>
+                  <div className="w-full mt-2 p-3 rounded-lg bg-white/5 border border-white/10 space-y-3">
+                    <p className="text-white/60">
+                      {rebalance
+                        ? 'Es valora la cartera actual amb els valors liquidatius oficials (Preus dels fons) de la data triada, s\'hi suma l\'aportació nova i es calculen les vendes i compres per arribar als pesos d\'aquesta versió. Primer revisa les operacions; després, executa-les.'
+                        : 'Es compra cada fons al seu valor liquidatiu oficial (Preus dels fons) de la data triada o de l\'últim dia anterior amb preu.'}
+                    </p>
                     <div className="flex flex-wrap gap-3 items-end">
-                      <label className="flex flex-col gap-1 text-white/40">Data de compra
+                      <label className="flex flex-col gap-1 text-white/40">{rebalance ? 'Data de les operacions' : 'Data de compra'}
                         <input type="date" className={input} value={applying.date} max={new Date().toISOString().slice(0, 10)}
-                          onChange={e => setApplying({ ...applying, date: e.target.value, problems: undefined })} />
+                          onChange={e => setApplying({ ...applying, date: e.target.value, problems: undefined, preview: undefined })} />
                       </label>
-                      <label className="flex flex-col gap-1 text-white/40">Import (€)
+                      <label className="flex flex-col gap-1 text-white/40">{rebalance ? 'Aportació nova (€)' : 'Import (€)'}
                         <input type="number" min={0} step={100} className={input} value={applying.amount}
-                          onChange={e => setApplying({ ...applying, amount: Number(e.target.value), problems: undefined })} />
+                          onChange={e => setApplying({ ...applying, amount: Number(e.target.value), problems: undefined, preview: undefined })} />
                       </label>
-                      <label className="flex flex-col gap-1 text-white/40">Entitat
+                      <label className="flex flex-col gap-1 text-white/40">{rebalance ? 'Entitat (fons nous)' : 'Entitat'}
                         <input type="text" className={input} value={applying.broker} placeholder="p. ex. MyInvestor"
                           onChange={e => setApplying({ ...applying, broker: e.target.value })} />
                       </label>
-                      <button disabled={!!busy || !(applying.amount > 0) || !applying.date} onClick={onApply}
-                        className="px-3 py-1.5 rounded-lg bg-[#c9a84c] text-[#0a1612] font-semibold disabled:opacity-40">
-                        {busy === `apply-${p.id}` ? 'Creant posicions…' : 'Crear les posicions'}
+                      <button disabled={!!busy || !applying.date || (!rebalance && !(applying.amount > 0)) || applying.amount < 0} onClick={() => onApply(true)}
+                        className="px-3 py-1.5 rounded-lg bg-white/10 text-white hover:bg-white/15 disabled:opacity-40">
+                        {busy === `apply-${p.id}` && !applying.preview ? 'Calculant…' : 'Calcular les operacions'}
                       </button>
                     </div>
                     {!!applying.problems?.length && (
                       <ul className="list-disc pl-5 text-red-300 space-y-0.5">
                         {applying.problems.map(x => <li key={x}>{x}</li>)}
                       </ul>
+                    )}
+                    {applying.preview && (
+                      <div className="space-y-2">
+                        {applying.preview.mode === 'rebalance' && (
+                          <p className="text-white/70">
+                            Valor actual {eur2(applying.preview.currentValue)}
+                            {applying.amount > 0 && <> + aportació {eur2(applying.amount)}</>} = <span className="text-white font-semibold">{eur2(applying.preview.newValue)}</span> a repartir segons la v{p.version}.
+                          </p>
+                        )}
+                        {applying.preview.lines.length === 0
+                          ? <p className="text-green-400/80">La cartera ja té aquests pesos: no cal cap operació.</p>
+                          : (
+                          <div className="overflow-x-auto">
+                            <table className="w-full min-w-[560px]">
+                              <thead><tr>
+                                <th className={th}>Operació</th><th className={th}>Fons</th>
+                                <th className={`${th} text-right`}>Participacions</th><th className={`${th} text-right`}>VL oficial</th>
+                                <th className={`${th} text-right`}>Import</th><th className={`${th} text-right`}>Pes objectiu</th>
+                              </tr></thead>
+                              <tbody className="divide-y divide-white/5">
+                                {applying.preview.lines.map(l => (
+                                  <tr key={l.isin}>
+                                    <td className={`py-1.5 pr-2 font-semibold ${l.side === 'sell' ? 'text-red-300' : 'text-green-400'}`}>
+                                      {l.side === 'sell' ? (l.targetQty === 0 ? 'Venda total' : 'Venda') : (l.currentQty === 0 ? 'Compra (nou)' : 'Compra')}
+                                    </td>
+                                    <td className="py-1.5 pr-2 text-white/80">{l.name}<span className="text-white/30"> · {l.isin}</span></td>
+                                    <td className="py-1.5 pr-2 text-right tabular-nums text-white/80">{qty(l.quantity)}</td>
+                                    <td className="py-1.5 pr-2 text-right tabular-nums text-white/60">{eur2(l.nav)} <span className="text-white/30">({fdate(l.navDate)})</span></td>
+                                    <td className="py-1.5 pr-2 text-right tabular-nums text-white">{eur2(l.amount)}</td>
+                                    <td className="py-1.5 text-right tabular-nums text-white/60">{pct(l.weight)}</td>
+                                  </tr>
+                                ))}
+                              </tbody>
+                            </table>
+                          </div>
+                        )}
+                        {applying.preview.lines.length > 0 && (
+                          <button disabled={!!busy} onClick={() => onApply(false)}
+                            className="px-3 py-1.5 rounded-lg bg-[#c9a84c] text-[#0a1612] font-semibold disabled:opacity-40">
+                            {busy === `apply-${p.id}` ? 'Registrant…' : applying.preview.mode === 'first' ? 'Crear les posicions' : 'Executar la reestructuració'}
+                          </button>
+                        )}
+                      </div>
                     )}
                   </div>
                 )}
