@@ -19,7 +19,7 @@ describe('fundUniverse', () => {
 
   it('els fons amb històric oficial carregat es poden triar', () => {
     const options = new Set(fundOptions().map(f => f.isin));
-    for (const isin of ['IE00B03HD191', 'IE00BF0GL436', 'LU0290358497', 'IE00BH65QP47']) {
+    for (const isin of ['IE00B03HD191', 'IE00BF0GL436', 'LU0290358497', 'IE00BH65QP47', 'LU0329202252', 'DE000DWS1U90', 'LU1627197004']) {
       expect(options.has(isin)).toBe(true);
     }
   });

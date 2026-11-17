@@ -32,7 +32,7 @@ export const ADVISOR_FUNDS: UniverseFund[] = [
   { isin: 'LU1841614867', name: 'Fidelity Funds Global Technology A-Acc-EUR (Hedged)',      category: 'RV Tecnologia' },
   { isin: 'LU0273159177', name: 'DWS Invest Gold and Precious Metals Equities LC',          category: 'RV Mineres d\'or' },
   { isin: 'LU0252963896', name: 'BlackRock GF World Energy Fund D2 EUR Acc',                category: 'RV Energia' },
-  { isin: 'LU0714179727', name: 'JPMorgan IF Global Dividend Fund A (div) EUR',             category: 'RV Global Dividends' },
+  { isin: 'LU0329202252', name: 'JPMorgan Investment Funds - Global Dividend Fund A (acc) EUR', category: 'RV Global Dividends' },
   { isin: 'LU0625737910', name: 'Pictet China Index P EUR',                                 category: 'RV Xina' },
   // Fons indexats nucli de les carteres proposades a les sessions presencials
   // (Drive FACTOR OTC, document APUNTS, feb-mar 2026). Afegits 2026-11-09.
@@ -63,9 +63,11 @@ export const ADVISOR_FUNDS: UniverseFund[] = [
   { isin: 'IE00B6R51Z18', name: 'iShares Oil & Gas Exploration & Production UCITS ETF USD Acc', category: 'RV Energia' },
   { isin: 'IE00BJ5JP105', name: 'iShares MSCI World Energy Sector UCITS ETF USD Dist',      category: 'RV Energia' },
   { isin: 'IE000NFR7C63', name: 'iShares MSCI China Tech UCITS ETF USD Acc',                category: 'RV Xina' },
-  { isin: 'DE0009848119', name: 'DWS Top Dividende LD',                                     category: 'RV Global Dividends' },
+  { isin: 'DE000DWS1U90', name: 'DWS Top Dividende LC',                                     category: 'RV Global Dividends' },
   { isin: 'LU0353647737', name: 'Fidelity Funds European Dividend Fund A-Acc-EUR',          category: 'RV Europa Dividends' },
   { isin: 'LU2813189938', name: 'Fidelity Funds Global Defensive Equity Fund A-Acc-EUR',    category: 'RV Global Dividends' },
+  { isin: 'LU3123374798', name: 'Fidelity Funds Global Defensive Equity Fund A-Acc-EUR (Euro/USD hedged)', category: 'RV Global Dividends' },
+  { isin: 'LU1627197004', name: 'Fidelity Funds Global Equity Income ESG Fund A-Acc-EUR',  category: 'RV Global Dividends' },
   { isin: 'IE00B18GC888', name: 'Vanguard Global Bond Index Fund EUR Hedged Acc',           category: 'RF Global (cobert EUR)' },
   { isin: 'IE00BDBRDM35', name: 'iShares Core Global Aggregate Bond UCITS ETF EUR Hedged Acc', category: 'RF Global (cobert EUR)' },
   { isin: 'IE0007472115', name: 'Vanguard Euro Government Bond Index Fund EUR Acc',         category: 'RF Govern Euro' },
@@ -77,8 +79,12 @@ export const ADVISOR_FUNDS: UniverseFund[] = [
 
 // Altres classes del mateix fons que ja és a la llista (2026-11-17, decisió de
 // l'Aitor: una sola classe per fons). No surten per triar a les propostes, però
-// la importació de clients les continua reconeixent.
+// la importació de clients les continua reconeixent. Les classes de
+// distribució s'hi deixen quan hi ha classe d'acumulació: el preu baixa en
+// pagar dividends i la rendibilitat calculada sortiria més baixa que la real.
 export const ALTERNATE_CLASSES: UniverseFund[] = [
+  { isin: 'LU0714179727', name: 'JPMorgan IF Global Dividend Fund A (div) EUR',             category: 'RV Global Dividends' },
+  { isin: 'DE0009848119', name: 'DWS Top Dividende LD',                                     category: 'RV Global Dividends' },
   { isin: 'IE00B4468526', name: 'Polar Capital Global Technology R EUR Dist',               category: 'RV Tecnologia' },
   { isin: 'IE00BF0GL329', name: 'Polar Capital Artificial Intelligence Fund I USD Acc',     category: 'RV Tecnologia / IA' },
   { isin: 'LU0326422176', name: 'BlackRock GF World Energy Fund A2 EUR Hedged',             category: 'RV Energia' },
