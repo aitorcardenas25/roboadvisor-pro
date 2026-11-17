@@ -192,7 +192,15 @@ export function buildTaxReport(input: TaxTx[]): TaxReport {
       const net = r2(gains + losses);
       return { year, gains, losses, net, estimatedTax: net > 0 ? savingsTax(net) : 0, sales: ys, transfers: transfers.filter(t => Number(t.date.slice(0, 4)) === year) };
     }),
-    open: [...lots].flatMap(([isin, ls]) => ls.filter(l => l.qty > 1e-6).map(l => ({ isin, name: names.get(isin) ?? isin, quantity: r6(l.qty), cost: r2(l.cost), date: l.date }))),
+    // Lots del mateix fons i la mateixa data d'adquisició es mostren junts
+    open: [...lots].flatMap(([isin, ls]) => {
+      const byDate = new Map<string, Lot>();
+      for (const l of ls.filter(x => x.qty > 1e-6)) {
+        const e = byDate.get(l.date) ?? { qty: 0, cost: 0, date: l.date };
+        e.qty += l.qty; e.cost += l.cost; byDate.set(l.date, e);
+      }
+      return [...byDate.values()].map(l => ({ isin, name: names.get(isin) ?? isin, quantity: r6(l.qty), cost: r2(l.cost), date: l.date }));
+    }),
     warnings,
   };
 }
