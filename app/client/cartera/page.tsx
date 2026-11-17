@@ -11,6 +11,7 @@ import type {
   ClientPortfolio, ClientHolding, ClientTransaction, OperationType, PortfolioMetrics,
 } from '@/lib/clientPortfolios';
 import { computeMetrics } from '@/lib/clientPortfolios';
+import type { Valuation } from '@/lib/portfolioValuation';
 import { DataSourceBadge } from '@/components/DataSourceBadge';
 import { DataSourcePanel } from '@/components/DataSourcePanel';
 
@@ -284,13 +285,18 @@ function Tile({ label, value, color }: { label: string; value: string; color?: s
 // ─────────────────────────────────────────────────────────────────────────────
 
 const EvolutionChart = memo(function EvolutionChart({
-  portfolio, metrics,
-}: { portfolio: ClientPortfolio; metrics: PortfolioMetrics }) {
+  portfolio, metrics, valuation,
+}: { portfolio: ClientPortfolio; metrics: PortfolioMetrics; valuation?: Valuation | null }) {
+  // Primer, l'evolució calculada amb els valors liquidatius oficials dels fons;
+  // si no n'hi ha prou (falten preus), els snapshots que registra l'assessor.
+  const fromNavs = (valuation?.points.length ?? 0) >= 2;
   const data = useMemo(
-    () => [...portfolio.snapshots]
-      .sort((a, b) => a.date.localeCompare(b.date))
-      .map(s => ({ date: s.date, valor: s.totalValue })),
-    [portfolio.snapshots],
+    () => fromNavs
+      ? valuation!.points.map(p => ({ date: p.date, valor: p.value }))
+      : [...portfolio.snapshots]
+        .sort((a, b) => a.date.localeCompare(b.date))
+        .map(s => ({ date: s.date, valor: s.totalValue })),
+    [fromNavs, valuation, portfolio.snapshots],
   );
 
   const isPos = metrics.pnlEur >= 0;
@@ -302,7 +308,9 @@ const EvolutionChart = memo(function EvolutionChart({
       <div className="flex items-start justify-between mb-5">
         <div>
           <h3 className="text-white font-semibold text-sm">Evolució patrimonial</h3>
-          <p className="text-white/25 text-xs mt-0.5">Snapshots registrats per l&apos;assessor</p>
+          <p className="text-white/25 text-xs mt-0.5">
+            {fromNavs ? 'Calculada cada final de mes amb els valors liquidatius oficials dels fons' : 'Snapshots registrats per l\u2019assessor'}
+          </p>
         </div>
         {data.length >= 2 && (
           <span className="text-sm font-bold" style={{ color: col }}>{fPct(metrics.pnlPct)}</span>
@@ -349,7 +357,7 @@ const EvolutionChart = memo(function EvolutionChart({
           </AreaChart>
         </ResponsiveContainer>
       ) : (
-        <EmptyChart text="El gràfic apareixerà quan l'assessor registri snapshots de la cartera" />
+        <EmptyChart text="El gràfic apareixerà quan hi hagi preus oficials de tots els fons o l'assessor registri snapshots de la cartera" />
       )}
     </div>
   );
@@ -809,14 +817,16 @@ export default function ClientCarteraPage() {
   const [loading, setLoading]     = useState(true);
   const [tab, setTab]             = useState<Tab>('overview');
   const [panelOpen, setPanelOpen] = useState(false);
+  const [valuation, setValuation] = useState<Valuation | null>(null);
 
   useEffect(() => {
     if (status === 'unauthenticated') { router.push('/login'); return; }
     if (status === 'authenticated') {
       fetch('/api/client/portfolio')
         .then(r => r.json())
-        .then((d: { portfolio: ClientPortfolio | null }) => {
+        .then((d: { portfolio: ClientPortfolio | null; valuation?: Valuation | null }) => {
           setPortfolio(d.portfolio ?? null);
+          setValuation(d.valuation ?? null);
           setLoading(false);
         })
         .catch(() => setLoading(false));
@@ -912,7 +922,7 @@ export default function ClientCarteraPage() {
           <div className="space-y-5">
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
               <div className="lg:col-span-2 space-y-5">
-                <EvolutionChart portfolio={portfolio} metrics={metrics} />
+                <EvolutionChart portfolio={portfolio} metrics={metrics} valuation={valuation} />
                 <DistributionPanel portfolio={portfolio} total={metrics.currentValue} />
               </div>
               <div className="space-y-5">

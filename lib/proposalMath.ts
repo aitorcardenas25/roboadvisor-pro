@@ -53,6 +53,9 @@ export interface ClientProposal extends ProposalParams {
   approvedBy?: string;
   suitability?:         ProposalSuitability;  // resultat en el moment d'aprovar
   suitabilityOverride?: string;               // motiu si s'aprova tot i no ser idònia
+  appliedAt?:           string;               // quan s'ha passat a la cartera activa
+  appliedBy?:           string;
+  appliedPortfolioId?:  string;
 }
 
 // ─── Dades de rendiment ───────────────────────────────────────────────────────

@@ -49,6 +49,7 @@ export default function ClientProposal({ clientId }: { clientId: string }) {
   const [fundQuery, setFundQuery] = useState('');
   const [openNote, setOpenNote]   = useState<string | null>(null);
   const [overrideReason, setOverrideReason] = useState('');
+  const [applying, setApplying] = useState<{ id: string; date: string; amount: number; broker: string; problems?: string[] } | null>(null);
 
   const api = `/api/admin/clients/${clientId}/proposals`;
 
@@ -213,6 +214,25 @@ export default function ClientProposal({ clientId }: { clientId: string }) {
     setBusy(`${kind}-${p.id}`); setMsg(null);
     try { if (kind === 'pdf') await generatePdf(p); else await downloadExcel(p); }
     catch { setMsg({ ok: false, text: 'No s\'ha pogut descarregar' }); }
+    finally { setBusy(null); }
+  };
+
+  const onApply = async () => {
+    if (!applying) return;
+    const p = data.proposals.find(x => x.id === applying.id);
+    if (!p || !confirm(`Es crearan a la cartera activa ${p.items.filter(i => i.weight > 0).length} posicions per un total de ${eur(applying.amount)}, comprades al valor liquidatiu oficial del ${new Date(applying.date + 'T00:00:00').toLocaleDateString('ca-ES')} o anterior. Continuar?`)) return;
+    setBusy(`apply-${applying.id}`); setMsg(null);
+    try {
+      const res = await fetch(api, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'apply', id: applying.id, date: applying.date, amount: applying.amount, broker: applying.broker }),
+      });
+      const d = await res.json();
+      if (!res.ok) { setApplying(a => a && { ...a, problems: d.problems ?? [] }); setMsg({ ok: false, text: d.error ?? 'No s\'ha pogut passar a la cartera' }); return; }
+      setApplying(null);
+      setMsg({ ok: true, text: `Versió ${p.version} passada a la cartera activa: ${d.lines.length} posicions creades. Les trobaràs a "Cartera activa".` });
+      await load(false);
+    } catch { setMsg({ ok: false, text: 'Error de connexió' }); }
     finally { setBusy(null); }
   };
 
@@ -399,7 +419,44 @@ export default function ClientProposal({ clientId }: { clientId: string }) {
                     <button disabled={!!busy} onClick={() => fromHistory(p, 'excel')} className="text-[#c9a84c] hover:underline disabled:opacity-40">
                       {busy === `excel-${p.id}` ? 'Descarregant…' : 'Excel'}
                     </button>
+                    {p.appliedAt
+                      ? <span className="text-green-400/80">A la cartera des del {new Date(p.appliedAt).toLocaleDateString('ca-ES')}</span>
+                      : <button
+                          disabled={!!busy || data.holdings > 0}
+                          title={data.holdings > 0 ? 'La cartera activa ja té posicions: una reestructuració es fa a mà a "Cartera activa"' : undefined}
+                          onClick={() => setApplying(a => a?.id === p.id ? null : { id: p.id, date: new Date().toISOString().slice(0, 10), amount: p.initialAmount, broker: '' })}
+                          className="text-[#c9a84c] hover:underline disabled:opacity-40">
+                          Passar a cartera activa
+                        </button>}
                   </span>
+                )}
+                {applying?.id === p.id && (
+                  <div className="w-full mt-2 p-3 rounded-lg bg-white/5 border border-white/10 space-y-2">
+                    <p className="text-white/60">Es compra cada fons al seu valor liquidatiu oficial (Preus dels fons) de la data triada o de l&apos;últim dia anterior amb preu.</p>
+                    <div className="flex flex-wrap gap-3 items-end">
+                      <label className="flex flex-col gap-1 text-white/40">Data de compra
+                        <input type="date" className={input} value={applying.date} max={new Date().toISOString().slice(0, 10)}
+                          onChange={e => setApplying({ ...applying, date: e.target.value, problems: undefined })} />
+                      </label>
+                      <label className="flex flex-col gap-1 text-white/40">Import (€)
+                        <input type="number" min={0} step={100} className={input} value={applying.amount}
+                          onChange={e => setApplying({ ...applying, amount: Number(e.target.value), problems: undefined })} />
+                      </label>
+                      <label className="flex flex-col gap-1 text-white/40">Entitat
+                        <input type="text" className={input} value={applying.broker} placeholder="p. ex. MyInvestor"
+                          onChange={e => setApplying({ ...applying, broker: e.target.value })} />
+                      </label>
+                      <button disabled={!!busy || !(applying.amount > 0) || !applying.date} onClick={onApply}
+                        className="px-3 py-1.5 rounded-lg bg-[#c9a84c] text-[#0a1612] font-semibold disabled:opacity-40">
+                        {busy === `apply-${p.id}` ? 'Creant posicions…' : 'Crear les posicions'}
+                      </button>
+                    </div>
+                    {!!applying.problems?.length && (
+                      <ul className="list-disc pl-5 text-red-300 space-y-0.5">
+                        {applying.problems.map(x => <li key={x}>{x}</li>)}
+                      </ul>
+                    )}
+                  </div>
                 )}
               </li>
             ))}
