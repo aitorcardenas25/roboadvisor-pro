@@ -137,14 +137,26 @@ function stepsFor(h: ValuationHolding, txs: ValuationTx[]): Step[] {
  * d'aquell mes no surt (no s'inventa cap valor).
  */
 export function valuationSeries(holdings: ValuationHolding[], txs: ValuationTx[], navs: NavPoint[], today = new Date().toISOString().slice(0, 10)): Valuation {
-  const live = holdings.filter(h => h.quantity > 0);
+  // També les posicions ja venudes del tot: en dates passades formaven part de la cartera.
+  const traded = new Set(txs.filter(t => t.holdingId && (t.operationType === 'buy' || t.operationType === 'sell')).map(t => t.holdingId!));
+  const live = holdings.filter(h => h.quantity > 0 || traded.has(h.id));
   const by = navsByIsin(navs);
-  const missing = live.filter(h => !by.get(h.assetIsin.toUpperCase())?.length).map(h => h.assetName);
+  // Sense preus, o amb preus en una altra moneda (no es converteixen aquí), no es calcula res.
+  const missing = live.flatMap(h => {
+    const list = by.get(h.assetIsin.toUpperCase());
+    if (!list?.length) return [h.assetName];
+    const cur = list.find(p => p.currency.toUpperCase() !== 'EUR')?.currency;
+    return cur ? [`${h.assetName} (preus en ${cur})`] : [];
+  });
   if (!live.length || missing.length) return { points: [], missing, source: 'navs' };
 
   const steps = new Map(live.map(h => [h.id, stepsFor(h, txs)]));
   const first = [...steps.values()].flat().map(s => s.date).sort()[0];
-  const lastNav = live.map(h => by.get(h.assetIsin.toUpperCase())!.at(-1)!.date).sort()[0];   // el fons amb el preu més antic mana
+  // Fins a l'últim preu del fons que encara es té i que té el preu més antic
+  const held = live.filter(h => h.quantity > 0);
+  const lastNav = held.length
+    ? held.map(h => by.get(h.assetIsin.toUpperCase())!.at(-1)!.date).sort()[0]
+    : [...steps.values()].flat().map(s => s.date).sort().at(-1)!;
   const end = lastNav < today ? lastNav : today;
   const dates = [first, ...monthEnds(first, end).filter(d => d > first)];
   if (end > dates.at(-1)!) dates.push(end);   // mes en curs: fins a l'últim preu

@@ -3,8 +3,8 @@
 // Primera versió: només per a carteres buides (primera inversió). Una
 // reestructuració d'una cartera amb posicions es continua fent a mà.
 
-import { getProposal, markApplied } from './proposals';
-import { getPortfolioByClientId, createClientPortfolio, addHolding, addTransaction } from './clientPortfolios';
+import { getProposal, markApplied, unmarkApplied } from './proposals';
+import { getPortfolioByClientId, createClientPortfolio, deleteClientPortfolio, addHolding, addTransaction, removeHolding, removeTransaction } from './clientPortfolios';
 import { getNavs } from './fundNavs';
 import { planApplication, type ApplyLine } from './portfolioValuation';
 import type { NavPoint } from './navMath';
@@ -42,18 +42,37 @@ export async function applyProposal(input: {
   const latest = new Map<string, NavPoint>();
   for (const n of navs) { const k = n.isin.toUpperCase(); if (!latest.has(k) || latest.get(k)!.date < n.date) latest.set(k, n); }
 
-  for (const l of plan.lines) {
-    const last = latest.get(l.isin)!;
-    const h = await addHolding(portfolio.id, {
-      assetIsin: l.isin, assetName: l.name, assetCategory: l.category, broker: input.broker,
-      quantity: l.quantity, avgEntryPrice: l.nav, currentPrice: last.nav, priceLastUpdated: last.date,
-      priceSource: 'manual', currency: l.currency, notes: `Proposta v${p.version}: ${l.weight} %, VL del ${l.navDate}`,
-    });
-    await addTransaction(portfolio.id, {
-      holdingId: h.id, operationType: 'buy', ticker: l.isin, assetName: l.name, date: input.date,
-      quantity: l.quantity, priceEur: l.nav, totalEur: l.amount, commission: 0, broker: input.broker,
-      notes: `Proposta v${p.version}`,
-    });
+  // Supabase no permet una transacció des d'aquí: si alguna inserció falla,
+  // es desfà tot el que s'ha creat i la versió es pot tornar a passar.
+  const created: { holdings: string[]; txs: string[] } = { holdings: [], txs: [] };
+  try {
+    for (const l of plan.lines) {
+      const last = latest.get(l.isin)!;
+      const h = await addHolding(portfolio.id, {
+        assetIsin: l.isin, assetName: l.name, assetCategory: l.category, broker: input.broker,
+        quantity: l.quantity, avgEntryPrice: l.nav, currentPrice: last.nav, priceLastUpdated: last.date,
+        priceSource: 'manual', currency: l.currency, notes: `Proposta v${p.version}: ${l.weight} %, VL del ${l.navDate}`,
+      });
+      created.holdings.push(h.id);
+      const tx = await addTransaction(portfolio.id, {
+        holdingId: h.id, operationType: 'buy', ticker: l.isin, assetName: l.name, date: input.date,
+        quantity: l.quantity, priceEur: l.nav, totalEur: l.amount, commission: 0, broker: input.broker,
+        notes: `Proposta v${p.version}`,
+      });
+      created.txs.push(tx.id);
+    }
+  } catch (err) {
+    console.error('[proposalApply] error creant posicions, es desfà:', err instanceof Error ? err.message : err);
+    try {
+      for (const t of created.txs) await removeTransaction(t, portfolio.id);
+      for (const h of created.holdings) await removeHolding(h, portfolio.id);
+      if (!existing) await deleteClientPortfolio(portfolio.id);
+      await unmarkApplied(input.clientId, p.id);
+    } catch (undoErr) {
+      console.error('[proposalApply] no s\'ha pogut desfer del tot:', undoErr instanceof Error ? undoErr.message : undoErr);
+      return { ok: false, status: 500, error: 'Error creant les posicions i no s\'ha pogut desfer del tot. Revisa "Cartera activa" abans de tornar-ho a provar.' };
+    }
+    return { ok: false, status: 500, error: 'Error creant les posicions. No s\'ha desat res; torna-ho a provar.' };
   }
   return { ok: true, portfolioId: portfolio.id, lines: plan.lines };
 }

@@ -46,7 +46,7 @@ export async function buildPortfolioWorkbook(portfolio: ClientPortfolio, clientN
   e.addRow([]);
   if (!rows.length) {
     const why = valuation?.missing.length
-      ? `No es pot calcular: falten els valors liquidatius oficials de ${valuation.missing.join(', ')}.`
+      ? `No es pot calcular amb valors liquidatius oficials en EUR. Falten preus de: ${valuation.missing.join(', ')}.`
       : 'Encara no hi ha prou dades per calcular l\'evolució.';
     e.addRow([why]).font = { italic: true };
   } else {

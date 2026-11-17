@@ -115,3 +115,37 @@ describe('aggregatePeriods', () => {
     expect(aggregatePeriods([], 'month')).toEqual([]);
   });
 });
+
+describe('valuationSeries (revisió)', () => {
+  const A2 = 'IE00B03HD191', B2 = 'ES0114673033';
+  const navs2: NavPoint[] = [
+    nav(A2, '2026-08-31', 40), nav(A2, '2026-09-30', 42), nav(A2, '2026-10-30', 44),
+    nav(B2, '2026-08-31', 100), nav(B2, '2026-09-30', 95), nav(B2, '2026-10-31', 110),
+  ];
+
+  it('una posició venuda del tot continua comptant en les dates en què es tenia', () => {
+    const holdings = [
+      { id: 'h1', assetIsin: A2, assetName: 'Global', quantity: 100, avgEntryPrice: 40, createdAt: '2026-08-31' },
+      { id: 'h2', assetIsin: B2, assetName: 'Bestinfond', quantity: 0, avgEntryPrice: 100, createdAt: '2026-08-31' },
+    ];
+    const txs = [
+      { holdingId: 'h1', operationType: 'buy', date: '2026-08-31', quantity: 100, totalEur: 4000, commission: 0 },
+      { holdingId: 'h2', operationType: 'buy', date: '2026-08-31', quantity: 10, totalEur: 1000, commission: 0 },
+      { holdingId: 'h2', operationType: 'sell', date: '2026-09-30', quantity: 10, totalEur: 950, commission: 0 },
+    ];
+    const v = valuationSeries(holdings, txs, navs2, '2026-11-17');
+    expect(v.points).toEqual([
+      { date: '2026-08-31', value: 5000, invested: 5000 },
+      { date: '2026-09-30', value: 4200, invested: 4050 },
+      { date: '2026-10-30', value: 4400, invested: 4050 },
+    ]);
+  });
+
+  it('preus en una altra moneda: no es barregen amb euros', () => {
+    const v = valuationSeries(
+      [{ id: 'h1', assetIsin: A2, assetName: 'Global USD', quantity: 1, avgEntryPrice: 40, createdAt: '2026-08-31' }], [],
+      navs2.map(n => ({ ...n, currency: 'USD' })), '2026-11-17');
+    expect(v.points).toEqual([]);
+    expect(v.missing).toEqual(['Global USD (preus en USD)']);
+  });
+});

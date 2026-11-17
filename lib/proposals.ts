@@ -143,5 +143,17 @@ export async function markApplied(clientId: string, id: string, appliedBy: strin
   return !!data?.length;
 }
 
+/** Desfà markApplied si la creació de les posicions ha fallat (per poder-ho tornar a provar). */
+export async function unmarkApplied(clientId: string, id: string): Promise<void> {
+  const p = await getProposal(clientId, id);
+  if (!p?.appliedAt) return;
+  const now = new Date().toISOString();
+  const reverted: ClientProposal = { ...p, appliedAt: undefined, appliedBy: undefined, appliedPortfolioId: undefined, updatedAt: now };
+  const db = getDb();
+  if (!db) { const i = _mem.findIndex(x => x.id === id); _mem[i] = structuredClone(reverted); return; }
+  const { error } = await db.from('client_proposals').update({ data: dataOf(reverted), updated_at: now }).eq('id', id);
+  if (error) throw new Error(error.message);
+}
+
 /** Només per a tests. */
 export function __resetProposalsForTests() { _mem.length = 0; }
