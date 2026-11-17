@@ -96,6 +96,19 @@ const CURRENCIES = new Set(['EUR', 'USD', 'GBP', 'CHF', 'JPY', 'SEK', 'NOK', 'DK
 const HEADER_RE = /\b(isin|data|date|fecha|nav|vl|valor|preu|precio|price|moneda|currency|divisa|nom|name)\b/i;
 
 /**
+ * A una capçalera tipus Date,Open,High,Low,Close,Adj Close,Volume, l'índex de la
+ * columna amb el preu a fer servir: tancament ajustat si hi és, si no tancament o NAV.
+ */
+function priceHeaderColumn(cells: string[]): number | null {
+  const norm = cells.map(c => c.toLowerCase().replace(/[^a-z]/g, ''));
+  for (const want of ['adjclose', 'adjustedclose', 'nav', 'close']) {
+    const i = norm.indexOf(want);
+    if (i >= 0) return i;
+  }
+  return null;
+}
+
+/**
  * Llegeix files de preus. Cada línia: ISIN, data, valor liquidatiu i, opcional,
  * moneda i nom, en qualsevol ordre i separats per tabulador (Excel), punt i coma,
  * coma o espais. Si la línia no porta ISIN es fa servir `defaultIsin`.
@@ -105,14 +118,32 @@ export function parseNavText(text: string, opts: { defaultIsin?: string; default
   const defIsin = opts.defaultIsin?.trim().toUpperCase() || undefined;
   const defCur  = (opts.defaultCurrency?.trim().toUpperCase() || 'EUR');
   const seen = new Map<string, number>();
+  // Columna del preu quan el fitxer porta capçalera amb diverses columnes de
+  // preu (descàrregues de Yahoo, EODHD, Investing: Date,Open,High,Low,Close,
+  // Adj Close,Volume). Sense això es llegiria l'obertura en lloc del tancament.
+  let priceCol: number | null = null;
 
   text.split(/\r?\n/).forEach((raw, idx) => {
     const line = idx + 1;
     if (!raw.trim()) return;
     const cells = splitCells(raw);
+    const headerCells = raw.split(/[\t;,]/).map(c => c.trim()).filter(Boolean);
+    if (priceCol === null && headerCells.some(c => /^open$/i.test(c))) {
+      const col = priceHeaderColumn(headerCells);
+      if (col !== null) { priceCol = col; return; }
+    }
     let isin: string | undefined, date: string | null = null, nav: number | null = null, currency: string | undefined;
     const words: string[] = [];
-    for (const c of cells) {
+    if (priceCol !== null && cells.length > priceCol) {
+      nav = parseNavNumber(cells[priceCol]);
+      for (const c of cells) {
+        const up = c.toUpperCase();
+        if (!isin && ISIN_RE.test(up)) isin = up;
+        else if (!date && parseNavDate(c)) date = parseNavDate(c);
+        else if (!currency && CURRENCIES.has(up)) currency = up;
+      }
+    }
+    for (const c of priceCol !== null ? [] : cells) {
       const up = c.toUpperCase();
       if (!isin && ISIN_RE.test(up)) { isin = up; continue; }
       if (!date) { const d = parseNavDate(c); if (d) { date = d; continue; } }
@@ -132,7 +163,7 @@ export function parseNavText(text: string, opts: { defaultIsin?: string; default
     if (nav === null)     { res.errors.push({ line, message: 'Falta el valor liquidatiu' }); return; }
     if (nav <= 0)         { res.errors.push({ line, message: `El valor liquidatiu ha de ser més gran que 0 (${nav})` }); return; }
     if (date > new Date().toISOString().slice(0, 10)) { res.errors.push({ line, message: `La data ${fmtDate(date)} és futura` }); return; }
-    const name = words.filter(w => w.length > 2 && !HEADER_RE.test(w)).join(' ').slice(0, 200) || undefined;
+    const name = words.filter(w => w.length > 2 && !HEADER_RE.test(w) && parseNavNumber(w) === null).join(' ').slice(0, 200) || undefined;
     const row: NavPoint = { isin, date, nav, currency: currency ?? defCur, ...(name ? { name } : {}) };
     const key = `${isin}|${date}`;
     const prev = seen.get(key);
