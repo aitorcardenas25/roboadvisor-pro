@@ -34,7 +34,7 @@ function EvolutionSvg({ points }: { points: { date: string; value: number; inves
       <path d={line('invested')} fill="none" stroke="currentColor" strokeOpacity={0.35} strokeDasharray="4 4" strokeWidth={1.2} />
       <path d={line('value')} fill="none" stroke="#2d9d6a" strokeWidth={2} />
       {points.map((p, i) => (i % Math.ceil(points.length / 7) === 0 || i === points.length - 1) && (
-        <text key={p.date} x={x(i)} y={H - 6} textAnchor="middle" fontSize={10} fill="currentColor" fillOpacity={0.45}>{mon(p.date)}</text>
+        <text key={p.date} x={x(i)} y={H - 6} textAnchor={i === points.length - 1 ? 'end' : i === 0 ? 'start' : 'middle'} fontSize={10} fill="currentColor" fillOpacity={0.45}>{mon(p.date)}</text>
       ))}
     </svg>
   );
