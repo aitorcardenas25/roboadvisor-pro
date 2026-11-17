@@ -36,14 +36,12 @@ export const ADVISOR_FUNDS: UniverseFund[] = [
   { isin: 'LU0625737910', name: 'Pictet China Index P EUR',                                 category: 'RV Xina' },
   // Fons indexats nucli de les carteres proposades a les sessions presencials
   // (Drive FACTOR OTC, document APUNTS, feb-mar 2026). Afegits 2026-11-09.
-  // Noms tal com consten al document; cal confirmar classe i dades amb la fitxa.
+  // Noms revisats amb la web de la gestora el 2026-11-17.
   { isin: 'LU0996182563', name: 'Amundi Index MSCI World AE Acc',                           category: 'RV Global' },
   { isin: 'IE0008248803', name: 'Vanguard Eurozone Stock Index Fund EUR Acc',               category: 'RV Eurozona' },
-  { isin: 'LU0389811885', name: 'Amundi Index MSCI Europe AE Acc',                          category: 'RV Europa' },
-  { isin: 'LU0996177134', name: 'Amundi Index MSCI Emerging Markets AE Acc',                category: 'RV Emergents' },
-  { isin: 'IE00B03HCZ61', name: 'Vanguard U.S. Small-Cap Index Fund',                       category: 'RV EUA Small Caps' },
-  { isin: 'IE00B42W3S00', name: 'Vanguard Global Small-Cap Index Fund (classe IE00B42W3S00)', category: 'RV Global Small Caps' },
-  { isin: 'IE00BQQP9G91', name: 'VanEck Gold Miners UCITS ETF',                             category: 'RV Mineres d\'or' },
+  { isin: 'LU0389811885', name: 'Amundi Core MSCI Europe AE Acc',                           category: 'RV Europa' },
+  { isin: 'LU0996177134', name: 'Amundi Core MSCI Emerging Markets AE Acc',                 category: 'RV Emergents' },
+  { isin: 'IE00BQQP9G91', name: 'VanEck Junior Gold Miners UCITS ETF',                      category: 'RV Mineres d\'or' },
   // Fons i ETF amb històric oficial de la gestora carregat a fund_navs
   // (2026-11-17, /mnt/project-files/fons/cobertura-historics.md). Nom oficial
   // de la classe segons la web de la gestora.
@@ -90,6 +88,8 @@ export const ADVISOR_FUNDS: UniverseFund[] = [
 // distribució s'hi deixen quan hi ha classe d'acumulació: el preu baixa en
 // pagar dividends i la rendibilitat calculada sortiria més baixa que la real.
 export const ALTERNATE_CLASSES: UniverseFund[] = [
+  { isin: 'IE00B03HCZ61', name: 'Vanguard Global Stock Index Fund Investor EUR Acc',       category: 'RV Global' },
+  { isin: 'IE00B42W3S00', name: 'Vanguard Global Small-Cap Index Fund Investor EUR Acc',   category: 'RV Global Small Caps' },
   { isin: 'LU0714179727', name: 'JPMorgan IF Global Dividend Fund A (div) EUR',             category: 'RV Global Dividends' },
   { isin: 'DE0009848119', name: 'DWS Top Dividende LD',                                     category: 'RV Global Dividends' },
   { isin: 'IE00B4468526', name: 'Polar Capital Global Technology R EUR Dist',               category: 'RV Tecnologia' },
