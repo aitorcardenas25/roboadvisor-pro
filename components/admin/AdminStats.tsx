@@ -10,6 +10,7 @@ import {
 } from 'recharts';
 import type { ClientPortfolio } from '@/lib/clientPortfolios';
 import type { PortfolioAlert } from '@/lib/portfolioAlertsServer';
+import type { DashboardStats } from '@/lib/dashboardStats';
 
 interface Stats {
   total:  number;
@@ -36,21 +37,9 @@ interface Alert {
 const RISK_COLORS = ['#10b981','#3b82f6','#f59e0b','#f97316','#ef4444'];
 const RISK_LABELS = ['Risc 1 — Molt baix','Risc 2 — Baix','Risc 3 — Moderat','Risc 4 — Alt','Risc 5 — Molt alt'];
 
-const ACTIVITY_DATA = [
-  { mes: 'Gen', informes: 4,  clients: 3  },
-  { mes: 'Feb', informes: 7,  clients: 6  },
-  { mes: 'Mar', informes: 5,  clients: 4  },
-  { mes: 'Abr', informes: 12, clients: 9  },
-  { mes: 'Mai', informes: 8,  clients: 7  },
-  { mes: 'Jun', informes: 15, clients: 12 },
-];
-
-const PROFILE_DATA = [
-  { name: 'Conservador', value: 18, color: '#10b981' },
-  { name: 'Moderat',     value: 35, color: '#3b82f6' },
-  { name: 'Dinàmic',     value: 30, color: '#f59e0b' },
-  { name: 'Agressiu',    value: 17, color: '#ef4444' },
-];
+const PROFILE_COLORS: Record<string, string> = {
+  conservador: '#10b981', moderat: '#3b82f6', dinamic: '#f59e0b', agressiu: '#ef4444',
+};
 
 const QUICK_ACTIONS: { icon: string; label: string; sub: string; section: Section | null; color: string }[] = [
   { icon: '👥', label: 'Clients',       sub: 'Gestionar accés',          section: 'clients',          color: 'border-blue-500/20 bg-blue-500/5 hover:bg-blue-500/10'     },
@@ -69,19 +58,20 @@ const ALERT_STYLES = {
   info:    { border: 'border-blue-500/20',  bg: 'bg-blue-500/5',   dot: 'bg-blue-400',  text: 'text-blue-400',  icon: 'i' },
 };
 
-function DemoBadge() {
-  return (
-    <span className="text-[9px] px-1.5 py-0.5 rounded border border-amber-500/30 bg-amber-500/8 text-amber-400/80 font-semibold uppercase tracking-wider ml-2">
-      Demo
-    </span>
-  );
-}
-
 export default function AdminStats({ stats, onNavigate }: Props) {
   const [alerts, setAlerts]           = useState<Alert[]>([]);
   const [alertsLoading, setAlertsLoading] = useState(true);
   const [portfolioCount, setPortfolioCount] = useState<number | null>(null);
   const [clientCount, setClientCount]       = useState<number | null>(null);
+  const [dash, setDash]                     = useState<DashboardStats | null>(null);
+  const [dashError, setDashError]           = useState(false);
+
+  useEffect(() => {
+    fetch('/api/admin/dashboard-stats')
+      .then(r => r.ok ? r.json() as Promise<DashboardStats> : Promise.reject(new Error(String(r.status))))
+      .then(setDash)
+      .catch(() => setDashError(true));
+  }, []);
 
   useEffect(() => {
     const load = async () => {
@@ -289,40 +279,48 @@ export default function AdminStats({ stats, onNavigate }: Props) {
           initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }}>
           <div className="flex items-start justify-between mb-0.5">
             <h3 className="text-white font-semibold text-sm">Activitat mensual</h3>
-            <DemoBadge />
           </div>
-          <p className="text-white/40 text-xs mb-4">Informes generats i clients atesos</p>
+          <p className="text-white/40 text-xs mb-4">Clients nous i propostes aprovades · últims 6 mesos · Dades reals</p>
+          {!dash ? (
+            <p className="text-white/30 text-xs h-[190px] flex items-center justify-center">{dashError ? 'No s\'han pogut carregar les dades' : 'Carregant…'}</p>
+          ) : (
           <ResponsiveContainer width="100%" height={190}>
-            <BarChart data={ACTIVITY_DATA} margin={{ left: -15 }}>
+            <BarChart data={dash.activity} margin={{ left: -15 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.04)" />
               <XAxis dataKey="mes" tick={{ fontSize: 11, fill: '#6b7280' }} axisLine={false} tickLine={false} />
-              <YAxis tick={{ fontSize: 10, fill: '#6b7280' }} axisLine={false} tickLine={false} />
+              <YAxis tick={{ fontSize: 10, fill: '#6b7280' }} axisLine={false} tickLine={false} allowDecimals={false} />
               <Tooltip {...tooltipStyle} />
               <Legend wrapperStyle={{ fontSize: 11, color: '#9ca3af' }} />
-              <Bar dataKey="informes" name="Informes" fill="#c9a84c" radius={[4,4,0,0]} />
-              <Bar dataKey="clients"  name="Clients"  fill="#2d6a4f" radius={[4,4,0,0]} />
+              <Bar dataKey="propostes" name="Propostes aprovades" fill="#c9a84c" radius={[4,4,0,0]} />
+              <Bar dataKey="clients"   name="Clients nous"        fill="#2d6a4f" radius={[4,4,0,0]} />
             </BarChart>
           </ResponsiveContainer>
+          )}
         </motion.div>
 
         <motion.div className="bg-[#0d1f1a] border border-white/10 rounded-xl p-5"
           initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.35 }}>
           <div className="flex items-start justify-between mb-0.5">
             <h3 className="text-white font-semibold text-sm">Distribució per perfil</h3>
-            <DemoBadge />
           </div>
-          <p className="text-white/40 text-xs mb-4">Perfils dels clients de la plataforma</p>
+          <p className="text-white/40 text-xs mb-4">Perfil de l&apos;última proposta aprovada de cada client · Dades reals</p>
+          {!dash || dash.profiles.length === 0 ? (
+            <p className="text-white/30 text-xs h-[190px] flex items-center justify-center text-center px-6">
+              {dashError ? 'No s\'han pogut carregar les dades' : !dash ? 'Carregant…' : 'Encara no hi ha cap proposta aprovada.'}
+            </p>
+          ) : (
           <ResponsiveContainer width="100%" height={190}>
             <PieChart>
-              <Pie data={PROFILE_DATA} dataKey="value" nameKey="name"
+              <Pie data={dash.profiles} dataKey="value" nameKey="name"
                 cx="50%" cy="50%" innerRadius={45} outerRadius={72} paddingAngle={3}>
-                {PROFILE_DATA.map((e, i) => <Cell key={i} fill={e.color} stroke="transparent" />)}
+                {dash.profiles.map(e => <Cell key={e.profile} fill={PROFILE_COLORS[e.profile]} stroke="transparent" />)}
               </Pie>
-              <Tooltip {...tooltipStyle} formatter={(v) => [`${v}%`, '']} />
+              <Tooltip {...tooltipStyle} formatter={(v) => [`${v} client${Number(v) === 1 ? '' : 's'}`, '']} />
               <Legend wrapperStyle={{ fontSize: 11 }}
                 formatter={(v) => <span style={{ color: '#9ca3af' }}>{v}</span>} />
             </PieChart>
           </ResponsiveContainer>
+          )}
         </motion.div>
 
         <motion.div className="bg-[#0d1f1a] border border-white/10 rounded-xl p-5"
