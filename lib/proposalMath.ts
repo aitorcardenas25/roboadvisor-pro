@@ -7,7 +7,7 @@
 // Editar després d'aprovar crea una versió nova (reestructuració).
 
 import { FINANCIAL_PRODUCTS } from './products';
-import { ADVISOR_FUNDS } from './fundUniverse';
+import { ADVISOR_FUNDS, ALTERNATE_CLASSES } from './fundUniverse';
 import type { ManualPortfolioInput } from './manualReport';
 import type { NavPerformance } from './navMath';
 
@@ -122,6 +122,7 @@ export function fundToItem(rawIsin: string, weight = 0, navs: NavPerformanceMap 
 export function fundOptions(): { isin: string; name: string; category: string; source: 'advisor' | 'catalog' }[] {
   const seen = new Set<string>();
   const out: { isin: string; name: string; category: string; source: 'advisor' | 'catalog' }[] = [];
+  for (const f of ALTERNATE_CLASSES) seen.add(f.isin); // es tria la classe principal del fons
   for (const f of ADVISOR_FUNDS) { seen.add(f.isin); out.push({ ...f, source: 'advisor' }); }
   for (const p of FINANCIAL_PRODUCTS) {
     const isin = p.isin?.toUpperCase();

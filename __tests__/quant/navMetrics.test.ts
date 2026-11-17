@@ -45,6 +45,26 @@ describe('parseNavText', () => {
     ]);
   });
 
+  it('en descàrregues tipus Yahoo/EODHD (Open,High,Low,Close…) llegeix el tancament ajustat, no l\'obertura', () => {
+    const csv = 'Date,Open,High,Low,Close,Adjusted_close,Volume\n2026-11-12,130.8,131.86,130.24,131.63,131.63,387988\n2026-11-13,130.905,131.755,129.85,130.44,130.44,323081';
+    const r = parseNavText(csv, { defaultIsin: ISIN });
+    expect(r.errors).toEqual([]);
+    expect(r.rows).toEqual([
+      { isin: ISIN, date: '2026-11-12', nav: 131.63, currency: 'EUR' },
+      { isin: ISIN, date: '2026-11-13', nav: 130.44, currency: 'EUR' },
+    ]);
+    const y = parseNavText('Date,Open,High,Low,Close,Adj Close,Volume\n2026-11-13,10,11,9,10.5,10.2,100', { defaultIsin: ISIN });
+    expect(y.rows[0].nav).toBe(10.2);
+    // Cel·la de preu buida: error, no s'agafa una altra columna (el volum)
+    const e = parseNavText('Date,Open,High,Low,Close,Adj Close,Volume\n2026-11-13,10,11,9,10.5,,100', { defaultIsin: ISIN });
+    expect(e.rows).toEqual([]);
+    expect(e.errors[0].message).toMatch(/valor liquidatiu/);
+  });
+
+  it('no fa servir números sobrants com a nom del fons', () => {
+    expect(parseNavText(`${ISIN};2026-10-31;412,35;413,00`).rows[0].name).toBeUndefined();
+  });
+
   it('accepta punt i coma, coma i espais, i ISIN per defecte', () => {
     expect(parseNavText(`${ISIN};2026-10-31;412,35`).rows[0].nav).toBeCloseTo(412.35);
     expect(parseNavText(`${ISIN},2026-10-31,412.35`).rows[0].nav).toBeCloseTo(412.35);
