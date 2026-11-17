@@ -112,7 +112,7 @@ export function computeMetrics(p: ClientPortfolio): PortfolioMetrics {
     netContributions: Math.round(netContributions * 100) / 100,
     pnlEur:           Math.round(pnlEur           * 100) / 100,
     pnlPct:           totalInvested > 0 ? Math.round((pnlEur / totalInvested) * 10000) / 100 : 0,
-    holdingCount:     p.holdings.length,
+    holdingCount:     p.holdings.filter(h => h.quantity > 0).length,   // les venudes del tot no compten
     lastUpdated:      lastUpdated || null,
   };
 }

@@ -858,7 +858,7 @@ export default function ClientCarteraPage() {
   const metrics         = computeMetrics(portfolio);
   const isPending       = (h: ClientHolding) =>
     h.priceSource === 'pending' || (h.currentPrice === 0 && h.quantity === 0);
-  const activeHoldings  = portfolio.holdings.filter(h => !isPending(h));
+  const activeHoldings  = portfolio.holdings.filter(h => !isPending(h) && h.quantity > 0);   // les venudes del tot no surten
   const pendingHoldings = portfolio.holdings.filter(h => isPending(h));
   const visibleNotes    = portfolio.advisorNotes.filter(n => n.isVisibleToClient);
 

@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import PortfolioExcelButton from '@/components/PortfolioExcelButton';
 import PortfolioDrift from './PortfolioDrift';
-import type { ClientPortfolio } from '@/lib/clientPortfolios';
+import { computeMetrics, type ClientPortfolio } from '@/lib/clientPortfolios';
 import type { Lead } from '@/lib/leads';
 import type { ReportRecord } from '@/lib/reportRegistry';
 import type { MonthlyReportRecord } from '@/lib/monthlyReports';
@@ -95,9 +95,12 @@ export default function ClientFile({
 
   const { user, lead, portfolio } = data;
 
-  const totalValue = portfolio?.holdings.reduce((s, h) => s + h.currentPrice * h.quantity, 0) ?? 0;
-  const totalInvested = portfolio?.holdings.reduce((s, h) => s + h.avgEntryPrice * h.quantity, 0) ?? 0;
-  const pnl = totalValue - totalInvested;
+  // Rendiment total (inclou el guany de les vendes): valor actual − aportacions netes.
+  const metrics = portfolio ? computeMetrics(portfolio) : null;
+  const totalValue = metrics?.currentValue ?? 0;
+  const totalInvested = metrics?.totalInvested ?? 0;
+  const pnl = metrics?.pnlEur ?? 0;
+  const openHoldings = portfolio?.holdings.filter(h => h.quantity > 0) ?? [];
 
   return (
     <div>
@@ -266,9 +269,9 @@ export default function ClientFile({
                     </div>
                   </div>
                   <div className="space-y-2">
-                    {portfolio.holdings.length === 0 ? (
+                    {openHoldings.length === 0 ? (
                       <p className="text-white/30 text-sm text-center py-4">Sense posicions encara.</p>
-                    ) : portfolio.holdings.map(h => {
+                    ) : openHoldings.map(h => {
                       const val = h.currentPrice * h.quantity;
                       const w   = totalValue > 0 ? (val / totalValue) * 100 : 0;
                       return (

@@ -71,7 +71,7 @@ export async function buildPortfolioWorkbook(portfolio: ClientPortfolio, clientN
     { header: 'Data del preu', width: 14 }, { header: 'Valor (€)', width: 16 }, { header: 'Pes (%)', width: 9 },
   ];
   header(p.getRow(1));
-  for (const h of portfolio.holdings) {
+  for (const h of portfolio.holdings.filter(x => x.quantity > 0)) {   // les venudes del tot són a "Operacions"
     const value = h.currentPrice * h.quantity;
     const row = p.addRow([
       h.assetIsin, h.assetName, h.assetCategory, h.broker, h.quantity, h.avgEntryPrice, h.currentPrice,
