@@ -38,7 +38,7 @@ function download(blob: Blob, name: string) {
   setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
 
-export default function ClientProposal({ clientId }: { clientId: string }) {
+export default function ClientProposal({ clientId, onApplied }: { clientId: string; onApplied?: () => void }) {
   const [data, setData]       = useState<Data | null>(null);
   const [error, setError]     = useState('');
   const [params, setParams]   = useState<ProposalParams | null>(null);
@@ -232,6 +232,7 @@ export default function ClientProposal({ clientId }: { clientId: string }) {
       setApplying(null);
       setMsg({ ok: true, text: `Versió ${p.version} passada a la cartera activa: ${d.lines.length} posicions creades. Les trobaràs a "Cartera activa".` });
       await load(false);
+      onApplied?.();   // la fitxa torna a carregar la cartera
     } catch { setMsg({ ok: false, text: 'Error de connexió' }); }
     finally { setBusy(null); }
   };

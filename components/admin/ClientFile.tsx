@@ -219,7 +219,7 @@ export default function ClientFile({
 
         {/* IMPORTAR EXCEL */}
         {tab === 'import' && <ClientImport clientId={clientId} onImported={() => load(true)} />}
-        {tab === 'proposal' && <ClientProposal clientId={clientId} />}
+        {tab === 'proposal' && <ClientProposal clientId={clientId} onApplied={() => load(true)} />}
 
         {/* QÜESTIONARI */}
         {tab === 'questionnaire' && (
