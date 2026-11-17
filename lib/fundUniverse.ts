@@ -86,6 +86,16 @@ export const ADVISOR_FUNDS: UniverseFund[] = [
   { isin: 'ES0159201013', name: 'Magallanes Iberian Equity FI Clase M',                   category: 'RV Espanya i Portugal' },
   { isin: 'ES0159259011', name: 'Magallanes European Equity FI Clase M',                  category: 'RV Europa (value)' },
   { isin: 'ES0159202011', name: 'Magallanes Microcaps Europe FI Clase B',                 category: 'RV Europa Small Caps' },
+  // Bestinver (classe única retail). Valors liquidatius mensuals oficials de
+  // bestinver.es (2026-11-17). Norteamèrica només té historial des d'oct. 2022.
+  { isin: 'ES0114673033', name: 'Bestinfond FI',                                          category: 'RV Global (value)' },
+  { isin: 'ES0114638036', name: 'Bestinver Internacional FI',                             category: 'RV Global (value)' },
+  { isin: 'ES0114561006', name: 'Bestinver Grandes Compañías FI',                         category: 'RV Global' },
+  { isin: 'ES0183793001', name: 'Bestinver Megatendencias FI',                            category: 'RV Global (temàtic)' },
+  { isin: 'ES0147622031', name: 'Bestinver Bolsa FI',                                     category: 'RV Espanya i Portugal' },
+  { isin: 'ES0112763000', name: 'Bestinver Norteamérica FI',                              category: 'RV EUA' },
+  { isin: 'ES0114675038', name: 'Bestinver Renta FI',                                     category: 'RF Euro' },
+  { isin: 'ES0183091000', name: 'Bestinver Corto Plazo FI',                               category: 'RF Curt termini' },
   { isin: 'IE00B18GC888', name: 'Vanguard Global Bond Index Fund EUR Hedged Acc',           category: 'RF Global (cobert EUR)' },
   { isin: 'IE00BDBRDM35', name: 'iShares Core Global Aggregate Bond UCITS ETF EUR Hedged Acc', category: 'RF Global (cobert EUR)' },
   { isin: 'IE0007472115', name: 'Vanguard Euro Government Bond Index Fund EUR Acc',         category: 'RF Govern Euro' },
