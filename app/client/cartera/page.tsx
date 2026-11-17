@@ -12,6 +12,7 @@ import type {
 } from '@/lib/clientPortfolios';
 import { computeMetrics } from '@/lib/clientPortfolios';
 import type { Valuation } from '@/lib/portfolioValuation';
+import TaxReportView from '@/components/TaxReportView';
 import PortfolioExcelButton from '@/components/PortfolioExcelButton';
 import { DataSourceBadge } from '@/components/DataSourceBadge';
 import { DataSourcePanel } from '@/components/DataSourcePanel';
@@ -826,7 +827,7 @@ function EmptyPortfolio({ name }: { name: string }) {
 // MAIN PAGE
 // ─────────────────────────────────────────────────────────────────────────────
 
-type Tab = 'overview' | 'posicions' | 'moviments' | 'informes' | 'notes';
+type Tab = 'overview' | 'posicions' | 'moviments' | 'informes' | 'fiscal' | 'notes';
 
 export default function ClientCarteraPage() {
   const { data: session, status } = useSession();
@@ -868,6 +869,7 @@ export default function ClientCarteraPage() {
     { id: 'posicions', label: 'Posicions',  cnt: activeHoldings.length        },
     { id: 'moviments', label: 'Moviments',  cnt: portfolio.transactions.length || undefined },
     { id: 'informes',  label: 'Informes'                                       },
+    { id: 'fiscal',    label: 'Fiscalitat'                                     },
     { id: 'notes',     label: 'Notes',      cnt: visibleNotes.length || undefined },
   ];
 
@@ -1083,6 +1085,9 @@ export default function ClientCarteraPage() {
 
         {/* ── INFORMES ── */}
         {tab === 'informes' && <ReportsSection portfolioId={portfolio.id} />}
+
+        {/* FISCALITAT */}
+        {tab === 'fiscal' && <TaxReportView url="/api/client/tax-report" />}
 
         {/* ── NOTES ── */}
         {tab === 'notes' && (

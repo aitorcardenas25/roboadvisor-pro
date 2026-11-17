@@ -55,7 +55,7 @@ export default function ClientProposal({ clientId, onApplied }: { clientId: stri
   const [fundQuery, setFundQuery] = useState('');
   const [openNote, setOpenNote]   = useState<string | null>(null);
   const [overrideReason, setOverrideReason] = useState('');
-  const [applying, setApplying] = useState<{ id: string; date: string; amount: number; broker: string; problems?: string[]; preview?: ApplyPreview } | null>(null);
+  const [applying, setApplying] = useState<{ id: string; date: string; amount: number; broker: string; transfer?: boolean; problems?: string[]; preview?: ApplyPreview } | null>(null);
   const rebalance = (data?.holdings ?? 0) > 0;   // la cartera ja té posicions → reestructuració
 
   const api = `/api/admin/clients/${clientId}/proposals`;
@@ -242,7 +242,7 @@ export default function ClientProposal({ clientId, onApplied }: { clientId: stri
     try {
       const res = await fetch(api, {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action: 'apply', id: applying.id, date: applying.date, amount: applying.amount, broker: applying.broker, dryRun }),
+        body: JSON.stringify({ action: 'apply', id: applying.id, date: applying.date, amount: applying.amount, broker: applying.broker, transfer: rebalance && applying.transfer !== false, dryRun }),
       });
       const d = await res.json();
       if (!res.ok) { setApplying(a => a && { ...a, problems: d.problems ?? [], preview: undefined }); setMsg({ ok: false, text: d.error ?? 'No s\'ha pogut passar a la cartera' }); return; }
@@ -471,6 +471,13 @@ export default function ClientProposal({ clientId, onApplied }: { clientId: stri
                         <input type="text" className={input} value={applying.broker} placeholder="p. ex. MyInvestor"
                           onChange={e => setApplying({ ...applying, broker: e.target.value })} />
                       </label>
+                      {rebalance && (
+                        <label className="flex items-center gap-2 text-white/60 pb-1.5" title="Els traspassos entre fons no tributen (art. 94 LIRPF); el fons nou hereta el cost i la data. Els ETF no es poden traspassar.">
+                          <input type="checkbox" checked={applying.transfer !== false}
+                            onChange={e => setApplying({ ...applying, transfer: e.target.checked })} />
+                          Com a traspassos (no tributen)
+                        </label>
+                      )}
                       <button disabled={!!busy || !applying.date || (!rebalance && !(applying.amount > 0)) || applying.amount < 0} onClick={() => onApply(true)}
                         className="px-3 py-1.5 rounded-lg bg-white/10 text-white hover:bg-white/15 disabled:opacity-40">
                         {busy === `apply-${p.id}` && !applying.preview ? 'Calculant…' : 'Calcular les operacions'}
@@ -515,6 +522,13 @@ export default function ClientProposal({ clientId, onApplied }: { clientId: stri
                               </tbody>
                             </table>
                           </div>
+                        )}
+                        {applying.preview.mode === 'rebalance' && applying.preview.lines.length > 0 && (
+                          <p className="text-white/50">
+                            {applying.transfer !== false
+                              ? 'Es registraran com a traspassos entre fons: no tributen i el fons nou hereta el cost i la data d\'adquisició. Si hi ha algun ETF, la seva venda sí que tributa.'
+                              : 'Es registraran com a vendes i compres: les vendes amb guany tributen a la renda d\'aquest any.'}
+                          </p>
                         )}
                         {applying.preview.lines.length > 0 && (
                           <button disabled={!!busy} onClick={() => onApply(false)}

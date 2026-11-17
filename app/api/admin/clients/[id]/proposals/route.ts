@@ -61,6 +61,7 @@ const PostSchema = z.discriminatedUnion('action', [
     amount: z.number().min(0).max(1e9),   // primera inversió: import; reestructuració: aportació nova (pot ser 0)
     broker: z.string().trim().max(100).default(''),
     dryRun: z.boolean().default(false),   // només calcula les operacions
+    transfer: z.boolean().default(false), // reestructuració com a traspassos entre fons
   }),
 ]);
 
@@ -150,7 +151,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     if (body.date > new Date().toISOString().slice(0, 10)) return NextResponse.json({ error: 'La data de compra no pot ser futura' }, { status: 400 });
     const res = await applyProposal({
       clientId: id, clientName: ctx.user.name, proposalId: body.id, date: body.date,
-      amount: body.amount, broker: body.broker, by: session.user?.email ?? 'admin', dryRun: body.dryRun,
+      amount: body.amount, broker: body.broker, by: session.user?.email ?? 'admin', dryRun: body.dryRun, transfer: body.transfer,
     });
     if (!res.ok) return NextResponse.json({ error: res.error, problems: res.problems }, { status: res.status });
     if (!res.dryRun) logAuditEvent('proposal.applied', {

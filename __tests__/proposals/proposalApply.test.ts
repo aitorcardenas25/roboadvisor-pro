@@ -7,6 +7,7 @@ import { applyProposal } from '@/lib/proposalApply';
 import { upsertNavs, __resetNavsForTests } from '@/lib/fundNavs';
 import { getPortfolioByClientId, computeMetrics, updateHolding, claimPortfolio } from '@/lib/clientPortfolios';
 import { alertFor } from '@/lib/portfolioAlertsServer';
+import { taxReportOf } from '@/lib/taxReportServer';
 import { valuationSeries } from '@/lib/portfolioValuation';
 
 const A = 'IE00B03HD191', B = 'ES0114673033';
@@ -164,5 +165,31 @@ describe('applyProposal (memòria)', () => {
     expect((await applyProposal({ clientId: 'apply-10', clientName: 'T', proposalId: d.id, date: '2026-10-30', amount: 0, broker: '', by: 'x' })).ok).toBe(true);
     const after = (await getPortfolioByClientId('apply-10'))!.holdings.find(h => h.id === hA.id)!;
     expect([after.currentPrice, after.priceLastUpdated]).toEqual([45.5, '2026-11-14']);
+  });
+
+  it('reestructuració com a traspassos: no hi ha cap venda que tributi i el fons nou hereta el cost', async () => {
+    const base = { clientId: 'apply-11', clientName: 'U', broker: '', by: 'x' };
+    const p1 = await approved('apply-11');
+    await applyProposal({ ...base, proposalId: p1.id, date: '2026-09-30', amount: 10000 });
+    const d = await saveDraft('apply-11', { ...params, items: [item(A, 100)] });
+    const a2 = await approveProposal('apply-11', d.id, 'x'); if (!a2.ok) throw new Error(a2.error);
+    expect((await applyProposal({ ...base, proposalId: d.id, date: '2026-10-30', amount: 0, transfer: true })).ok).toBe(true);
+
+    const tax = taxReportOf((await getPortfolioByClientId('apply-11'))!);
+    expect(tax.years).toHaveLength(1);
+    expect(tax.years[0]).toMatchObject({ year: 2026, net: 0, sales: [] });
+    expect(tax.years[0].transfers[0].deferredGain).toBe(631.58);   // Bestinfond: 4.631,58 € venuts, cost 4.000 €
+    // Tot és ara a A, amb un cost fiscal total de 10.000 € (el que es va aportar)
+    expect(tax.open.every(l => l.isin === A)).toBe(true);
+    expect(tax.open.reduce((s, l) => s + l.cost, 0)).toBeCloseTo(10000, 1);
+
+    // Sense traspàs, la mateixa operació tributa
+    const base2 = { ...base, clientId: 'apply-12' };
+    const q1 = await approved('apply-12');
+    await applyProposal({ ...base2, proposalId: q1.id, date: '2026-09-30', amount: 10000 });
+    const d2 = await saveDraft('apply-12', { ...params, items: [item(A, 100)] });
+    const b2 = await approveProposal('apply-12', d2.id, 'x'); if (!b2.ok) throw new Error(b2.error);
+    await applyProposal({ ...base2, proposalId: d2.id, date: '2026-10-30', amount: 0 });
+    expect(taxReportOf((await getPortfolioByClientId('apply-12'))!).years[0]).toMatchObject({ gains: 631.58, net: 631.58 });
   });
 });

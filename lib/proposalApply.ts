@@ -14,6 +14,7 @@ import {
 import { getNavs } from './fundNavs';
 import { planApplication, planRebalance, type ApplyLine, type RebalanceLine } from './portfolioValuation';
 import type { NavPoint } from './navMath';
+import { TRANSFER_TAG, isEtf } from './taxReport';
 
 export type ApplyMode = 'first' | 'rebalance';
 
@@ -46,6 +47,8 @@ function inconsistentHoldings(p: ClientPortfolio): string[] {
 
 export async function applyProposal(input: {
   clientId: string; clientName: string; proposalId: string; date: string; amount: number; broker: string; by: string; dryRun?: boolean;
+  /** Reestructuració: registrar les vendes i compres de fons com a traspassos (no tributen; els ETF sí). */
+  transfer?: boolean;
 }): Promise<ApplyResult> {
   const p = await getProposal(input.clientId, input.proposalId);
   if (!p) return { ok: false, status: 404, error: 'Proposta no trobada' };
@@ -99,6 +102,7 @@ export async function applyProposal(input: {
   const latest = new Map<string, NavPoint>();
   for (const n of navs) { const k = n.isin.toUpperCase(); if (!latest.has(k) || latest.get(k)!.date < n.date) latest.set(k, n); }
   const label = mode === 'first' ? `Proposta v${p.version}` : `Reestructuració a la proposta v${p.version}`;
+  const asTransfer = (name: string) => mode === 'rebalance' && !!input.transfer && !isEtf(name);
 
   // Supabase no permet una transacció des d'aquí: si alguna escriptura falla,
   // es desfà tot el que s'ha fet i la versió es pot tornar a passar.
@@ -132,7 +136,7 @@ export async function applyProposal(input: {
       const tx = await addTransaction(portfolio.id, {
         holdingId, operationType: l.side, ticker: l.isin, assetName: l.name, date: input.date,
         quantity: l.quantity, priceEur: l.nav, totalEur: l.amount, commission: 0, broker: h?.broker || input.broker,
-        notes: label,
+        notes: asTransfer(l.name) ? `${TRANSFER_TAG} ${label}` : label,
       });
       created.txs.push(tx.id);
     }

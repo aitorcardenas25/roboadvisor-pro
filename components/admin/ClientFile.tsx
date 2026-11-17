@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import PortfolioExcelButton from '@/components/PortfolioExcelButton';
 import PortfolioDrift from './PortfolioDrift';
+import TaxReportView from '@/components/TaxReportView';
 import { computeMetrics, type ClientPortfolio } from '@/lib/clientPortfolios';
 import type { Lead } from '@/lib/leads';
 import type { ReportRecord } from '@/lib/reportRegistry';
@@ -289,6 +290,7 @@ export default function ClientFile({
                     })}
                   </div>
                 </div>
+                <TaxReportView url={`/api/admin/clients/${clientId}/tax-report`} />
               </>
             ) : (
               <div className="text-center py-12 text-white/30">
