@@ -5,10 +5,10 @@
 //    l'aportació nova i es venen/compren participacions fins als pesos nous.
 // Amb `dryRun` només es calculen les operacions (per revisar-les abans).
 
-import { getProposal, markApplied, unmarkApplied } from './proposals';
+import { getProposal, getProposals, markApplied, unmarkApplied } from './proposals';
 import {
   getPortfolioByClientId, createClientPortfolio, deleteClientPortfolio,
-  addHolding, addTransaction, removeHolding, removeTransaction, updateHolding,
+  addHolding, addTransaction, removeHolding, removeTransaction, updateHolding, claimPortfolio,
   type ClientHolding, type ClientPortfolio,
 } from './clientPortfolios';
 import { getNavs } from './fundNavs';
@@ -52,6 +52,13 @@ export async function applyProposal(input: {
   if (p.status !== 'approved') return { ok: false, status: 422, error: 'Només es pot passar a la cartera una versió aprovada' };
   if (p.appliedAt) return { ok: false, status: 409, error: `Aquesta versió ja es va passar a la cartera el ${p.appliedAt.slice(0, 10)}` };
 
+  // Una versió anterior a la que ja és a la cartera no s'hi pot passar (quedaria
+  // la cartera amb una versió antiga com a objectiu).
+  const newestApplied = (await getProposals(input.clientId)).filter(x => x.appliedAt).sort((a, b) => b.version - a.version)[0];
+  if (newestApplied && newestApplied.version > p.version) {
+    return { ok: false, status: 409, error: `La cartera ja segueix la v${newestApplied.version}, més nova que aquesta. Aprova una versió nova per reestructurar-la.` };
+  }
+
   const existing = await getPortfolioByClientId(input.clientId);
   const open = existing?.holdings.filter(h => h.quantity > 0) ?? [];
   const mode: ApplyMode = open.length ? 'rebalance' : 'first';
@@ -80,7 +87,11 @@ export async function applyProposal(input: {
     clientId: input.clientId, clientName: input.clientName, name: `Cartera de ${input.clientName}`,
     description: `Creada a partir de la proposta v${p.version}`, recommendations: '',
   });
-  // Es reserva la versió abans d'operar: dos clics alhora no fan dues vegades les operacions.
+  // Es reserva la cartera (si ningú no l'ha tocada des que s'ha llegit) i després
+  // la versió: dues reestructuracions o dos clics alhora no operen dues vegades.
+  if (existing && !await claimPortfolio(existing.id, existing.updatedAt)) {
+    return { ok: false, status: 409, error: 'La cartera ha canviat mentre es calculaven les operacions. Torna a carregar i calcula-les de nou.' };
+  }
   if (!await markApplied(input.clientId, p.id, input.by, portfolio.id)) {
     return { ok: false, status: 409, error: 'Aquesta versió ja s\'està passant a la cartera o ha canviat. Torna a carregar.' };
   }
@@ -103,7 +114,12 @@ export async function applyProposal(input: {
         const qty = l.side === 'buy' ? r6(h.quantity + l.quantity) : r6(h.quantity - l.quantity);
         // Preu mitjà: les compres el recalculen; les vendes no el canvien.
         const avg = l.side === 'buy' && qty > 0 ? r6((h.quantity * h.avgEntryPrice + l.amount) / qty) : h.avgEntryPrice;
-        await updateHolding(h.id, portfolio.id, { quantity: Math.max(0, qty), avgEntryPrice: avg, currentPrice: last.nav, priceLastUpdated: last.date });
+        // El preu de valoració només s'actualitza si el VL oficial és més nou que el que ja té.
+        const newer = !h.priceLastUpdated || last.date >= h.priceLastUpdated.slice(0, 10);
+        await updateHolding(h.id, portfolio.id, {
+          quantity: Math.max(0, qty), avgEntryPrice: avg,
+          ...(newer ? { currentPrice: last.nav, priceLastUpdated: last.date } : {}),
+        });
       } else {
         const nh = await addHolding(portfolio.id, {
           assetIsin: l.isin, assetName: l.name, assetCategory: l.category, broker: input.broker,

@@ -274,6 +274,28 @@ export async function createClientPortfolio(
   return portfolio;
 }
 
+/**
+ * Reserva la cartera per a una operació de diverses escriptures (p. ex. una
+ * reestructuració): només funciona si ningú no l'ha modificada des que es va
+ * llegir (updated_at igual). Dues reestructuracions alhora: només una passa.
+ */
+export async function claimPortfolio(id: string, expectedUpdatedAt: string): Promise<boolean> {
+  // Sempre una marca diferent de la llegida (encara que sigui el mateix mil·lisegon).
+  const t = Date.now();
+  const now = new Date(Date.parse(expectedUpdatedAt) >= t ? Date.parse(expectedUpdatedAt) + 1 : t).toISOString();
+  const db  = getDb();
+  if (!db) {
+    const p = _portfolios.find(x => x.id === id);
+    if (!p || p.updatedAt !== expectedUpdatedAt) return false;
+    p.updatedAt = now;
+    return true;
+  }
+  const { data, error } = await db.from('client_portfolios')
+    .update({ updated_at: now }).eq('id', id).eq('updated_at', expectedUpdatedAt).select('id');
+  if (error) throw new Error(error.message);
+  return !!data?.length;
+}
+
 export async function updatePortfolioMeta(
   id: string,
   updates: { name?: string; description?: string; recommendations?: string; nextFollowup?: string },

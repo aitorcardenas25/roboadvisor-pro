@@ -5,7 +5,8 @@ vi.mock('@/lib/supabase', () => ({ getDb: () => null }));
 import { saveDraft, approveProposal, getProposals, __resetProposalsForTests, type ProposalItem, type ProposalParams } from '@/lib/proposals';
 import { applyProposal } from '@/lib/proposalApply';
 import { upsertNavs, __resetNavsForTests } from '@/lib/fundNavs';
-import { getPortfolioByClientId, computeMetrics, updateHolding } from '@/lib/clientPortfolios';
+import { getPortfolioByClientId, computeMetrics, updateHolding, claimPortfolio } from '@/lib/clientPortfolios';
+import { alertFor } from '@/lib/portfolioAlertsServer';
 import { valuationSeries } from '@/lib/portfolioValuation';
 
 const A = 'IE00B03HD191', B = 'ES0114673033';
@@ -127,5 +128,41 @@ describe('applyProposal (memòria)', () => {
     const d = await saveDraft('apply-4', { ...params, items: [item(A, 100)] });
     expect(await applyProposal({ clientId: 'apply-4', clientName: 'X', proposalId: d.id, date: '2026-09-30', amount: 1000, broker: '', by: 'x' }))
       .toMatchObject({ ok: false, status: 422 });
+  });
+
+  it('no deixa passar una versió anterior a la que ja segueix la cartera, i l\'objectiu és l\'última aplicada', async () => {
+    const base = { clientId: 'apply-8', clientName: 'R', broker: '', by: 'x' };
+    const v1 = await approved('apply-8');
+    const v2 = await approved('apply-8');   // sense aplicar
+    const d3 = await saveDraft('apply-8', { ...params, items: [item(A, 100)] });
+    const v3 = await approveProposal('apply-8', d3.id, 'x'); if (!v3.ok) throw new Error(v3.error);
+    expect((await applyProposal({ ...base, proposalId: v1.id, date: '2026-09-30', amount: 1000 })).ok).toBe(true);
+    expect((await applyProposal({ ...base, proposalId: d3.id, date: '2026-10-30', amount: 0 })).ok).toBe(true);
+    expect(await applyProposal({ ...base, proposalId: v2.id, date: '2026-10-30', amount: 0 }))
+      .toMatchObject({ ok: false, status: 409, error: expect.stringMatching(/v3/) });
+    const port = (await getPortfolioByClientId('apply-8'))!;
+    expect((await alertFor(port, '2026-11-17')).targetVersion).toBe(3);
+  });
+
+  it('una reestructuració amb la cartera llegida abans d\'un altre canvi no opera (bloqueig per cartera)', async () => {
+    const p1 = await approved('apply-9');
+    expect((await applyProposal({ clientId: 'apply-9', clientName: 'S', proposalId: p1.id, date: '2026-09-30', amount: 1000, broker: '', by: 'x' })).ok).toBe(true);
+    const stale = (await getPortfolioByClientId('apply-9'))!;
+    const readAt = stale.updatedAt;
+    expect(await claimPortfolio(stale.id, readAt)).toBe(true);    // una altra petició la reserva primer
+    expect(await claimPortfolio(stale.id, readAt)).toBe(false);   // la segona, amb la lectura antiga, no
+  });
+
+  it('no substitueix un preu de valoració més nou que l\'últim VL oficial', async () => {
+    const p1 = await approved('apply-10');
+    expect((await applyProposal({ clientId: 'apply-10', clientName: 'T', proposalId: p1.id, date: '2026-09-30', amount: 1000, broker: '', by: 'x' })).ok).toBe(true);
+    const port = (await getPortfolioByClientId('apply-10'))!;
+    const hA = port.holdings.find(h => h.assetIsin === A)!;
+    await updateHolding(hA.id, port.id, { currentPrice: 45.5, priceLastUpdated: '2026-11-14' });
+    const d = await saveDraft('apply-10', { ...params, items: [item(A, 70), item(B, 30)] });
+    const a2 = await approveProposal('apply-10', d.id, 'x'); if (!a2.ok) throw new Error(a2.error);
+    expect((await applyProposal({ clientId: 'apply-10', clientName: 'T', proposalId: d.id, date: '2026-10-30', amount: 0, broker: '', by: 'x' })).ok).toBe(true);
+    const after = (await getPortfolioByClientId('apply-10'))!.holdings.find(h => h.id === hA.id)!;
+    expect([after.currentPrice, after.priceLastUpdated]).toEqual([45.5, '2026-11-14']);
   });
 });

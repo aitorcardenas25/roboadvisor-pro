@@ -14,8 +14,10 @@ export interface PortfolioAlert {
 
 export async function alertFor(p: ClientPortfolio, today?: string): Promise<PortfolioAlert> {
   const approved = (await getProposals(p.clientId)).filter(x => x.status === 'approved');
-  // Objectiu: la versió que es va passar a aquesta cartera; si no, l'última aprovada.
-  const target = approved.find(x => x.appliedPortfolioId === p.id) ?? approved[0] ?? null;
+  // Objectiu: l'última versió que es va passar a aquesta cartera (per data d'aplicació); si no, l'última aprovada.
+  const applied = approved.filter(x => x.appliedPortfolioId === p.id && x.appliedAt)
+    .sort((a, b) => (b.appliedAt ?? '').localeCompare(a.appliedAt ?? '') || b.version - a.version);
+  const target = applied[0] ?? approved[0] ?? null;
   const held = p.holdings.filter(h => h.quantity > 0);
   return {
     clientId: p.clientId, clientName: p.clientName, portfolioId: p.id,
