@@ -55,6 +55,10 @@ describe('parseNavText', () => {
     ]);
     const y = parseNavText('Date,Open,High,Low,Close,Adj Close,Volume\n2026-11-13,10,11,9,10.5,10.2,100', { defaultIsin: ISIN });
     expect(y.rows[0].nav).toBe(10.2);
+    // Cel·la de preu buida: error, no s'agafa una altra columna (el volum)
+    const e = parseNavText('Date,Open,High,Low,Close,Adj Close,Volume\n2026-11-13,10,11,9,10.5,,100', { defaultIsin: ISIN });
+    expect(e.rows).toEqual([]);
+    expect(e.errors[0].message).toMatch(/valor liquidatiu/);
   });
 
   it('no fa servir números sobrants com a nom del fons', () => {

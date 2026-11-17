@@ -122,20 +122,23 @@ export function parseNavText(text: string, opts: { defaultIsin?: string; default
   // preu (descàrregues de Yahoo, EODHD, Investing: Date,Open,High,Low,Close,
   // Adj Close,Volume). Sense això es llegiria l'obertura en lloc del tancament.
   let priceCol: number | null = null;
+  let headerSep = ',';
 
   text.split(/\r?\n/).forEach((raw, idx) => {
     const line = idx + 1;
     if (!raw.trim()) return;
     const cells = splitCells(raw);
-    const headerCells = raw.split(/[\t;,]/).map(c => c.trim()).filter(Boolean);
-    if (priceCol === null && headerCells.some(c => /^open$/i.test(c))) {
-      const col = priceHeaderColumn(headerCells);
+    if (priceCol === null && /(^|[\t;,])\s*open\s*([\t;,]|$)/i.test(raw)) {
+      headerSep = raw.includes('\t') ? '\t' : raw.includes(';') ? ';' : ',';
+      const col = priceHeaderColumn(raw.split(headerSep).map(c => c.trim()));
       if (col !== null) { priceCol = col; return; }
     }
     let isin: string | undefined, date: string | null = null, nav: number | null = null, currency: string | undefined;
     const words: string[] = [];
-    if (priceCol !== null && cells.length > priceCol) {
-      nav = parseNavNumber(cells[priceCol]);
+    if (priceCol !== null) {
+      // Posició exacta: es conserven les cel·les buides perquè la columna no es desplaci.
+      const positional = raw.split(headerSep).map(c => c.trim());
+      nav = positional[priceCol] ? parseNavNumber(positional[priceCol]) : null;
       for (const c of cells) {
         const up = c.toUpperCase();
         if (!isin && ISIN_RE.test(up)) isin = up;
