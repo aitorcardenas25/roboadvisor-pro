@@ -68,6 +68,13 @@ export const ADVISOR_FUNDS: UniverseFund[] = [
   { isin: 'LU2813189938', name: 'Fidelity Funds Global Defensive Equity Fund A-Acc-EUR',    category: 'RV Global Dividends' },
   { isin: 'LU3123374798', name: 'Fidelity Funds Global Defensive Equity Fund A-Acc-EUR (Euro/USD hedged)', category: 'RV Global Dividends' },
   { isin: 'LU1627197004', name: 'Fidelity Funds Global Equity Income ESG Fund A-Acc-EUR',  category: 'RV Global Dividends' },
+  // Cobas AM (classe C, la general per a particulars). Preus oficials de
+  // cobasam.com (2026-11-17).
+  { isin: 'ES0119199000', name: 'Cobas Internacional FI Clase C',                         category: 'RV Global (value)' },
+  { isin: 'ES0124037005', name: 'Cobas Selección FI Clase C',                             category: 'RV Global (value)' },
+  { isin: 'ES0113728002', name: 'Cobas Grandes Compañías FI Clase C',                     category: 'RV Global (value)' },
+  { isin: 'ES0119184002', name: 'Cobas Iberia FI Clase C',                                category: 'RV Espanya i Portugal' },
+  { isin: 'ES0119207001', name: 'Cobas Renta FI',                                         category: 'RF Curt termini' },
   { isin: 'IE00B18GC888', name: 'Vanguard Global Bond Index Fund EUR Hedged Acc',           category: 'RF Global (cobert EUR)' },
   { isin: 'IE00BDBRDM35', name: 'iShares Core Global Aggregate Bond UCITS ETF EUR Hedged Acc', category: 'RF Global (cobert EUR)' },
   { isin: 'IE0007472115', name: 'Vanguard Euro Government Bond Index Fund EUR Acc',         category: 'RF Govern Euro' },
