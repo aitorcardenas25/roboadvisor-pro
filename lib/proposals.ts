@@ -24,8 +24,8 @@ function rowToProposal(r: Record<string, unknown>): ClientProposal {
 }
 
 function dataOf(p: ClientProposal) {
-  const { profile, objective, horizon, initialAmount, monthlyAmount, adminNote, items, suitability, suitabilityOverride } = p;
-  return { profile, objective, horizon, initialAmount, monthlyAmount, adminNote, items, suitability, suitabilityOverride };
+  const { profile, objective, horizon, initialAmount, monthlyAmount, adminNote, items, suitability, suitabilityOverride, appliedAt, appliedBy, appliedPortfolioId } = p;
+  return { profile, objective, horizon, initialAmount, monthlyAmount, adminNote, items, suitability, suitabilityOverride, appliedAt, appliedBy, appliedPortfolioId };
 }
 
 /** Totes les versions d'un client, de la més nova a la més antiga. */
@@ -118,6 +118,41 @@ export async function approveProposal(
   if (error) throw new Error(error.message);
   if (!data?.length) return { ok: false, error: 'La proposta ha canviat mentre s\'aprovava. Torna-ho a provar.' };
   return { ok: true, proposal: approved };
+}
+
+/**
+ * Marca una versió aprovada com a passada a la cartera activa. Només una
+ * vegada: si ja estava marcada (p. ex. dos clics alhora), retorna false.
+ */
+export async function markApplied(clientId: string, id: string, appliedBy: string, portfolioId: string): Promise<boolean> {
+  const p = await getProposal(clientId, id);
+  if (!p || p.status !== 'approved' || p.appliedAt) return false;
+  const now = new Date().toISOString();
+  const applied: ClientProposal = { ...p, appliedAt: now, appliedBy, appliedPortfolioId: portfolioId, updatedAt: now };
+  const db = getDb();
+  if (!db) {
+    const i = _mem.findIndex(x => x.id === id);
+    _mem[i] = structuredClone(applied);
+    return true;
+  }
+  // Condicional a la data d'edició llegida: dues peticions alhora no poden marcar-la totes dues.
+  const { data, error } = await db.from('client_proposals')
+    .update({ data: dataOf(applied), updated_at: now })
+    .eq('id', id).eq('status', 'approved').eq('updated_at', p.updatedAt).select('id');
+  if (error) throw new Error(error.message);
+  return !!data?.length;
+}
+
+/** Desfà markApplied si la creació de les posicions ha fallat (per poder-ho tornar a provar). */
+export async function unmarkApplied(clientId: string, id: string): Promise<void> {
+  const p = await getProposal(clientId, id);
+  if (!p?.appliedAt) return;
+  const now = new Date().toISOString();
+  const reverted: ClientProposal = { ...p, appliedAt: undefined, appliedBy: undefined, appliedPortfolioId: undefined, updatedAt: now };
+  const db = getDb();
+  if (!db) { const i = _mem.findIndex(x => x.id === id); _mem[i] = structuredClone(reverted); return; }
+  const { error } = await db.from('client_proposals').update({ data: dataOf(reverted), updated_at: now }).eq('id', id);
+  if (error) throw new Error(error.message);
 }
 
 /** Només per a tests. */

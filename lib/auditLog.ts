@@ -11,6 +11,7 @@ export type AuditAction =
   | 'portfolio.imported'
   | 'proposal.saved'
   | 'proposal.approved'
+  | 'proposal.applied'
   | 'client.created'
   | 'client.role_changed'
   | 'client.deactivated'

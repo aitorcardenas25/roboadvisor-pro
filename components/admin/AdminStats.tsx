@@ -9,6 +9,7 @@ import {
   ResponsiveContainer, Legend,
 } from 'recharts';
 import type { ClientPortfolio } from '@/lib/clientPortfolios';
+import type { PortfolioAlert } from '@/lib/portfolioAlertsServer';
 
 interface Stats {
   total:  number;
@@ -85,9 +86,10 @@ export default function AdminStats({ stats, onNavigate }: Props) {
   useEffect(() => {
     const load = async () => {
       try {
-        const [portfoliosRes, clientsRes] = await Promise.all([
+        const [portfoliosRes, clientsRes, driftRes] = await Promise.all([
           fetch('/api/admin/client-portfolios'),
           fetch('/api/admin/clients'),
+          fetch('/api/admin/portfolio-alerts'),
         ]);
 
         const newAlerts: Alert[] = [];
@@ -137,6 +139,35 @@ export default function AdminStats({ stats, onNavigate }: Props) {
               desc: `Carteres creades però sense cap posició: ${emptyPfs.map(p => p.clientName).join(', ')}.`,
               action: 'Completar carteres',
               section: 'client-portfolios',
+            });
+          }
+        }
+
+        if (driftRes.ok) {
+          const { alerts: pa, threshold } = await driftRes.json() as { alerts: PortfolioAlert[]; threshold: number };
+          // Carteres que s'han allunyat dels pesos de la proposta aprovada
+          const drifted = pa.filter(a => a.drift && a.drift.outOfBand.length > 0);
+          if (drifted.length > 0) {
+            newAlerts.push({
+              type: 'warning',
+              title: `${drifted.length} cartera${drifted.length > 1 ? 'es' : ''} desviada${drifted.length > 1 ? 'es' : ''} dels pesos objectiu`,
+              desc: drifted.map(a => {
+                const top = a.drift!.outOfBand[0];
+                return `${a.clientName}: ${top.name} ${top.diff > 0 ? '+' : ''}${top.diff.toLocaleString('ca-ES')} pp`;
+              }).join(' · ') + ` (llindar ±${threshold} pp respecte de la proposta)`,
+              action: 'Veure clients',
+              section: 'clients',
+            });
+          }
+          // Revisió anual de la idoneïtat
+          const annual = pa.filter(a => a.review.reasons.includes('annual_review'));
+          if (annual.length > 0) {
+            newAlerts.push({
+              type: 'warning',
+              title: `${annual.length} client${annual.length > 1 ? 's' : ''} amb la revisió anual pendent`,
+              desc: `La proposta aprovada té més d'un any: ${annual.map(a => a.clientName).join(', ')}.`,
+              action: 'Veure clients',
+              section: 'clients',
             });
           }
         }

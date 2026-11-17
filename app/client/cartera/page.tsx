@@ -11,6 +11,8 @@ import type {
   ClientPortfolio, ClientHolding, ClientTransaction, OperationType, PortfolioMetrics,
 } from '@/lib/clientPortfolios';
 import { computeMetrics } from '@/lib/clientPortfolios';
+import type { Valuation } from '@/lib/portfolioValuation';
+import PortfolioExcelButton from '@/components/PortfolioExcelButton';
 import { DataSourceBadge } from '@/components/DataSourceBadge';
 import { DataSourcePanel } from '@/components/DataSourcePanel';
 
@@ -63,20 +65,34 @@ const TT = {
 
 // ── Derived data helpers ───────────────────────────────────────────────────
 
+function isEquity(category: string): boolean {
+  const c = category.toLowerCase().trim();
+  return c.startsWith('rv') || c.includes('renda variable') || c.includes('variable') || c.includes('equity')
+    || c.includes('accions') || c.includes('acció') || c.includes('etf');
+}
+
+/** Perfil orientatiu segons el pes en renda variable (ponderat pel valor de cada posició). */
 function deriveRisk(portfolio: ClientPortfolio): { label: string; color: string } {
-  const cats = portfolio.holdings.map(h => h.assetCategory.toLowerCase());
-  if (cats.length === 0) return { label: 'No disponible', color: '#6b7280' };
-  const eqPct = cats.filter(c =>
-    c.includes('variable') || c.includes('equity') || c.includes('accions')
-    || c.includes('etf') || c.includes('acció')
-  ).length / cats.length * 100;
+  const open = portfolio.holdings.filter(h => h.quantity > 0);
+  const total = open.reduce((s, h) => s + Math.max(0, h.currentPrice * h.quantity), 0);
+  if (open.length === 0 || total <= 0) return { label: 'No disponible', color: '#6b7280' };
+  const eqPct = open.filter(h => isEquity(h.assetCategory ?? ''))
+    .reduce((s, h) => s + Math.max(0, h.currentPrice * h.quantity), 0) / total * 100;
   if (eqPct >= 80) return { label: 'Dinàmic',         color: '#f97316' };
   if (eqPct >= 50) return { label: 'Moderat',         color: '#c9a84c' };
   if (eqPct >= 20) return { label: 'Conservador',     color: '#60a5fa' };
   return              { label: 'Molt conservador',    color: '#34d399' };
 }
 
-function monthlyReturn(portfolio: ClientPortfolio): number | null {
+function monthlyReturn(portfolio: ClientPortfolio, valuation?: Valuation | null): number | null {
+  // Amb valors liquidatius oficials: últim mes tancat, sense comptar les aportacions.
+  const pts = valuation?.points ?? [];
+  if (pts.length >= 2) {
+    const a = pts[pts.length - 2], b = pts[pts.length - 1];
+    const flow = b.invested - a.invested;
+    const base = a.value + flow / 2;
+    return base > 0 ? ((b.value - a.value - flow) / base) * 100 : null;
+  }
   const snaps = [...portfolio.snapshots].sort((a, b) => a.date.localeCompare(b.date));
   if (snaps.length < 2) return null;
   const last   = snaps[snaps.length - 1];
@@ -88,9 +104,9 @@ function monthlyReturn(portfolio: ClientPortfolio): number | null {
   return ((last.totalValue - prev.totalValue) / prev.totalValue) * 100;
 }
 
-function buildSummary(portfolio: ClientPortfolio, metrics: PortfolioMetrics): string {
+function buildSummary(portfolio: ClientPortfolio, metrics: PortfolioMetrics, valuation?: Valuation | null): string {
   const isPos = metrics.pnlEur >= 0;
-  const mPct  = monthlyReturn(portfolio);
+  const mPct  = monthlyReturn(portfolio, valuation);
   const parts: string[] = [];
 
   parts.push(
@@ -163,14 +179,15 @@ function SkeletonPage() {
 // ─────────────────────────────────────────────────────────────────────────────
 
 const HeroSection = memo(function HeroSection({
-  portfolio, metrics, name,
+  portfolio, metrics, name, valuation,
 }: {
   portfolio: ClientPortfolio;
   metrics:   PortfolioMetrics;
   name:      string;
+  valuation?: Valuation | null;
 }) {
   const isPos = metrics.pnlEur >= 0;
-  const mPct  = monthlyReturn(portfolio);
+  const mPct  = monthlyReturn(portfolio, valuation);
   const risk  = deriveRisk(portfolio);
   const col   = isPos ? '#34d399' : '#ef4444';
 
@@ -284,13 +301,18 @@ function Tile({ label, value, color }: { label: string; value: string; color?: s
 // ─────────────────────────────────────────────────────────────────────────────
 
 const EvolutionChart = memo(function EvolutionChart({
-  portfolio, metrics,
-}: { portfolio: ClientPortfolio; metrics: PortfolioMetrics }) {
+  portfolio, metrics, valuation,
+}: { portfolio: ClientPortfolio; metrics: PortfolioMetrics; valuation?: Valuation | null }) {
+  // Primer, l'evolució calculada amb els valors liquidatius oficials dels fons;
+  // si no n'hi ha prou (falten preus), els snapshots que registra l'assessor.
+  const fromNavs = (valuation?.points.length ?? 0) >= 2;
   const data = useMemo(
-    () => [...portfolio.snapshots]
-      .sort((a, b) => a.date.localeCompare(b.date))
-      .map(s => ({ date: s.date, valor: s.totalValue })),
-    [portfolio.snapshots],
+    () => fromNavs
+      ? valuation!.points.map(p => ({ date: p.date, valor: p.value }))
+      : [...portfolio.snapshots]
+        .sort((a, b) => a.date.localeCompare(b.date))
+        .map(s => ({ date: s.date, valor: s.totalValue })),
+    [fromNavs, valuation, portfolio.snapshots],
   );
 
   const isPos = metrics.pnlEur >= 0;
@@ -302,7 +324,9 @@ const EvolutionChart = memo(function EvolutionChart({
       <div className="flex items-start justify-between mb-5">
         <div>
           <h3 className="text-white font-semibold text-sm">Evolució patrimonial</h3>
-          <p className="text-white/25 text-xs mt-0.5">Snapshots registrats per l&apos;assessor</p>
+          <p className="text-white/25 text-xs mt-0.5">
+            {fromNavs ? 'Calculada cada final de mes amb els valors liquidatius oficials dels fons' : 'Snapshots registrats per l\u2019assessor'}
+          </p>
         </div>
         {data.length >= 2 && (
           <span className="text-sm font-bold" style={{ color: col }}>{fPct(metrics.pnlPct)}</span>
@@ -325,7 +349,8 @@ const EvolutionChart = memo(function EvolutionChart({
               axisLine={false} tickLine={false}
               tickFormatter={(v: string) => {
                 const d = new Date(v + 'T00:00:00');
-                return `${d.getDate()} ${d.toLocaleString('ca-ES', { month: 'short' })}`;
+                const m = d.toLocaleString('ca-ES', { month: 'short' }).replace(/^de |^d’|^d'/, '');
+                return fromNavs ? `${m} ${String(d.getFullYear()).slice(2)}` : `${d.getDate()} ${m}`;
               }}
             />
             <YAxis
@@ -349,7 +374,7 @@ const EvolutionChart = memo(function EvolutionChart({
           </AreaChart>
         </ResponsiveContainer>
       ) : (
-        <EmptyChart text="El gràfic apareixerà quan l'assessor registri snapshots de la cartera" />
+        <EmptyChart text="El gràfic apareixerà quan hi hagi preus oficials de tots els fons o l'assessor registri snapshots de la cartera" />
       )}
     </div>
   );
@@ -463,9 +488,9 @@ const DistributionPanel = memo(function DistributionPanel({
 // ─────────────────────────────────────────────────────────────────────────────
 
 const ExecutiveSummary = memo(function ExecutiveSummary({
-  portfolio, metrics,
-}: { portfolio: ClientPortfolio; metrics: PortfolioMetrics }) {
-  const text  = useMemo(() => buildSummary(portfolio, metrics), [portfolio, metrics]);
+  portfolio, metrics, valuation,
+}: { portfolio: ClientPortfolio; metrics: PortfolioMetrics; valuation?: Valuation | null }) {
+  const text  = useMemo(() => buildSummary(portfolio, metrics, valuation), [portfolio, metrics, valuation]);
   const isPos = metrics.pnlEur >= 0;
   const col   = isPos ? '#34d399' : '#ef4444';
 
@@ -809,14 +834,16 @@ export default function ClientCarteraPage() {
   const [loading, setLoading]     = useState(true);
   const [tab, setTab]             = useState<Tab>('overview');
   const [panelOpen, setPanelOpen] = useState(false);
+  const [valuation, setValuation] = useState<Valuation | null>(null);
 
   useEffect(() => {
     if (status === 'unauthenticated') { router.push('/login'); return; }
     if (status === 'authenticated') {
       fetch('/api/client/portfolio')
         .then(r => r.json())
-        .then((d: { portfolio: ClientPortfolio | null }) => {
+        .then((d: { portfolio: ClientPortfolio | null; valuation?: Valuation | null }) => {
           setPortfolio(d.portfolio ?? null);
+          setValuation(d.valuation ?? null);
           setLoading(false);
         })
         .catch(() => setLoading(false));
@@ -886,7 +913,7 @@ export default function ClientCarteraPage() {
       <div className="max-w-5xl mx-auto px-4 py-6 sm:py-8">
 
         {/* ── Hero ── */}
-        <HeroSection portfolio={portfolio} metrics={metrics} name={name} />
+        <HeroSection portfolio={portfolio} metrics={metrics} name={name} valuation={valuation} />
 
         {/* ── Tabs ── */}
         <div className="flex border-b border-white/[0.055] mb-6 overflow-x-auto">
@@ -912,11 +939,12 @@ export default function ClientCarteraPage() {
           <div className="space-y-5">
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
               <div className="lg:col-span-2 space-y-5">
-                <EvolutionChart portfolio={portfolio} metrics={metrics} />
+                <EvolutionChart portfolio={portfolio} metrics={metrics} valuation={valuation} />
+                <PortfolioExcelButton baseUrl="/api/client/portfolio/excel" className="justify-end -mt-2" />
                 <DistributionPanel portfolio={portfolio} total={metrics.currentValue} />
               </div>
               <div className="space-y-5">
-                <ExecutiveSummary portfolio={portfolio} metrics={metrics} />
+                <ExecutiveSummary portfolio={portfolio} metrics={metrics} valuation={valuation} />
                 <GoalsSection metrics={metrics} />
               </div>
             </div>

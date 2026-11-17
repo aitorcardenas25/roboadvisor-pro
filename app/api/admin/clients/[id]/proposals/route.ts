@@ -2,6 +2,7 @@
 // GET  → versions + dades per a l'editor (fons disponibles, valors per defecte)
 // PUT  → desa l'esborrany (crea versió nova si l'última està aprovada)
 // POST → { action: 'approve', id } | { action: 'suggest', profile, ... } | { action: 'fromHoldings' }
+//        | { action: 'apply', id, date, amount, broker } (versió aprovada → cartera activa)
 import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { z } from 'zod';
@@ -18,6 +19,7 @@ import type { InvestorQuestionnaire } from '@/lib/scoring';
 import { saveReport } from '@/lib/reportRegistry';
 import { logAuditEvent } from '@/lib/auditLog';
 import { getNavPerformanceMap } from '@/lib/fundNavs';
+import { applyProposal } from '@/lib/proposalApply';
 
 type S = { user?: { id?: string; email?: string; name?: string; role?: string } } | null;
 
@@ -53,6 +55,12 @@ const PostSchema = z.discriminatedUnion('action', [
   }),
   z.object({ action: z.literal('suggest'), profile: z.enum(PROFILES), initialAmount: z.number().min(0), monthlyAmount: z.number().min(0) }),
   z.object({ action: z.literal('fromHoldings') }),
+  z.object({
+    action: z.literal('apply'), id: z.string().min(1),
+    date:   z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+    amount: z.number().positive().max(1e9),
+    broker: z.string().trim().max(100).default(''),
+  }),
 ]);
 
 async function context(id: string) {
@@ -135,6 +143,20 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
 
   if (body.action === 'suggest') {
     return NextResponse.json({ items: suggestItems(body.profile, body.initialAmount, body.monthlyAmount, ctx.lead?.questionnaireData, await getNavPerformanceMap()) });
+  }
+
+  if (body.action === 'apply') {
+    if (body.date > new Date().toISOString().slice(0, 10)) return NextResponse.json({ error: 'La data de compra no pot ser futura' }, { status: 400 });
+    const res = await applyProposal({
+      clientId: id, clientName: ctx.user.name, proposalId: body.id, date: body.date,
+      amount: body.amount, broker: body.broker, by: session.user?.email ?? 'admin',
+    });
+    if (!res.ok) return NextResponse.json({ error: res.error, problems: res.problems }, { status: res.status });
+    logAuditEvent('proposal.applied', {
+      userId: session.user?.id, userEmail: session.user?.email, resource: body.id,
+      metadata: { clientId: id, portfolioId: res.portfolioId, funds: res.lines.length, amount: body.amount, date: body.date },
+    });
+    return NextResponse.json({ ok: true, portfolioId: res.portfolioId, lines: res.lines });
   }
 
   // Idoneïtat (MiFID II) al servidor abans de congelar la recomanació

@@ -1,6 +1,8 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
+import PortfolioExcelButton from '@/components/PortfolioExcelButton';
+import PortfolioDrift from './PortfolioDrift';
 import type { ClientPortfolio } from '@/lib/clientPortfolios';
 import type { Lead } from '@/lib/leads';
 import type { ReportRecord } from '@/lib/reportRegistry';
@@ -217,7 +219,7 @@ export default function ClientFile({
 
         {/* IMPORTAR EXCEL */}
         {tab === 'import' && <ClientImport clientId={clientId} onImported={() => load(true)} />}
-        {tab === 'proposal' && <ClientProposal clientId={clientId} />}
+        {tab === 'proposal' && <ClientProposal clientId={clientId} onApplied={() => load(true)} />}
 
         {/* QÜESTIONARI */}
         {tab === 'questionnaire' && (
@@ -248,6 +250,8 @@ export default function ClientFile({
           <div>
             {portfolio ? (
               <>
+                <PortfolioExcelButton baseUrl={`/api/admin/clients/${clientId}/portfolio-excel`} className="justify-end mb-3" />
+                <PortfolioDrift clientId={clientId} />
                 <div className="bg-[#0d1f1a] border border-white/10 rounded-xl p-5 mb-4">
                   <div className="flex items-center justify-between mb-4">
                     <div>
