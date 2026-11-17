@@ -763,13 +763,14 @@ function ReportsSection({ portfolioId }: { portfolioId: string }) {
               </p>
             </div>
           </div>
-          <button className="flex items-center gap-1.5 text-white/20 text-xs border border-white/8 px-3 py-1.5 rounded-lg hover:border-white/20 hover:text-white/40 transition-all flex-shrink-0">
+          <a href={`/client/informes/${encodeURIComponent(r.id)}`}
+            className="flex items-center gap-1.5 text-white/50 text-xs border border-white/12 px-3 py-1.5 rounded-lg hover:border-white/25 hover:text-white/80 transition-all flex-shrink-0">
             <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5}
                 d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
             </svg>
-            Baixar
-          </button>
+            Veure
+          </a>
         </div>
       ))}
     </div>

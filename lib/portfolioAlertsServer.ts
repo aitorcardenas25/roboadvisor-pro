@@ -12,18 +12,25 @@ export interface PortfolioAlert {
   review:          ReviewStatus;
 }
 
-export async function alertFor(p: ClientPortfolio, today?: string): Promise<PortfolioAlert> {
+/**
+ * Proposta que fa d'objectiu d'una cartera: l'última versió que s'hi va passar
+ * (per data d'aplicació); si no n'hi ha, l'última aprovada.
+ */
+export async function targetProposal(p: Pick<ClientPortfolio, 'id' | 'clientId'>) {
   const approved = (await getProposals(p.clientId)).filter(x => x.status === 'approved');
-  // Objectiu: l'última versió que es va passar a aquesta cartera (per data d'aplicació); si no, l'última aprovada.
   const applied = approved.filter(x => x.appliedPortfolioId === p.id && x.appliedAt)
     .sort((a, b) => (b.appliedAt ?? '').localeCompare(a.appliedAt ?? '') || b.version - a.version);
-  const target = applied[0] ?? approved[0] ?? null;
+  return { target: applied[0] ?? approved[0] ?? null, lastApprovedAt: approved[0]?.approvedAt };
+}
+
+export async function alertFor(p: ClientPortfolio, today?: string): Promise<PortfolioAlert> {
+  const { target, lastApprovedAt } = await targetProposal(p);
   const held = p.holdings.filter(h => h.quantity > 0);
   return {
     clientId: p.clientId, clientName: p.clientName, portfolioId: p.id,
     targetVersion: target?.version ?? null,
     drift: target && held.length ? computeDrift(held, target.items) : null,
-    review: reviewStatus({ nextFollowup: p.nextFollowup, lastApprovedAt: approved[0]?.approvedAt }, today),
+    review: reviewStatus({ nextFollowup: p.nextFollowup, lastApprovedAt }, today),
   };
 }
 

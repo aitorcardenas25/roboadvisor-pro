@@ -225,6 +225,50 @@ function stepsFor(h: ValuationHolding, txs: ValuationTx[]): Step[] {
   return [{ date: start, qty: h.quantity, cash: h.avgEntryPrice * h.quantity }];
 }
 
+/** Valor i capital aportat en una data; null si algun fons que es té no té preu prou recent. */
+function pointAt(live: ValuationHolding[], steps: Map<string, Step[]>, by: Map<string, NavPoint[]>, d: string): ValuationPoint | null {
+  let value = 0, invested = 0, any = false;
+  for (const h of live) {
+    const st = steps.get(h.id)!.filter(s => s.date <= d);
+    const qty = st.reduce((s, x) => s + x.qty, 0);
+    invested += st.reduce((s, x) => s + x.cash, 0);
+    if (qty <= 1e-9) continue;
+    any = true;
+    const p = navOnOrBefore(by.get(h.assetIsin.toUpperCase()), d);
+    if (!p || daysBetween(p.date, d) > MAX_PRICE_AGE_DAYS) return null;
+    value += qty * p.nav;
+  }
+  return any ? { date: d, value: round(value, 2), invested: round(invested, 2) } : null;
+}
+
+/**
+ * Valor de la cartera en dates concretes (p. ex. inici i final del període d'un
+ * informe), amb les participacions que es tenien aquell dia i el VL oficial
+ * d'aquell dia o de l'anterior amb preu (≤45 dies). Una data sense preu → null.
+ */
+export function valuationAt(holdings: ValuationHolding[], txs: ValuationTx[], navs: NavPoint[], dates: string[]): { points: (ValuationPoint | null)[]; missing: string[] } {
+  const traded = new Set(txs.filter(t => t.holdingId && (t.operationType === 'buy' || t.operationType === 'sell')).map(t => t.holdingId!));
+  const live = holdings.filter(h => h.quantity > 0 || traded.has(h.id));
+  const by = navsByIsin(navs);
+  const missing = live.flatMap(h => {
+    const list = by.get(h.assetIsin.toUpperCase());
+    if (!list?.length) return [h.assetName];
+    const cur = list.find(p => p.currency.toUpperCase() !== 'EUR')?.currency;
+    return cur ? [`${h.assetName} (preus en ${cur})`] : [];
+  });
+  if (missing.length) return { points: dates.map(() => null), missing };
+  const steps = new Map(live.map(h => [h.id, stepsFor(h, txs)]));
+  return {
+    points: dates.map(d => {
+      const pt = pointAt(live, steps, by, d);
+      // Abans de la primera compra la cartera val 0 (no és "sense preu").
+      if (!pt && [...steps.values()].flat().every(s => s.date > d)) return { date: d, value: 0, invested: 0 };
+      return pt;
+    }),
+    missing: [],
+  };
+}
+
 /**
  * Valor de la cartera a cada final de mes (i el dia de la primera compra),
  * amb els valors liquidatius oficials. Un mes on algun fons no té preu
@@ -257,18 +301,8 @@ export function valuationSeries(holdings: ValuationHolding[], txs: ValuationTx[]
 
   const points: ValuationPoint[] = [];
   for (const d of dates) {
-    let value = 0, invested = 0, ok = true, any = false;
-    for (const h of live) {
-      const st = steps.get(h.id)!.filter(s => s.date <= d);
-      const qty = st.reduce((s, x) => s + x.qty, 0);
-      invested += st.reduce((s, x) => s + x.cash, 0);
-      if (qty <= 1e-9) continue;
-      any = true;
-      const p = navOnOrBefore(by.get(h.assetIsin.toUpperCase()), d);
-      if (!p || daysBetween(p.date, d) > MAX_PRICE_AGE_DAYS) { ok = false; break; }
-      value += qty * p.nav;
-    }
-    if (ok && any) points.push({ date: d, value: round(value, 2), invested: round(invested, 2) });
+    const pt = pointAt(live, steps, by, d);
+    if (pt) points.push(pt);
   }
   // Dates repetides (primera compra a final de mes)
   const uniq = points.filter((p, i) => i === 0 || p.date !== points[i - 1].date);
