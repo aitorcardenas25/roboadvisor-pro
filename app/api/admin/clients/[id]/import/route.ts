@@ -5,7 +5,7 @@ import { getServerSession } from 'next-auth';
 import { z } from 'zod';
 import { authOptions } from '@/lib/authOptions';
 import { getAllUsers } from '@/lib/users';
-import { getLeadByLinkedUser, getLeadByEmail, saveLeadQuestionnaire } from '@/lib/leads';
+import { getLeadByLinkedUser, getLeadByEmail, saveLeadQuestionnaire, createLead, updateLeadLinks } from '@/lib/leads';
 import {
   getPortfolioByClientId, createClientPortfolio, addHolding, addTransaction,
   removeHolding, removeTransaction,
@@ -63,7 +63,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   if (!file.name.toLowerCase().endsWith('.xlsx')) return NextResponse.json({ error: 'Ha de ser un fitxer .xlsx' }, { status: 400 });
 
   const result = await parseClientWorkbook(await file.arrayBuffer());
-  const lead = await getLeadByLinkedUser(id) ?? await getLeadByEmail(user.email);
+  let lead = await getLeadByLinkedUser(id) ?? await getLeadByEmail(user.email);
   const existing = await getPortfolioByClientId(id);
 
   if (parsed.data.mode === 'preview') {
@@ -126,6 +126,17 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   for (const tid of oldTxs)      await removeTransaction(tid, portfolio.id);
 
   let personalSaved = false;
+  // Client donat d'alta des de "Nou client" (sense formulari de contacte): no té
+  // fitxa on desar les dades personals. Se'n crea una, ja vinculada al client,
+  // perquè les dades de l'Excel no es perdin.
+  if (!lead && (Object.keys(result.personal).length || result.goals.length)) {
+    try {
+      lead = await createLead({ name: user.name, email: user.email, interest: 'finances', source: 'admin-import' });
+      await updateLeadLinks(lead.id, id, portfolio.id);
+    } catch (err) {
+      console.error('[import] no s\'ha pogut crear la fitxa del client:', err instanceof Error ? err.message : err);
+    }
+  }
   if (lead && (Object.keys(result.personal).length || result.goals.length)) {
     personalSaved = await saveLeadQuestionnaire(lead.id, {
       ...(lead.questionnaireData ?? {}), ...result.personal,
