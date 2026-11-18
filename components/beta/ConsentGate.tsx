@@ -53,7 +53,7 @@ export default function ConsentGate({ children }: { children: React.ReactNode })
   // Temps connectat: un ping per minut mentre la pàgina és visible (i només amb consentiment).
   useEffect(() => {
     if (!tracking) return;
-    const page = pathname?.startsWith('/client/finances') ? 'finances' : pathname?.startsWith('/client/cartera') ? 'cartera' : 'altres';
+    const page = pathname?.startsWith('/client/finances') ? 'finances' : (pathname?.startsWith('/client/cartera') || pathname?.startsWith('/client/patrimoni')) ? 'cartera' : 'altres';
     const ping = () => {
       if (document.visibilityState !== 'visible') return;
       fetch('/api/client/ping', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ page }), keepalive: true }).catch(() => {});

@@ -849,6 +849,7 @@ export default function ClientCarteraPage() {
               </svg>
               <span className="hidden sm:inline">Fonts de dades</span>
             </button>
+            <a href="/client/patrimoni" className="text-xs text-ink-muted hover:text-accent transition-colors">El meu patrimoni</a>
             <a href="/client/finances" className="text-xs text-ink-muted hover:text-accent transition-colors">Les meves finances</a>
             <span className="text-ink-muted text-xs">{name}</span>
           </div>
