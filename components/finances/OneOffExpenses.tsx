@@ -109,7 +109,7 @@ export default function OneOffExpenses({ endpoint, data, onChange, audience = 'c
           {canDictate && (
             <button type="button" onClick={dictate} aria-pressed={listening}
               className={`px-3 py-2 rounded-lg text-sm ${listening ? 'bg-negative/80 text-ink' : 'bg-subtle text-ink hover:bg-subtle-strong'}`}>
-              {listening ? '● Escoltant… (toca per parar)' : '🎤 Dictar'}
+              {listening ? '● Escoltant… (toca per parar)' : 'Dictar'}
             </button>
           )}
           {!open && <button type="button" onClick={() => { setOpen(true); setImpact(''); }} className="px-3 py-2 rounded-lg bg-accent text-accent-ink font-semibold text-sm">+ Afegir</button>}

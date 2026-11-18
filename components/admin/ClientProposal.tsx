@@ -210,6 +210,7 @@ export default function ClientProposal({ clientId, onApplied }: { clientId: stri
       await downloadExcel(approved).catch(() => setMsg({ ok: false, text: 'Aprovada i PDF generat, però l\'Excel ha fallat. Torna-ho a provar des de l\'historial.' }));
       setMsg(m => m ?? { ok: true, text: `Versió ${approved.version} aprovada. S'han descarregat el PDF i l'Excel.` });
       await load();
+      onApplied?.();   // refresca els comptadors de la capçalera (informes inicials)
     } catch (err) {
       console.error(err);
       setMsg({ ok: false, text: 'Error generant l\'informe. La proposta pot haver quedat aprovada: revisa l\'historial.' });
