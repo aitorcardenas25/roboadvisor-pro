@@ -10,7 +10,7 @@ const fdate = (d: string) => new Date(d.slice(0, 10) + 'T00:00:00').toLocaleDate
 const col = (n: number) => n > 0 ? 'text-positive' : n < 0 ? 'text-negative' : 'text-ink-soft';
 
 const CARD = 'bg-surface border border-line rounded-xl p-5';
-const TH = 'text-left text-ink-muted text-[11px] uppercase tracking-wide font-medium pb-2 pr-3 whitespace-nowrap';
+const TH = 'text-left text-ink-muted text-[11px] font-medium pb-2 pr-3 whitespace-nowrap';
 const TD = 'py-1.5 pr-3 text-ink text-xs';
 
 export default function TaxReportView({ url }: { url: string }) {
@@ -27,7 +27,7 @@ export default function TaxReportView({ url }: { url: string }) {
 
   const y = useMemo(() => report?.years.find(x => x.year === year) ?? null, [report, year]);
 
-  if (state === 'loading') return <div className={`${CARD} animate-pulse h-40`} />;
+  if (state === 'loading') return <div className={`${CARD} h-40`} />;
   if (state === 'error') return <div className={CARD}><p className="text-negative text-sm">No s&apos;ha pogut carregar l&apos;informe fiscal.</p></div>;
 
   return (

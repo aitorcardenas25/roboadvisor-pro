@@ -37,7 +37,7 @@ export default function PasswordCard() {
   return (
     <section className="bg-surface border border-line rounded-xl p-5">
       <div className="flex items-center justify-between gap-3">
-        <h2 className="text-ink-soft text-xs uppercase tracking-widest">Contrasenya</h2>
+        <h2 className="text-ink-soft text-xs">Contrasenya</h2>
         {!open && <button type="button" onClick={() => { setOpen(true); setMsg(null); }} className="text-accent text-sm hover:underline">Canviar la contrasenya</button>}
       </div>
       {open && (
