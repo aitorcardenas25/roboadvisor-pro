@@ -210,6 +210,7 @@ export default function ClientProposal({ clientId, onApplied }: { clientId: stri
       await downloadExcel(approved).catch(() => setMsg({ ok: false, text: 'Aprovada i PDF generat, però l\'Excel ha fallat. Torna-ho a provar des de l\'historial.' }));
       setMsg(m => m ?? { ok: true, text: `Versió ${approved.version} aprovada. S'han descarregat el PDF i l'Excel.` });
       await load();
+      onApplied?.();   // refresca els comptadors de la capçalera (informes inicials)
     } catch (err) {
       console.error(err);
       setMsg({ ok: false, text: 'Error generant l\'informe. La proposta pot haver quedat aprovada: revisa l\'historial.' });
@@ -354,13 +355,13 @@ export default function ClientProposal({ clientId, onApplied }: { clientId: stri
       <div className={card}>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           <Metric label="Suma de pesos" value={pct(stats.totalWeight)} tone={stats.weightOk ? 'ok' : 'bad'} />
-          <Metric label="Rendiment net" value={stats.complete ? `${pct(stats.netReturn)} / any` : '—'} sub={stats.complete ? `Brut ${pct(stats.grossReturn)} − TER ${pct(stats.ter)}` : 'Falten dades'} />
+          <Metric label="Rendiment net" value={stats.complete ? `${pct(stats.netReturn)} / any` : '—'} sub={!stats.complete ? 'Falten dades' : stats.terMissing.length ? `Brut ${pct(stats.grossReturn)} − TER incomplet` : `Brut ${pct(stats.grossReturn)} − TER ${pct(stats.ter)}`} />
           <Metric label="Volatilitat" value={stats.complete ? pct(stats.volatility) : '—'} sub={`SRRI mitjà ${stats.risk.toFixed(1)}`} />
           <Metric label={`Total aportat (${params.horizon} anys)`} value={eur(stats.totalInvested)} />
           <Metric label="Escenari desfavorable" value={stats.complete ? eur(stats.p10) : '—'} />
           <Metric label="Escenari central" value={stats.complete ? eur(stats.p50) : '—'} />
           <Metric label="Escenari favorable" value={stats.complete ? eur(stats.p90) : '—'} />
-          <Metric label="Fons" value={String(items.length)} sub={stats.complete ? 'Tots amb dades reals' : `${stats.missing.length} sense dades`} tone={stats.complete ? undefined : 'bad'} />
+          <Metric label="Fons" value={String(items.length)} sub={!stats.complete ? `${stats.missing.length} sense dades` : stats.terMissing.length ? `Falta el TER de ${stats.terMissing.length}` : 'Tots amb dades reals'} tone={stats.complete && !stats.terMissing.length ? undefined : 'bad'} />
         </div>
 {stats.complete ? (
           <p className="text-ink-muted text-[11px] mt-4">

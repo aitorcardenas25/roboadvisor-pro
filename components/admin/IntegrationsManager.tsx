@@ -265,9 +265,7 @@ export default function IntegrationsManager() {
             <p className="text-ink-muted text-xs font-semibold font-medium">Com configurar</p>
             <p className="text-ink-soft text-xs leading-relaxed">
               Les claus API <strong className="text-ink-soft">mai</strong> s&apos;han d&apos;introduir via el panel d&apos;admin.
-              Afegeix-les al fitxer{' '}
-              <code className="bg-black/30 px-1.5 py-0.5 rounded font-mono">.env.local</code>{' '}
-              al servidor i reinicia. Consulta{' '}
+              Afegeix-les a Vercel (Settings → Environment Variables, entorn Production) i torna a desplegar. Consulta{' '}
               <code className="bg-black/30 px-1.5 py-0.5 rounded font-mono">.env.example</code>{' '}
               per a la llista completa de variables.
             </p>

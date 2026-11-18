@@ -44,8 +44,10 @@ type SubTab =
   | 'fora-noticies' | 'fora-newsletter' | 'fora-accions' | 'fora-informes-borsaris' | 'fora-carteres-model';
 
 const SUBTABS: Partial<Record<Section, { id: SubTab; label: string }[]>> = {
+  // El "Catàleg de fons" antic viu en memòria del servidor (no es desa) i no és
+  // la llista que fan servir les propostes: només surt fora de la beta.
   fons:     [{ id: 'fons-preus',         label: 'Preus oficials' },
-             { id: 'fons-cataleg',       label: 'Catàleg de fons' }],
+             ...(SHOW_NON_BETA_FEATURES ? [{ id: 'fons-cataleg' as SubTab, label: 'Catàleg antic (no es desa)' }] : [])],
   informes: [{ id: 'informes-mensual',   label: 'Informe mensual' },
              { id: 'informes-historial', label: 'Historial' }],
   beta:     [{ id: 'beta-us',            label: 'Ús i consentiments' },

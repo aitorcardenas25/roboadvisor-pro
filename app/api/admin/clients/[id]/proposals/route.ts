@@ -11,11 +11,10 @@ import { getAllUsers } from '@/lib/users';
 import { getLeadByLinkedUser, getLeadByEmail } from '@/lib/leads';
 import { getPortfolioByClientId, computeMetrics } from '@/lib/clientPortfolios';
 import {
-  getProposals, saveDraft, approveProposal, fundOptions, fundToItem,
-  itemsFromHoldings, roundWeights, verifiedPerformance, proposalStats, checkProposalSuitability, getProposal, PROFILES, type ProposalItem, type ProposalProfile, type NavPerformanceMap,
+  getProposals, saveDraft, approveProposal, fundOptions,
+  itemsFromHoldings, verifiedPerformance, proposalStats, checkProposalSuitability, getProposal, PROFILES, type ProposalItem, type ProposalProfile, type NavPerformanceMap,
 } from '@/lib/proposals';
-import { buildPortfolio } from '@/lib/portfolio';
-import type { InvestorQuestionnaire } from '@/lib/scoring';
+import { PROFILE_MODELS, templateItems } from '@/lib/proposalTemplates';
 import { saveReport } from '@/lib/reportRegistry';
 import { logAuditEvent } from '@/lib/auditLog';
 import { getNavPerformanceMap } from '@/lib/fundNavs';
@@ -144,7 +143,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   }
 
   if (body.action === 'suggest') {
-    return NextResponse.json({ items: suggestItems(body.profile, body.initialAmount, body.monthlyAmount, ctx.lead?.questionnaireData, await getNavPerformanceMap()) });
+    return NextResponse.json({ items: suggestItems(body.profile, await getNavPerformanceMap()) });
   }
 
   if (body.action === 'apply') {
@@ -201,17 +200,12 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   return NextResponse.json({ proposal: withStats(p) });
 }
 
-/** Punt de partida segons perfil, amb el constructor de carteres existent. */
-function suggestItems(profile: ProposalProfile, initialAmount: number, monthlyAmount: number, q?: Record<string, unknown>, navs: NavPerformanceMap = {}): ProposalItem[] {
-  const questionnaire = {
-    ...(q ?? {}),
-    currentSavings: initialAmount, percentageToInvest: 100, monthlyContribution: monthlyAmount,
-    esgPreference: (q?.esgPreference as string) ?? 'no-importa',
-  } as unknown as InvestorQuestionnaire;
-  const portfolio = buildPortfolio(profile, questionnaire);
-  const items = portfolio.allocations.map(a => fundToItem(a.product.isin, a.weight, navs) ?? {
-    isin: a.product.isin, name: a.product.name, category: a.product.category, weight: a.weight,
-    risk: a.product.mifidRiskIndicator ?? 4, ter: a.product.ter, platform: '', justification: a.rationale,
-  }).map((it, i) => ({ ...it, justification: portfolio.allocations[i].rationale || it.justification }));
-  return roundWeights(items);
+/**
+ * Punt de partida segons perfil: la cartera tipus del perfil (lib/proposalTemplates),
+ * amb fons que ja tenen valors liquidatius oficials. Abans es feia servir el
+ * constructor antic (lib/portfolio.ts), que triava fons sense preus i la proposta
+ * no es podia aprovar.
+ */
+function suggestItems(profile: ProposalProfile, navs: NavPerformanceMap = {}): ProposalItem[] {
+  return templateItems(PROFILE_MODELS[profile], navs) ?? [];
 }

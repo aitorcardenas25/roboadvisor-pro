@@ -23,8 +23,8 @@ const ROLE_META: Record<UserRole, { label: string; color: string; bg: string }> 
 const ROLES: UserRole[] = ['client', 'admin'];
 
 const PLAN_META: Record<string, { label: string; color: string }> = {
-  free:    { label: 'Free',    color: '#9ca3af' },
-  active:  { label: 'Actiu',  color: 'rgb(var(--c-accent))' },
+  free:    { label: 'Gratuït',    color: '#9ca3af' },
+  active:  { label: 'Bàsic',  color: 'rgb(var(--c-accent))' },
   premium: { label: 'Premium',color: '#a78bfa' },
 };
 
@@ -48,6 +48,11 @@ function Badge({ role, active }: { role: UserRole; active: boolean }) {
 
 interface NewClientForm {
   name: string; email: string; username: string; password: string; role: UserRole; sendWelcome: boolean;
+}
+
+function fmtDate(iso: string): string {
+  const d = new Date(iso);
+  return Number.isNaN(d.getTime()) ? iso : `Alta: ${d.toLocaleDateString('ca-ES', { day: '2-digit', month: '2-digit', year: 'numeric' })}`;
 }
 
 const EMPTY_FORM: NewClientForm = { name: '', email: '', username: '', password: '', role: 'client', sendWelcome: true };
@@ -151,7 +156,7 @@ export default function ClientsManager({ onViewClient }: { onViewClient?: (id: s
   }
 
   const activeCount = users.filter(u => u.active).length;
-  const clientCount = users.filter(u => u.active && (u.role === 'client' || u.role === 'admin')).length;
+  const clientCount = users.filter(u => u.active && u.role === 'client').length;
 
   return (
     <div>
@@ -188,6 +193,7 @@ export default function ClientsManager({ onViewClient }: { onViewClient?: (id: s
             className="mb-6 overflow-hidden">
             <form
               onSubmit={handleCreate}
+              autoComplete="off"
               className="bg-surface border border-accent/30 rounded-lg p-5">
               <h3 className="text-ink font-semibold text-sm mb-4">Nou client</h3>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-3">
@@ -205,6 +211,9 @@ export default function ClientsManager({ onViewClient }: { onViewClient?: (id: s
                       onChange={e => setForm(prev => ({ ...prev, [field]: e.target.value }))}
                       placeholder={ph}
                       required
+                      // Evita que el navegador hi posi l'usuari i la contrasenya de l'admin
+                      autoComplete={field === 'password' ? 'new-password' : 'off'}
+                      name={`new-client-${field}`}
                       className="w-full bg-subtle border border-line rounded-lg px-3 py-2 text-ink text-sm placeholder-ink-muted focus:outline-none focus:border-accent/50"
                     />
                   </div>
@@ -278,7 +287,7 @@ export default function ClientsManager({ onViewClient }: { onViewClient?: (id: s
                     <div className={`w-2 h-2 rounded-full flex-shrink-0 ${u.active ? 'bg-positive' : 'bg-subtle-strong'}`} />
                     <div>
                       <div className="text-ink text-sm font-medium truncate">{u.name}</div>
-                      <div className="text-ink-muted text-xs">{u.createdAt}</div>
+                      <div className="text-ink-muted text-xs">{fmtDate(u.createdAt)}</div>
                     </div>
                   </div>
                 </div>

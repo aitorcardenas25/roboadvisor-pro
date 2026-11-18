@@ -1,7 +1,7 @@
 'use client';
 import {
   Document, Page, Text, View, StyleSheet, Font,
-  Svg, Path, Polygon, Line, Circle, Defs, LinearGradient, Stop,
+  Svg, Path, Line, Circle, Defs, LinearGradient, Stop,
 } from '@react-pdf/renderer';
 import type { ManualPortfolioInput, ManualAsset } from '@/lib/manualReport';
 
@@ -48,24 +48,7 @@ const ASSET_COLORS = ['#c9a84c', '#2d4a3a', '#8a7a4a', '#4f6b5c', '#b4ad96', '#6
 
 type Tone = 'pos' | 'neg' | 'neutral';
 
-// ─── MiFID II DATA ─────────────────────────────────────────────────────────────
-const MIFID_DIMS = [
-  'Tolerància al risc',
-  'Coneixement inversions',
-  'Experiència inversora',
-  'Horitzó temporal',
-  'Situació financera',
-  'Objectius inversió',
-  'Capacitat absorció',
-  'Criteris ESG',
-];
-const MIFID_MAXES = [20, 12, 13, 18, 12, 6, 7, 9];
-const PROFILE_SCORES: Record<string, number[]> = {
-  conservador: [8,  5,  5,  8,  6, 3, 4, 5],
-  moderat:     [12, 7,  7,  11, 8, 4, 5, 6],
-  dinamic:     [15, 9,  10, 14, 10,5, 6, 7],
-  agressiu:    [19, 11, 12, 17, 11,6, 7, 8],
-};
+// Sense puntuacions MiFID fixes per perfil: no venien de cap qüestionari real.
 const CONSTRAINTS: Record<string, { rvMin: number; rvMax: number; rfMin: number; rfMax: number }> = {
   conservador: { rvMin: 0,  rvMax: 30,  rfMin: 50, rfMax: 100 },
   moderat:     { rvMin: 20, rvMax: 60,  rfMin: 30, rfMax: 70  },
@@ -167,7 +150,8 @@ function fNum(n: number, dec = 2): string {
 // Pes enter d'un actiu. Ex: 45 %
 function fW(n: number): string { return `${Math.round(n)} %`; }
 // TER / costos: sempre 2 decimals per no perdre precisió. Ex: 0,29 %
-function fTer(n: number): string { return `${fNum(n, 2)} %`; }
+// TER 0 = no se sap (cap fons cobra 0 %): no s'ensenya com si fos gratuït
+function fTer(n: number): string { return n > 0 ? `${fNum(n, 2)} %` : 'sense dada'; }
 
 // Ajust tipogràfic: escala la mida segons la llargada del text perquè un import
 // llarg (4.120.000 €) no quedi comprimit ni desbordi la seva targeta.
@@ -207,20 +191,6 @@ function donutArc(cx: number, cy: number, R: number, ri: number, a0deg: number, 
   const [x1i, y1i] = polar(cx, cy, ri, a1deg);
   const [x2i, y2i] = polar(cx, cy, ri, a0deg);
   return `M ${x1o.toFixed(1)} ${y1o.toFixed(1)} A ${R} ${R} 0 ${large} 1 ${x2o.toFixed(1)} ${y2o.toFixed(1)} L ${x1i.toFixed(1)} ${y1i.toFixed(1)} A ${ri} ${ri} 0 ${large} 0 ${x2i.toFixed(1)} ${y2i.toFixed(1)} Z`;
-}
-
-function radarPts(scores: number[], maxes: number[], cx: number, cy: number, r: number): string {
-  return scores.map((s, i) => {
-    const [x, y] = polar(cx, cy, r * Math.min(1, s / maxes[i]), (i * 360) / scores.length);
-    return `${x.toFixed(1)},${y.toFixed(1)}`;
-  }).join(' ');
-}
-
-function gridPts(frac: number, cx: number, cy: number, r: number, n: number): string {
-  return Array.from({ length: n }, (_, i) => {
-    const [x, y] = polar(cx, cy, r * frac, (i * 360) / n);
-    return `${x.toFixed(1)},${y.toFixed(1)}`;
-  }).join(' ');
 }
 
 function makeLine(vals: number[], xs: number[], minV: number, maxV: number, y0: number, y1: number): string {
@@ -264,6 +234,8 @@ function compute(d: ManualPortfolioInput) {
   const wr = d.assets.reduce((s, a) => s + (a.weight / 100) * assetReturn(a), 0);
   const wv = d.assets.reduce((s, a) => s + (a.weight / 100) * assetVol(a), 0);
   const wt = d.assets.reduce((s, a) => s + (a.weight / 100) * a.ter, 0);
+  // Si falta el TER d'algun fons, el ponderat és massa baix: a l'informe surt "sense dada"
+  const terKnown = d.assets.every(a => !(a.weight > 0) || a.ter > 0);
   const wR = d.assets.reduce((s, a) => s + (a.weight / 100) * a.risk, 0);
   const nr = Math.max(0, wr - wt);
 
@@ -323,13 +295,11 @@ function compute(d: ManualPortfolioInput) {
     else cashPct += a.weight;
   }
 
-  const scores     = PROFILE_SCORES[d.investorProfile] ?? PROFILE_SCORES.moderat;
-  const totalScore = scores.reduce((s, v) => s + v, 0);
 
   const goalRef = objectiuAmount > 0 ? objectiuAmount : p50;
 
   return {
-    wr, wv, wt, wR, nr,
+    wr, wv, wt, wR, nr, terKnown,
     income, expenses, surplus, isEst,
     annualIncome, annualExpenses, monthlySavings, annualSavings, annualInvest,
     expenseRatioPct, savingsRatePct, investRatePct,
@@ -339,7 +309,6 @@ function compute(d: ManualPortfolioInput) {
     totalInvested, r10, r90, p10, p50, p90, wealthMult,
     sharpe, var95, maxDD, benchR, alpha,
     rvPct, rfPct, cashPct,
-    scores, totalScore,
   };
 }
 
@@ -417,19 +386,6 @@ function StatCard({ label, value, sub, accent, tone, width }: {
       <Text style={S.metricLabel}>{label}</Text>
       <Text style={[S.metricValue, { fontSize: fitFont(value, 14), color: valColor, marginTop: 4 }]}>{value}</Text>
       {sub ? <Text style={[S.metricSub, { marginTop: 6 }]}>{sub}</Text> : null}
-    </View>
-  );
-}
-
-function ProgressBar({ label, score, max, color }: { label: string; score: number; max: number; color?: string }) {
-  const pct = Math.min(1, score / max);
-  return (
-    <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 5 }}>
-      <Text style={{ fontSize: 7.5, color: C.ink, width: 140 }}>{label}</Text>
-      <View style={{ flex: 1, height: 3.5, backgroundColor: C.lineSoft, marginHorizontal: 7 }}>
-        <View style={{ width: `${(pct * 100).toFixed(0)}%`, height: 3.5, backgroundColor: color ?? C.gold }} />
-      </View>
-      <Text style={{ fontSize: 7.5, color: C.muted, width: 42, textAlign: 'right' }}>{score}/{max}</Text>
     </View>
   );
 }
@@ -547,6 +503,11 @@ function ExecutivePage({ d }: { d: ManualPortfolioInput }) {
           intro={`Síntesi dels elements clau del pla d'inversió personalitzat per a ${d.clientName}: capacitat d'estalvi, protecció de liquiditat i estratègia de creixement.`}
         />
 
+        {c.isEst ? (
+          <View style={{ borderWidth: 0.5, borderColor: C.line, padding: 13, marginBottom: 16 }}>
+            <Text style={S.body2}>El client encara no ha facilitat els ingressos i les despeses mensuals. La part de pressupost i fons d&apos;emergència s&apos;afegirà quan els tinguem: no s&apos;estimen.</Text>
+          </View>
+        ) : (<>
         <Text style={S.subTag}>Els tres pilars del pla</Text>
         <View style={{ flexDirection: 'row', gap: 10, marginBottom: 16 }}>
           {pillars.map(f => (
@@ -560,7 +521,6 @@ function ExecutivePage({ d }: { d: ManualPortfolioInput }) {
         </View>
 
         <Text style={S.subTag}>Flux de caixa mensual</Text>
-        {c.isEst && <Text style={[S.body2, S.italic, { marginBottom: 6 }]}>Valors estimats a partir de l&apos;aportació mensual indicada.</Text>}
         <View style={{ borderWidth: 0.5, borderColor: C.line, padding: 13, marginBottom: 16 }}>
           {cash.map((r, i) => (
             <View key={i} style={{ flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 5, borderBottomWidth: i < 3 ? 0.5 : 0, borderBottomColor: C.lineSoft }}>
@@ -569,15 +529,16 @@ function ExecutivePage({ d }: { d: ManualPortfolioInput }) {
             </View>
           ))}
         </View>
+        </>)}
 
         <View style={S.divider} />
 
         <Text style={S.subTag}>Projecció a {d.horizon} anys — escenaris de rendiment</Text>
         <View style={S.row}>
           {[
-            { label: 'Pessimista (P10)', value: fEur(c.p10), rate: fPct(c.r10), gain: fEur(c.p10 - c.totalInvested), tone: 'neg' as Tone },
-            { label: 'Base (P50)', value: fEur(c.p50), rate: fPct(c.nr), gain: fEur(c.p50 - c.totalInvested), tone: 'neutral' as Tone, accent: true },
-            { label: 'Optimista (P90)', value: fEur(c.p90), rate: fPct(c.r90), gain: fEur(c.p90 - c.totalInvested), tone: 'pos' as Tone },
+            { label: 'Desfavorable', value: fEur(c.p10), rate: fPct(c.r10), gain: fEur(c.p10 - c.totalInvested), tone: 'neg' as Tone },
+            { label: 'Base', value: fEur(c.p50), rate: fPct(c.nr), gain: fEur(c.p50 - c.totalInvested), tone: 'neutral' as Tone, accent: true },
+            { label: 'Favorable', value: fEur(c.p90), rate: fPct(c.r90), gain: fEur(c.p90 - c.totalInvested), tone: 'pos' as Tone },
           ].map(sc => (
             <View key={sc.label} style={[S.metricBox, { borderTopWidth: 2, borderTopColor: sc.accent ? C.gold : sc.tone === 'pos' ? C.pos : sc.tone === 'neg' ? C.neg : C.line }]}>
               <Text style={S.metricLabel}>{sc.label}</Text>
@@ -715,7 +676,7 @@ function FinancialProfilePage({ d }: { d: ManualPortfolioInput }) {
             <DataRow label="Objectiu financer" value={d.objective} strong />
             <DataRow label="Horitzó temporal" value={`${d.horizon} anys`} />
             <DataRow label="Capital objectiu declarat" value={fEur(c.objectiuAmount)} missing={c.objectiuAmount <= 0} />
-            <DataRow label="Projecció base a l'horitzó (P50)" value={fEur(c.p50)} strong />
+            <DataRow label="Projecció base a l'horitzó" value={fEur(c.p50)} strong />
             <DataRow
               label="Proporció de patrimoni invertible"
               value={c.invertibleWealthPct != null ? fPct(c.invertibleWealthPct) : undefined}
@@ -749,8 +710,8 @@ function DiagnosticsPage({ d }: { d: ManualPortfolioInput }) {
       tone: (c.mesosAutonomia >= 6 ? 'pos' : 'neutral') as Tone },
     { label: "Marge d'inversió", value: `${fEur(c.surplus)} / mes`, sub: "després d'invertir",
       tone: (c.surplus >= 0 ? 'pos' : 'neg') as Tone },
-    { label: 'Rendiment net', value: fPct(c.nr), sub: 'anual, net de costos', accent: true },
-    { label: 'Multiplicador P50', value: `× ${fNum(c.wealthMult, 1)}`, sub: 'P50 / capital aportat', tone: 'neutral' as Tone },
+    { label: 'Rendiment net', value: fPct(c.nr), sub: c.terKnown ? 'anual, net de costos' : 'sense descomptar el TER d\'algun fons', accent: true },
+    { label: 'Multiplicador', value: `× ${fNum(c.wealthMult, 1)}`, sub: 'projecció base / capital aportat', tone: 'neutral' as Tone },
     { label: 'Alfa vs. bench.', value: fPct(c.alpha, true), sub: `vs. ${BENCHMARK_NAME[d.investorProfile] ?? 'benchmark'}`,
       tone: (c.alpha >= 0 ? 'pos' : 'neg') as Tone },
   ];
@@ -842,56 +803,27 @@ function DiagnosticsPage({ d }: { d: ManualPortfolioInput }) {
 function InvestorProfilePage({ d }: { d: ManualPortfolioInput }) {
   const c = compute(d);
   const profileLabel = PROFILE_LABEL[d.investorProfile] ?? d.investorProfile;
-  const cx = 90, cy = 90, r = 75;
-  const n = MIFID_DIMS.length;
-  const spokeDeg = (i: number) => (i * 360) / n;
-
   return (
     <Page size="A4" style={S.page}>
       <Header section="Perfil d'Inversor" client={d.clientName} />
       <Footer />
       <View style={S.body}>
         <SectionTitle
-          tag="Perfil d'Inversor · MiFID II"
-          title="Scoring i avaluació de risc"
-          intro="Resultat del qüestionari de perfilació segons les vuit dimensions del marc de suitability MiFID II."
+          tag="Perfil d'Inversor"
+          title="Perfil de risc"
+          intro="Perfil assignat per l'assessor a partir de la conversa amb el client i de les dades que ha facilitat."
         />
 
-        <View style={{ flexDirection: 'row', gap: 20, marginBottom: 14 }}>
-          <View style={{ width: 186, alignItems: 'center' }}>
-            <Svg viewBox="0 0 186 186" style={{ width: 186, height: 186 }}>
-              {[0.33, 0.66, 1.0].map(frac => (
-                <Polygon key={frac} points={gridPts(frac, cx, cy, r, n)} stroke={C.line} strokeWidth={0.5} fill="none" />
-              ))}
-              {Array.from({ length: n }, (_, i) => {
-                const [sx, sy] = polar(cx, cy, r, spokeDeg(i));
-                return <Line key={i} x1={cx} y1={cy} x2={sx.toFixed(1)} y2={sy.toFixed(1)} stroke={C.line} strokeWidth={0.5} />;
-              })}
-              <Polygon points={radarPts(c.scores, MIFID_MAXES, cx, cy, r)} fill="rgba(201,168,76,0.18)" stroke={C.gold} strokeWidth={1.4} />
-              {c.scores.map((score, i) => {
-                const frac = Math.min(1, score / MIFID_MAXES[i]);
-                const [px, py] = polar(cx, cy, r * frac, spokeDeg(i));
-                return <Circle key={i} cx={px.toFixed(1)} cy={py.toFixed(1)} r={2.5} fill={C.gold} />;
-              })}
-            </Svg>
-            <Text style={{ fontSize: 7.5, color: C.muted, textAlign: 'center', marginTop: 2 }}>Perfil {profileLabel} · {c.totalScore}/97</Text>
-          </View>
-
-          <View style={{ flex: 1 }}>
-            <Text style={S.subTag}>Puntuació per dimensió</Text>
-            {MIFID_DIMS.map((dim, i) => (
-              <ProgressBar key={dim} label={dim} score={c.scores[i]} max={MIFID_MAXES[i]} />
-            ))}
-            <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginTop: 8, paddingTop: 6, borderTopWidth: 0.5, borderTopColor: C.line }}>
-              <Text style={[S.body2, S.bold]}>PUNTUACIÓ TOTAL</Text>
-              <Text style={[S.body1, S.bold, { color: C.gold }]}>{c.totalScore} / 97</Text>
-            </View>
-          </View>
+        {/* No s'hi mostra cap puntuació: abans hi sortien valors fixos per perfil
+            (p. ex. 76/97) que no venien de cap qüestionari real. */}
+        <View style={{ borderWidth: 0.5, borderColor: C.line, padding: 13, marginBottom: 14 }}>
+          <Text style={[S.body1, S.bold, { marginBottom: 4 }]}>Perfil {profileLabel}</Text>
+          <Text style={S.body2}>Horitzó d&apos;inversió: {d.horizon} anys. Objectiu: {d.objective || 'no indicat'}.</Text>
         </View>
 
         {d.adminNote ? (
           <View style={S.legalBox}>
-            <Text style={[S.legalText, S.bold, { marginBottom: 3 }]}>Notes internes de l&apos;assessor</Text>
+            <Text style={[S.legalText, S.bold, { marginBottom: 3 }]}>Nota de l&apos;assessor</Text>
             <Text style={S.legalText}>{d.adminNote}</Text>
           </View>
         ) : null}
@@ -900,9 +832,9 @@ function InvestorProfilePage({ d }: { d: ManualPortfolioInput }) {
 
         <Text style={S.subTag}>Paràmetres de risc de la cartera</Text>
         <View style={S.row}>
-          <MetricBox label="Rendiment net estimat" value={fPct(c.nr)} sub="anual, net de TER" accent />
+          <MetricBox label="Rendiment net estimat" value={fPct(c.nr)} sub={c.terKnown ? 'anual, net de TER' : 'sense descomptar el TER d\'algun fons'} accent />
           <MetricBox label="Volatilitat estimada" value={fPct(c.wv)} sub="anual, desviació estàndard" />
-          <MetricBox label="TER mitjà ponderat" value={fTer(c.wt)} sub="cost anual total" />
+          <MetricBox label="TER mitjà ponderat" value={fTer(c.terKnown ? c.wt : 0)} sub="cost anual total" />
           <MetricBox label="Risc SRRI ponderat" value={RISK_LABEL[Math.round(c.wR)] ?? 'Moderat'} sub={`${fNum(c.wR, 1)} / 7`} />
         </View>
       </View>
@@ -994,8 +926,8 @@ function PortfolioPage({ d }: { d: ManualPortfolioInput }) {
         <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 10 }}>
           {[
             { label: 'Rendiment brut', value: fPct(c.wr), sub: 'anual ponderat' },
-            { label: 'TER mitjà', value: fTer(c.wt), sub: 'cost anual ponderat' },
-            { label: 'Rendiment net', value: fPct(c.nr), sub: 'brut - TER', accent: true },
+            { label: 'TER mitjà', value: fTer(c.terKnown ? c.wt : 0), sub: 'cost anual ponderat' },
+            { label: 'Rendiment net', value: fPct(c.nr), sub: c.terKnown ? 'brut - TER' : 'sense descomptar el TER d\'algun fons', accent: true },
             { label: 'Sharpe Ratio', value: fNum(c.sharpe, 2), sub: '(r - rf) / volatilitat' },
             { label: 'VaR 95% (1A)', value: fPct(c.var95), sub: 'pèrdua màx. estimada', tone: 'neg' as Tone },
           ].map(m => (
@@ -1055,7 +987,7 @@ function AssetsPage({ d }: { d: ManualPortfolioInput }) {
           <View style={{ flex: 0.75, paddingRight: 8 }}><Text style={[S.td, S.bold, { textAlign: 'right' }]}>100 %</Text></View>
           <View style={{ flex: 2.35, paddingRight: 8 }} />
           <View style={{ flex: 0.8, paddingRight: 8 }}><Text style={[S.tdGray, S.bold, { textAlign: 'center' }]}>{fNum(c.wR, 1)}/7</Text></View>
-          <View style={{ flex: 0.9, paddingRight: 8 }}><Text style={[S.td, S.bold, { textAlign: 'right' }]}>{fTer(c.wt)}</Text></View>
+          <View style={{ flex: 0.9, paddingRight: 8 }}><Text style={[S.td, S.bold, { textAlign: 'right' }]}>{fTer(c.terKnown ? c.wt : 0)}</Text></View>
           <View style={{ flex: 1.15, paddingRight: 8 }}><Text style={[S.td, S.bold, { textAlign: 'right' }]}>{fPct(c.nr)}</Text></View>
           <View style={{ flex: 2.05 }} />
         </View>
@@ -1411,11 +1343,10 @@ function AnalysisPage({ d }: { d: ManualPortfolioInput }) {
             { label: 'Volatilitat', value: fPct(c.wv) },
             { label: 'Sharpe Ratio', value: fNum(c.sharpe, 2) },
             { label: 'VaR 95% (1A)', value: fPct(c.var95) },
-            { label: 'Max Drawdown est.', value: fPct(c.maxDD) },
             { label: 'Alfa vs. benchmark', value: fPct(c.alpha, true) },
             { label: 'Benchmark ret.', value: fPct(c.benchR) },
-            { label: 'TER ponderat', value: fTer(c.wt) },
-            { label: 'Multiplicador P50', value: `× ${fNum(c.wealthMult, 1)}` },
+            { label: 'TER ponderat', value: fTer(c.terKnown ? c.wt : 0) },
+            { label: 'Multiplicador', value: `× ${fNum(c.wealthMult, 1)}` },
           ].map(m => (
             <View key={m.label} style={{ width: '31.8%', borderWidth: 0.5, borderColor: C.line, padding: 8 }}>
               <Text style={S.metricLabel}>{m.label}</Text>
@@ -1458,9 +1389,9 @@ function ScenarioPage({ d }: { d: ManualPortfolioInput }) {
   const nowY = new Date().getFullYear();
 
   const scenarios = [
-    { label: 'Escenari pessimista (P10)', value: c.p10, rate: fPct(c.r10), tone: 'neg' as Tone },
-    { label: 'Escenari base (P50)', value: c.p50, rate: fPct(c.nr), accent: true },
-    { label: 'Escenari optimista (P90)', value: c.p90, rate: fPct(c.r90), tone: 'pos' as Tone },
+    { label: 'Escenari desfavorable', value: c.p10, rate: fPct(c.r10), tone: 'neg' as Tone },
+    { label: 'Escenari base', value: c.p50, rate: fPct(c.nr), accent: true },
+    { label: 'Escenari favorable', value: c.p90, rate: fPct(c.r90), tone: 'pos' as Tone },
   ];
 
   return (
@@ -1471,14 +1402,14 @@ function ScenarioPage({ d }: { d: ManualPortfolioInput }) {
         <SectionTitle
           tag="Projecció per Escenaris"
           title={`Evolució projectada a ${d.horizon} anys`}
-          intro={`Projecció determinista per interès compost. P50 = rendiment net esperat (${fPct(c.nr)}); P10 i P90 = P50 menys / més 0,35 desviacions estàndard de la volatilitat (${fPct(c.wv)}). No és una simulació estocàstica.`}
+          intro={`Projecció determinista per interès compost. Base = rendiment net històric (${fPct(c.nr)}); desfavorable i favorable = base menys / més 0,35 desviacions estàndard de la volatilitat (${fPct(c.wv)}). No són percentils ni el pitjor cas: el resultat real pot quedar fora d'aquest rang.`}
         />
 
         <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 12, marginBottom: 6 }}>
           {[
-            { label: `P90 — optimista (${fPct(c.r90)})`, color: C.pos },
-            { label: `P50 — base (${fPct(c.nr)})`, color: C.ink },
-            { label: `P10 — pessimista (${fPct(c.r10)})`, color: C.neg },
+            { label: `Favorable (${fPct(c.r90)})`, color: C.pos },
+            { label: `Base (${fPct(c.nr)})`, color: C.ink },
+            { label: `Desfavorable (${fPct(c.r10)})`, color: C.neg },
             { label: 'Capital aportat', color: C.mutedLt },
           ].map(l => (
             <View key={l.label} style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
@@ -1531,9 +1462,9 @@ function ScenarioPage({ d }: { d: ManualPortfolioInput }) {
         <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 9 }}>
           {[
             { label: 'Capital aportat total', value: fEur(c.totalInvested), sub: 'inicial + aportacions' },
-            { label: 'Guany esperat (P50)', value: fEur(c.p50 - c.totalInvested), sub: 'projecció central', accent: true },
-            { label: 'Guany mínim (P10)', value: fEur(c.p10 - c.totalInvested), sub: 'escenari advers', tone: 'neg' as Tone },
-            { label: 'Guany màxim (P90)', value: fEur(c.p90 - c.totalInvested), sub: 'escenari favorable', tone: 'pos' as Tone },
+            { label: 'Guany escenari base', value: fEur(c.p50 - c.totalInvested), sub: 'projecció central', accent: true },
+            { label: 'Guany escenari desfavorable', value: fEur(c.p10 - c.totalInvested), sub: 'escenari advers', tone: 'neg' as Tone },
+            { label: 'Guany escenari favorable', value: fEur(c.p90 - c.totalInvested), sub: 'escenari favorable', tone: 'pos' as Tone },
           ].map(m => (
             <StatCard key={m.label} width="23.2%" label={m.label} value={m.value} sub={m.sub} accent={m.accent} tone={m.tone} />
           ))}
@@ -1634,8 +1565,8 @@ function MethodologyPage({ d, generatedAt }: { d: ManualPortfolioInput; generate
         <View style={{ gap: 8, marginBottom: 14 }}>
           {[
             ['Rendiments i volatilitat dels actius', '† Dades històriques reals a 5 anys de la base de dades de Factor OTC. * En absència de sèrie històrica, estimació per indicador SRRI: 1: 2 %, 2: 3,5 %, 3: 5 %, 4: 7 %, 5: 9,5 %, 6: 13 %, 7: 17 % de rendiment anual, amb la volatilitat corresponent.'],
-            ['Projecció de cartera', 'Interès compost amb aportació mensual constant. Escenari base P50 = rendiment net esperat. Escenaris P10 i P90 = P50 menys / més 0,35 desviacions estàndard. Projecció determinista; no és una simulació estocàstica de Monte Carlo.'],
-            ['Mètriques de risc', 'Correlació estimada segons la classe d\'actiu. VaR 95 % a un any = -1,645 desviacions estàndard. Max Drawdown estimat = -0,7 desviacions estàndard. Taxa lliure de risc: 3,5 % (referència BCE). Benchmark: retorns de referència assignats per perfil inversor.'],
+            ['Projecció de cartera', 'Interès compost amb aportació mensual constant. Escenari base = rendiment net històric. Escenaris desfavorable i favorable = base menys / més 0,35 desviacions estàndard (no són percentils ni el pitjor cas possible). Projecció determinista; no és una simulació estocàstica de Monte Carlo.'],
+            ['Mètriques de risc', 'Correlació estimada segons la classe d\'actiu. VaR 95 % a un any = -1,645 desviacions estàndard. Taxa lliure de risc: 3,5 % (referència BCE). Benchmark: retorns de referència assignats per perfil inversor.'],
           ].map(([title, body]) => (
             <View key={title} style={{ borderWidth: 0.5, borderColor: C.line, borderLeftWidth: 2, borderLeftColor: C.gold, padding: 10 }}>
               <Text style={[S.body1, S.bold, { marginBottom: 2 }]}>{title}</Text>
@@ -1674,6 +1605,10 @@ interface Props {
   generatedAt: string;
 }
 
+function hasRealFinances(d: ManualPortfolioInput): boolean {
+  return d.monthlyIncome != null && d.monthlyExpenses != null;
+}
+
 export function ManualReportPDF({ data, generatedAt }: Props) {
   return (
     <Document
@@ -1683,8 +1618,9 @@ export function ManualReportPDF({ data, generatedAt }: Props) {
       producer="@react-pdf/renderer v4">
       <CoverPage             d={data} generatedAt={generatedAt} />
       <ExecutivePage         d={data} />
-      <FinancialProfilePage  d={data} />
-      <DiagnosticsPage       d={data} />
+      {/* Sense ingressos i despeses reals no es mostren: abans s'inventaven a partir de l'aportació */}
+      {hasRealFinances(data) && <FinancialProfilePage  d={data} />}
+      {hasRealFinances(data) && <DiagnosticsPage       d={data} />}
       <InvestorProfilePage   d={data} />
       <PortfolioPage         d={data} />
       <AssetsPage            d={data} />

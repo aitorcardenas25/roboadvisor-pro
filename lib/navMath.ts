@@ -353,7 +353,7 @@ export function navPerformance(m: NavMetrics, name?: string): NavPerformance | n
   const yrs = m.years.toLocaleString('ca-ES', { maximumFractionDigits: 1 });
   return {
     return5Y: m.annualReturn, volatility: m.volatility,
-    source: `Preus entrats a mà (${yrs} anys, fins al ${fmtDate(m.lastDate)})`,
+    source: `Valors liquidatius oficials (${yrs} anys, fins al ${fmtDate(m.lastDate)})`,
     ...(name ? { name } : {}),
   };
 }

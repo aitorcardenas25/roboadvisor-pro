@@ -17,8 +17,14 @@ const PERSONAL_LABELS: Record<string, string> = {
 };
 const NOT_MONEY = new Set(['age', 'dependents']);
 const HORIZON_LABELS: Record<string, string> = { curt: 'Curt termini', mitja: 'Mitjà termini', llarg: 'Llarg termini' };
+// Codis interns de les preguntes amb desplegable → text que va triar el client
+const CHOICE_LABELS: Record<string, string> = {
+  indefinit: 'Indefinit', temporal: 'Temporal', autonom: 'Autònom', 'sense-feina': 'Sense feina',
+  conservador: 'Conservador', equilibrat: 'Equilibrat', dinamic: 'Dinàmic',
+  basic: 'Bàsic', mitja: 'Mitjà', alt: 'Alt',
+};
 const fmtPersonal = (k: string, v: number | string) =>
-  typeof v === 'string' ? v : NOT_MONEY.has(k) ? String(v) : eur(v);
+  typeof v === 'string' ? (CHOICE_LABELS[v] ?? v) : NOT_MONEY.has(k) ? String(v) : eur(v);
 const OP_LABELS: Record<string, string> = {
   buy: 'Compra', sell: 'Venda', deposit: 'Aportació', withdrawal: 'Retirada', rebalance: 'Rebalanceig',
 };
@@ -73,17 +79,21 @@ export default function ClientImport({ clientId, onImported }: { clientId: strin
           <li>
             Puja el fitxer omplert:
             <div className="mt-2 flex flex-wrap items-center gap-3">
-              <input type="file" accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-                onChange={async e => {
-                  // Es copia a memòria i es buida l'input: així es pot tornar a triar el
-                  // mateix fitxer després de corregir-lo i no falla si canvia al disc.
-                  const f = e.target.files?.[0];
-                  e.target.value = '';
-                  setPreview(null); setMsg(null);
-                  setFile(f ? new File([await f.arrayBuffer()], f.name, { type: f.type }) : null);
-                }}
-                className="text-ink-soft text-xs file:mr-3 file:px-3 file:py-1.5 file:rounded-lg file:border-0 file:bg-subtle-strong file:text-ink file:text-xs" />
-              {file && <span className="text-ink-soft text-xs">{file.name}</span>}
+              {/* Botó propi: l'input natiu deia "No s'ha triat cap fitxer" fins i tot amb un fitxer triat
+                  (es buida després de llegir-lo) */}
+              <label className="px-3 py-1.5 rounded-lg bg-subtle-strong text-ink text-xs cursor-pointer hover:bg-subtle">
+                Triar fitxer
+                <input type="file" className="sr-only" accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+                  onChange={async e => {
+                    // Es copia a memòria i es buida l'input: així es pot tornar a triar el
+                    // mateix fitxer després de corregir-lo i no falla si canvia al disc.
+                    const f = e.target.files?.[0];
+                    e.target.value = '';
+                    setPreview(null); setMsg(null);
+                    setFile(f ? new File([await f.arrayBuffer()], f.name, { type: f.type }) : null);
+                  }} />
+              </label>
+              <span className="text-ink-soft text-xs">{file ? file.name : 'Cap fitxer triat'}</span>
               <button disabled={!file || busy} onClick={() => send('preview')}
                 className="px-4 py-1.5 rounded-lg bg-subtle-strong text-ink text-xs font-medium disabled:opacity-40 hover:bg-subtle-strong">
                 {busy && !preview ? 'Llegint…' : 'Revisar'}
@@ -121,7 +131,7 @@ export default function ClientImport({ clientId, onImported }: { clientId: strin
               </ul>
             )}
             {!preview.context.hasLead && (Object.keys(preview.personal).length > 0 || preview.goals.length > 0) && (
-              <p className="text-warning/80 text-xs mt-3">Aquest client no té lead vinculat: les dades personals no es desaran.</p>
+              <p className="text-warning/80 text-xs mt-3">Aquest client encara no té fitxa de dades: en confirmar se&apos;n crearà una i s&apos;hi desaran les dades personals i els objectius.</p>
             )}
           </div>
 
