@@ -19,6 +19,13 @@ interface ConvertForm {
   portfolioName: string;
 }
 
+const INTEREST_LABELS: Record<string, string> = {
+  beginner:    'Vol començar a invertir',
+  investor:    'Ja inverteix',
+  business:    'Empresa / autònom',
+  information: 'Només vol informació',
+};
+
 export default function LeadsManager() {
   const [leads, setLeads]         = useState<Lead[]>([]);
   const [loading, setLoading]     = useState(true);
@@ -75,7 +82,7 @@ export default function LeadsManager() {
     setConvertForm({
       username:      emailPrefix,
       password:      '',
-      name:          lead.name,
+      name:          [lead.name, lead.lastName].filter(Boolean).join(' '),
       portfolioName: `Cartera de ${lead.name}`,
     });
     setConvertError('');
@@ -159,7 +166,7 @@ export default function LeadsManager() {
                 <div className="flex items-start justify-between gap-4">
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-3 mb-1 flex-wrap">
-                      <span className="text-ink font-semibold text-sm">{lead.name}</span>
+                      <span className="text-ink font-semibold text-sm">{[lead.name, lead.lastName].filter(Boolean).join(' ')}</span>
                       <span
                         className="inline-block text-xs px-2 py-0.5 rounded-full font-medium"
                         style={{ color: meta.color, backgroundColor: meta.bg }}>
@@ -185,7 +192,7 @@ export default function LeadsManager() {
                     {lead.interest && (
                       <p className="mt-2 text-ink-soft text-sm">
                         <span className="text-ink-muted text-xs font-medium mr-1">Interès:</span>
-                        {lead.interest}
+                        {INTEREST_LABELS[lead.interest] ?? lead.interest}
                       </p>
                     )}
                     {lead.message && (
