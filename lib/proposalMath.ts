@@ -148,6 +148,7 @@ export interface ProposalStats {
   risk:             number;   // SRRI ponderat
   complete:         boolean;  // tots els fons tenen rendiment i volatilitat reals
   missing:          { isin: string; name: string }[];  // fons sense aquestes dades
+  terMissing:       { isin: string; name: string }[];  // fons sense TER (0 = no se sap; cap fons cobra 0 %)
   totalInvested:    number;   // aportat al final de l'horitzó
   p10: number; p50: number; p90: number;
   yearly: { year: number; invested: number; p10: number; p50: number; p90: number }[];
@@ -174,6 +175,9 @@ export function proposalStats(p: Pick<ClientProposal, 'items' | 'horizon' | 'ini
   const ret = (x: ProposalItem) => x.historicalReturn5Y ?? 0;
   const vol = (x: ProposalItem) => x.historicalVolatility ?? 0;
   const missing = p.items.filter(x => !hasPerformanceData(x)).map(x => ({ isin: x.isin, name: x.name || x.isin }));
+  // La llista de fons de l'assessor encara no porta el TER de la majoria: es desava com a 0 i
+  // el rendiment net sortia inflat sense cap avís.
+  const terMissing = p.items.filter(x => (x.weight || 0) > 0 && !(x.ter > 0)).map(x => ({ isin: x.isin, name: x.name || x.isin }));
 
   const totalWeight = p.items.reduce((s, x) => s + (x.weight || 0), 0);
   const grossReturn = p.items.reduce((s, x) => s + w(x) * ret(x), 0);
@@ -197,7 +201,7 @@ export function proposalStats(p: Pick<ClientProposal, 'items' | 'horizon' | 'ini
   return {
     totalWeight, weightOk: Math.abs(totalWeight - 100) < 0.01,
     grossReturn, ter, netReturn, volatility, risk,
-    complete: missing.length === 0, missing,
+    complete: missing.length === 0, missing, terMissing,
     totalInvested: last.invested, p10: last.p10, p50: last.p50, p90: last.p90, yearly,
   };
 }

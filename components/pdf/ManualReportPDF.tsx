@@ -150,7 +150,8 @@ function fNum(n: number, dec = 2): string {
 // Pes enter d'un actiu. Ex: 45 %
 function fW(n: number): string { return `${Math.round(n)} %`; }
 // TER / costos: sempre 2 decimals per no perdre precisió. Ex: 0,29 %
-function fTer(n: number): string { return `${fNum(n, 2)} %`; }
+// TER 0 = no se sap (cap fons cobra 0 %): no s'ensenya com si fos gratuït
+function fTer(n: number): string { return n > 0 ? `${fNum(n, 2)} %` : 'sense dada'; }
 
 // Ajust tipogràfic: escala la mida segons la llargada del text perquè un import
 // llarg (4.120.000 €) no quedi comprimit ni desbordi la seva targeta.
@@ -233,6 +234,8 @@ function compute(d: ManualPortfolioInput) {
   const wr = d.assets.reduce((s, a) => s + (a.weight / 100) * assetReturn(a), 0);
   const wv = d.assets.reduce((s, a) => s + (a.weight / 100) * assetVol(a), 0);
   const wt = d.assets.reduce((s, a) => s + (a.weight / 100) * a.ter, 0);
+  // Si falta el TER d'algun fons, el ponderat és massa baix: a l'informe surt "sense dada"
+  const terKnown = d.assets.every(a => !(a.weight > 0) || a.ter > 0);
   const wR = d.assets.reduce((s, a) => s + (a.weight / 100) * a.risk, 0);
   const nr = Math.max(0, wr - wt);
 
@@ -296,7 +299,7 @@ function compute(d: ManualPortfolioInput) {
   const goalRef = objectiuAmount > 0 ? objectiuAmount : p50;
 
   return {
-    wr, wv, wt, wR, nr,
+    wr, wv, wt, wR, nr, terKnown,
     income, expenses, surplus, isEst,
     annualIncome, annualExpenses, monthlySavings, annualSavings, annualInvest,
     expenseRatioPct, savingsRatePct, investRatePct,
@@ -707,7 +710,7 @@ function DiagnosticsPage({ d }: { d: ManualPortfolioInput }) {
       tone: (c.mesosAutonomia >= 6 ? 'pos' : 'neutral') as Tone },
     { label: "Marge d'inversió", value: `${fEur(c.surplus)} / mes`, sub: "després d'invertir",
       tone: (c.surplus >= 0 ? 'pos' : 'neg') as Tone },
-    { label: 'Rendiment net', value: fPct(c.nr), sub: 'anual, net de costos', accent: true },
+    { label: 'Rendiment net', value: fPct(c.nr), sub: c.terKnown ? 'anual, net de costos' : 'sense descomptar el TER d\'algun fons', accent: true },
     { label: 'Multiplicador', value: `× ${fNum(c.wealthMult, 1)}`, sub: 'projecció base / capital aportat', tone: 'neutral' as Tone },
     { label: 'Alfa vs. bench.', value: fPct(c.alpha, true), sub: `vs. ${BENCHMARK_NAME[d.investorProfile] ?? 'benchmark'}`,
       tone: (c.alpha >= 0 ? 'pos' : 'neg') as Tone },
@@ -829,9 +832,9 @@ function InvestorProfilePage({ d }: { d: ManualPortfolioInput }) {
 
         <Text style={S.subTag}>Paràmetres de risc de la cartera</Text>
         <View style={S.row}>
-          <MetricBox label="Rendiment net estimat" value={fPct(c.nr)} sub="anual, net de TER" accent />
+          <MetricBox label="Rendiment net estimat" value={fPct(c.nr)} sub={c.terKnown ? 'anual, net de TER' : 'sense descomptar el TER d\'algun fons'} accent />
           <MetricBox label="Volatilitat estimada" value={fPct(c.wv)} sub="anual, desviació estàndard" />
-          <MetricBox label="TER mitjà ponderat" value={fTer(c.wt)} sub="cost anual total" />
+          <MetricBox label="TER mitjà ponderat" value={fTer(c.terKnown ? c.wt : 0)} sub="cost anual total" />
           <MetricBox label="Risc SRRI ponderat" value={RISK_LABEL[Math.round(c.wR)] ?? 'Moderat'} sub={`${fNum(c.wR, 1)} / 7`} />
         </View>
       </View>
@@ -923,8 +926,8 @@ function PortfolioPage({ d }: { d: ManualPortfolioInput }) {
         <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 10 }}>
           {[
             { label: 'Rendiment brut', value: fPct(c.wr), sub: 'anual ponderat' },
-            { label: 'TER mitjà', value: fTer(c.wt), sub: 'cost anual ponderat' },
-            { label: 'Rendiment net', value: fPct(c.nr), sub: 'brut - TER', accent: true },
+            { label: 'TER mitjà', value: fTer(c.terKnown ? c.wt : 0), sub: 'cost anual ponderat' },
+            { label: 'Rendiment net', value: fPct(c.nr), sub: c.terKnown ? 'brut - TER' : 'sense descomptar el TER d\'algun fons', accent: true },
             { label: 'Sharpe Ratio', value: fNum(c.sharpe, 2), sub: '(r - rf) / volatilitat' },
             { label: 'VaR 95% (1A)', value: fPct(c.var95), sub: 'pèrdua màx. estimada', tone: 'neg' as Tone },
           ].map(m => (
@@ -984,7 +987,7 @@ function AssetsPage({ d }: { d: ManualPortfolioInput }) {
           <View style={{ flex: 0.75, paddingRight: 8 }}><Text style={[S.td, S.bold, { textAlign: 'right' }]}>100 %</Text></View>
           <View style={{ flex: 2.35, paddingRight: 8 }} />
           <View style={{ flex: 0.8, paddingRight: 8 }}><Text style={[S.tdGray, S.bold, { textAlign: 'center' }]}>{fNum(c.wR, 1)}/7</Text></View>
-          <View style={{ flex: 0.9, paddingRight: 8 }}><Text style={[S.td, S.bold, { textAlign: 'right' }]}>{fTer(c.wt)}</Text></View>
+          <View style={{ flex: 0.9, paddingRight: 8 }}><Text style={[S.td, S.bold, { textAlign: 'right' }]}>{fTer(c.terKnown ? c.wt : 0)}</Text></View>
           <View style={{ flex: 1.15, paddingRight: 8 }}><Text style={[S.td, S.bold, { textAlign: 'right' }]}>{fPct(c.nr)}</Text></View>
           <View style={{ flex: 2.05 }} />
         </View>
@@ -1342,7 +1345,7 @@ function AnalysisPage({ d }: { d: ManualPortfolioInput }) {
             { label: 'VaR 95% (1A)', value: fPct(c.var95) },
             { label: 'Alfa vs. benchmark', value: fPct(c.alpha, true) },
             { label: 'Benchmark ret.', value: fPct(c.benchR) },
-            { label: 'TER ponderat', value: fTer(c.wt) },
+            { label: 'TER ponderat', value: fTer(c.terKnown ? c.wt : 0) },
             { label: 'Multiplicador', value: `× ${fNum(c.wealthMult, 1)}` },
           ].map(m => (
             <View key={m.label} style={{ width: '31.8%', borderWidth: 0.5, borderColor: C.line, padding: 8 }}>
