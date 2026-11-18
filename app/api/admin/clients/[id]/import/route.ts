@@ -94,6 +94,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   const oldTxs      = replace && existing ? existing.transactions.map(t => t.id) : [];
   const newHoldings: string[] = [];
   const newTxs: string[] = [];
+  const createdHoldings: { id: string; isin: string; broker: string }[] = [];
   const now = new Date().toISOString();
   try {
     for (const h of result.holdings) {
@@ -105,9 +106,21 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
         currency: h.currency, notes: h.notes,
       });
       newHoldings.push(created.id);
+      createdHoldings.push({ id: created.id, isin: h.isin, broker: h.broker.toLowerCase() });
     }
+    // Les compres i vendes es vinculen a la posició del mateix ISIN (i entitat, si
+    // coincideix). Sense aquest vincle, "Reestructurar la cartera" no les troba i
+    // diu que la posició no té compres registrades.
+    const keptHoldings = replace || !existing ? [] : existing.holdings.map(h => ({ id: h.id, isin: h.assetIsin ?? '', broker: (h.broker ?? '').toLowerCase() }));
+    const linkable = [...createdHoldings, ...keptHoldings];
+    const holdingFor = (isin?: string, broker?: string) => {
+      if (!isin) return undefined;
+      const same = linkable.filter(h => h.isin === isin);
+      return (same.find(h => h.broker === (broker ?? '').toLowerCase()) ?? same[0])?.id;
+    };
     for (const t of result.transactions) {
       const created = await addTransaction(portfolio.id, {
+        holdingId: t.operationType === 'buy' || t.operationType === 'sell' ? holdingFor(t.isin, t.broker) : undefined,
         operationType: t.operationType, ticker: t.isin, assetName: t.name, date: t.date,
         quantity: t.quantity, priceEur: t.priceEur, totalEur: t.totalEur,
         commission: t.commission, broker: t.broker, notes: t.notes,
