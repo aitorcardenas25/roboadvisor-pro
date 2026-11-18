@@ -15,7 +15,7 @@ export default function MonthlyReportView({ report }: { report: MonthlyReportDat
             <div className="w-6 h-6 bg-accent-soft border border-accent/40 rounded flex items-center justify-center">
               <span className="text-accent font-black text-xs print:hidden">F</span>
             </div>
-            <span className="text-ink font-black tracking-wider print:text-ink">FACTOR OTC</span>
+            <span className="text-ink font-black print:text-ink">FACTOR OTC</span>
           </div>
           <h1 className="text-ink font-bold text-2xl mb-1 print:text-ink">Informe Mensual de Cartera</h1>
           <p className="text-ink-soft text-sm print:text-ink-muted">{report.clientName} · {report.portfolioName}</p>
@@ -54,7 +54,7 @@ export default function MonthlyReportView({ report }: { report: MonthlyReportDat
       {/* Top holdings */}
       {report.topHoldings.length > 0 && (
         <div className="mb-8">
-          <h2 className="text-ink font-semibold text-sm mb-3 uppercase tracking-wide print:text-ink">Principals posicions</h2>
+          <h2 className="text-ink font-semibold text-sm mb-3 print:text-ink">Principals posicions</h2>
           <div className="space-y-2">
             {report.topHoldings.map(h => (
               <div key={h.name} className="flex items-center gap-3">
@@ -82,7 +82,7 @@ export default function MonthlyReportView({ report }: { report: MonthlyReportDat
       {/* Advisor comments */}
       {report.advisorComments && (
         <div className="mb-6">
-          <h2 className="text-ink font-semibold text-sm mb-3 uppercase tracking-wide print:text-ink">Comentaris de l&apos;assessor</h2>
+          <h2 className="text-ink font-semibold text-sm mb-3 print:text-ink">Comentaris de l&apos;assessor</h2>
           <div className="bg-subtle border border-line rounded-xl p-4 print:bg-subtle print:border-line">
             <p className="text-ink-soft text-sm leading-relaxed whitespace-pre-wrap print:text-ink-soft">{report.advisorComments}</p>
           </div>

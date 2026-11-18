@@ -18,7 +18,7 @@ export default function DiagnosisCard({ d, audience = 'client' }: { d: Diagnosis
     <section className={`bg-surface border ${s.border} rounded-xl p-5`} aria-labelledby="diagnosis-title">
       <div className="flex items-center gap-2 mb-2">
         <span className={`w-2.5 h-2.5 rounded-full ${s.dot}`} aria-hidden />
-        <h2 id="diagnosis-title" className="text-accent text-xs uppercase tracking-widest">
+        <h2 id="diagnosis-title" className="text-accent text-xs">
           {audience === 'client' ? 'El teu diagnòstic' : 'Diagnòstic'} · {s.label}
         </h2>
       </div>
@@ -38,7 +38,7 @@ export default function DiagnosisCard({ d, audience = 'client' }: { d: Diagnosis
 
       {d.actions.length > 0 && (
         <div className="mt-5 pt-4 border-t border-line">
-          <p className="text-ink-soft text-xs uppercase tracking-widest mb-3">{audience === 'client' ? 'Què pots fer ara' : 'Accions per al client'}</p>
+          <p className="text-ink-soft text-xs mb-3">{audience === 'client' ? 'Què pots fer ara' : 'Accions per al client'}</p>
           <ol className="space-y-3">
             {d.actions.map((a, i) => (
               <li key={a.title} className="flex gap-3">

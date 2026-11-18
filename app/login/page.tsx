@@ -41,71 +41,70 @@ function LoginForm() {
 
   if (status === 'loading') {
     return (
-      <div className="min-h-screen bg-[#080e0b] flex items-center justify-center">
-        <div className="w-6 h-6 border-2 border-[#c9a84c]/20 border-t-[#c9a84c] rounded-full animate-spin" />
+      <div className="theme-client min-h-screen bg-canvas flex items-center justify-center">
+        <div className="w-6 h-6 border-2 border-accent/20 border-t-accent rounded-full animate-spin" />
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-[#080e0b] flex items-center justify-center px-4"
-      style={{ backgroundImage: 'radial-gradient(ellipse at 50% 0%, rgba(26,58,42,0.4) 0%, transparent 70%)' }}>
+    <div className="theme-client min-h-screen bg-canvas flex items-center justify-center px-4">
 
       {showLead && <LeadForm onClose={() => setShowLead(false)} />}
 
       <div className="w-full max-w-sm">
         <div className="text-center mb-10">
           <Link href="/" className="inline-flex items-center gap-2 mb-4">
-            <div className="w-8 h-8 bg-[#1a3a2a] border border-[#2d6a4f]/50 rounded flex items-center justify-center">
-              <span className="text-[#c9a84c] font-black text-sm leading-none">F</span>
+            <div className="w-8 h-8 bg-subtle-strong border border-accent/50 rounded flex items-center justify-center">
+              <span className="text-accent font-semibold text-sm leading-none">F</span>
             </div>
-            <span className="text-white font-black text-xl tracking-wider">FACTOR</span>
-            <span className="text-[#2d6a4f] font-light text-xl tracking-widest">OTC</span>
+            <span className="text-ink font-semibold text-xl">FACTOR</span>
+            <span className="text-accent font-light text-xl">OTC</span>
           </Link>
-          <p className="text-white/30 text-xs uppercase tracking-[0.3em]">Zona de clients</p>
+          <p className="text-ink-muted text-xs">Zona de clients</p>
         </div>
 
-        <div className="bg-white/[0.03] border border-[#1a3a2a]/60 rounded-2xl p-8"
+        <div className="bg-subtle border border-line rounded-lg p-8"
           style={{ boxShadow: 'inset 0 1px 0 rgba(45,106,79,0.1)' }}>
-          <h1 className="text-white font-bold text-xl mb-1">Accés clients</h1>
-          <p className="text-white/40 text-sm mb-7">
+          <h1 className="text-ink font-bold text-xl mb-1">Accés clients</h1>
+          <p className="text-ink-muted text-sm mb-7">
             Introdueix les teves credencials per accedir a la zona privada.
           </p>
 
           <form onSubmit={handleLogin} className="space-y-4">
             <div>
-              <label className="block text-white/50 text-xs uppercase tracking-widest mb-2">Usuari</label>
+              <label className="block text-ink-soft text-xs mb-2">Usuari</label>
               <input type="text" value={username} onChange={e => setUsername(e.target.value)}
                 autoComplete="username" required
-                className="w-full bg-[#0d1a14] border border-[#1a3a2a] rounded-xl px-4 py-3 text-white text-sm focus:outline-none focus:border-[#2d6a4f]/70 transition-colors placeholder-white/20" />
+                className="w-full bg-surface border border-line-strong rounded-xl px-4 py-3 text-ink text-sm focus:outline-none focus:border-accent/70 transition-colors placeholder-ink-muted" />
             </div>
             <div>
-              <label className="block text-white/50 text-xs uppercase tracking-widest mb-2">Contrasenya</label>
+              <label className="block text-ink-soft text-xs mb-2">Contrasenya</label>
               <input type="password" value={password} onChange={e => setPassword(e.target.value)}
                 autoComplete="current-password" required
-                className="w-full bg-[#0d1a14] border border-[#1a3a2a] rounded-xl px-4 py-3 text-white text-sm focus:outline-none focus:border-[#2d6a4f]/70 transition-colors" />
+                className="w-full bg-surface border border-line-strong rounded-xl px-4 py-3 text-ink text-sm focus:outline-none focus:border-accent/70 transition-colors" />
             </div>
 
             {error && (
-              <p className="text-red-400 text-xs bg-red-500/10 border border-red-500/20 rounded-lg px-3 py-2">{error}</p>
+              <p className="text-negative text-xs bg-negative/10 border border-negative/20 rounded-lg px-3 py-2">{error}</p>
             )}
 
             <button type="submit" disabled={loading}
-              className="w-full py-3 bg-[#c9a84c] hover:bg-[#b8963f] text-[#0d1f1a] font-bold text-sm rounded-xl disabled:opacity-40 transition-colors mt-2">
+              className="w-full py-3 bg-accent hover:bg-accent-hover text-accent-ink font-bold text-sm rounded-xl disabled:opacity-40 transition-colors mt-2">
               {loading ? 'Verificant...' : 'Entrar'}
             </button>
           </form>
         </div>
 
-        <p className="text-center text-white/20 text-xs mt-4">
+        <p className="text-center text-ink-muted text-xs mt-4">
           Encara no ets client?{' '}
-          <button onClick={() => setShowLead(true)} className="text-[#c9a84c]/70 hover:text-[#c9a84c] transition-colors">
+          <button onClick={() => setShowLead(true)} className="text-accent/70 hover:text-accent transition-colors">
             Sol·licita accés
           </button>
         </p>
 
-        <p className="text-center text-white/20 text-xs mt-3">
-          <Link href="/" className="hover:text-white/40 transition-colors">← Tornar a l&apos;inici</Link>
+        <p className="text-center text-ink-muted text-xs mt-3">
+          <Link href="/" className="hover:text-ink-muted transition-colors">← Tornar a l&apos;inici</Link>
         </p>
       </div>
     </div>
@@ -115,8 +114,8 @@ function LoginForm() {
 export default function LoginPage() {
   return (
     <Suspense fallback={
-      <div className="min-h-screen bg-[#080e0b] flex items-center justify-center">
-        <div className="w-6 h-6 border-2 border-[#c9a84c]/20 border-t-[#c9a84c] rounded-full animate-spin" />
+      <div className="theme-client min-h-screen bg-canvas flex items-center justify-center">
+        <div className="w-6 h-6 border-2 border-accent/20 border-t-accent rounded-full animate-spin" />
       </div>
     }>
       <LoginForm />

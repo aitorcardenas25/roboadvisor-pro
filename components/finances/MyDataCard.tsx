@@ -31,7 +31,7 @@ export default function MyDataCard() {
 
   return (
     <section className={card} aria-labelledby="my-data-title">
-      <h2 id="my-data-title" className="text-ink-soft text-xs uppercase tracking-widest mb-3">Les teves dades</h2>
+      <h2 id="my-data-title" className="text-ink-soft text-xs mb-3">Les teves dades</h2>
       <div className="flex flex-col sm:flex-row gap-3 sm:items-center">
         <a href="/api/client/data" download
           className="inline-block text-center px-4 py-2 rounded-lg bg-subtle text-ink text-sm hover:bg-subtle-strong">

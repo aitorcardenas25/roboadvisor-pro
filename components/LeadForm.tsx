@@ -42,25 +42,25 @@ export default function LeadForm({ onClose, onSuccess }: Props) {
     finally { setSending(false); }
   }
 
-  const inputCls = 'w-full bg-[#0a0f0d] border border-white/10 rounded-lg px-3 py-2.5 text-white text-sm focus:outline-none focus:border-[#c9a84c]/40 placeholder-white/20 transition-colors';
-  const labelCls = 'block text-white/40 text-xs uppercase tracking-wide mb-1.5';
+  const inputCls = 'w-full bg-canvas border border-line rounded-lg px-3 py-2.5 text-ink text-sm focus:outline-none focus:border-accent/40 placeholder-ink-muted transition-colors';
+  const labelCls = 'block text-ink-muted text-xs mb-1.5';
 
   return (
-    <div className="fixed inset-0 z-50 bg-black/75 backdrop-blur-sm flex items-center justify-center px-4 py-8 overflow-y-auto">
-      <div className="bg-[#0d1f1a] border border-[#1a3a2a] rounded-2xl p-8 w-full max-w-md shadow-2xl my-auto">
+    <div className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center px-4 py-8 overflow-y-auto">
+      <div className="bg-surface border border-line-strong rounded-lg p-8 w-full max-w-md shadow-lg my-auto">
         {done ? (
           <div className="text-center py-6">
-            <div className="w-14 h-14 bg-[#c9a84c]/15 rounded-full flex items-center justify-center mx-auto mb-4 border border-[#c9a84c]/20">
-              <svg className="w-7 h-7 text-[#c9a84c]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <div className="w-14 h-14 bg-accent-soft rounded-full flex items-center justify-center mx-auto mb-4 border border-accent/20">
+              <svg className="w-7 h-7 text-accent" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
               </svg>
             </div>
-            <h3 className="text-white font-bold text-lg mb-2">Sol·licitud enviada</h3>
-            <p className="text-white/50 text-sm mb-6 leading-relaxed">
+            <h3 className="text-ink font-bold text-lg mb-2">Sol·licitud enviada</h3>
+            <p className="text-ink-soft text-sm mb-6 leading-relaxed">
               Ens posarem en contacte amb tu en breu per explicar-te com funciona el servei.
             </p>
             <button onClick={onClose}
-              className="px-6 py-2.5 bg-[#1a3a2a] border border-[#2d6a4f]/50 text-[#c9a84c] font-semibold text-sm rounded-xl hover:bg-[#1f4432] transition-colors">
+              className="px-6 py-2.5 bg-subtle-strong border border-accent/50 text-accent font-semibold text-sm rounded-xl hover:bg-subtle-strong transition-colors">
               Explorar la plataforma
             </button>
           </div>
@@ -68,10 +68,10 @@ export default function LeadForm({ onClose, onSuccess }: Props) {
           <>
             <div className="flex items-center justify-between mb-5">
               <div>
-                <h3 className="text-white font-bold text-lg">Sol·licita accés</h3>
-                <p className="text-white/40 text-xs mt-0.5">Et contactarem per presentar-te el servei</p>
+                <h3 className="text-ink font-bold text-lg">Sol·licita accés</h3>
+                <p className="text-ink-muted text-xs mt-0.5">Et contactarem per presentar-te el servei</p>
               </div>
-              <button onClick={onClose} className="text-white/30 hover:text-white transition-colors p-1">
+              <button onClick={onClose} className="text-ink-muted hover:text-ink transition-colors p-1">
                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                 </svg>
@@ -79,7 +79,7 @@ export default function LeadForm({ onClose, onSuccess }: Props) {
             </div>
 
             {error && (
-              <div className="bg-red-500/10 border border-red-500/20 rounded-lg px-3 py-2 mb-4 text-red-400 text-sm">
+              <div className="bg-negative/10 border border-negative/20 rounded-lg px-3 py-2 mb-4 text-negative text-sm">
                 {error}
               </div>
             )}
@@ -114,9 +114,9 @@ export default function LeadForm({ onClose, onSuccess }: Props) {
                 <label className={labelCls}>Perfil aproximat *</label>
                 <select value={form.profile} onChange={e => set('profile', e.target.value)}
                   required className={inputCls + ' cursor-pointer'}>
-                  <option value="" style={{ background: '#0d1f1a' }}>Selecciona el teu perfil...</option>
+                  <option value="" style={{ background: '#ffffff' }}>Selecciona el teu perfil...</option>
                   {PROFILE_OPTIONS.map(o => (
-                    <option key={o.value} value={o.value} style={{ background: '#0d1f1a' }}>{o.label}</option>
+                    <option key={o.value} value={o.value} style={{ background: '#ffffff' }}>{o.label}</option>
                   ))}
                 </select>
               </div>
@@ -130,17 +130,17 @@ export default function LeadForm({ onClose, onSuccess }: Props) {
 
               <label className="flex items-start gap-2.5 cursor-pointer">
                 <input type="checkbox" required checked={gdpr} onChange={e => setGdpr(e.target.checked)}
-                  className="mt-0.5 accent-[#c9a84c] flex-shrink-0 w-4 h-4" />
-                <span className="text-white/35 text-xs leading-relaxed">
+                  className="mt-0.5 accent-accent flex-shrink-0 w-4 h-4" />
+                <span className="text-ink-muted text-xs leading-relaxed">
                   Accepto que Factor OTC contacti amb mi per presentar el servei.{' '}
-                  <Link href="/privacitat" target="_blank" className="text-[#c9a84c]/60 hover:text-[#c9a84c] underline">
+                  <Link href="/privacitat" target="_blank" className="text-accent/60 hover:text-accent underline">
                     Privacitat
                   </Link>
                 </span>
               </label>
 
               <button type="submit" disabled={sending || !gdpr}
-                className="w-full py-3 bg-[#c9a84c] hover:bg-[#b8963f] text-[#0d1f1a] font-bold text-sm rounded-xl disabled:opacity-50 transition-colors">
+                className="w-full py-3 bg-accent hover:bg-accent-hover text-accent-ink font-bold text-sm rounded-xl disabled:opacity-50 transition-colors">
                 {sending ? 'Enviant...' : 'Enviar sol·licitud'}
               </button>
             </form>

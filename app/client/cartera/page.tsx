@@ -46,23 +46,23 @@ function fDate(iso: string): string {
 // ── Constants ──────────────────────────────────────────────────────────────
 
 const COLORS = [
-  '#c9a84c', '#60a5fa', '#34d399', '#f97316', '#a78bfa',
-  '#f472b6', '#38bdf8', '#fb923c', '#4ade80', '#e879f9',
+  '#1e4d3f', '#1f5d8c', '#1e704c', '#8a5a00', '#5b5f7a',
+  '#f472b6', '#38bdf8', '#fb923c', '#1e704c', '#e879f9',
 ];
 
 const OP_META: Record<OperationType, { label: string; color: string; bg: string; icon: string }> = {
-  buy:        { label: 'Compra',      color: '#10b981', bg: 'rgba(16,185,129,0.1)',  icon: '↑' },
-  sell:       { label: 'Venda',       color: '#ef4444', bg: 'rgba(239,68,68,0.1)',   icon: '↓' },
-  deposit:    { label: 'Aportació',   color: '#60a5fa', bg: 'rgba(96,165,250,0.1)',  icon: '+' },
-  withdrawal: { label: 'Retirada',    color: '#f97316', bg: 'rgba(249,115,22,0.1)',  icon: '−' },
-  rebalance:  { label: 'Rebalanceig', color: '#a78bfa', bg: 'rgba(167,139,250,0.1)', icon: '↺' },
+  buy:        { label: 'Compra',      color: '#1e704c', bg: 'rgba(16,185,129,0.1)',  icon: '↑' },
+  sell:       { label: 'Venda',       color: '#b42820', bg: 'rgba(239,68,68,0.1)',   icon: '↓' },
+  deposit:    { label: 'Aportació',   color: '#1f5d8c', bg: 'rgba(96,165,250,0.1)',  icon: '+' },
+  withdrawal: { label: 'Retirada',    color: '#8a5a00', bg: 'rgba(249,115,22,0.1)',  icon: '−' },
+  rebalance:  { label: 'Rebalanceig', color: '#5b5f7a', bg: 'rgba(167,139,250,0.1)', icon: '↺' },
 };
 
 const TT = {
-  contentStyle: { background: '#0d1f1a', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 10, padding: '8px 14px' },
-  labelStyle:   { color: 'rgba(255,255,255,0.3)',  fontSize: 11, marginBottom: 4 },
-  itemStyle:    { color: '#c9a84c', fontSize: 12 },
-  cursor:       { stroke: 'rgba(201,168,76,0.15)', strokeWidth: 1 },
+  contentStyle: { background: '#ffffff', border: '1px solid #e6e9e7', borderRadius: 10, padding: '8px 14px' },
+  labelStyle:   { color: '#3c4a45',  fontSize: 11, marginBottom: 4 },
+  itemStyle:    { color: '#1e4d3f', fontSize: 12 },
+  cursor:       { stroke: '#cfd8d4', strokeWidth: 1 },
 };
 
 // ── Derived data helpers ───────────────────────────────────────────────────
@@ -77,13 +77,13 @@ function isEquity(category: string): boolean {
 function deriveRisk(portfolio: ClientPortfolio): { label: string; color: string } {
   const open = portfolio.holdings.filter(h => h.quantity > 0);
   const total = open.reduce((s, h) => s + Math.max(0, h.currentPrice * h.quantity), 0);
-  if (open.length === 0 || total <= 0) return { label: 'No disponible', color: '#6b7280' };
+  if (open.length === 0 || total <= 0) return { label: 'No disponible', color: '#626e69' };
   const eqPct = open.filter(h => isEquity(h.assetCategory ?? ''))
     .reduce((s, h) => s + Math.max(0, h.currentPrice * h.quantity), 0) / total * 100;
-  if (eqPct >= 80) return { label: 'Dinàmic',         color: '#f97316' };
-  if (eqPct >= 50) return { label: 'Moderat',         color: '#c9a84c' };
-  if (eqPct >= 20) return { label: 'Conservador',     color: '#60a5fa' };
-  return              { label: 'Molt conservador',    color: '#34d399' };
+  if (eqPct >= 80) return { label: 'Dinàmic',         color: '#8a5a00' };
+  if (eqPct >= 50) return { label: 'Moderat',         color: '#1e4d3f' };
+  if (eqPct >= 20) return { label: 'Conservador',     color: '#1f5d8c' };
+  return              { label: 'Molt conservador',    color: '#1e704c' };
 }
 
 function monthlyReturn(portfolio: ClientPortfolio, valuation?: Valuation | null): number | null {
@@ -144,15 +144,15 @@ function buildSummary(portfolio: ClientPortfolio, metrics: PortfolioMetrics, val
 // ─────────────────────────────────────────────────────────────────────────────
 
 function Pulse({ className = '' }: { className?: string }) {
-  return <div className={`animate-pulse bg-white/5 rounded-xl ${className}`} />;
+  return <div className={`animate-pulse bg-subtle rounded-xl ${className}`} />;
 }
 
 function SkeletonPage() {
   return (
-    <div className="min-h-screen bg-[#0a0f0d]">
-      <div className="border-b border-white/6 bg-[#0a0f0d]/95 sticky top-0 h-14 z-30" />
+    <div className="theme-client min-h-screen bg-canvas">
+      <div className="border-b border-line bg-surface sticky top-0 h-14 z-30" />
       <div className="max-w-5xl mx-auto px-4 py-6 space-y-5">
-        <div className="border border-white/6 rounded-2xl p-6 space-y-4 bg-[#0d1f1a]">
+        <div className="border border-line rounded-lg p-6 space-y-4 bg-surface">
           <Pulse className="h-3 w-44" />
           <Pulse className="h-12 w-64" />
           <Pulse className="h-3.5 w-36" />
@@ -191,28 +191,20 @@ const HeroSection = memo(function HeroSection({
   const isPos = metrics.pnlEur >= 0;
   const mPct  = monthlyReturn(portfolio, valuation);
   const risk  = deriveRisk(portfolio);
-  const col   = isPos ? '#34d399' : '#ef4444';
+  const col   = isPos ? '#1e704c' : '#b42820';
 
   return (
-    <div className="relative border border-[#1a3a2a]/80 rounded-2xl overflow-hidden mb-6"
-      style={{
-        background:  'linear-gradient(135deg,rgba(26,58,42,0.65) 0%,rgba(10,15,13,0.98) 55%,rgba(12,22,17,0.99) 100%)',
-        boxShadow:   '0 0 0 1px rgba(45,106,79,0.08),0 24px 64px rgba(0,0,0,0.55)',
-      }}>
-      <div className="absolute inset-0 pointer-events-none"
-        style={{ background: 'radial-gradient(ellipse 65% 80% at 88% 48%,rgba(201,168,76,0.05),transparent)' }} />
-      <div className="absolute top-0 left-0 w-full h-px"
-        style={{ background: 'linear-gradient(90deg,transparent,rgba(201,168,76,0.22),transparent)' }} />
+    <div className="relative bg-surface border border-line rounded-lg overflow-hidden mb-6">
 
       <div className="relative px-6 sm:px-8 py-6 sm:py-7">
 
         {/* Status badges */}
         <div className="flex flex-wrap items-center justify-between gap-2 mb-5">
-          <span className="text-white/28 text-xs uppercase tracking-[0.15em]">{portfolio.name}</span>
+          <span className="text-ink-muted text-xs">{portfolio.name}</span>
           <div className="flex items-center gap-2 flex-wrap">
             <span className="flex items-center gap-1.5 text-xs px-2.5 py-1 rounded-full"
-              style={{ color: '#34d399', border: '1px solid rgba(52,211,153,0.25)', background: 'rgba(52,211,153,0.07)' }}>
-              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+              style={{ color: '#1e704c', border: '1px solid rgba(52,211,153,0.25)', background: 'rgba(52,211,153,0.07)' }}>
+              <span className="w-1.5 h-1.5 rounded-full bg-positive" />
               Activa
             </span>
             <span className="text-xs px-2.5 py-1 rounded-full"
@@ -220,7 +212,7 @@ const HeroSection = memo(function HeroSection({
               Risc {risk.label}
             </span>
             {portfolio.nextFollowup && (
-              <span className="hidden sm:flex items-center gap-1.5 text-xs px-2.5 py-1 rounded-full border border-[#c9a84c]/18 text-[#c9a84c]/60">
+              <span className="hidden sm:flex items-center gap-1.5 text-xs px-2.5 py-1 rounded-full border border-accent/18 text-accent/60">
                 <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5}
                     d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
@@ -232,13 +224,13 @@ const HeroSection = memo(function HeroSection({
         </div>
 
         {/* Value + return */}
-        <p className="text-white/30 text-sm mb-1.5">{name}</p>
+        <p className="text-ink-muted text-sm mb-1.5">{name}</p>
         <div className="flex flex-wrap items-end gap-x-5 gap-y-2 mb-5">
           <div>
-            <div className="text-white font-black text-4xl sm:text-5xl tabular-nums tracking-tight leading-none">
-              {fEur(metrics.currentValue)}
+            <div className="text-ink font-semibold text-4xl sm:text-5xl tabular-nums tracking-tight leading-none">
+              {metrics.currentValue.toLocaleString('ca-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} €
             </div>
-            <p className="text-white/22 text-xs mt-1 uppercase tracking-wider">Valor total de la cartera</p>
+            <p className="text-ink-muted text-xs mt-1">Valor total de la cartera</p>
           </div>
           {metrics.pnlEur !== 0 && (
             <div className="pb-1">
@@ -246,7 +238,7 @@ const HeroSection = memo(function HeroSection({
                 {fPct(metrics.pnlPct)}
               </div>
               <div className="text-xs mt-1" style={{ color: col, opacity: 0.7 }}>
-                {isPos ? '+' : ''}{fEur(metrics.pnlEur)} des de l&apos;entrada
+                {isPos ? '+' : ''}{fEur(metrics.pnlEur)}{' '}des de l&apos;entrada
               </div>
             </div>
           )}
@@ -259,7 +251,7 @@ const HeroSection = memo(function HeroSection({
           <Tile
             label="Rendiment mes"
             value={mPct !== null ? fPct(mPct) : 'N/D'}
-            color={mPct !== null ? (mPct >= 0 ? '#34d399' : '#ef4444') : undefined}
+            color={mPct !== null ? (mPct >= 0 ? '#1e704c' : '#b42820') : undefined}
           />
           <Tile
             label="Última actualit."
@@ -269,13 +261,13 @@ const HeroSection = memo(function HeroSection({
 
         {/* P&L progress bar */}
         {metrics.totalInvested > 0 && Math.abs(metrics.pnlPct) > 0.01 && (
-          <div className="mt-5 pt-4 border-t border-white/[0.04]">
-            <div className="flex items-center justify-between mb-1.5 text-[10px] uppercase tracking-widest">
-              <span className="text-white/22">Rendiment acumulat</span>
+          <div className="mt-5 pt-4 border-t border-line">
+            <div className="flex items-center justify-between mb-1.5 text-[10px]">
+              <span className="text-ink-muted">Rendiment acumulat</span>
               <span style={{ color: col }}>{fPct(metrics.pnlPct)}</span>
             </div>
-            <div className="h-1.5 bg-white/5 rounded-full overflow-hidden">
-              <div className="h-full rounded-full transition-all duration-1000"
+            <div className="h-1.5 bg-subtle rounded-full overflow-hidden">
+              <div className="h-full rounded-full"
                 style={{
                   width:      `${Math.min(Math.abs(metrics.pnlPct) * 5, 100)}%`,
                   background: `linear-gradient(90deg,${col}88,${col})`,
@@ -290,10 +282,10 @@ const HeroSection = memo(function HeroSection({
 
 function Tile({ label, value, color }: { label: string; value: string; color?: string }) {
   return (
-    <div className="bg-white/[0.025] border border-white/[0.05] rounded-xl px-3 py-2.5">
+    <div className="bg-subtle border border-line rounded-xl px-3 py-2.5">
       <div className="font-semibold text-sm tabular-nums leading-tight"
-        style={{ color: color ?? 'rgba(255,255,255,0.75)' }}>{value}</div>
-      <div className="text-white/25 text-[10px] mt-0.5 uppercase tracking-wide leading-tight">{label}</div>
+        style={{ color: color ?? '#3c4a45' }}>{value}</div>
+      <div className="text-ink-muted text-[10px] mt-0.5 leading-tight">{label}</div>
     </div>
   );
 }
@@ -318,15 +310,15 @@ const EvolutionChart = memo(function EvolutionChart({
   );
 
   const isPos = metrics.pnlEur >= 0;
-  const col   = isPos ? '#34d399' : '#ef4444';
+  const col   = isPos ? '#1e704c' : '#b42820';
   const gid   = isPos ? 'eg-pos' : 'eg-neg';
 
   return (
-    <div className="bg-[#0d1f1a] border border-white/8 rounded-2xl p-5 sm:p-6">
+    <div className="bg-surface border border-line rounded-lg p-5 sm:p-6">
       <div className="flex items-start justify-between mb-5">
         <div>
-          <h3 className="text-white font-semibold text-sm">Evolució patrimonial</h3>
-          <p className="text-white/25 text-xs mt-0.5">
+          <h3 className="text-ink font-semibold text-sm">Evolució patrimonial</h3>
+          <p className="text-ink-muted text-xs mt-0.5">
             {fromNavs ? 'Calculada cada final de mes amb els valors liquidatius oficials dels fons' : 'Snapshots registrats per l\u2019assessor'}
           </p>
         </div>
@@ -344,10 +336,10 @@ const EvolutionChart = memo(function EvolutionChart({
                 <stop offset="95%" stopColor={col} stopOpacity={0}   />
               </linearGradient>
             </defs>
-            <CartesianGrid strokeDasharray="2 4" stroke="rgba(255,255,255,0.04)" vertical={false} />
+            <CartesianGrid strokeDasharray="2 4" stroke="#e6e9e7" vertical={false} />
             <XAxis
               dataKey="date"
-              tick={{ fill: 'rgba(255,255,255,0.22)', fontSize: 10 }}
+              tick={{ fill: '#7a8681', fontSize: 10 }}
               axisLine={false} tickLine={false}
               tickFormatter={(v: string) => {
                 const d = new Date(v + 'T00:00:00');
@@ -356,13 +348,13 @@ const EvolutionChart = memo(function EvolutionChart({
               }}
             />
             <YAxis
-              tick={{ fill: 'rgba(255,255,255,0.22)', fontSize: 10 }}
+              tick={{ fill: '#7a8681', fontSize: 10 }}
               axisLine={false} tickLine={false} width={46}
               tickFormatter={(v: number) => v >= 1000 ? `${(v / 1000).toFixed(0)}K` : String(v)}
             />
             {metrics.totalInvested > 0 && (
-              <ReferenceLine y={metrics.totalInvested} stroke="rgba(255,255,255,0.1)" strokeDasharray="4 4"
-                label={{ value: 'Capital invertit', fill: 'rgba(255,255,255,0.18)', fontSize: 9, position: 'insideTopRight' }} />
+              <ReferenceLine y={metrics.totalInvested} stroke="#7a8681" strokeDasharray="4 4"
+                label={{ value: 'Capital invertit', fill: '#7a8681', fontSize: 9, position: 'insideTopRight' }} />
             )}
             <ReTT
               formatter={(v: number) => [fEur(v), 'Valor']}
@@ -385,13 +377,13 @@ const EvolutionChart = memo(function EvolutionChart({
 function EmptyChart({ text }: { text: string }) {
   return (
     <div className="flex flex-col items-center justify-center py-10 gap-3">
-      <div className="w-10 h-10 rounded-xl bg-white/[0.04] flex items-center justify-center">
-        <svg className="w-5 h-5 text-white/15" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <div className="w-10 h-10 rounded-xl bg-subtle flex items-center justify-center">
+        <svg className="w-5 h-5 text-ink-muted" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5}
             d="M7 12l3-3 3 3 4-4M8 21l4-4 4 4M3 4h18M4 4h16v12a1 1 0 01-1 1H5a1 1 0 01-1-1V4z" />
         </svg>
       </div>
-      <p className="text-white/22 text-sm text-center max-w-xs">{text}</p>
+      <p className="text-ink-muted text-sm text-center max-w-xs">{text}</p>
     </div>
   );
 }
@@ -430,8 +422,8 @@ const DistributionPanel = memo(function DistributionPanel({
   return (
     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
       {/* Donut */}
-      <div className="bg-[#0d1f1a] border border-white/8 rounded-2xl p-5">
-        <h3 className="text-white font-semibold text-sm mb-4">Distribució per actiu</h3>
+      <div className="bg-surface border border-line rounded-lg p-5">
+        <h3 className="text-ink font-semibold text-sm mb-4">Distribució per actiu</h3>
         <div className="flex items-center gap-4">
           <div className="flex-shrink-0">
             <ResponsiveContainer width={96} height={96}>
@@ -449,31 +441,31 @@ const DistributionPanel = memo(function DistributionPanel({
               <div key={i} className="flex items-center justify-between gap-2">
                 <div className="flex items-center gap-1.5 min-w-0">
                   <div className="w-2 h-2 rounded-full flex-shrink-0" style={{ background: d.col }} />
-                  <span className="text-white/42 text-xs truncate">{d.name}</span>
+                  <span className="text-ink-muted text-xs truncate">{d.name}</span>
                 </div>
-                <span className="text-white/28 text-xs flex-shrink-0 tabular-nums">
+                <span className="text-ink-muted text-xs flex-shrink-0 tabular-nums">
                   {total > 0 ? ((d.val / total) * 100).toFixed(1) : 0}%
                 </span>
               </div>
             ))}
             {byAsset.length > 5 && (
-              <p className="text-white/18 text-xs">+{byAsset.length - 5} més</p>
+              <p className="text-ink-muted text-xs">+{byAsset.length - 5} més</p>
             )}
           </div>
         </div>
       </div>
 
       {/* Category bars */}
-      <div className="bg-[#0d1f1a] border border-white/8 rounded-2xl p-5">
-        <h3 className="text-white font-semibold text-sm mb-4">Per categoria</h3>
+      <div className="bg-surface border border-line rounded-lg p-5">
+        <h3 className="text-ink font-semibold text-sm mb-4">Per categoria</h3>
         <div className="space-y-3">
           {byCategory.slice(0, 5).map((c, i) => (
             <div key={i}>
               <div className="flex items-center justify-between mb-1">
-                <span className="text-white/42 text-xs truncate pr-2">{c.name}</span>
-                <span className="text-white/28 text-xs flex-shrink-0 tabular-nums">{c.pct.toFixed(1)}%</span>
+                <span className="text-ink-muted text-xs truncate pr-2">{c.name}</span>
+                <span className="text-ink-muted text-xs flex-shrink-0 tabular-nums">{c.pct.toFixed(1)}%</span>
               </div>
-              <div className="h-1.5 bg-white/5 rounded-full overflow-hidden">
+              <div className="h-1.5 bg-subtle rounded-full overflow-hidden">
                 <div className="h-full rounded-full transition-all duration-700"
                   style={{ width: `${c.pct}%`, background: c.col }} />
               </div>
@@ -494,21 +486,21 @@ const ExecutiveSummary = memo(function ExecutiveSummary({
 }: { portfolio: ClientPortfolio; metrics: PortfolioMetrics; valuation?: Valuation | null }) {
   const text  = useMemo(() => buildSummary(portfolio, metrics, valuation), [portfolio, metrics, valuation]);
   const isPos = metrics.pnlEur >= 0;
-  const col   = isPos ? '#34d399' : '#ef4444';
+  const col   = isPos ? '#1e704c' : '#b42820';
 
   return (
-    <div className="bg-[#0d1f1a] border border-[#c9a84c]/15 rounded-2xl p-5">
+    <div className="bg-surface border border-accent/15 rounded-lg p-5">
       <div className="flex items-center gap-2 mb-3">
-        <div className="w-6 h-6 rounded-lg bg-[#c9a84c]/10 border border-[#c9a84c]/18 flex items-center justify-center">
-          <svg className="w-3.5 h-3.5 text-[#c9a84c]/60" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <div className="w-6 h-6 rounded-lg bg-accent-soft border border-accent/18 flex items-center justify-center">
+          <svg className="w-3.5 h-3.5 text-accent/60" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
               d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
           </svg>
         </div>
-        <h3 className="text-[#c9a84c]/72 font-semibold text-sm">Resum executiu</h3>
+        <h3 className="text-accent/72 font-semibold text-sm">Resum executiu</h3>
       </div>
 
-      <p className="text-white/55 text-sm leading-relaxed">{text}</p>
+      <p className="text-ink-soft text-sm leading-relaxed">{text}</p>
 
       <div className="mt-3 flex items-center gap-2 text-xs px-3 py-2 rounded-lg"
         style={{ background: `${col}08`, border: `1px solid ${col}18`, color: col }}>
@@ -516,64 +508,14 @@ const ExecutiveSummary = memo(function ExecutiveSummary({
       </div>
 
       {portfolio.recommendations && (
-        <div className="mt-4 pt-4 border-t border-white/[0.05]">
-          <p className="text-white/22 text-[10px] uppercase tracking-widest mb-2">Recomanació de l&apos;assessor</p>
-          <p className="text-white/48 text-xs leading-relaxed line-clamp-4">{portfolio.recommendations}</p>
+        <div className="mt-4 pt-4 border-t border-line">
+          <p className="text-ink-muted text-[10px] mb-2">Recomanació de l&apos;assessor</p>
+          <p className="text-ink-soft text-xs leading-relaxed line-clamp-4">{portfolio.recommendations}</p>
         </div>
       )}
     </div>
   );
 });
-
-// ─────────────────────────────────────────────────────────────────────────────
-// GOALS
-// ─────────────────────────────────────────────────────────────────────────────
-
-function GoalsSection({ metrics }: { metrics: PortfolioMetrics }) {
-  const target   = metrics.totalInvested * 1.2;
-  const progress = target > 0 ? Math.min((metrics.currentValue / target) * 100, 100) : 0;
-
-  return (
-    <div className="bg-[#0d1f1a] border border-white/8 rounded-2xl p-5">
-      <div className="flex items-center justify-between mb-4">
-        <div className="flex items-center gap-2">
-          <svg className="w-4 h-4 text-white/22" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5}
-              d="M13 10V3L4 14h7v7l9-11h-7z" />
-          </svg>
-          <h3 className="text-white font-semibold text-sm">Objectiu financer</h3>
-        </div>
-        <span className="text-white/18 text-[10px] border border-white/8 px-2 py-0.5 rounded-full uppercase tracking-wide">
-          Pròximament
-        </span>
-      </div>
-
-      <div className="grid grid-cols-3 gap-2 mb-3">
-        <GoalBlock label="Capital actual"   value={fEur(metrics.currentValue, true)} />
-        <GoalBlock label="Objectiu estimat" value={fEur(target, true)} highlight />
-        <GoalBlock label="Assolit"          value={`${progress.toFixed(0)}%`} />
-      </div>
-
-      <div className="h-2 bg-white/5 rounded-full overflow-hidden">
-        <div className="h-full rounded-full transition-all duration-1000"
-          style={{ width: `${progress}%`, background: 'linear-gradient(90deg,#c9a84c88,#c9a84c)' }} />
-      </div>
-      <p className="text-white/16 text-[10px] mt-2 leading-tight">
-        L&apos;objectiu es definirà amb l&apos;assessor en el proper seguiment.
-      </p>
-    </div>
-  );
-}
-
-function GoalBlock({ label, value, highlight }: { label: string; value: string; highlight?: boolean }) {
-  return (
-    <div className="bg-white/[0.025] border border-white/[0.05] rounded-xl p-2.5 text-center">
-      <div className="font-semibold text-xs tabular-nums leading-tight"
-        style={{ color: highlight ? '#c9a84c' : 'rgba(255,255,255,0.65)' }}>{value}</div>
-      <div className="text-white/20 text-[9px] mt-0.5 leading-tight">{label}</div>
-    </div>
-  );
-}
 
 // ─────────────────────────────────────────────────────────────────────────────
 // HOLDING CARD
@@ -593,34 +535,34 @@ const HoldingCard = memo(function HoldingCard({
   const priceSourceId = h.priceSource === 'fmp' ? 'fmp' : h.priceSource === 'manual' ? 'internal' : 'pending';
 
   return (
-    <div className="bg-[#0d1f1a] border border-white/[0.06] rounded-xl p-5 hover:border-white/12 transition-all duration-200">
+    <div className="bg-surface border border-line rounded-xl p-5 hover:border-line-strong transition-all duration-200">
       {/* Header */}
       <div className="flex items-start justify-between gap-3 mb-4">
         <div className="flex items-start gap-3">
           <div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 mt-0.5"
             style={{ background: `${col}14`, border: `1px solid ${col}22` }}>
-            <span className="font-black text-[11px]" style={{ color: col }}>
+            <span className="font-semibold text-[11px]" style={{ color: col }}>
               {(h.assetSymbol || h.assetName).slice(0, 2).toUpperCase()}
             </span>
           </div>
           <div className="min-w-0">
             <div className="flex flex-wrap items-center gap-1.5 mb-0.5">
-              <span className="text-white font-semibold text-sm">{h.assetName}</span>
+              <span className="text-ink font-semibold text-sm">{h.assetName}</span>
               {h.assetSymbol && (
-                <span className="text-white/25 text-xs font-mono bg-white/5 px-1.5 py-0.5 rounded">{h.assetSymbol}</span>
+                <span className="text-ink-muted text-xs font-mono bg-subtle px-1.5 py-0.5 rounded">{h.assetSymbol}</span>
               )}
               <DataSourceBadge source={priceSourceId} variant="chip" />
             </div>
-            <div className="flex items-center gap-2 text-xs text-white/28">
+            <div className="flex items-center gap-2 text-xs text-ink-muted">
               {h.assetCategory && <span>{h.assetCategory}</span>}
               {h.broker && <><span className="opacity-40">·</span><span>{h.broker}</span></>}
             </div>
           </div>
         </div>
         <div className="text-right flex-shrink-0">
-          <div className="text-white font-bold text-base tabular-nums">{fEur(val)}</div>
+          <div className="text-ink font-bold text-base tabular-nums">{fEur(val)}</div>
           <div className="text-sm font-semibold tabular-nums"
-            style={{ color: pnlPos ? '#34d399' : '#ef4444' }}>{fPct(pnlPct)}</div>
+            style={{ color: pnlPos ? '#1e704c' : '#b42820' }}>{fPct(pnlPct)}</div>
         </div>
       </div>
 
@@ -638,10 +580,10 @@ const HoldingCard = memo(function HoldingCard({
       {/* Weight bar */}
       <div>
         <div className="flex items-center justify-between mb-1">
-          <span className="text-white/18 text-[10px] uppercase tracking-wider">Pes cartera</span>
-          <span className="text-white/28 text-[10px] tabular-nums">{weight.toFixed(1)}%</span>
+          <span className="text-ink-muted text-[10px]">Pes cartera</span>
+          <span className="text-ink-muted text-[10px] tabular-nums">{weight.toFixed(1)}%</span>
         </div>
-        <div className="h-1 bg-white/5 rounded-full overflow-hidden">
+        <div className="h-1 bg-subtle rounded-full overflow-hidden">
           <div className="h-full rounded-full transition-all duration-700"
             style={{ width: `${weight}%`, background: col }} />
         </div>
@@ -655,11 +597,11 @@ const HoldingCard = memo(function HoldingCard({
 });
 
 function StCell({ label, value, pnl }: { label: string; value: string; pnl?: 'pos' | 'neg' }) {
-  const color = pnl === 'pos' ? '#34d399' : pnl === 'neg' ? '#ef4444' : 'rgba(255,255,255,0.6)';
+  const color = pnl === 'pos' ? '#1e704c' : pnl === 'neg' ? '#b42820' : '#3c4a45';
   return (
-    <div className="bg-white/[0.02] border border-white/[0.045] rounded-lg px-2.5 py-2">
+    <div className="bg-subtle border border-line rounded-lg px-2.5 py-2">
       <div className="font-semibold text-xs tabular-nums leading-tight" style={{ color }}>{value}</div>
-      <div className="text-white/20 text-[9px] mt-0.5 uppercase tracking-wide">{label}</div>
+      <div className="text-ink-muted text-[9px] mt-0.5">{label}</div>
     </div>
   );
 }
@@ -672,22 +614,22 @@ function NoteCard({ note }: { note: { id: string; text: string; author: string; 
   return (
     <div className="flex gap-3 pb-5">
       <div className="flex flex-col items-center gap-1 flex-shrink-0 pt-0.5">
-        <div className="w-9 h-9 bg-[#1a3a2a] border border-[#2d6a4f]/28 rounded-full flex items-center justify-center flex-shrink-0">
-          <svg className="w-4 h-4 text-[#c9a84c]/50" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <div className="w-9 h-9 bg-subtle-strong border border-accent/28 rounded-full flex items-center justify-center flex-shrink-0">
+          <svg className="w-4 h-4 text-accent/50" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5}
               d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
           </svg>
         </div>
-        <div className="w-px flex-1 bg-white/[0.05] min-h-[8px]" />
+        <div className="w-px flex-1 bg-subtle min-h-[8px]" />
       </div>
       <div className="flex-1 pb-1">
         <div className="flex items-center gap-2 mb-2">
-          <span className="text-white/52 text-xs font-semibold">{note.author}</span>
-          <span className="text-white/16 text-xs">·</span>
-          <span className="text-white/20 text-xs">{fDate(note.createdAt)}</span>
+          <span className="text-ink-soft text-xs font-semibold">{note.author}</span>
+          <span className="text-ink-muted text-xs">·</span>
+          <span className="text-ink-muted text-xs">{fDate(note.createdAt)}</span>
         </div>
-        <div className="bg-[#0d1f1a] border border-[#c9a84c]/10 rounded-2xl rounded-tl-sm px-4 py-3.5">
-          <p className="text-white/58 text-sm leading-relaxed">{note.text}</p>
+        <div className="bg-surface border border-accent/10 rounded-lg rounded-tl-sm px-4 py-3.5">
+          <p className="text-ink-soft text-sm leading-relaxed">{note.text}</p>
         </div>
       </div>
     </div>
@@ -719,14 +661,14 @@ function ReportsSection({ portfolioId }: { portfolioId: string }) {
 
   if (items.length === 0) return (
     <div className="flex flex-col items-center justify-center py-20 gap-3">
-      <div className="w-12 h-12 rounded-2xl bg-white/[0.03] flex items-center justify-center">
-        <svg className="w-6 h-6 text-white/15" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <div className="w-12 h-12 rounded-lg bg-subtle flex items-center justify-center">
+        <svg className="w-6 h-6 text-ink-muted" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5}
             d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
         </svg>
       </div>
-      <p className="text-white/25 text-sm">Cap informe disponible</p>
-      <p className="text-white/16 text-xs">El teu assessor publicarà els informes mensuals aquí.</p>
+      <p className="text-ink-muted text-sm">Cap informe disponible</p>
+      <p className="text-ink-muted text-xs">El teu assessor publicarà els informes mensuals aquí.</p>
     </div>
   );
 
@@ -736,14 +678,14 @@ function ReportsSection({ portfolioId }: { portfolioId: string }) {
         <div key={r.id}
           className={`flex items-center justify-between gap-4 p-5 rounded-xl border transition-all ${
             i === 0
-              ? 'bg-[#0d1f1a] border-[#c9a84c]/18'
-              : 'bg-[#0d1f1a] border-white/[0.055] hover:border-white/12'
+              ? 'bg-surface border-accent/18'
+              : 'bg-surface border-line hover:border-line-strong'
           }`}>
           <div className="flex items-center gap-4">
             <div className={`w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 ${
-              i === 0 ? 'bg-[#c9a84c]/10 border border-[#c9a84c]/18' : 'bg-white/[0.035] border border-white/8'
+              i === 0 ? 'bg-accent-soft border border-accent/18' : 'bg-subtle border border-line'
             }`}>
-              <svg className={`w-5 h-5 ${i === 0 ? 'text-[#c9a84c]/60' : 'text-white/20'}`}
+              <svg className={`w-5 h-5 ${i === 0 ? 'text-accent/60' : 'text-ink-muted'}`}
                 fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5}
                   d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
@@ -751,22 +693,22 @@ function ReportsSection({ portfolioId }: { portfolioId: string }) {
             </div>
             <div>
               <div className="flex items-center gap-2 flex-wrap">
-                <span className={`font-medium text-sm ${i === 0 ? 'text-white/78' : 'text-white/55'}`}>
+                <span className={`font-medium text-sm ${i === 0 ? 'text-ink' : 'text-ink-soft'}`}>
                   Informe {fDate(r.periodStart)} — {fDate(r.periodEnd)}
                 </span>
                 {i === 0 && (
-                  <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-[#c9a84c]/10 border border-[#c9a84c]/18 text-[#c9a84c]/62">
+                  <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-accent-soft border border-accent/18 text-accent/62">
                     Darrer
                   </span>
                 )}
               </div>
-              <p className="text-white/20 text-xs mt-0.5">
+              <p className="text-ink-muted text-xs mt-0.5">
                 Publicat: {fDate(r.createdAt)}{r.sentAt ? ' · Enviat per email' : ''}
               </p>
             </div>
           </div>
           <a href={`/client/informes/${encodeURIComponent(r.id)}`}
-            className="flex items-center gap-1.5 text-white/50 text-xs border border-white/12 px-3 py-1.5 rounded-lg hover:border-white/25 hover:text-white/80 transition-all flex-shrink-0">
+            className="flex items-center gap-1.5 text-ink-soft text-xs border border-line-strong px-3 py-1.5 rounded-lg hover:border-line-strong hover:text-ink transition-all flex-shrink-0">
             <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5}
                 d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
@@ -786,37 +728,36 @@ function ReportsSection({ portfolioId }: { portfolioId: string }) {
 function TabEmpty({ text, sub }: { text: string; sub?: string }) {
   return (
     <div className="flex flex-col items-center justify-center py-20 gap-3">
-      <div className="w-12 h-12 rounded-2xl bg-white/[0.03] flex items-center justify-center">
-        <div className="w-5 h-5 rounded-full bg-white/8" />
+      <div className="w-12 h-12 rounded-lg bg-subtle flex items-center justify-center">
+        <div className="w-5 h-5 rounded-full bg-subtle" />
       </div>
-      <p className="text-white/25 text-sm">{text}</p>
-      {sub && <p className="text-white/15 text-xs text-center max-w-xs">{sub}</p>}
+      <p className="text-ink-muted text-sm">{text}</p>
+      {sub && <p className="text-ink-muted text-xs text-center max-w-xs">{sub}</p>}
     </div>
   );
 }
 
 function EmptyPortfolio({ name }: { name: string }) {
   return (
-    <div className="min-h-screen bg-[#0a0f0d] flex items-center justify-center px-4"
-      style={{ backgroundImage: 'radial-gradient(ellipse at 50% 0%,rgba(26,58,42,0.4) 0%,transparent 70%)' }}>
+    <div className="theme-client min-h-screen bg-canvas flex items-center justify-center px-4">
       <div className="text-center max-w-xs">
-        <div className="w-20 h-20 bg-[#1a3a2a] border border-[#2d6a4f]/22 rounded-3xl flex items-center justify-center mx-auto mb-6">
-          <svg className="w-9 h-9 text-[#c9a84c]/22" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <div className="w-20 h-20 bg-subtle-strong border border-accent/22 rounded-3xl flex items-center justify-center mx-auto mb-6">
+          <svg className="w-9 h-9 text-accent/22" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1}
               d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
           </svg>
         </div>
-        <h1 className="text-white font-bold text-xl mb-2">Hola, {name}</h1>
-        <p className="text-white/35 text-sm leading-relaxed mb-6">
+        <h1 className="text-ink font-bold text-xl mb-2">Hola, {name}</h1>
+        <p className="text-ink-muted text-sm leading-relaxed mb-6">
           El teu assessor encara no t&apos;ha assignat cap cartera. Rebràs accés a la teva àrea personal ben aviat.
         </p>
         <a href="/client/finances"
-          className="inline-flex items-center gap-2 text-sm px-5 py-2.5 rounded-xl bg-[#c9a84c] text-[#0d1f1a] font-semibold hover:bg-[#b8963f] transition-all mb-3">
+          className="inline-flex items-center gap-2 text-sm px-5 py-2.5 rounded-xl bg-accent text-accent-ink font-semibold hover:bg-accent-hover transition-all mb-3">
           Veure les meves finances →
         </a>
         <br />
         <a href="/login"
-          className="inline-flex items-center gap-2 text-sm px-5 py-2.5 rounded-xl border border-[#c9a84c]/18 text-[#c9a84c]/60 hover:text-[#c9a84c] hover:bg-[#c9a84c]/5 transition-all">
+          className="inline-flex items-center gap-2 text-sm px-5 py-2.5 rounded-xl border border-accent/18 text-accent/60 hover:text-accent hover:bg-accent-soft transition-all">
           ← Tornar a l&apos;inici
         </a>
       </div>
@@ -876,23 +817,22 @@ export default function ClientCarteraPage() {
   ];
 
   return (
-    <div className="min-h-screen bg-[#0a0f0d]"
-      style={{ backgroundImage: 'radial-gradient(ellipse at 50% -8%,rgba(26,58,42,0.3) 0%,transparent 60%)' }}>
+    <div className="theme-client min-h-screen bg-canvas">
 
       {/* ── Navbar ── */}
-      <nav className="border-b border-white/[0.055] bg-[#0a0f0d]/95 backdrop-blur-xl sticky top-0 z-30">
+      <nav className="border-b border-line bg-surface sticky top-0 z-30">
         <div className="max-w-5xl mx-auto px-4 h-14 flex items-center justify-between">
           <div className="flex items-center gap-2 min-w-0">
-            <div className="w-5 h-5 bg-[#1a3a2a] border border-[#2d6a4f]/50 rounded flex items-center justify-center flex-shrink-0">
-              <span className="text-[#c9a84c] font-black text-[9px] leading-none">F</span>
+            <div className="w-5 h-5 bg-subtle-strong border border-accent/50 rounded flex items-center justify-center flex-shrink-0">
+              <span className="text-accent font-semibold text-[9px] leading-none">F</span>
             </div>
-            <span className="text-white/32 text-sm hidden sm:inline">Factor OTC</span>
-            <span className="text-white/14 text-sm hidden sm:inline">/</span>
-            <span className="text-white/50 text-sm truncate">La meva cartera</span>
+            <span className="text-ink-muted text-sm hidden sm:inline">Factor OTC</span>
+            <span className="text-ink-muted text-sm hidden sm:inline">/</span>
+            <span className="text-ink-soft text-sm truncate">La meva cartera</span>
           </div>
           <div className="flex items-center gap-3 flex-shrink-0">
             {portfolio.nextFollowup && (
-              <span className="hidden md:flex items-center gap-1.5 text-xs text-[#c9a84c]/52 border border-[#c9a84c]/12 px-2.5 py-1 rounded-full">
+              <span className="hidden md:flex items-center gap-1.5 text-xs text-accent/52 border border-accent/12 px-2.5 py-1 rounded-full">
                 <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5}
                     d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
@@ -902,15 +842,15 @@ export default function ClientCarteraPage() {
             )}
             <button
               onClick={() => setPanelOpen(true)}
-              className="flex items-center gap-1.5 text-xs text-white/28 border border-white/8 px-2.5 py-1 rounded-lg hover:border-white/18 hover:text-white/45 transition-all">
+              className="flex items-center gap-1.5 text-xs text-ink-muted border border-line px-2.5 py-1 rounded-lg hover:border-line-strong hover:text-ink-muted transition-all">
               <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
                   d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
               </svg>
               <span className="hidden sm:inline">Fonts de dades</span>
             </button>
-            <a href="/client/finances" className="text-xs text-white/40 hover:text-[#c9a84c] transition-colors">Les meves finances</a>
-            <span className="text-white/28 text-xs">{name}</span>
+            <a href="/client/finances" className="text-xs text-ink-muted hover:text-accent transition-colors">Les meves finances</a>
+            <span className="text-ink-muted text-xs">{name}</span>
           </div>
         </div>
       </nav>
@@ -921,18 +861,18 @@ export default function ClientCarteraPage() {
         <HeroSection portfolio={portfolio} metrics={metrics} name={name} valuation={valuation} />
 
         {/* ── Tabs ── */}
-        <div className="flex border-b border-white/[0.055] mb-6 overflow-x-auto">
+        <div className="flex border-b border-line mb-6 overflow-x-auto">
           {TABS.map(t => (
             <button key={t.id} onClick={() => setTab(t.id)}
               className={`flex items-center gap-1.5 px-4 py-3 text-sm font-medium whitespace-nowrap flex-shrink-0 transition-all relative ${
                 tab === t.id
-                  ? 'text-[#c9a84c] border-b-2 border-[#c9a84c] -mb-px'
-                  : 'text-white/25 hover:text-white/52'
+                  ? 'text-accent border-b-2 border-accent -mb-px'
+                  : 'text-ink-muted hover:text-ink-soft'
               }`}>
               {t.label}
               {(t.cnt ?? 0) > 0 && (
                 <span className={`text-[9px] px-1.5 py-0.5 rounded-full font-semibold leading-tight ${
-                  tab === t.id ? 'bg-[#c9a84c]/14 text-[#c9a84c]' : 'bg-white/6 text-white/25'
+                  tab === t.id ? 'bg-accent/14 text-accent' : 'bg-subtle text-ink-muted'
                 }`}>{t.cnt}</span>
               )}
             </button>
@@ -950,18 +890,17 @@ export default function ClientCarteraPage() {
               </div>
               <div className="space-y-5">
                 <ExecutiveSummary portfolio={portfolio} metrics={metrics} valuation={valuation} />
-                <GoalsSection metrics={metrics} />
               </div>
             </div>
 
             {/* Latest note preview */}
             {visibleNotes.length > 0 && (
-              <div className="bg-[#0d1f1a] border border-[#c9a84c]/10 rounded-2xl p-5">
+              <div className="bg-surface border border-accent/10 rounded-lg p-5">
                 <div className="flex items-center justify-between mb-4">
-                  <h3 className="text-white font-semibold text-sm">Última nota de l&apos;assessor</h3>
+                  <h3 className="text-ink font-semibold text-sm">Última nota de l&apos;assessor</h3>
                   {visibleNotes.length > 1 && (
                     <button onClick={() => setTab('notes')}
-                      className="text-[#c9a84c]/42 hover:text-[#c9a84c]/72 text-xs transition-colors">
+                      className="text-accent/42 hover:text-accent/72 text-xs transition-colors">
                       Totes ({visibleNotes.length}) →
                     </button>
                   )}
@@ -974,18 +913,18 @@ export default function ClientCarteraPage() {
 
             {/* Pending holdings alert */}
             {pendingHoldings.length > 0 && (
-              <div className="bg-amber-500/[0.04] border border-amber-500/18 rounded-2xl p-5 flex items-start gap-3">
-                <div className="w-9 h-9 rounded-xl bg-amber-500/10 border border-amber-500/18 flex items-center justify-center flex-shrink-0 mt-0.5">
-                  <svg className="w-4 h-4 text-amber-400/75" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <div className="bg-warning/[0.04] border border-warning/18 rounded-lg p-5 flex items-start gap-3">
+                <div className="w-9 h-9 rounded-xl bg-warning/10 border border-warning/18 flex items-center justify-center flex-shrink-0 mt-0.5">
+                  <svg className="w-4 h-4 text-warning/75" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5}
                       d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
                   </svg>
                 </div>
                 <div>
-                  <p className="text-amber-400/85 font-semibold text-sm mb-1">
+                  <p className="text-warning/85 font-semibold text-sm mb-1">
                     {pendingHoldings.length} posicion{pendingHoldings.length > 1 ? 's' : ''} pendent{pendingHoldings.length > 1 ? 's' : ''} de confirmar
                   </p>
-                  <p className="text-white/35 text-xs leading-relaxed">
+                  <p className="text-ink-muted text-xs leading-relaxed">
                     {pendingHoldings.map(h => h.assetName).join(' · ')}
                   </p>
                 </div>
@@ -1011,21 +950,21 @@ export default function ClientCarteraPage() {
                 {pendingHoldings.length > 0 && (
                   <>
                     <div className="flex items-center gap-3 my-3">
-                      <div className="h-px flex-1 bg-white/5" />
-                      <span className="text-amber-400/40 text-[9px] uppercase tracking-[0.2em]">Propostes pendents</span>
-                      <div className="h-px flex-1 bg-white/5" />
+                      <div className="h-px flex-1 bg-subtle" />
+                      <span className="text-warning/40 text-[9px]">Propostes pendents</span>
+                      <div className="h-px flex-1 bg-subtle" />
                     </div>
                     {pendingHoldings.map(h => (
-                      <div key={h.id} className="bg-[#0d1f1a] border border-amber-500/10 rounded-xl p-4 opacity-55">
+                      <div key={h.id} className="bg-surface border border-warning/10 rounded-xl p-4 opacity-55">
                         <div className="flex items-center justify-between gap-3">
                           <div>
-                            <span className="text-white/45 font-medium text-sm">{h.assetName}</span>
-                            <p className="text-white/22 text-xs mt-0.5">
+                            <span className="text-ink-muted font-medium text-sm">{h.assetName}</span>
+                            <p className="text-ink-muted text-xs mt-0.5">
                               {h.assetCategory}{h.broker ? ` · ${h.broker}` : ''}
                             </p>
-                            {h.notes && <p className="text-white/18 text-xs mt-1 italic">{h.notes}</p>}
+                            {h.notes && <p className="text-ink-muted text-xs mt-1 italic">{h.notes}</p>}
                           </div>
-                          <span className="text-amber-400/60 text-xs px-2.5 py-1.5 rounded-xl bg-amber-500/6 border border-amber-500/12 flex-shrink-0">
+                          <span className="text-warning/60 text-xs px-2.5 py-1.5 rounded-xl bg-warning/6 border border-warning/12 flex-shrink-0">
                             Pendent
                           </span>
                         </div>
@@ -1053,7 +992,7 @@ export default function ClientCarteraPage() {
                   const m = OP_META[tx.operationType];
                   return (
                     <div key={tx.id}
-                      className="bg-[#0d1f1a] border border-white/[0.055] rounded-xl p-4 flex items-center justify-between gap-4 hover:border-white/10 transition-all">
+                      className="bg-surface border border-line rounded-xl p-4 flex items-center justify-between gap-4 hover:border-line transition-all">
                       <div className="flex items-center gap-3 min-w-0">
                         <div className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0 text-sm font-bold"
                           style={{ background: m.bg, border: `1px solid ${m.color}18`, color: m.color }}>
@@ -1062,20 +1001,20 @@ export default function ClientCarteraPage() {
                         <div className="min-w-0">
                           <div className="flex items-center gap-2 flex-wrap">
                             <span className="text-xs font-semibold" style={{ color: m.color }}>{m.label}</span>
-                            <span className="text-white/50 text-sm truncate">{tx.assetName || tx.ticker || '—'}</span>
+                            <span className="text-ink-soft text-sm truncate">{tx.assetName || tx.ticker || '—'}</span>
                           </div>
-                          <div className="text-white/20 text-xs mt-0.5">
+                          <div className="text-ink-muted text-xs mt-0.5">
                             {fDate(tx.date)}{tx.broker ? ` · ${tx.broker}` : ''}
                           </div>
                         </div>
                       </div>
                       <div className="text-right flex-shrink-0">
-                        <div className="text-white font-semibold text-sm tabular-nums">{fEur(tx.totalEur)}</div>
+                        <div className="text-ink font-semibold text-sm tabular-nums">{fEur(tx.totalEur)}</div>
                         {tx.quantity > 0 && (
-                          <div className="text-white/20 text-xs">{tx.quantity} × {fEur(tx.priceEur)}</div>
+                          <div className="text-ink-muted text-xs">{tx.quantity} × {fEur(tx.priceEur)}</div>
                         )}
                         {tx.commission > 0 && (
-                          <div className="text-white/15 text-xs">Com. {fEur(tx.commission)}</div>
+                          <div className="text-ink-muted text-xs">Com. {fEur(tx.commission)}</div>
                         )}
                       </div>
                     </div>

@@ -23,9 +23,9 @@ function timeAgo(iso: string): string {
 
 const PENDING_BADGE = {
   text:  'Pendent',
-  color: 'rgba(255,255,255,0.2)',
-  bg:    'rgba(255,255,255,0.04)',
-  border:'rgba(255,255,255,0.08)',
+  color: '#7a8681',
+  bg:    '#e6e9e7',
+  border:'#e6e9e7',
 };
 
 export const DataSourceBadge = memo(function DataSourceBadge({
@@ -36,8 +36,8 @@ export const DataSourceBadge = memo(function DataSourceBadge({
   if (source === 'pending' || source === 'simulated') {
     if (variant === 'dot') {
       return (
-        <span className={`inline-flex items-center gap-1 text-xs text-white/25 ${className}`}>
-          <span className="w-1.5 h-1.5 rounded-full bg-white/20 flex-shrink-0" />
+        <span className={`inline-flex items-center gap-1 text-xs text-ink-muted ${className}`}>
+          <span className="w-1.5 h-1.5 rounded-full bg-subtle-strong flex-shrink-0" />
           {PENDING_BADGE.text}
         </span>
       );
@@ -47,7 +47,7 @@ export const DataSourceBadge = memo(function DataSourceBadge({
         className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full border text-xs font-medium ${className}`}
         style={{ color: PENDING_BADGE.color, borderColor: PENDING_BADGE.border, backgroundColor: PENDING_BADGE.bg }}
       >
-        <span className="w-1.5 h-1.5 rounded-full bg-white/20 flex-shrink-0" />
+        <span className="w-1.5 h-1.5 rounded-full bg-subtle-strong flex-shrink-0" />
         {PENDING_BADGE.text}
       </span>
     );
@@ -58,7 +58,7 @@ export const DataSourceBadge = memo(function DataSourceBadge({
   if (variant === 'dot') {
     return (
       <span
-        className={`inline-flex items-center gap-1 text-xs text-white/40 ${className}`}
+        className={`inline-flex items-center gap-1 text-xs text-ink-muted ${className}`}
         title={def.name}
       >
         <span
@@ -72,7 +72,7 @@ export const DataSourceBadge = memo(function DataSourceBadge({
 
   if (variant === 'inline') {
     return (
-      <span className={`text-xs text-white/30 ${className}`}>
+      <span className={`text-xs text-ink-muted ${className}`}>
         {def.shortName}
         {updatedAt ? ` · ${timeAgo(updatedAt)}` : ''}
       </span>
@@ -82,20 +82,11 @@ export const DataSourceBadge = memo(function DataSourceBadge({
   // chip (default)
   return (
     <span
-      className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full border text-xs font-medium ${className}`}
-      style={{
-        color:           def.accentColor,
-        borderColor:     `${def.accentColor}30`,
-        backgroundColor: `${def.accentColor}10`,
-      }}
+      className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full border border-line bg-subtle text-ink-soft text-xs font-medium ${className}`}
     >
-      <span
-        className="w-1.5 h-1.5 rounded-full flex-shrink-0"
-        style={{ backgroundColor: def.accentColor }}
-      />
       {def.shortName}
       {updatedAt && (
-        <span style={{ color: `${def.accentColor}70` }}>
+        <span className="text-ink-muted">
           · {timeAgo(updatedAt)}
         </span>
       )}

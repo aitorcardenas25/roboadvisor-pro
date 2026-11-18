@@ -100,7 +100,7 @@ export default function OneOffExpenses({ endpoint, data, onChange, audience = 'c
     <section className={card} aria-labelledby="oneoff-title">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h2 id="oneoff-title" className="text-ink-soft text-xs uppercase tracking-widest">Despeses puntuals</h2>
+          <h2 id="oneoff-title" className="text-ink-soft text-xs">Despeses puntuals</h2>
           <p className="text-ink-muted text-xs mt-1">
             {audience === 'client' ? 'Un viatge, un mòbil, un cotxe, un mes que has gastat més... Apunta-ho i el pla es reajusta sol.' : 'Entra el que t\'expliqui el client (escrivint o dictant). L\'estalvi i el diagnòstic es recalculen sols.'}
           </p>

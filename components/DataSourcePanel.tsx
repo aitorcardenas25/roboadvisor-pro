@@ -81,26 +81,26 @@ function SourceCard({ def }: { def: DataSourceDef }) {
       {/* header */}
       <div className="flex items-center gap-2.5">
         <div
-          className="w-8 h-8 rounded-lg flex items-center justify-center text-xs font-black flex-shrink-0"
+          className="w-8 h-8 rounded-lg flex items-center justify-center text-xs font-semibold flex-shrink-0"
           style={{ backgroundColor: `${def.accentColor}18`, color: def.accentColor }}
         >
           {def.initials}
         </div>
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 flex-wrap">
-            <span className="text-white/85 text-sm font-semibold">{def.name}</span>
+            <span className="text-ink text-sm font-semibold">{def.name}</span>
             {!def.apiKeyRequired && !isInternal && (
-              <span className="text-[10px] px-1.5 py-0.5 rounded bg-emerald-500/10 border border-emerald-500/20 text-emerald-400/70">
+              <span className="text-[10px] px-1.5 py-0.5 rounded bg-positive/10 border border-positive/20 text-positive/70">
                 Gratuït
               </span>
             )}
           </div>
-          <p className="text-white/30 text-[10px] truncate">{def.url.replace('https://', '')}</p>
+          <p className="text-ink-muted text-[10px] truncate">{def.url.replace('https://', '')}</p>
         </div>
       </div>
 
       {/* description */}
-      <p className="text-white/45 text-xs leading-relaxed">{def.description}</p>
+      <p className="text-ink-muted text-xs leading-relaxed">{def.description}</p>
 
       {/* use cases */}
       <div className="flex flex-wrap gap-1.5">
@@ -118,7 +118,7 @@ function SourceCard({ def }: { def: DataSourceDef }) {
           </span>
         ))}
         {def.usedFor.length > 3 && (
-          <span className="text-[10px] text-white/20">+{def.usedFor.length - 3} més</span>
+          <span className="text-[10px] text-ink-muted">+{def.usedFor.length - 3} més</span>
         )}
       </div>
     </div>
@@ -137,7 +137,7 @@ function CategoryGroup({ cat }: { cat: SourceCategory }) {
 
   return (
     <div>
-      <p className="text-white/20 text-[10px] uppercase tracking-widest mb-3 font-semibold">
+      <p className="text-ink-muted text-[10px] mb-3 font-semibold">
         {CATEGORY_LABELS[cat]}
       </p>
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -153,15 +153,15 @@ function FlowRow({
   icon, label, detail, sourceIds,
 }: { icon: string; label: string; detail: string; sourceIds: string[] }) {
   return (
-    <div className="flex items-start gap-3 py-2.5 border-b border-white/[0.04] last:border-0">
-      <div className="w-7 h-7 rounded-lg bg-white/[0.03] border border-white/[0.06] flex items-center justify-center text-sm flex-shrink-0 mt-0.5">
+    <div className="flex items-start gap-3 py-2.5 border-b border-line last:border-0">
+      <div className="w-7 h-7 rounded-lg bg-subtle border border-line flex items-center justify-center text-sm flex-shrink-0 mt-0.5">
         {icon}
       </div>
       <div className="flex-1 min-w-0">
         <div className="flex items-start justify-between gap-3 flex-wrap">
           <div>
-            <p className="text-white/70 text-sm font-medium">{label}</p>
-            <p className="text-white/30 text-xs mt-0.5">{detail}</p>
+            <p className="text-ink-soft text-sm font-medium">{label}</p>
+            <p className="text-ink-muted text-xs mt-0.5">{detail}</p>
           </div>
           <div className="flex items-center gap-1.5 flex-wrap flex-shrink-0">
             {sourceIds.map(sid => {
@@ -213,21 +213,21 @@ export const DataSourcePanel = memo(function DataSourcePanel({ onClose }: Props)
 
       {/* panel */}
       <div
-        className="fixed inset-y-0 right-0 w-full max-w-2xl bg-[#080f0c] border-l border-white/[0.07] z-50 flex flex-col overflow-hidden"
+        className="fixed inset-y-0 right-0 w-full max-w-2xl bg-surface border-l border-line z-50 flex flex-col overflow-hidden"
         role="dialog"
         aria-label="D'on surt cada dada?"
       >
         {/* header */}
-        <div className="flex items-start justify-between p-6 border-b border-white/[0.06] flex-shrink-0">
+        <div className="flex items-start justify-between p-6 border-b border-line flex-shrink-0">
           <div>
-            <h2 className="text-white font-black text-xl">D&apos;on surt cada dada?</h2>
-            <p className="text-white/35 text-sm mt-1">
+            <h2 className="text-ink font-semibold text-xl">D&apos;on surt cada dada?</h2>
+            <p className="text-ink-muted text-sm mt-1">
               Totes les dades del teu dashboard amb la font exacta i el nivell de confiança.
             </p>
           </div>
           <button
             onClick={onClose}
-            className="w-8 h-8 rounded-lg bg-white/[0.04] border border-white/[0.08] flex items-center justify-center text-white/40 hover:text-white hover:border-white/20 transition-colors flex-shrink-0 ml-4"
+            className="w-8 h-8 rounded-lg bg-subtle border border-line flex items-center justify-center text-ink-muted hover:text-ink hover:border-line-strong transition-colors flex-shrink-0 ml-4"
           >
             <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
@@ -241,14 +241,14 @@ export const DataSourcePanel = memo(function DataSourcePanel({ onClose }: Props)
           {/* section 1: data flow map */}
           <div>
             <div className="flex items-center gap-2 mb-4">
-              <div className="w-5 h-5 rounded-md bg-[#c9a84c]/10 border border-[#c9a84c]/20 flex items-center justify-center">
-                <div className="w-1.5 h-1.5 rounded-full bg-[#c9a84c]/60" />
+              <div className="w-5 h-5 rounded-md bg-accent-soft border border-accent/20 flex items-center justify-center">
+                <div className="w-1.5 h-1.5 rounded-full bg-accent/60" />
               </div>
-              <h3 className="text-white/70 text-sm font-semibold uppercase tracking-wider">
+              <h3 className="text-ink-soft text-sm font-semibold">
                 La meva cartera — origen de cada dada
               </h3>
             </div>
-            <div className="bg-white/[0.02] border border-white/[0.05] rounded-xl p-4">
+            <div className="bg-subtle border border-line rounded-xl p-4">
               {CARTERA_MAP.map(row => (
                 <FlowRow key={row.label} {...row} />
               ))}
@@ -258,10 +258,10 @@ export const DataSourcePanel = memo(function DataSourcePanel({ onClose }: Props)
           {/* section 2: all sources */}
           <div>
             <div className="flex items-center gap-2 mb-4">
-              <div className="w-5 h-5 rounded-md bg-white/[0.04] border border-white/[0.08] flex items-center justify-center">
-                <div className="w-1.5 h-1.5 rounded-full bg-white/30" />
+              <div className="w-5 h-5 rounded-md bg-subtle border border-line flex items-center justify-center">
+                <div className="w-1.5 h-1.5 rounded-full bg-subtle-strong" />
               </div>
-              <h3 className="text-white/70 text-sm font-semibold uppercase tracking-wider">
+              <h3 className="text-ink-soft text-sm font-semibold">
                 Totes les fonts, una a una
               </h3>
             </div>
@@ -273,9 +273,9 @@ export const DataSourcePanel = memo(function DataSourcePanel({ onClose }: Props)
           </div>
 
           {/* footer note */}
-          <div className="bg-white/[0.025] border border-white/[0.06] rounded-xl p-4">
-            <p className="text-white/25 text-xs leading-relaxed">
-              <span className="text-white/40 font-semibold">Sobre la fiabilitat:</span>{' '}
+          <div className="bg-subtle border border-line rounded-xl p-4">
+            <p className="text-ink-muted text-xs leading-relaxed">
+              <span className="text-ink-muted font-semibold">Sobre la fiabilitat:</span>{' '}
               Les fonts s&apos;utilitzen per ordre de prioritat. Si la font primaria no retorna dades,
               s&apos;activa automàticament la font de suport. Cap dada s&apos;inventa:
               si cap font respon, el valor es marca com a <em>pendent</em> fins que l&apos;assessor l&apos;actualitzi.
