@@ -57,6 +57,10 @@ describe('proposalStats', () => {
   it('detecta pesos que no sumen 100', () => {
     expect(proposalStats({ ...params, items: [item('A', 50), item('B', 30)] }).weightOk).toBe(false);
   });
+  it('avisa dels fons sense TER (0 vol dir que no se sap, no que sigui gratuït)', () => {
+    const s = proposalStats({ ...params, items: [item('A', 60, { ter: 0.2 }), item('B', 40, { ter: 0 })] });
+    expect(s.terMissing.map(x => x.isin)).toEqual(['B']);
+  });
 });
 
 describe('roundWeights', () => {

@@ -23,8 +23,8 @@ const ROLE_META: Record<UserRole, { label: string; color: string; bg: string }> 
 const ROLES: UserRole[] = ['client', 'admin'];
 
 const PLAN_META: Record<string, { label: string; color: string }> = {
-  free:    { label: 'Free',    color: '#9ca3af' },
-  active:  { label: 'Actiu',  color: 'rgb(var(--c-accent))' },
+  free:    { label: 'Gratuït',    color: '#9ca3af' },
+  active:  { label: 'Bàsic',  color: 'rgb(var(--c-accent))' },
   premium: { label: 'Premium',color: '#a78bfa' },
 };
 
@@ -156,7 +156,7 @@ export default function ClientsManager({ onViewClient }: { onViewClient?: (id: s
   }
 
   const activeCount = users.filter(u => u.active).length;
-  const clientCount = users.filter(u => u.active && (u.role === 'client' || u.role === 'admin')).length;
+  const clientCount = users.filter(u => u.active && u.role === 'client').length;
 
   return (
     <div>
