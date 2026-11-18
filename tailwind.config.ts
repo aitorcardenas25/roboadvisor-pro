@@ -12,7 +12,6 @@ const config: Config = {
       fontFamily: {
         sans:  ['var(--font-sans, var(--font-inter))', 'system-ui', 'sans-serif'],
         mono:  ['var(--font-plex-mono)', 'ui-monospace', 'monospace'],
-        serif: ['var(--font-newsreader)', 'Georgia', 'serif'],
       },
       colors: {
         // ── Tokens semàntics (decisió de disseny 2026-11-18, direcció A+B) ──
