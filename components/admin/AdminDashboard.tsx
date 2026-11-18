@@ -83,7 +83,7 @@ export default function AdminDashboard({ onLogout }: Props) {
       <motion.aside
         animate={{ width: collapsed ? 64 : 220 }}
         transition={{ duration: 0.3, ease: [0.22, 1, 0.36, 1] }}
-        className="fixed left-0 top-0 h-full bg-[#0d1f1a] border-r border-white/10 flex flex-col z-20 overflow-hidden">
+        className="fixed left-0 top-0 h-screen bg-[#0d1f1a] border-r border-white/10 flex flex-col z-20 overflow-hidden">
 
         {/* Logo */}
         <div className="p-4 border-b border-white/10 flex items-center justify-between min-h-[64px]">
@@ -117,7 +117,8 @@ export default function AdminDashboard({ onLogout }: Props) {
         </div>
 
         {/* Nav */}
-        <nav className="flex-1 p-3 space-y-1">
+        {/* min-h-0 + overflow-y-auto: sense això el menú es talla quan no cap a la pantalla */}
+        <nav className="flex-1 min-h-0 overflow-y-auto overscroll-contain p-3 space-y-1">
           {NAV_ITEMS.map(item => (
             <motion.button
               key={item.id}
@@ -125,7 +126,7 @@ export default function AdminDashboard({ onLogout }: Props) {
               whileHover={{ x: 2 }}
               whileTap={{ scale: 0.98 }}
               title={collapsed ? item.label : undefined}
-              className={`w-full text-left flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition-all ${
+              className={`relative w-full text-left flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition-all ${
                 activeSection === item.id
                   ? 'bg-[#c9a84c]/20 text-[#c9a84c] border border-[#c9a84c]/30'
                   : 'text-white/50 hover:text-white hover:bg-white/5'
