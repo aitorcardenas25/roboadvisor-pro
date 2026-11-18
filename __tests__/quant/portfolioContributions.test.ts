@@ -44,4 +44,19 @@ describe('computeMetrics — aportacions netes', () => {
     ]));
     expect(m.totalInvested).toBe(7500);
   });
+
+  it('reestructuració (venda + compres + aportació nova) mostra el guany real', () => {
+    // Cas de producció: 150 part. comprades a 50 €, venudes a 64,30 € (9.645 €)
+    // i reinvertides amb 2.500 € nous (12.145 €). Guany real: 2.145 €.
+    const p = base([
+      { operationType: 'deposit', date: '2025-01-15', totalEur: 7500 },
+      { operationType: 'buy',     date: '2025-01-16', totalEur: 7500 },
+      { operationType: 'sell',    date: '2026-11-18', totalEur: 9645 },
+      { operationType: 'buy',     date: '2026-11-18', totalEur: 12145 },
+    ]);
+    p.holdings = [{ ...p.holdings[0], quantity: 1, avgEntryPrice: 12145, currentPrice: 12145 }];
+    const m = computeMetrics(p);
+    expect(m.totalInvested).toBe(10000);
+    expect(m.pnlEur).toBe(2145);
+  });
 });

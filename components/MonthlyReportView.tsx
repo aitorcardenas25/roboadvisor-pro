@@ -4,6 +4,8 @@
 import type { MonthlyReportData } from '@/lib/portfolioReport';
 import MonthlyReportOfficialView from '@/components/admin/MonthlyReportOfficial';
 
+const eur = (n: number) => n.toLocaleString('ca-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
 export default function MonthlyReportView({ report }: { report: MonthlyReportData }) {
   const pnlColor = report.metrics.pnlEur >= 0 ? 'text-positive' : 'text-negative';
   return (
@@ -34,10 +36,10 @@ export default function MonthlyReportView({ report }: { report: MonthlyReportDat
       {/* KPIs */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
         {[
-          { label: 'Valor actual',     value: `${report.metrics.currentValue.toFixed(2)} €` },
-          { label: 'Aportació neta',   value: `${report.metrics.netContributions.toFixed(2)} €` },
-          { label: 'Rendiment (€)',    value: `${report.metrics.pnlEur >= 0 ? '+' : ''}${report.metrics.pnlEur.toFixed(2)} €`, colored: true },
-          { label: 'Rendiment (%)',    value: `${report.metrics.pnlPct >= 0 ? '+' : ''}${report.metrics.pnlPct.toFixed(2)}%`, colored: true },
+          { label: 'Valor actual',     value: `${eur(report.metrics.currentValue)} €` },
+          { label: 'Aportació neta',   value: `${eur(report.metrics.netContributions)} €` },
+          { label: 'Rendiment (€)',    value: `${report.metrics.pnlEur >= 0 ? '+' : ''}${eur(report.metrics.pnlEur)} €`, colored: true },
+          { label: 'Rendiment (%)',    value: `${report.metrics.pnlPct >= 0 ? '+' : ''}${eur(report.metrics.pnlPct)} %`, colored: true },
         ].map(kpi => (
           <div key={kpi.label} className="bg-subtle rounded-xl p-4 print:bg-subtle print:rounded-none print:border print:border-line">
             <p className="text-ink-muted text-xs mb-1 print:text-ink-muted">{kpi.label}</p>
@@ -62,11 +64,11 @@ export default function MonthlyReportView({ report }: { report: MonthlyReportDat
                   <div className="flex items-center justify-between mb-1">
                     <span className="text-ink-soft text-xs truncate print:text-ink-soft">{h.name}</span>
                     <div className="flex items-center gap-3 flex-shrink-0">
-                      <span className="text-ink-muted text-xs print:text-ink-muted">{h.value.toFixed(0)} €</span>
+                      <span className="text-ink-muted text-xs print:text-ink-muted">{h.value.toLocaleString('ca-ES', { maximumFractionDigits: 0 })} €</span>
                       <span className={`text-xs font-mono ${h.pnlPct >= 0 ? 'text-positive' : 'text-negative'}`}>
-                        {h.pnlPct >= 0 ? '+' : ''}{h.pnlPct.toFixed(2)}%
+                        {h.pnlPct >= 0 ? '+' : ''}{eur(h.pnlPct)} %
                       </span>
-                      <span className="text-ink-muted text-xs w-10 text-right print:text-ink-muted">{h.weight.toFixed(1)}%</span>
+                      <span className="text-ink-muted text-xs w-10 text-right print:text-ink-muted">{h.weight.toLocaleString('ca-ES', { maximumFractionDigits: 1 })} %</span>
                     </div>
                   </div>
                   <div className="h-1 bg-subtle rounded-full overflow-hidden print:bg-gray-200">

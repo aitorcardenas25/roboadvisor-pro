@@ -15,6 +15,9 @@ import { PortfolioEditor, NotesTab } from './PortfolioEditor';
 import BudgetOverview from '@/components/finances/BudgetOverview';
 import OneOffExpenses from '@/components/finances/OneOffExpenses';
 
+// r.date es desa com a text "dd/mm/aaaa" i new Date() el llegeix com a Invalid Date
+const PROFILE_NAMES: Record<string, string> = { conservador: 'conservador', moderat: 'moderat', dinamic: 'dinàmic', agressiu: 'agressiu' };
+
 interface ClientUser {
   id: string; name: string; email: string; username: string;
   role: string; active: boolean; createdAt: string;
@@ -315,7 +318,7 @@ export default function ClientFile({
                   {data.reports.map(r => (
                     <div key={r.id} className="flex items-center justify-between bg-surface border border-line rounded-lg px-4 py-3">
                       <div>
-                        <p className="text-ink text-sm">{new Date(r.date || r.createdAt).toLocaleDateString('ca-ES')} · {r.profile}</p>
+                        <p className="text-ink text-sm">{new Date(r.createdAt).toLocaleDateString('ca-ES')} · Perfil {PROFILE_NAMES[r.profile] ?? r.profile}</p>
                         <p className="text-ink-soft text-xs font-mono">{r.id}</p>
                       </div>
                       <p className="text-ink-soft text-xs">{r.emailSent ? 'Enviat' : 'No enviat'}</p>

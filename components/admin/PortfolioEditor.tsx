@@ -578,9 +578,9 @@ function SnapshotsTab({ portfolio, reload }: { portfolio: ClientPortfolio; reloa
 
 // ─── Notes tab ────────────────────────────────────────────────────────────────
 
-export function NotesTab({ portfolio, reload }: { portfolio: ClientPortfolio; reload: () => void }) {
+export function NotesTab({ portfolio, reload }: { portfolio: ClientPortfolio; reload: () => Promise<void> | void }) {
   const [text, setText]       = useState('');
-  const [visible, setVisible] = useState(true);
+  const [visible, setVisible] = useState(false);   // per defecte interna: millor no ensenyar al client una nota per error
   const [saving, setSaving]   = useState(false);
 
   async function addNote(e: React.FormEvent) {
@@ -590,7 +590,8 @@ export function NotesTab({ portfolio, reload }: { portfolio: ClientPortfolio; re
       action: 'add-advisor-note', text: text.trim(),
       author: 'Admin Factor OTC', isVisibleToClient: visible,
     });
-    setSaving(false); reload(); setText('');
+    // Esperem la recàrrega: la fitxa triga uns segons i, si no, semblava que la nota no s'havia desat
+    await reload(); setSaving(false); setText('');
   }
 
   async function toggleVisibility(note: AdvisorNote) {

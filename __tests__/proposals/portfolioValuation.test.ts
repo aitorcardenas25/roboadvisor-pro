@@ -59,6 +59,15 @@ describe('valuationSeries', () => {
     ]);
   });
 
+  it('inclou les operacions fetes després de l\'últim preu (reestructuració d\'avui)', () => {
+    // Regressió (prova amb client fictici, 2026-11-18): l'Excel acabava a l'últim VL i
+    // no mostrava la reestructuració ni l'aportació nova feta dos dies després.
+    const h = [{ ...holdings[0], quantity: 150 }, holdings[1]];
+    const t = [...txs, { holdingId: 'h1', operationType: 'buy', date: '2026-11-05', quantity: 50, totalEur: 2200, commission: 0 }];
+    const v = valuationSeries(h, t, navs, '2026-11-17');
+    expect(v.points.at(-1)).toEqual({ date: '2026-11-05', value: 150 * 44 + 10 * 110, invested: 7200 });
+  });
+
   it('té en compte compres posteriors', () => {
     const more = [...txs, { holdingId: 'h1', operationType: 'buy', date: '2026-09-30', quantity: 50, totalEur: 2100, commission: 0 }];
     const v = valuationSeries([{ ...holdings[0], quantity: 150 }, holdings[1]], more, navs, '2026-11-17');
