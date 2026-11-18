@@ -5,7 +5,7 @@
 import ExcelJS from 'exceljs';
 import { getDb } from './supabase';
 import { ADVISOR_FUNDS, lookupIsin } from './fundUniverse';
-import { computeNavMetrics, estimateNavBeta, navPerformance, MARKET_PROXY_ISIN, type NavMetrics, type NavPerformance, type NavPoint } from './navMath';
+import { computeNavMetrics, estimateNavBeta, navPerformance, validMarketSeries, MARKET_PROXY_ISIN, type NavMetrics, type NavPerformance, type NavPoint } from './navMath';
 
 const _mem = new Map<string, NavPoint>();   // clau: isin|date
 const key = (isin: string, date: string) => `${isin}|${date}`;
@@ -140,7 +140,9 @@ export async function getNavPerformanceMap(): Promise<Record<string, NavPerforma
   try {
     const out: Record<string, NavPerformance> = {};
     const by = groupByIsin(await getNavs());
-    const market = by.get(MARKET_PROXY_ISIN) ?? [];
+    // El proxy de mercat ha de passar la mateixa validació que els fons; si no, no hi ha beta (ni CAPM).
+    const rawMarket = by.get(MARKET_PROXY_ISIN) ?? [];
+    const market = validMarketSeries(rawMarket);
     for (const [isin, pts] of by) {
       const perf = navPerformance(computeNavMetrics(pts), nameFor(isin, pts).name);
       if (!perf) continue;

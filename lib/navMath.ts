@@ -411,3 +411,8 @@ export function navPerformance(m: NavMetrics, name?: string): NavPerformance | n
     ...(name ? { name } : {}),
   };
 }
+
+/** Proxy de mercat per a la beta: només si passa la mateixa validació que un fons (salts impossibles, historial curt…). */
+export function validMarketSeries<T extends Pick<NavPoint, 'date' | 'nav'>>(points: T[]): T[] {
+  return navPerformance(computeNavMetrics(points)) ? points : [];
+}

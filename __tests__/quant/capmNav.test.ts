@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { capmReturn, estimateNavBeta, monthlyReturnsByMonth, CAPM_ASSUMPTIONS } from '@/lib/navMath';
+import { capmReturn, estimateNavBeta, monthlyReturnsByMonth, CAPM_ASSUMPTIONS, validMarketSeries } from '@/lib/navMath';
 import { proposalStats, expectedReturn, type ProposalItem } from '@/lib/proposalMath';
 
 // Sèrie mensual (últim dia de mes) a partir d'una llista de rendiments mensuals (%)
@@ -51,5 +51,15 @@ describe('CAPM (Sharpe, 1964) amb beta dels valors liquidatius', () => {
     expect(s.netReturn).toBeCloseTo(capmReturn(1) - 0.2, 10);
     // sense beta: es fa servir l'històric
     expect(proposalStats({ items: [{ ...item, beta: undefined }], horizon: 10, initialAmount: 10000, monthlyAmount: 0 }).returnBasis).toBe('historic');
+  });
+});
+
+// Regressió (revisió PR #44): un VL mal teclejat al proxy de mercat feia la beta ~0 a tots els fons.
+describe('validació del proxy de mercat', () => {
+  it('accepta una sèrie neta i rebutja una amb un VL multiplicat per 10', () => {
+    const ok = series(Array.from({ length: 70 }, (_, i) => Math.sin(i) * 3 + 0.6), 2020);
+    expect(validMarketSeries(ok)).toBe(ok);
+    const bad = ok.map((p, i) => (i === 30 ? { ...p, nav: p.nav * 10 } : p));
+    expect(validMarketSeries(bad)).toEqual([]);
   });
 });
