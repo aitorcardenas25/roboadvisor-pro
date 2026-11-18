@@ -139,7 +139,8 @@ export interface InvestmentReturn {
   /** Diners posats nets (aportacions − retirades) */
   netContributed:   number;
   /** Guany en € = valor − diners posats */
-  gainEur:          number;
+  /** null si la cartera no es pot valorar sencera (posicions pendents sense sèrie oficial) */
+  gainEur:          number | null;
   /** Rendibilitat real: Modified Dietz encadenat mes a mes (time-weighted), % */
   twrPct:           number | null;
   /** La mateixa, anualitzada (només si fa més d'un any), % */
@@ -286,9 +287,14 @@ export function consolidateWealth(input: {
     .sort((a, b) => b.value - a.value);
 
   const trackedValue = lines.filter(l => l.source === 'preus-oficials').reduce((s, l) => s + l.value, 0);
-  const investments = tracked.length || input.valuation?.points.length
+  let investments = tracked.length || input.valuation?.points.length
     ? investmentReturn(input.valuation, { value: trackedValue, netContributed: input.netContributed }, today)
     : null;
+  // Sense sèrie oficial, les aportacions inclouen els diners de les posicions
+  // pendents però el valor no: el guany sortiria com una pèrdua falsa. No es mostra.
+  if (investments && investments.method === 'simple' && pendingHoldings > 0) {
+    investments = { ...investments, gainEur: null, twrPct: null };
+  }
 
   const stale = [...lines, ...debts].filter(l => l.stale);
   if (stale.length) warnings.push(`${stale.length} valor${stale.length > 1 ? 's' : ''} de fa més de ${Math.round(STALE_DAYS / 30)} mesos: convé actualitzar-${stale.length > 1 ? 'los' : 'lo'}.`);

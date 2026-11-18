@@ -138,4 +138,12 @@ describe('investmentReturn (Modified Dietz encadenat)', () => {
     expect(r).toMatchObject({ method: 'simple', twrPct: 25, gainEur: 1000, ytdPct: null });
     expect(investmentReturn(null, { value: 0, netContributed: 0 }, TODAY).twrPct).toBeNull();
   });
+
+  it('amb posicions pendents i sense sèrie oficial, no mostra una pèrdua falsa', () => {
+    const w = consolidateWealth({
+      holdings: [fund({ quantity: 100, currentPrice: 50 }), fund({ assetName: 'Pendent', priceSource: 'pending', currentPrice: 0, quantity: 0 })],
+      netContributed: 10000, questionnaire: null, today: TODAY,
+    });
+    expect(w.investments).toMatchObject({ method: 'simple', twrPct: null, gainEur: null });
+  });
 });

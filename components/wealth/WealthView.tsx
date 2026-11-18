@@ -176,7 +176,7 @@ export default function WealthView({ endpoint, audience = 'client' }: {
 
         {editing !== null && (
           <div className="px-5 pt-4">
-            <ItemForm endpoint={endpoint} item={editing === 'new' ? null : editing}
+            <ItemForm key={editing === 'new' ? 'new' : editing.id} endpoint={endpoint} item={editing === 'new' ? null : editing}
               onDone={async () => { setEditing(null); await load(); }}
               onCancel={() => setEditing(null)} />
           </div>
@@ -224,7 +224,7 @@ function ReturnBlock({ r, isAdmin }: { r: NonNullable<ConsolidatedWealth['invest
       <dl className="mt-4 divide-y divide-line border-t border-line">
         <Row label={r.method === 'navs' ? 'Valor (a data de preus oficials)' : 'Valor actual'} value={eur(r.value)} />
         <Row label={isAdmin ? 'Aportat net' : 'Diners que hi has posat'} value={eur(r.netContributed)} />
-        <Row label={isAdmin ? 'Guany / pèrdua' : 'Has guanyat'} value={`${r.gainEur > 0 ? '+' : ''}${eur(r.gainEur)}`} color={col(r.gainEur)} />
+        <Row label={isAdmin ? 'Guany / pèrdua' : 'Has guanyat'} value={r.gainEur === null ? 'N/D' : `${r.gainEur > 0 ? '+' : ''}${eur(r.gainEur)}`} color={col(r.gainEur)} />
         {r.annualPct !== null && <Row label="Anualitzada" value={pct(r.annualPct)} color={col(r.annualPct)} />}
         {r.ytdPct !== null && <Row label="Aquest any" value={pct(r.ytdPct)} color={col(r.ytdPct)} />}
       </dl>
