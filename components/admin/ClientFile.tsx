@@ -14,6 +14,7 @@ import ClientProposal from './ClientProposal';
 import { PortfolioEditor, NotesTab } from './PortfolioEditor';
 import BudgetOverview from '@/components/finances/BudgetOverview';
 import OneOffExpenses from '@/components/finances/OneOffExpenses';
+import WealthView from '@/components/wealth/WealthView';
 
 // r.date es desa com a text "dd/mm/aaaa" i new Date() el llegeix com a Invalid Date
 const PROFILE_NAMES: Record<string, string> = { conservador: 'conservador', moderat: 'moderat', dinamic: 'dinàmic', agressiu: 'agressiu' };
@@ -172,6 +173,10 @@ export default function ClientFile({
             <section>
               <SectionTitle>Excel del client</SectionTitle>
               <ClientImport clientId={clientId} onImported={() => load(true)} />
+            </section>
+            <section>
+              <SectionTitle>Patrimoni consolidat</SectionTitle>
+              <WealthView endpoint={`/api/admin/clients/${clientId}/wealth`} audience="admin" />
             </section>
             <section className="space-y-6">
               <SectionTitle>Finances</SectionTitle>

@@ -12,7 +12,7 @@ export default withAuth(
     // Beta tancada: les pàgines que no en formen part no es mostren als clients
     // ni als visitants (l'admin sí que les pot obrir per revisar-les).
     if (!SHOW_NON_BETA_FEATURES && isNonBetaPage(pathname) && role !== 'admin') {
-      const target = role === 'client' ? '/client/cartera' : '/';
+      const target = role === 'client' ? '/client/patrimoni' : '/';
       return NextResponse.redirect(new URL(target, req.url));
     }
 
@@ -22,7 +22,7 @@ export default withAuth(
     }
 
     // Client-only routes: client or admin
-    const clientRoutes = ['/client/cartera', '/client/finances', '/client/seguiment-accions'];
+    const clientRoutes = ['/client/patrimoni', '/client/cartera', '/client/finances', '/client/seguiment-accions'];
     for (const route of clientRoutes) {
       if (pathname.startsWith(route) && !CLIENT_ROLES.has(role ?? '')) {
         return NextResponse.redirect(new URL('/login', req.url));

@@ -57,6 +57,7 @@ export default function ClientFinancesPage() {
             <span className="text-ink-soft text-sm truncate">Les meves finances</span>
           </div>
           <div className="flex items-center gap-4 flex-shrink-0 text-xs">
+            <Link href="/client/patrimoni" className="text-ink-muted hover:text-accent transition-colors">El meu patrimoni</Link>
             <Link href="/client/cartera" className="text-ink-muted hover:text-accent transition-colors">La meva cartera</Link>
             {name && <span className="text-ink-muted hidden sm:inline">{name}</span>}
           </div>

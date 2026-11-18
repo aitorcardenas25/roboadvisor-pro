@@ -10,7 +10,7 @@ function LoginForm() {
   const { data: session, status } = useSession();
   const router       = useRouter();
   const searchParams = useSearchParams();
-  const callbackUrl  = searchParams.get('callbackUrl') ?? '/client/cartera';
+  const callbackUrl  = searchParams.get('callbackUrl') ?? '/client/patrimoni';
 
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
@@ -24,7 +24,7 @@ function LoginForm() {
       if (session.user.role === 'admin') {
         router.replace('/admin');
       } else {
-        router.replace(callbackUrl.startsWith('/admin') ? '/client/cartera' : callbackUrl);
+        router.replace(callbackUrl.startsWith('/admin') ? '/client/patrimoni' : callbackUrl);
       }
     }
   }, [session, status, router, callbackUrl]);
