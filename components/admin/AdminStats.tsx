@@ -192,7 +192,7 @@ export default function AdminStats({ stats, onNavigate }: Props) {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-semibold text-ink mb-0.5">
-            Bon dia, Aitor
+            Resum d'avui
           </h1>
           <p className="text-ink-muted text-sm">
             Avisos pendents, clients i accions habituals.
