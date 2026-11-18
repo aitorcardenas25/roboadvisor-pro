@@ -37,7 +37,7 @@ export default function SavingsSimulator({ initialSavings, monthlyMargin, goals 
 
   return (
     <div className={card}>
-      <h3 className="text-ink-soft text-xs uppercase tracking-widest mb-1">Simulador d&apos;estalvi</h3>
+      <h3 className="text-ink-soft text-xs mb-1">Simulador d&apos;estalvi</h3>
       <p className="text-ink-muted text-xs mb-4">Quant pot sumar el que estalvies cada mes. Canvia les xifres per provar.</p>
 
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
@@ -86,7 +86,7 @@ export default function SavingsSimulator({ initialSavings, monthlyMargin, goals 
 
       {goalsWithTarget.length > 0 && (
         <div className="mt-5 pt-4 border-t border-line">
-          <p className="text-ink-soft text-xs uppercase tracking-widest mb-2">Per arribar als objectius (amb un {rate}% anual)</p>
+          <p className="text-ink-soft text-xs mb-2">Per arribar als objectius (amb un {rate}% anual)</p>
           <ul className="space-y-1.5">
             {goalsWithTarget.map((g, i) => {
               const m = requiredMonthly(g.amount!, (g.targetYear! - thisYear) * 12, 0, rate);

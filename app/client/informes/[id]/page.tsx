@@ -19,19 +19,19 @@ export default function ClientReportPage() {
   }, [id]);
 
   return (
-    <div className="min-h-screen bg-[#0a0f0d] print:bg-white">
+    <div className="theme-client min-h-screen bg-canvas print:bg-white">
       <div className="max-w-4xl mx-auto px-4 py-6">
         <div className="flex items-center justify-between gap-3 mb-5 print:hidden">
-          <Link href="/client/cartera" className="text-white/50 hover:text-white text-sm">← Tornar a la cartera</Link>
+          <Link href="/client/cartera" className="text-ink-soft hover:text-ink text-sm">← Tornar a la cartera</Link>
           {report && (
             <button onClick={() => window.print()}
-              className="px-4 py-2 bg-[#c9a84c] hover:bg-[#b8963f] text-[#0d1f1a] font-semibold text-sm rounded-lg">
+              className="px-4 py-2 bg-accent hover:bg-accent-hover text-accent-ink font-semibold text-sm rounded-lg">
               Desar en PDF / imprimir
             </button>
           )}
         </div>
-        {error && <p className="text-red-400 text-sm" role="alert">{error}</p>}
-        {!report && !error && <div className="animate-pulse bg-white/5 rounded-2xl h-96" />}
+        {error && <p className="text-negative text-sm" role="alert">{error}</p>}
+        {!report && !error && <div className="animate-pulse bg-subtle rounded-lg h-96" />}
         {report && <MonthlyReportView report={report} />}
       </div>
     </div>

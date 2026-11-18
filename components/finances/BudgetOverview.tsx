@@ -40,7 +40,7 @@ export default function BudgetOverview({ data, goalsTitle = 'Objectius', audienc
       <DiagnosisCard d={diagnosis} audience={audience} />
       {a && <BudgetBlock a={a} />}
       <div className={card}>
-        <h3 className="text-ink-soft text-xs uppercase tracking-widest mb-4">{goalsTitle}</h3>
+        <h3 className="text-ink-soft text-xs mb-4">{goalsTitle}</h3>
         {goals.length === 0 ? (
           <p className="text-ink-muted text-sm">Encara no hi ha objectius. Es poden afegir al formulari &quot;Les meves dades&quot; o a la pestanya &quot;Objectius&quot; de l&apos;Excel.</p>
         ) : (
@@ -72,7 +72,7 @@ function BudgetBlock({ a }: { a: NonNullable<ReturnType<typeof analyzeBudget>> }
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         <div className={card}>
-          <h3 className="text-ink-soft text-xs uppercase tracking-widest mb-4">Pressupost mensual · {eur(a.income)} nets</h3>
+          <h3 className="text-ink-soft text-xs mb-4">Pressupost mensual · {eur(a.income)} nets</h3>
           <div className="flex h-3 rounded-full overflow-hidden mb-4" aria-hidden>
             {positive.map(l => <div key={l.key} className={BAR[l.key]} style={{ width: `${(l.amount / barTotal) * 100}%` }} />)}
           </div>
@@ -90,7 +90,7 @@ function BudgetBlock({ a }: { a: NonNullable<ReturnType<typeof analyzeBudget>> }
         </div>
 
         <div className={card}>
-          <h3 className="text-ink-soft text-xs uppercase tracking-widest mb-4">Referència 50/30/20</h3>
+          <h3 className="text-ink-soft text-xs mb-4">Referència 50/30/20</h3>
           <ul className="space-y-3">
             {a.checks.map(c => (
               <li key={c.key} className="flex items-center justify-between gap-4 text-sm">
@@ -104,7 +104,7 @@ function BudgetBlock({ a }: { a: NonNullable<ReturnType<typeof analyzeBudget>> }
       </div>
 
       <div className={card}>
-        <h3 className="text-ink-soft text-xs uppercase tracking-widest mb-4">Fons d&apos;emergència</h3>
+        <h3 className="text-ink-soft text-xs mb-4">Fons d&apos;emergència</h3>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
           <div><p className="text-ink-muted text-xs">Objectiu</p><p className="text-ink font-bold">{eur(e.targetAmount)}</p><p className="text-ink-muted text-xs">{e.monthsTarget} mesos de despeses</p></div>
           <div><p className="text-ink-muted text-xs">Estalvi actual</p><p className="text-ink font-bold">{e.current === null ? '—' : eur(e.current)}</p></div>
