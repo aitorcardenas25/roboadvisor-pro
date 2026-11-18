@@ -138,9 +138,9 @@ export default function ClientFile({
 
       {/* KPIs ràpids */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
-        <Kpi label="Cartera" value={portfolio ? `${totalValue.toFixed(0)} €` : '—'} sub={portfolio?.name} />
-        <Kpi label="Rendiment" value={portfolio ? `${pnl >= 0 ? '+' : ''}${pnl.toFixed(0)} €` : '—'}
-          sub={totalInvested > 0 ? `${((pnl/totalInvested)*100).toFixed(1)}%` : undefined} />
+        <Kpi label="Cartera" value={portfolio ? `${Math.round(totalValue).toLocaleString('ca-ES')} €` : '—'} sub={portfolio?.name} />
+        <Kpi label="Rendiment" value={portfolio ? `${pnl >= 0 ? '+' : ''}${Math.round(pnl).toLocaleString('ca-ES')} €` : '—'}
+          sub={totalInvested > 0 ? `${((pnl/totalInvested)*100).toLocaleString('ca-ES', { maximumFractionDigits: 1 })} % sobre ${Math.round(totalInvested).toLocaleString('ca-ES')} € aportats` : undefined} />
         <Kpi label="Informes inicials" value={String(data.reports.length)} />
         <Kpi label="Informes mensuals" value={String(data.monthly.length)} />
       </div>
