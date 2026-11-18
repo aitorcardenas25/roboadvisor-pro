@@ -11,6 +11,7 @@ import type { MonthlyReportRecord } from '@/lib/monthlyReports';
 import type { AuditEntry } from '@/lib/auditLog';
 import ClientImport from './ClientImport';
 import ClientProposal from './ClientProposal';
+import { PortfolioEditor, NotesTab } from './PortfolioEditor';
 import BudgetOverview from '@/components/finances/BudgetOverview';
 import OneOffExpenses from '@/components/finances/OneOffExpenses';
 
@@ -29,21 +30,24 @@ interface ClientFileData {
   audit:     AuditEntry[];
 }
 
-type Tab = 'finances' | 'personal' | 'import' | 'proposal' | 'questionnaire' | 'portfolio' | 'transactions' | 'snapshots' | 'notes' | 'monthly' | 'audit';
+// Fitxa de client (beta 2026-11-18): 5 pestanyes en l'ordre real de la feina.
+type Tab = 'dades' | 'proposal' | 'portfolio' | 'reports' | 'notes';
 
 const TABS: { id: Tab; label: string }[] = [
-  { id: 'finances',      label: 'Pas 1 · Finances' },
-  { id: 'personal',      label: 'Dades'         },
-  { id: 'import',        label: 'Importar Excel' },
-  { id: 'proposal',      label: 'Proposta'       },
-  { id: 'questionnaire', label: 'Qüestionari'    },
-  { id: 'portfolio',     label: 'Cartera activa' },
-  { id: 'transactions',  label: 'Compres'        },
-  { id: 'snapshots',     label: 'Snapshots'      },
-  { id: 'notes',         label: 'Notes'          },
-  { id: 'monthly',       label: 'Inf. Mensuals'  },
-  { id: 'audit',         label: 'Historial'      },
+  { id: 'dades',     label: '1. Dades'    },
+  { id: 'proposal',  label: '2. Proposta' },
+  { id: 'portfolio', label: '3. Cartera'  },
+  { id: 'reports',   label: '4. Informes' },
+  { id: 'notes',     label: 'Notes'       },
 ];
+
+function SectionTitle({ children }: { children: React.ReactNode }) {
+  return <h3 className="text-white font-semibold text-sm mb-3">{children}</h3>;
+}
+
+function Empty({ children }: { children: React.ReactNode }) {
+  return <div className="text-center py-12 text-white/60 text-sm">{children}</div>;
+}
 
 function Kpi({ label, value, sub }: { label: string; value: string; sub?: string }) {
   return (
@@ -65,7 +69,8 @@ export default function ClientFile({
   const [data, setData]       = useState<ClientFileData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError]     = useState('');
-  const [tab, setTab]         = useState<Tab>('finances');
+  const [tab, setTab]         = useState<Tab>('dades');
+  const [showHistory, setShowHistory] = useState(false);
 
   // silent = refresc en segon pla (no desmunta la pestanya activa)
   const load = useCallback(async (silent = false) => {
@@ -101,7 +106,6 @@ export default function ClientFile({
   const totalValue = metrics?.currentValue ?? 0;
   const totalInvested = metrics?.totalInvested ?? 0;
   const pnl = metrics?.pnlEur ?? 0;
-  const openHoldings = portfolio?.holdings.filter(h => h.quantity > 0) ?? [];
 
   return (
     <div>
@@ -159,8 +163,21 @@ export default function ClientFile({
 
       {/* Contingut per pestanya */}
       <div>
-        {/* DADES PERSONALS */}
-        {tab === 'personal' && (
+        {/* 1. DADES: Excel → finances → dades d'accés → qüestionari */}
+        {tab === 'dades' && (
+          <div className="space-y-8">
+            <section>
+              <SectionTitle>Excel del client</SectionTitle>
+              <ClientImport clientId={clientId} onImported={() => load(true)} />
+            </section>
+            <section className="space-y-6">
+              <SectionTitle>Finances</SectionTitle>
+              <OneOffExpenses endpoint={`/api/admin/clients/${clientId}/expenses`} data={lead?.questionnaireData ?? {}} audience="admin"
+                onChange={() => load(true)} />
+              <BudgetOverview data={lead?.questionnaireData} goalsTitle="Objectius del client" audience="admin" />
+            </section>
+            <section>
+              <SectionTitle>Dades d&apos;accés</SectionTitle>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div className="bg-[#0d1f1a] border border-white/10 rounded-xl p-5">
               <h3 className="text-white/50 text-xs uppercase tracking-widest mb-4">Usuari d&apos;accés</h3>
@@ -210,27 +227,12 @@ export default function ClientFile({
               </div>
             )}
           </div>
-        )}
-
-        {/* PAS 1 · FINANCES */}
-        {tab === 'finances' && (
-          <div className="space-y-6">
-            <OneOffExpenses endpoint={`/api/admin/clients/${clientId}/expenses`} data={lead?.questionnaireData ?? {}} audience="admin"
-              onChange={() => load(true)} />
-            <BudgetOverview data={lead?.questionnaireData} goalsTitle="Objectius del client" audience="admin" />
-          </div>
-        )}
-
-        {/* IMPORTAR EXCEL */}
-        {tab === 'import' && <ClientImport clientId={clientId} onImported={() => load(true)} />}
-        {tab === 'proposal' && <ClientProposal clientId={clientId} onApplied={() => load(true)} />}
-
-        {/* QÜESTIONARI */}
-        {tab === 'questionnaire' && (
+            </section>
+            <section>
+              <SectionTitle>Qüestionari de perfil</SectionTitle>
           <div className="bg-[#0d1f1a] border border-white/10 rounded-xl p-5">
             {lead?.questionnaireData ? (
               <>
-                <h3 className="text-white/50 text-xs uppercase tracking-widest mb-4">Qüestionari de perfil</h3>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
                   {Object.entries(lead.questionnaireData).map(([key, val]) => (
                     <div key={key} className="flex items-start justify-between gap-4 py-2 border-b border-white/5">
@@ -242,156 +244,43 @@ export default function ClientFile({
               </>
             ) : (
               <div className="text-center py-12 text-white/30">
-                <div className="text-3xl mb-3">📋</div>
                 <p>Encara no hi ha qüestionari guardat per a aquest client.</p>
               </div>
             )}
           </div>
+            </section>
+          </div>
         )}
 
-        {/* CARTERA ACTIVA */}
+        {/* 2. PROPOSTA */}
+        {tab === 'proposal' && <ClientProposal clientId={clientId} onApplied={() => load(true)} />}
+
+        {/* 3. CARTERA: únic lloc on s'edita la cartera activa */}
         {tab === 'portfolio' && (
-          <div>
-            {portfolio ? (
-              <>
-                <PortfolioExcelButton baseUrl={`/api/admin/clients/${clientId}/portfolio-excel`} className="justify-end mb-3" />
-                <PortfolioDrift clientId={clientId} />
-                <div className="bg-[#0d1f1a] border border-white/10 rounded-xl p-5 mb-4">
-                  <div className="flex items-center justify-between mb-4">
-                    <div>
-                      <h3 className="text-white font-semibold">{portfolio.name}</h3>
-                      <p className="text-white/40 text-xs">{portfolio.description || 'Sense descripció'}</p>
-                    </div>
-                    <div className="text-right">
-                      <p className="text-[#c9a84c] font-bold text-xl">{totalValue.toFixed(2)} €</p>
-                      <p className={`text-sm font-medium ${pnl >= 0 ? 'text-green-400' : 'text-red-400'}`}>
-                        {pnl >= 0 ? '+' : ''}{pnl.toFixed(2)} €
-                      </p>
-                    </div>
-                  </div>
-                  <div className="space-y-2">
-                    {openHoldings.length === 0 ? (
-                      <p className="text-white/30 text-sm text-center py-4">Sense posicions encara.</p>
-                    ) : openHoldings.map(h => {
-                      const val = h.currentPrice * h.quantity;
-                      const w   = totalValue > 0 ? (val / totalValue) * 100 : 0;
-                      return (
-                        <div key={h.id} className="flex items-center gap-3 py-2 border-b border-white/5">
-                          <div className="flex-1 min-w-0">
-                            <p className="text-white/80 text-sm truncate">{h.assetName}</p>
-                            <p className="text-white/30 text-xs">{h.assetIsin} · {h.broker}</p>
-                          </div>
-                          <div className="text-right flex-shrink-0">
-                            <p className="text-white/70 text-sm">{val.toFixed(2)} €</p>
-                            <p className="text-white/30 text-xs">{w.toFixed(1)}%</p>
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>
-                <TaxReportView url={`/api/admin/clients/${clientId}/tax-report`} />
-              </>
-            ) : (
-              <div className="text-center py-12 text-white/30">
-                <div className="text-3xl mb-3">📊</div>
-                <p>Aquest client no té cap cartera activa.</p>
-              </div>
-            )}
-          </div>
+          portfolio ? (
+            <div className="space-y-4">
+              <PortfolioExcelButton baseUrl={`/api/admin/clients/${clientId}/portfolio-excel`} className="justify-end" />
+              <PortfolioDrift clientId={clientId} />
+              <PortfolioEditor key={portfolio.id} portfolio={portfolio} onChange={() => load(true)} />
+            </div>
+          ) : (
+            <Empty>
+              <p className="mb-3">Aquest client encara no té cartera activa.</p>
+              <button onClick={() => setTab('proposal')} className="text-[#c9a84c] hover:underline">
+                Crea-la des de la Proposta →
+              </button>
+            </Empty>
+          )
         )}
 
-        {/* COMPRES / TRANSACCIONS */}
-        {tab === 'transactions' && (
-          <div className="bg-[#0d1f1a] border border-white/10 rounded-xl overflow-hidden">
-            {!portfolio || portfolio.transactions.length === 0 ? (
-              <div className="text-center py-12 text-white/30">
-                <div className="text-3xl mb-3">🧾</div>
-                <p>Sense transaccions enregistrades.</p>
-              </div>
-            ) : (
-              <table className="w-full">
-                <thead>
-                  <tr className="border-b border-white/10">
-                    {['Data', 'Tipus', 'Actiu', 'Quantitat', 'Preu', 'Total'].map(h => (
-                      <th key={h} className="px-4 py-2.5 text-left text-white/30 text-xs uppercase tracking-wide">{h}</th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-white/5">
-                  {portfolio.transactions.map(tx => (
-                    <tr key={tx.id}>
-                      <td className="px-4 py-2.5 text-white/50 text-xs">{new Date(tx.date).toLocaleDateString('ca-ES')}</td>
-                      <td className="px-4 py-2.5">
-                        <span className={`text-xs px-2 py-0.5 rounded-full ${
-                          tx.operationType === 'buy'    ? 'bg-green-500/15 text-green-400' :
-                          tx.operationType === 'sell'   ? 'bg-red-500/15 text-red-400' :
-                          'bg-white/10 text-white/50'
-                        }`}>{tx.operationType}</span>
-                      </td>
-                      <td className="px-4 py-2.5 text-white/70 text-sm">{tx.assetName ?? '—'}</td>
-                      <td className="px-4 py-2.5 text-white/50 text-xs">{tx.quantity}</td>
-                      <td className="px-4 py-2.5 text-white/50 text-xs">{tx.priceEur.toFixed(2)} €</td>
-                      <td className="px-4 py-2.5 text-white/80 text-sm font-medium">{tx.totalEur.toFixed(2)} €</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            )}
-          </div>
-        )}
-
-        {/* SNAPSHOTS */}
-        {tab === 'snapshots' && (
-          <div className="bg-[#0d1f1a] border border-white/10 rounded-xl p-5">
-            {!portfolio || portfolio.snapshots.length === 0 ? (
-              <div className="text-center py-12 text-white/30">
-                <div className="text-3xl mb-3">📈</div>
-                <p>Sense snapshots enregistrats.</p>
-              </div>
-            ) : (
-              <div className="space-y-2">
-                {[...portfolio.snapshots].sort((a, b) => b.date.localeCompare(a.date)).map(s => (
-                  <div key={s.id} className="flex items-center justify-between py-2.5 border-b border-white/5">
-                    <span className="text-white/50 text-sm">{new Date(s.date).toLocaleDateString('ca-ES')}</span>
-                    <span className="text-[#c9a84c] font-semibold">{s.totalValue.toFixed(2)} €</span>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-        )}
-
-        {/* NOTES */}
-        {tab === 'notes' && (
-          <div className="space-y-3">
-            {!portfolio || portfolio.advisorNotes.length === 0 ? (
-              <div className="text-center py-12 text-white/30">
-                <div className="text-3xl mb-3">📝</div>
-                <p>Sense notes enregistrades.</p>
-              </div>
-            ) : portfolio.advisorNotes.map(n => (
-              <div key={n.id} className="bg-[#0d1f1a] border border-white/10 rounded-xl p-4">
-                <div className="flex items-center justify-between mb-2">
-                  <span className="text-white/40 text-xs">{n.author} · {new Date(n.createdAt).toLocaleDateString('ca-ES')}</span>
-                  <span className={`text-xs px-2 py-0.5 rounded-full ${
-                    n.isVisibleToClient ? 'bg-blue-500/15 text-blue-400' : 'bg-white/10 text-white/30'
-                  }`}>
-                    {n.isVisibleToClient ? 'Visible al client' : 'Interna'}
-                  </span>
-                </div>
-                <p className="text-white/70 text-sm leading-relaxed">{n.text}</p>
-              </div>
-            ))}
-          </div>
-        )}
-
-        {/* INFORMES MENSUALS */}
-        {tab === 'monthly' && (
+        {/* 4. INFORMES */}
+        {tab === 'reports' && (
+          <div className="space-y-8">
+            <section>
+              <SectionTitle>Informes mensuals</SectionTitle>
           <div className="space-y-3">
             {data.monthly.length === 0 ? (
               <div className="text-center py-12 text-white/30">
-                <div className="text-3xl mb-3">📅</div>
                 <p>Sense informes mensuals generats.</p>
               </div>
             ) : data.monthly.map(r => (
@@ -416,25 +305,60 @@ export default function ClientFile({
               </div>
             ))}
           </div>
+            </section>
+            <section>
+              <SectionTitle>Informes inicials</SectionTitle>
+              {data.reports.length === 0 ? (
+                <Empty>Sense informes inicials.</Empty>
+              ) : (
+                <div className="space-y-2">
+                  {data.reports.map(r => (
+                    <div key={r.id} className="flex items-center justify-between bg-[#0d1f1a] border border-white/10 rounded-xl px-4 py-3">
+                      <div>
+                        <p className="text-white/80 text-sm">{new Date(r.date || r.createdAt).toLocaleDateString('ca-ES')} · {r.profile}</p>
+                        <p className="text-white/50 text-xs font-mono">{r.id}</p>
+                      </div>
+                      <p className="text-white/60 text-xs">{r.emailSent ? 'Enviat' : 'No enviat'}</p>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </section>
+            {portfolio && (
+              <section>
+                <SectionTitle>Informe fiscal (només el veus tu, pendent de revisió experta)</SectionTitle>
+                <TaxReportView url={`/api/admin/clients/${clientId}/tax-report`} />
+              </section>
+            )}
+          </div>
         )}
 
-        {/* HISTORIAL D'ACTIVITAT */}
-        {tab === 'audit' && (
-          <div className="bg-[#0d1f1a] border border-white/10 rounded-xl p-5">
+        {/* NOTES */}
+        {tab === 'notes' && (
+          portfolio
+            ? <NotesTab portfolio={portfolio} reload={() => load(true)} />
+            : <Empty>Les notes van lligades a la cartera. Primer cal crear-la des de la Proposta.</Empty>
+        )}
+      </div>
+
+      {/* Historial d'activitat: consulta puntual, no és una pestanya de treball */}
+      <div className="mt-10 pt-4 border-t border-white/10">
+        <button onClick={() => setShowHistory(v => !v)} className="text-white/60 hover:text-white text-xs">
+          {showHistory ? 'Amagar' : 'Veure'} l&apos;historial d&apos;activitat del client ({data.audit.length})
+        </button>
+        {showHistory && (
+          <div className="mt-4 bg-[#0d1f1a] border border-white/10 rounded-xl p-5">
             {data.audit.length === 0 ? (
-              <div className="text-center py-12 text-white/30">
-                <div className="text-3xl mb-3">🕒</div>
-                <p>Sense activitat enregistrada.</p>
-              </div>
+              <p className="text-white/60 text-sm">Sense activitat enregistrada.</p>
             ) : (
               <div className="space-y-2">
                 {data.audit.map(e => (
                   <div key={e.id} className="flex items-start gap-3 py-2.5 border-b border-white/5">
-                    <span className="text-white/20 text-xs font-mono flex-shrink-0 mt-0.5">
+                    <span className="text-white/50 text-xs font-mono flex-shrink-0 mt-0.5">
                       {new Date(e.timestamp).toLocaleString('ca-ES')}
                     </span>
-                    <span className="text-[#c9a84c]/70 text-xs font-mono">{e.action}</span>
-                    {e.resource && <span className="text-white/30 text-xs truncate">{e.resource}</span>}
+                    <span className="text-[#c9a84c]/80 text-xs font-mono">{e.action}</span>
+                    {e.resource && <span className="text-white/50 text-xs truncate">{e.resource}</span>}
                   </div>
                 ))}
               </div>

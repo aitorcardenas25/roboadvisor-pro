@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useCallback } from 'react';
 import {
   LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip as ReTT, ResponsiveContainer,
 } from 'recharts';
@@ -40,7 +40,7 @@ function patchPortfolio(id: string, body: Record<string, unknown>): Promise<Resp
 
 // ─── Alerts ───────────────────────────────────────────────────────────────────
 
-function AlertsBar({ portfolios }: { portfolios: ClientPortfolio[] }) {
+export function AlertsBar({ portfolios }: { portfolios: ClientPortfolio[] }) {
   const today     = new Date().toISOString().split('T')[0];
   const thirtyAgo = new Date(Date.now() - 30 * 86_400_000).toISOString().split('T')[0];
 
@@ -74,49 +74,6 @@ function AlertsBar({ portfolios }: { portfolios: ClientPortfolio[] }) {
         </div>
       )}
     </div>
-  );
-}
-
-// ─── Create form ──────────────────────────────────────────────────────────────
-
-function CreateForm({ onCreate }: { onCreate: () => void }) {
-  const [form, setForm]     = useState({ clientId: '', clientName: '', name: '', description: '' });
-  const [saving, setSaving] = useState(false);
-
-  async function submit(e: React.FormEvent) {
-    e.preventDefault(); setSaving(true);
-    await fetch('/api/admin/client-portfolios', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(form),
-    });
-    setSaving(false); onCreate();
-    setForm({ clientId: '', clientName: '', name: '', description: '' });
-  }
-
-  return (
-    <form onSubmit={submit} className="bg-[#0d1f1a] border border-white/10 rounded-xl p-5 mb-6">
-      <h3 className="text-white font-semibold text-sm mb-4">Nova cartera client</h3>
-      <div className="grid grid-cols-2 gap-3 mb-3">
-        <div>
-          <label className={LABEL}>ID Client (username) *</label>
-          <input required value={form.clientId} onChange={e => setForm(p => ({ ...p, clientId: e.target.value }))} placeholder="joan_garcia" className={INPUT} />
-        </div>
-        <div>
-          <label className={LABEL}>Nom Client *</label>
-          <input required value={form.clientName} onChange={e => setForm(p => ({ ...p, clientName: e.target.value }))} placeholder="Joan García" className={INPUT} />
-        </div>
-      </div>
-      <div className="mb-3">
-        <label className={LABEL}>Nom de la cartera *</label>
-        <input required value={form.name} onChange={e => setForm(p => ({ ...p, name: e.target.value }))} placeholder="Cartera principal" className={INPUT} />
-      </div>
-      <div className="mb-4">
-        <label className={LABEL}>Descripció</label>
-        <input value={form.description} onChange={e => setForm(p => ({ ...p, description: e.target.value }))} placeholder="Cartera de jubilació..." className={INPUT} />
-      </div>
-      <button type="submit" disabled={saving} className={BTN_GOLD}>{saving ? 'Creant...' : '+ Crear cartera'}</button>
-    </form>
   );
 }
 
@@ -621,7 +578,7 @@ function SnapshotsTab({ portfolio, reload }: { portfolio: ClientPortfolio; reloa
 
 // ─── Notes tab ────────────────────────────────────────────────────────────────
 
-function NotesTab({ portfolio, reload }: { portfolio: ClientPortfolio; reload: () => void }) {
+export function NotesTab({ portfolio, reload }: { portfolio: ClientPortfolio; reload: () => void }) {
   const [text, setText]       = useState('');
   const [visible, setVisible] = useState(true);
   const [saving, setSaving]   = useState(false);
@@ -744,11 +701,16 @@ function MetaEditor({ portfolio, reload }: { portfolio: ClientPortfolio; reload:
   );
 }
 
-// ─── Detail view ─────────────────────────────────────────────────────────────
+// ─── Editor (fitxa del client) ───────────────────────────────────────────────
 
-type DetailTab = 'posicions' | 'transaccions' | 'snapshots' | 'notes';
+type DetailTab = 'posicions' | 'transaccions' | 'snapshots';
 
-function PortfolioDetail({ portfolio: initial, onBack }: { portfolio: ClientPortfolio; onBack: () => void }) {
+/**
+ * Editor de la cartera activa d'un client: posicions, moviments i evolució.
+ * Es mostra dins la fitxa del client (pestanya "Cartera"); és l'únic lloc on
+ * s'edita una cartera. Les carteres noves es creen des de la Proposta.
+ */
+export function PortfolioEditor({ portfolio: initial, onChange }: { portfolio: ClientPortfolio; onChange?: () => void }) {
   const [portfolio, setPortfolio] = useState(initial);
   const [tab, setTab]             = useState<DetailTab>('posicions');
   const [loading, setLoading]     = useState(false);
@@ -759,45 +721,26 @@ function PortfolioDetail({ portfolio: initial, onBack }: { portfolio: ClientPort
     const data = await res.json() as { portfolio: ClientPortfolio };
     if (data.portfolio) setPortfolio(data.portfolio);
     setLoading(false);
-  }, [portfolio.id]);
-
-  const metrics = computeMetrics(portfolio);
+    onChange?.();
+  }, [portfolio.id, onChange]);
 
   const TABS: { id: DetailTab; label: string }[] = [
-    { id: 'posicions',    label: `Posicions (${portfolio.holdings.length})`    },
-    { id: 'transaccions', label: `Transaccions (${portfolio.transactions.length})` },
-    { id: 'snapshots',    label: `Snapshots (${portfolio.snapshots.length})`   },
-    { id: 'notes',        label: `Notes (${portfolio.advisorNotes.length})`    },
+    { id: 'posicions',    label: `Posicions (${portfolio.holdings.filter(h => h.quantity > 0).length})` },
+    { id: 'transaccions', label: `Moviments (${portfolio.transactions.length})` },
+    { id: 'snapshots',    label: 'Evolució' },
   ];
 
   return (
     <div>
-      <button onClick={onBack} className="text-white/40 hover:text-white text-sm transition-colors mb-4">← Totes les carteres</button>
-
       <div className="flex items-start justify-between mb-2">
         <div>
-          <h2 className="text-white font-bold text-xl">{portfolio.name}</h2>
-          <p className="text-white/40 text-sm">{portfolio.clientName} · <span className="text-white/20">{portfolio.clientId}</span></p>
+          <h3 className="text-white font-semibold">{portfolio.name}</h3>
+          <p className="text-white/60 text-xs">{portfolio.description || 'Sense descripció'}</p>
         </div>
         {loading && <div className="w-4 h-4 border-2 border-[#c9a84c] border-t-transparent rounded-full animate-spin" />}
       </div>
 
       <MetaEditor portfolio={portfolio} reload={reload} />
-
-      <div className="grid grid-cols-4 gap-3 mb-6">
-        {[
-          { label: 'Valor actual',     value: fEur(metrics.currentValue),    colored: false },
-          { label: 'Rendibilitat (€)', value: fEur(metrics.pnlEur),          colored: true  },
-          { label: 'Rendibilitat (%)', value: fPct(metrics.pnlPct),          colored: true  },
-          { label: 'Inversió neta',    value: fEur(metrics.netContributions > 0 ? metrics.netContributions : metrics.totalInvested), colored: false },
-        ].map(k => (
-          <div key={k.label} className="bg-[#0d1f1a] border border-white/10 rounded-xl p-4">
-            <div className={`font-bold text-lg ${k.colored ? (metrics.pnlEur >= 0 ? 'text-emerald-400' : 'text-red-400') : 'text-[#c9a84c]'}`}>{k.value}</div>
-            {k.label === 'Valor actual' && metrics.lastUpdated && <div className="text-white/30 text-xs mt-0.5">Actualitzat: {metrics.lastUpdated}</div>}
-            <div className="text-white/40 text-xs mt-1">{k.label}</div>
-          </div>
-        ))}
-      </div>
 
       <div className="flex border-b border-white/10 mb-5 gap-1">
         {TABS.map(t => (
@@ -815,139 +758,6 @@ function PortfolioDetail({ portfolio: initial, onBack }: { portfolio: ClientPort
       {tab === 'posicions'    && <HoldingsTab     portfolio={portfolio} reload={reload} />}
       {tab === 'transaccions' && <TransactionsTab portfolio={portfolio} reload={reload} />}
       {tab === 'snapshots'    && <SnapshotsTab    portfolio={portfolio} reload={reload} />}
-      {tab === 'notes'        && <NotesTab        portfolio={portfolio} reload={reload} />}
-    </div>
-  );
-}
-
-// ─── Main ─────────────────────────────────────────────────────────────────────
-
-export default function ClientPortfoliosManager() {
-  const [portfolios, setPortfolios] = useState<ClientPortfolio[]>([]);
-  const [loading, setLoading]       = useState(true);
-  const [selected, setSelected]     = useState<ClientPortfolio | null>(null);
-  const [showCreate, setShowCreate] = useState(false);
-  const [search, setSearch]         = useState('');
-  const [deleting, setDeleting]     = useState<string | null>(null);
-
-  const load = useCallback(async () => {
-    setLoading(true);
-    try {
-      const res  = await fetch('/api/admin/client-portfolios');
-      const data = await res.json() as { portfolios: ClientPortfolio[] };
-      setPortfolios(data.portfolios ?? []);
-    } finally { setLoading(false); }
-  }, []);
-
-  useEffect(() => { load(); }, [load]);
-
-  async function deletePortfolio(p: ClientPortfolio, e: React.MouseEvent) {
-    e.stopPropagation();
-    const warnings: string[] = [];
-    if (p.holdings.length > 0)     warnings.push(`${p.holdings.length} posicions`);
-    if (p.transactions.length > 0) warnings.push(`${p.transactions.length} transaccions`);
-    if (p.advisorNotes.length > 0) warnings.push(`${p.advisorNotes.length} notes`);
-    const detail = warnings.length > 0 ? `\n\nConté: ${warnings.join(', ')}.` : '';
-    if (!confirm(`Eliminar la cartera "${p.name}" de ${p.clientName}?${detail}\n\nAquesta acció no es pot desfer.`)) return;
-    setDeleting(p.id);
-    await fetch(`/api/admin/client-portfolios/${p.id}`, { method: 'DELETE' });
-    setDeleting(null);
-    load();
-  }
-
-  const filtered = portfolios.filter(p => {
-    if (!search.trim()) return true;
-    const q = search.toLowerCase();
-    return p.clientName.toLowerCase().includes(q) || p.clientId.toLowerCase().includes(q) || p.name.toLowerCase().includes(q);
-  });
-
-  if (selected) {
-    return <PortfolioDetail portfolio={selected} onBack={() => { setSelected(null); load(); }} />;
-  }
-
-  return (
-    <div>
-      <div className="flex items-center justify-between mb-6">
-        <div>
-          <h2 className="text-white font-bold text-xl">Carteres Clients</h2>
-          <p className="text-white/40 text-sm mt-1">{portfolios.length} cartera{portfolios.length !== 1 ? 's' : ''}</p>
-        </div>
-        <div className="flex gap-2">
-          <button onClick={load} className={BTN_GHOST}>↻ Actualitzar</button>
-          <button onClick={() => setShowCreate(!showCreate)} className={BTN_GOLD}>
-            {showCreate ? 'Cancel·lar' : '+ Nova cartera'}
-          </button>
-        </div>
-      </div>
-
-      {!loading && portfolios.length > 0 && <AlertsBar portfolios={portfolios} />}
-
-      {showCreate && <CreateForm onCreate={() => { setShowCreate(false); load(); }} />}
-
-      {!loading && portfolios.length > 1 && (
-        <input
-          type="search"
-          value={search}
-          onChange={e => setSearch(e.target.value)}
-          placeholder="Cercar per client, ID o nom de cartera..."
-          className={INPUT + ' mb-4'}
-        />
-      )}
-
-      {loading ? (
-        <div className="flex items-center justify-center py-20">
-          <div className="w-6 h-6 border-2 border-[#c9a84c] border-t-transparent rounded-full animate-spin" />
-        </div>
-      ) : portfolios.length === 0 ? (
-        <div className="text-center py-20 text-white/30">
-          <div className="text-4xl mb-3">💼</div>
-          <p>Sense carteres. Crea la primera cartera d&apos;un client.</p>
-        </div>
-      ) : filtered.length === 0 ? (
-        <p className="text-center py-10 text-white/30 text-sm">Sense resultats per &ldquo;{search}&rdquo;</p>
-      ) : (
-        <div className="space-y-3">
-          {filtered.map(p => {
-            const m = computeMetrics(p);
-            return (
-              <div key={p.id}
-                onClick={() => setSelected(p)}
-                className="bg-[#0d1f1a] border border-white/10 rounded-xl p-5 cursor-pointer hover:border-[#c9a84c]/30 transition-colors group">
-                <div className="flex items-start justify-between gap-4">
-                  <div className="min-w-0">
-                    <p className="text-white font-semibold">{p.name}</p>
-                    <p className="text-white/40 text-sm">{p.clientName} <span className="text-white/20">·</span> <span className="text-white/20 text-xs">{p.clientId}</span></p>
-                    {p.nextFollowup && <p className="text-[#c9a84c]/50 text-xs mt-0.5">Seguiment: {p.nextFollowup}</p>}
-                  </div>
-                  <div className="flex items-center gap-4 flex-shrink-0">
-                    <div className="flex gap-6 text-right">
-                      <div>
-                        <div className="text-white font-bold">{fEur(m.currentValue)}</div>
-                        <div className="text-white/30 text-xs">Valor actual</div>
-                      </div>
-                      <div>
-                        <div className={`font-bold ${m.pnlEur >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>{fPct(m.pnlPct)}</div>
-                        <div className="text-white/30 text-xs">{fEur(m.pnlEur)}</div>
-                      </div>
-                      <div>
-                        <div className="text-white/60 text-sm">{m.holdingCount}</div>
-                        <div className="text-white/30 text-xs">posicions</div>
-                      </div>
-                    </div>
-                    <button
-                      onClick={e => deletePortfolio(p, e)}
-                      disabled={deleting === p.id}
-                      className="opacity-0 group-hover:opacity-100 text-white/20 hover:text-red-400 transition-all text-sm p-1"
-                      title="Eliminar cartera">
-                      {deleting === p.id ? '...' : '✕'}
-                    </button>
-                  </div>
-                </div>
-              </div>
-            );
-          })}
-        </div>
-      )}
     </div>
   );
 }

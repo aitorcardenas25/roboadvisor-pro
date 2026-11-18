@@ -13,7 +13,6 @@ import AdminPortfolios       from './AdminPortfolios';
 import ClientsManager           from './ClientsManager';
 import AuditLogViewer           from './AuditLogViewer';
 import LeadsManager             from './LeadsManager';
-import ClientPortfoliosManager  from './ClientPortfoliosManager';
 import StockReportsManager      from './StockReportsManager';
 import MonthlyReportGenerator   from './MonthlyReportGenerator';
 import ClientFile                from './ClientFile';
@@ -39,7 +38,6 @@ interface Stats {
 type Section = 'avui' | 'clients' | 'fons' | 'informes' | 'beta' | 'sistema' | 'fora-beta';
 
 type SubTab =
-  | 'clients-llista' | 'clients-carteres'
   | 'fons-preus' | 'fons-cataleg'
   | 'informes-mensual' | 'informes-historial'
   | 'beta-us' | 'beta-contactes'
@@ -47,8 +45,6 @@ type SubTab =
   | 'fora-noticies' | 'fora-newsletter' | 'fora-accions' | 'fora-informes-borsaris' | 'fora-carteres-model';
 
 const SUBTABS: Partial<Record<Section, { id: SubTab; label: string }[]>> = {
-  clients:  [{ id: 'clients-llista',     label: 'Clients' },
-             { id: 'clients-carteres',   label: 'Carteres actives' }],
   fons:     [{ id: 'fons-preus',         label: 'Preus oficials' },
              { id: 'fons-cataleg',       label: 'Catàleg de fons' }],
   informes: [{ id: 'informes-mensual',   label: 'Informe mensual' },
@@ -82,8 +78,8 @@ const NAV_ITEMS: { id: Section; iconPath: string; label: string }[] = [
  */
 const LEGACY_TARGETS: Record<string, [Section, SubTab?]> = {
   dashboard:           ['avui'],
-  clients:             ['clients', 'clients-llista'],
-  'client-portfolios': ['clients', 'clients-carteres'],
+  clients:             ['clients'],
+  'client-portfolios': ['clients'],
   funds:               ['fons', 'fons-cataleg'],
   'fund-navs':         ['fons', 'fons-preus'],
   'monthly-report':    ['informes', 'informes-mensual'],
@@ -109,7 +105,6 @@ export default function AdminDashboard({ onLogout }: Props) {
   function openClientFile(id: string) {
     setSelectedClientId(id);
     setActiveSection('clients');
-    setSubTabs(t => ({ ...t, clients: 'clients-llista' }));
   }
 
   function openSection(id: Section) {
@@ -286,8 +281,7 @@ export default function AdminDashboard({ onLogout }: Props) {
             {activeSection === 'clients' && selectedClientId && (
               <ClientFile clientId={selectedClientId} onBack={() => setSelectedClientId(null)} />
             )}
-            {activeSub === 'clients-llista'     && !selectedClientId && <ClientsManager onViewClient={openClientFile} />}
-            {activeSub === 'clients-carteres'   && <ClientPortfoliosManager />}
+            {activeSection === 'clients' && !selectedClientId && <ClientsManager onViewClient={openClientFile} />}
 
             {activeSub === 'fons-preus'         && <FundNavsManager />}
             {activeSub === 'fons-cataleg'       && <FundsManager />}
