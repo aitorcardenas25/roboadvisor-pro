@@ -870,7 +870,7 @@ export default function ClientCarteraPage() {
     { id: 'posicions', label: 'Posicions',  cnt: activeHoldings.length        },
     { id: 'moviments', label: 'Moviments',  cnt: portfolio.transactions.length || undefined },
     { id: 'informes',  label: 'Informes'                                       },
-    // Fiscalitat amagada fins que un expert revisi els càlculs (beta 2026-11-18)
+    // Fiscalitat: visible per defecte, amb avís d'orientatiu (es pot apagar per variable)
     ...(CLIENT_TAX_REPORT_ENABLED ? [{ id: 'fiscal' as Tab, label: 'Fiscalitat' }] : []),
     { id: 'notes',     label: 'Notes',      cnt: visibleNotes.length || undefined },
   ];

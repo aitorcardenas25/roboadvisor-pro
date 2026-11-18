@@ -23,8 +23,8 @@ describe('RECOMMENDATIONS_ENABLED', () => {
   });
 });
 
-// Decisió 2026-11-18: beta tancada. Pàgines fora del flux amagades i fiscalitat
-// del client amagada fins a revisió experta, tret que s'activin explícitament.
+// Decisió 2026-11-18: beta tancada. Pàgines fora del flux amagades tret que
+// s'activin; la fiscalitat del client es mostra tret que es desactivi.
 describe('beta tancada', () => {
   afterEach(() => { vi.unstubAllEnvs(); });
 
@@ -35,16 +35,20 @@ describe('beta tancada', () => {
     return import('@/lib/featureFlags');
   }
 
-  it('amaga per defecte les funcions fora de la beta i la fiscalitat', async () => {
+  it('per defecte amaga les funcions fora de la beta i mostra la fiscalitat', async () => {
     const f = await flags();
     expect(f.SHOW_NON_BETA_FEATURES).toBe(false);
-    expect(f.CLIENT_TAX_REPORT_ENABLED).toBe(false);
+    expect(f.CLIENT_TAX_REPORT_ENABLED).toBe(true);
   });
 
-  it('es tornen a mostrar només amb "true"', async () => {
-    const f = await flags({ SHOW: 'true', TAX: 'true' });
+  it('les funcions fora de la beta tornen només amb "true"', async () => {
+    const f = await flags({ SHOW: 'true' });
     expect(f.SHOW_NON_BETA_FEATURES).toBe(true);
-    expect(f.CLIENT_TAX_REPORT_ENABLED).toBe(true);
+  });
+
+  it('la fiscalitat del client només s\'amaga amb "false"', async () => {
+    expect((await flags({ TAX: 'false' })).CLIENT_TAX_REPORT_ENABLED).toBe(false);
+    expect((await flags({ TAX: 'true' })).CLIENT_TAX_REPORT_ENABLED).toBe(true);
   });
 
   it('isNonBetaPage reconeix les rutes amagades i les seves subrutes', async () => {

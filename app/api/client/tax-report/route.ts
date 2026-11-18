@@ -13,7 +13,7 @@ export async function GET() {
   const session = await getServerSession(authOptions) as S;
   const userId = session?.user?.id;
   if (!userId || session?.user?.role !== 'client') return NextResponse.json({ error: 'No autoritzat' }, { status: 401 });
-  // Amagat als clients fins que un expert revisi els càlculs fiscals.
+  // Es pot apagar amb NEXT_PUBLIC_ENABLE_CLIENT_TAX_REPORT=false.
   if (!CLIENT_TAX_REPORT_ENABLED) return NextResponse.json({ error: 'No disponible' }, { status: 404 });
   recordActivity(userId, 'reports.view');
   const portfolio = await getPortfolioByClientId(userId);

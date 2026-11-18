@@ -43,6 +43,9 @@ export default function TaxReportView({ url }: { url: string }) {
           )}
         </div>
         <p className="text-white/40 text-xs">Guanys i pèrdues de les vendes de fons, calculats pel mètode FIFO. Els traspassos entre fons no tributen.</p>
+        <p role="note" className="mt-3 rounded-lg border border-amber-400/30 bg-amber-400/10 px-3 py-2 text-amber-200 text-xs leading-relaxed">
+          Càlcul orientatiu, encara no revisat per un expert fiscal. Per fer la declaració, fes servir les dades que la teva entitat comunica a Hisenda.
+        </p>
 
         {!report || report.years.length === 0 ? (
           <p className="text-white/50 text-sm mt-4">Encara no hi ha cap venda ni cap traspàs: no hi ha res a declarar.</p>
