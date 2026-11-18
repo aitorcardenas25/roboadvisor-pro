@@ -4,6 +4,7 @@ import {
   Svg, Path, Line, Circle, Defs, LinearGradient, Stop,
 } from '@react-pdf/renderer';
 import type { ManualPortfolioInput, ManualAsset } from '@/lib/manualReport';
+import { capmReturn, CAPM_ASSUMPTIONS } from '@/lib/navMath';
 
 // Desactiva la partició de paraules: text net, sense guions de tall, com en
 // un document editorial professional.
@@ -61,9 +62,9 @@ const BENCHMARK_NAME: Record<string, string> = {
   dinamic:     'MSCI World 70% / Bloomberg Agg 30%',
   agressiu:    'MSCI World 100%',
 };
-const BENCHMARK_RETURN: Record<string, number> = {
-  conservador: 3.2, moderat: 5.8, dinamic: 8.1, agressiu: 10.5,
-};
+// Rendiment esperat del benchmark amb el mateix CAPM que la cartera (abans eren xifres
+// fixes de 3,2–10,5 % sense font). β ≈ pes de renda variable (renda fixa β ≈ 0).
+const BENCHMARK_EQUITY: Record<string, number> = { conservador: 0, moderat: 0.4, dinamic: 0.7, agressiu: 1 };
 const PROFILE_LABEL: Record<string, string> = {
   conservador: 'Conservador', moderat: 'Moderat', dinamic: 'Dinàmic', agressiu: 'Agressiu',
 };
@@ -171,9 +172,9 @@ function projection(initial: number, monthly: number, rate: number, years: numbe
   const fm = r > 0 ? monthly * ((Math.pow(1 + r, n) - 1) / r) : monthly * n;
   return fi + fm;
 }
-function assetReturn(a: ManualAsset): number { return a.historicalReturn5Y ?? RISK_RETURN[a.risk] ?? 5; }
+function assetReturn(a: ManualAsset): number { return a.expectedReturn ?? a.historicalReturn5Y ?? RISK_RETURN[a.risk] ?? 5; }
 function assetVol(a: ManualAsset): number    { return a.historicalVolatility ?? RISK_VOL[a.risk] ?? 8; }
-function assetReturnSource(a: ManualAsset): '†' | '*' { return a.historicalReturn5Y != null ? '†' : '*'; }
+function assetReturnSource(a: ManualAsset): '‡' | '†' | '*' { return a.expectedReturn != null && a.beta != null ? '‡' : a.historicalReturn5Y != null ? '†' : '*'; }
 
 // ─── SVG HELPERS ──────────────────────────────────────────────────────────────
 function polar(cx: number, cy: number, r: number, deg: number): [number, number] {
@@ -285,7 +286,7 @@ function compute(d: ManualPortfolioInput) {
   const sharpe  = wv > 0 ? parseFloat(((nr - rf) / wv).toFixed(2)) : 0;
   const var95   = parseFloat((-1.645 * wv).toFixed(1));
   const maxDD   = parseFloat((-0.7 * wv).toFixed(1));
-  const benchR  = BENCHMARK_RETURN[d.investorProfile] ?? 5.8;
+  const benchR  = capmReturn(BENCHMARK_EQUITY[d.investorProfile] ?? 0.4);
   const alpha   = parseFloat((nr - benchR).toFixed(2));
 
   let rvPct = 0, rfPct = 0, cashPct = 0;
@@ -712,7 +713,7 @@ function DiagnosticsPage({ d }: { d: ManualPortfolioInput }) {
       tone: (c.surplus >= 0 ? 'pos' : 'neg') as Tone },
     { label: 'Rendiment net', value: fPct(c.nr), sub: c.terKnown ? 'anual, net de costos' : 'sense descomptar el TER d\'algun fons', accent: true },
     { label: 'Multiplicador', value: `× ${fNum(c.wealthMult, 1)}`, sub: 'projecció base / capital aportat', tone: 'neutral' as Tone },
-    { label: 'Alfa vs. bench.', value: fPct(c.alpha, true), sub: `vs. ${BENCHMARK_NAME[d.investorProfile] ?? 'benchmark'}`,
+    { label: 'Dif. vs. bench.', value: fPct(c.alpha, true), sub: `esperat vs. ${BENCHMARK_NAME[d.investorProfile] ?? 'benchmark'}`,
       tone: (c.alpha >= 0 ? 'pos' : 'neg') as Tone },
   ];
 
@@ -991,7 +992,7 @@ function AssetsPage({ d }: { d: ManualPortfolioInput }) {
           <View style={{ flex: 1.15, paddingRight: 8 }}><Text style={[S.td, S.bold, { textAlign: 'right' }]}>{fPct(c.nr)}</Text></View>
           <View style={{ flex: 2.05 }} />
         </View>
-        <Text style={[S.body2, { fontSize: 6.5, marginBottom: 10 }]}>† Dades històriques reals a 5 anys  ·  * Estimació per categoria SRRI</Text>
+        <Text style={[S.body2, { fontSize: 6.5, marginBottom: 10 }]}>‡ Rendiment esperat CAPM (beta dels valors liquidatius)  ·  † Dades històriques reals a 5 anys  ·  * Estimació per categoria SRRI</Text>
 
         <View style={S.divider} />
 
@@ -1033,7 +1034,7 @@ function IPSPage({ d }: { d: ManualPortfolioInput }) {
     { num: '5', title: 'Política de rebalanceig',
       body: `Rebalanceig mínim anual o quan qualsevol actiu desviï >= 10 punts percentuals del pes objectiu. Mètode: compra selectiva via aportació mensual (eficient fiscalment) i venda parcial quan calgui. Documentar cada rebalanceig.` },
     { num: '6', title: 'Benchmark de referència',
-      body: `Índex de referència: ${benchName} (retorn esperat: ${fPct(c.benchR)} anual). Alfa estimat de la cartera actual: ${fPct(c.alpha, true)}. Objectiu: superar o igualar el benchmark net de costos en horitzons >= 5 anys.` },
+      body: `Índex de referència: ${benchName} (retorn esperat: ${fPct(c.benchR)} anual). Diferència esperada de la cartera, neta de costos: ${fPct(c.alpha, true)}. Tots dos rendiments esperats surten del mateix model CAPM. Objectiu: superar o igualar el benchmark net de costos en horitzons >= 5 anys.` },
     { num: '7', title: 'Criteris ESG / sostenibilitat',
       body: `Incorporar filtratge negatiu per a sectors controvertits (armament, tabac, combustibles fòssils) quan hi hagi alternatives de cost similar. Preferència per fons Art. 8 SFDR o superior sempre que el cost no excedeixi 0,20 % de TER addicional.` },
     { num: '8', title: 'Govern, revisió i documentació',
@@ -1343,8 +1344,8 @@ function AnalysisPage({ d }: { d: ManualPortfolioInput }) {
             { label: 'Volatilitat', value: fPct(c.wv) },
             { label: 'Sharpe Ratio', value: fNum(c.sharpe, 2) },
             { label: 'VaR 95% (1A)', value: fPct(c.var95) },
-            { label: 'Alfa vs. benchmark', value: fPct(c.alpha, true) },
-            { label: 'Benchmark ret.', value: fPct(c.benchR) },
+            { label: 'Dif. vs. benchmark', value: fPct(c.alpha, true) },
+            { label: 'Benchmark esperat', value: fPct(c.benchR) },
             { label: 'TER ponderat', value: fTer(c.terKnown ? c.wt : 0) },
             { label: 'Multiplicador', value: `× ${fNum(c.wealthMult, 1)}` },
           ].map(m => (
@@ -1402,7 +1403,7 @@ function ScenarioPage({ d }: { d: ManualPortfolioInput }) {
         <SectionTitle
           tag="Projecció per Escenaris"
           title={`Evolució projectada a ${d.horizon} anys`}
-          intro={`Projecció determinista per interès compost. Base = rendiment net històric (${fPct(c.nr)}); desfavorable i favorable = base menys / més 0,35 desviacions estàndard de la volatilitat (${fPct(c.wv)}). No són percentils ni el pitjor cas: el resultat real pot quedar fora d'aquest rang.`}
+          intro={`Projecció determinista per interès compost. Base = rendiment net esperat (${fPct(c.nr)}, CAPM); desfavorable i favorable = base menys / més 0,35 desviacions estàndard de la volatilitat (${fPct(c.wv)}). No són percentils ni el pitjor cas: el resultat real pot quedar fora d'aquest rang.`}
         />
 
         <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 12, marginBottom: 6 }}>
@@ -1564,8 +1565,8 @@ function MethodologyPage({ d, generatedAt }: { d: ManualPortfolioInput; generate
         <Text style={S.subTag}>Metodologia i fonts de dades</Text>
         <View style={{ gap: 8, marginBottom: 14 }}>
           {[
-            ['Rendiments i volatilitat dels actius', '† Dades històriques reals a 5 anys de la base de dades de Factor OTC. * En absència de sèrie històrica, estimació per indicador SRRI: 1: 2 %, 2: 3,5 %, 3: 5 %, 4: 7 %, 5: 9,5 %, 6: 13 %, 7: 17 % de rendiment anual, amb la volatilitat corresponent.'],
-            ['Projecció de cartera', 'Interès compost amb aportació mensual constant. Escenari base = rendiment net històric. Escenaris desfavorable i favorable = base menys / més 0,35 desviacions estàndard (no són percentils ni el pitjor cas possible). Projecció determinista; no és una simulació estocàstica de Monte Carlo.'],
+            ['Rendiments i volatilitat dels actius', `‡ Rendiment esperat amb el CAPM (Sharpe, 1964): ${fNum(CAPM_ASSUMPTIONS.riskFree, 2)} % (tipus de dipòsit del BCE) + beta × ${fNum(CAPM_ASSUMPTIONS.equityPremium, 2)} % (prima de risc de mercat, Damodaran, gener 2025). La beta surt dels rendiments mensuals dels valors liquidatius oficials de cada fons contra el MSCI World (fins a 5 anys). No es projecta la rendibilitat dels últims anys perquè sobreestimaria el futur. ` + '† Dades històriques reals a 5 anys de la base de dades de Factor OTC. * En absència de sèrie històrica, estimació per indicador SRRI: 1: 2 %, 2: 3,5 %, 3: 5 %, 4: 7 %, 5: 9,5 %, 6: 13 %, 7: 17 % de rendiment anual, amb la volatilitat corresponent.'],
+            ['Projecció de cartera', 'Interès compost amb aportació mensual constant. Escenari base = rendiment net esperat (CAPM). Escenaris desfavorable i favorable = base menys / més 0,35 desviacions estàndard (no són percentils ni el pitjor cas possible). Projecció determinista; no és una simulació estocàstica de Monte Carlo.'],
             ['Mètriques de risc', 'Correlació estimada segons la classe d\'actiu. VaR 95 % a un any = -1,645 desviacions estàndard. Taxa lliure de risc: 3,5 % (referència BCE). Benchmark: retorns de referència assignats per perfil inversor.'],
           ].map(([title, body]) => (
             <View key={title} style={{ borderWidth: 0.5, borderColor: C.line, borderLeftWidth: 2, borderLeftColor: C.gold, padding: 10 }}>

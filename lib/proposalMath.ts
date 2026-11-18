@@ -9,7 +9,7 @@
 import { FINANCIAL_PRODUCTS } from './products';
 import { ADVISOR_FUNDS, ALTERNATE_CLASSES } from './fundUniverse';
 import type { ManualPortfolioInput } from './manualReport';
-import type { NavPerformance } from './navMath';
+import { capmReturn, type NavPerformance } from './navMath';
 
 /** Rendiment calculat amb els preus entrats a mà, per ISIN (lib/fundNavs.ts → getNavPerformanceMap). */
 export type NavPerformanceMap = Record<string, NavPerformance>;
@@ -30,6 +30,7 @@ export interface ProposalItem {
   historicalReturn5Y?:   number;   // % anual, de la fitxa del fons
   historicalVolatility?: number;   // % anual, de la fitxa del fons
   performanceSource?:    string;   // d'on surten (p. ex. "Morningstar, 30/09/2026")
+  beta?:                 number;   // β respecte del MSCI World, dels valors liquidatius oficials (CAPM)
 }
 
 export interface ProposalParams {
@@ -70,17 +71,27 @@ export const hasPerformanceData = (x: ProposalItem) =>
   Number.isFinite(x.historicalReturn5Y) && Number.isFinite(x.historicalVolatility) && !!x.performanceSource?.trim();
 
 /** Dades de rendiment verificades per a un ISIN: preus entrats a mà o, si no n'hi ha prou, fitxa amb font. */
-export function verifiedPerformance(rawIsin: string, navs: NavPerformanceMap = {}): Pick<ProposalItem, 'historicalReturn5Y' | 'historicalVolatility' | 'performanceSource'> {
+export function verifiedPerformance(rawIsin: string, navs: NavPerformanceMap = {}): Pick<ProposalItem, 'historicalReturn5Y' | 'historicalVolatility' | 'performanceSource' | 'beta'> {
   const isin = rawIsin.trim().toUpperCase();
   const n = navs[isin];
   if (n && Number.isFinite(n.return5Y) && Number.isFinite(n.volatility)) {
-    return { historicalReturn5Y: n.return5Y, historicalVolatility: n.volatility, performanceSource: n.source };
+    return { historicalReturn5Y: n.return5Y, historicalVolatility: n.volatility, performanceSource: n.source, beta: n.beta };
   }
   const a = ADVISOR_FUNDS.find(f => f.isin === isin);
   if (a && Number.isFinite(a.return5Y) && Number.isFinite(a.volatility) && a.source?.trim()) {
     return { historicalReturn5Y: a.return5Y, historicalVolatility: a.volatility, performanceSource: a.source };
   }
-  return { historicalReturn5Y: undefined, historicalVolatility: undefined, performanceSource: undefined };
+  return { historicalReturn5Y: undefined, historicalVolatility: undefined, performanceSource: undefined, beta: undefined };
+}
+
+/**
+ * Rendiment anual esperat d'una línia (%). Decisió de l'assessor (2026-11-18): les
+ * projeccions fan servir el CAPM (beta dels valors liquidatius oficials), no la
+ * rendibilitat dels últims 5 anys, que surt massa optimista (10,6 % en la prova).
+ * Sense beta (fitxa sense preus), es fa servir la rendibilitat històrica.
+ */
+export function expectedReturn(x: ProposalItem): number | undefined {
+  return Number.isFinite(x.beta) ? capmReturn(x.beta!) : x.historicalReturn5Y;
 }
 
 function guessSrri(category: string): number {
@@ -141,7 +152,9 @@ export function fundOptions(): { isin: string; name: string; category: string; s
 export interface ProposalStats {
   totalWeight:      number;
   weightOk:         boolean;   // suma 100 % (±0,01)
-  grossReturn:      number;   // % anual ponderat
+  grossReturn:      number;   // % anual ponderat esperat (CAPM; històric si un fons no té beta)
+  historicReturn:   number;   // % anual ponderat dels últims anys (informatiu, no es projecta)
+  returnBasis:      'capm' | 'historic' | 'mixed';   // d'on surt grossReturn
   ter:              number;   // % anual ponderat
   netReturn:        number;   // brut − TER, mínim 0
   volatility:       number;   // % anual ponderat (sense diversificació: conservador)
@@ -172,7 +185,8 @@ export function proposalStats(p: Pick<ClientProposal, 'items' | 'horizon' | 'ini
   const w = (x: ProposalItem) => (x.weight || 0) / 100;
   // Rendiment i volatilitat només dels fons amb dades: si en falta algun,
   // complete = false i la UI / l'aprovació no fan servir aquestes xifres.
-  const ret = (x: ProposalItem) => x.historicalReturn5Y ?? 0;
+  const ret = (x: ProposalItem) => expectedReturn(x) ?? 0;
+  const hist = (x: ProposalItem) => x.historicalReturn5Y ?? 0;
   const vol = (x: ProposalItem) => x.historicalVolatility ?? 0;
   const missing = p.items.filter(x => !hasPerformanceData(x)).map(x => ({ isin: x.isin, name: x.name || x.isin }));
   // La llista de fons de l'assessor encara no porta el TER de la majoria: es desava com a 0 i
@@ -181,6 +195,9 @@ export function proposalStats(p: Pick<ClientProposal, 'items' | 'horizon' | 'ini
 
   const totalWeight = p.items.reduce((s, x) => s + (x.weight || 0), 0);
   const grossReturn = p.items.reduce((s, x) => s + w(x) * ret(x), 0);
+  const historicReturn = p.items.reduce((s, x) => s + w(x) * hist(x), 0);
+  const withBeta = p.items.filter(x => Number.isFinite(x.beta)).length;
+  const returnBasis: ProposalStats['returnBasis'] = withBeta === p.items.length && withBeta > 0 ? 'capm' : withBeta === 0 ? 'historic' : 'mixed';
   const ter         = p.items.reduce((s, x) => s + w(x) * (x.ter || 0), 0);
   const volatility  = p.items.reduce((s, x) => s + w(x) * vol(x), 0);
   const risk        = p.items.reduce((s, x) => s + w(x) * x.risk, 0);
@@ -200,7 +217,7 @@ export function proposalStats(p: Pick<ClientProposal, 'items' | 'horizon' | 'ini
 
   return {
     totalWeight, weightOk: Math.abs(totalWeight - 100) < 0.01,
-    grossReturn, ter, netReturn, volatility, risk,
+    grossReturn, historicReturn, returnBasis, ter, netReturn, volatility, risk,
     complete: missing.length === 0, missing, terMissing,
     totalInvested: last.invested, p10: last.p10, p50: last.p50, p90: last.p90, yearly,
   };
@@ -253,6 +270,7 @@ export function proposalToReportInput(
       name: x.name, isin: x.isin, ticker: x.isin, weight: x.weight, category: x.category,
       risk: x.risk, ter: x.ter, platform: x.platform, justification: x.justification,
       historicalReturn5Y: x.historicalReturn5Y, historicalVolatility: x.historicalVolatility,
+      expectedReturn: expectedReturn(x), beta: x.beta,
     })),
     monthlyIncome:   annualIncome != null ? Math.round(annualIncome / 12) : undefined,
     monthlyExpenses: num('monthlyExpenses'),

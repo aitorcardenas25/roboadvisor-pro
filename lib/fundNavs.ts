@@ -5,7 +5,7 @@
 import ExcelJS from 'exceljs';
 import { getDb } from './supabase';
 import { ADVISOR_FUNDS, lookupIsin } from './fundUniverse';
-import { computeNavMetrics, navPerformance, type NavMetrics, type NavPerformance, type NavPoint } from './navMath';
+import { computeNavMetrics, estimateNavBeta, navPerformance, MARKET_PROXY_ISIN, type NavMetrics, type NavPerformance, type NavPoint } from './navMath';
 
 const _mem = new Map<string, NavPoint>();   // clau: isin|date
 const key = (isin: string, date: string) => `${isin}|${date}`;
@@ -139,9 +139,13 @@ export async function getNavSummary(asOf = new Date()): Promise<FundNavSummary[]
 export async function getNavPerformanceMap(): Promise<Record<string, NavPerformance>> {
   try {
     const out: Record<string, NavPerformance> = {};
-    for (const [isin, pts] of groupByIsin(await getNavs())) {
+    const by = groupByIsin(await getNavs());
+    const market = by.get(MARKET_PROXY_ISIN) ?? [];
+    for (const [isin, pts] of by) {
       const perf = navPerformance(computeNavMetrics(pts), nameFor(isin, pts).name);
-      if (perf) out[isin] = perf;
+      if (!perf) continue;
+      const beta = estimateNavBeta(pts, market);
+      out[isin] = beta === null ? perf : { ...perf, beta };
     }
     return out;
   } catch (err) {
