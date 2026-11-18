@@ -299,7 +299,7 @@ export function checkProposalSuitability(
   const label = PROFILE_LABEL[p.profile] ?? p.profile;
 
   if (weighted > MAX_AVG_SRRI[p.profile] + 1e-9) {
-    issues.push({ level: 'inadequate', message: `Risc mitjà SRRI ${weighted.toFixed(1)} supera el màxim ${MAX_AVG_SRRI[p.profile]} per a perfil ${label}` });
+    issues.push({ level: 'inadequate', message: `Risc mitjà SRRI ${weighted.toFixed(2)} supera el màxim ${MAX_AVG_SRRI[p.profile]} per a perfil ${label}` });
   }
   for (const x of p.items) {
     if (x.weight > 0 && x.risk > MAX_FUND_SRRI[p.profile]) {
