@@ -89,13 +89,29 @@ export interface PortfolioMetrics {
 export function computeMetrics(p: ClientPortfolio): PortfolioMetrics {
   const currentValue = p.holdings.reduce((s, h) => s + h.currentPrice * h.quantity, 0);
 
+  // Aportacions netes. Una compra pagada amb diners ja aportats abans ("Aportació"
+  // i després "Compra", com fa el client a l'Excel) no torna a comptar: abans
+  // es comptava dues vegades i una cartera sense guanys sortia amb un -50 %.
   let netContributions = 0;
   let hasTransactions  = false;
-  for (const tx of p.transactions) {
-    if (tx.operationType === 'deposit')    { netContributions += tx.totalEur; hasTransactions = true; }
-    if (tx.operationType === 'withdrawal') { netContributions -= tx.totalEur; hasTransactions = true; }
-    if (tx.operationType === 'buy')        { netContributions += tx.totalEur + tx.commission; hasTransactions = true; }
-    if (tx.operationType === 'sell')       { netContributions -= tx.totalEur - tx.commission; hasTransactions = true; }
+  let depositedCash    = 0;   // aportat i encara no invertit
+  const ORDER: Record<string, number> = { deposit: 0, withdrawal: 1, sell: 2, buy: 3 };
+  const txs = [...p.transactions].sort((a, b) =>
+    a.date.slice(0, 10).localeCompare(b.date.slice(0, 10)) || (ORDER[a.operationType] ?? 9) - (ORDER[b.operationType] ?? 9));
+  for (const tx of txs) {
+    if (tx.operationType === 'deposit') {
+      netContributions += tx.totalEur; depositedCash += tx.totalEur; hasTransactions = true;
+    }
+    if (tx.operationType === 'withdrawal') {
+      netContributions -= tx.totalEur; depositedCash = Math.max(0, depositedCash - tx.totalEur); hasTransactions = true;
+    }
+    if (tx.operationType === 'buy') {
+      const cost = tx.totalEur + tx.commission;
+      const fromDeposits = Math.min(depositedCash, cost);
+      depositedCash -= fromDeposits;
+      netContributions += cost - fromDeposits; hasTransactions = true;
+    }
+    if (tx.operationType === 'sell') { netContributions -= tx.totalEur - tx.commission; hasTransactions = true; }
   }
   const totalInvested = hasTransactions
     ? netContributions

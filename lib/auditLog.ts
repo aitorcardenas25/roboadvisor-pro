@@ -92,6 +92,8 @@ export interface GetAuditLogOpts {
   limit?:   number;
   action?:  AuditAction;
   userId?:  string;
+  /** Accions fetes pel client o sobre el client (l'admin les desa amb resource o metadata.clientId). */
+  clientId?: string;
   since?:   string;
   search?:  string;
 }
@@ -103,6 +105,10 @@ export async function getAuditLog(opts: GetAuditLogOpts = {}): Promise<AuditEntr
     let query = db.from('audit_log').select('*').order('timestamp', { ascending: false });
     if (opts.action)  query = query.eq('action', opts.action);
     if (opts.userId)  query = query.eq('user_id', opts.userId);
+    if (opts.clientId && /^[\w-]+$/.test(opts.clientId)) {
+      const c = opts.clientId;
+      query = query.or(`user_id.eq.${c},resource.eq.${c},metadata->>clientId.eq.${c}`);
+    }
     if (opts.since)   query = query.gte('timestamp', opts.since);
     query = query.limit(opts.limit ?? 100);
 
@@ -135,6 +141,8 @@ export async function getAuditLog(opts: GetAuditLogOpts = {}): Promise<AuditEntr
   let entries = [..._log];
   if (opts.action)  entries = entries.filter(e => e.action  === opts.action);
   if (opts.userId)  entries = entries.filter(e => e.userId  === opts.userId);
+  if (opts.clientId) entries = entries.filter(e =>
+    e.userId === opts.clientId || e.resource === opts.clientId || e.metadata?.clientId === opts.clientId);
   if (opts.since)   entries = entries.filter(e => e.timestamp >= opts.since!);
   if (opts.search) {
     const q = opts.search.toLowerCase();

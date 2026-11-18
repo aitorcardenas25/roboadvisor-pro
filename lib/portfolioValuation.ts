@@ -298,6 +298,10 @@ export function valuationSeries(holdings: ValuationHolding[], txs: ValuationTx[]
   const end = lastNav < today ? lastNav : today;
   const dates = [first, ...monthEnds(first, end).filter(d => d > first)];
   if (end > dates.at(-1)!) dates.push(end);   // mes en curs: fins a l'últim preu
+  // Operacions posteriors a l'últim preu (p. ex. una reestructuració feta avui amb el
+  // VL del divendres): sense aquest punt la sèrie acabava abans i no les mostrava.
+  const lastStep = [...steps.values()].flat().map(s => s.date).sort().at(-1)!;
+  if (lastStep > dates.at(-1)! && lastStep <= today) dates.push(lastStep);
 
   const points: ValuationPoint[] = [];
   for (const d of dates) {

@@ -15,6 +15,9 @@ import { PortfolioEditor, NotesTab } from './PortfolioEditor';
 import BudgetOverview from '@/components/finances/BudgetOverview';
 import OneOffExpenses from '@/components/finances/OneOffExpenses';
 
+// r.date es desa com a text "dd/mm/aaaa" i new Date() el llegeix com a Invalid Date
+const PROFILE_NAMES: Record<string, string> = { conservador: 'conservador', moderat: 'moderat', dinamic: 'dinàmic', agressiu: 'agressiu' };
+
 interface ClientUser {
   id: string; name: string; email: string; username: string;
   role: string; active: boolean; createdAt: string;
@@ -138,9 +141,9 @@ export default function ClientFile({
 
       {/* KPIs ràpids */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
-        <Kpi label="Cartera" value={portfolio ? `${totalValue.toFixed(0)} €` : '—'} sub={portfolio?.name} />
-        <Kpi label="Rendiment" value={portfolio ? `${pnl >= 0 ? '+' : ''}${pnl.toFixed(0)} €` : '—'}
-          sub={totalInvested > 0 ? `${((pnl/totalInvested)*100).toFixed(1)}%` : undefined} />
+        <Kpi label="Cartera" value={portfolio ? `${Math.round(totalValue).toLocaleString('ca-ES')} €` : '—'} sub={portfolio?.name} />
+        <Kpi label="Rendiment" value={portfolio ? `${pnl >= 0 ? '+' : ''}${Math.round(pnl).toLocaleString('ca-ES')} €` : '—'}
+          sub={totalInvested > 0 ? `${((pnl/totalInvested)*100).toLocaleString('ca-ES', { maximumFractionDigits: 1 })} % sobre ${Math.round(totalInvested).toLocaleString('ca-ES')} € aportats` : undefined} />
         <Kpi label="Informes inicials" value={String(data.reports.length)} />
         <Kpi label="Informes mensuals" value={String(data.monthly.length)} />
       </div>
@@ -315,7 +318,7 @@ export default function ClientFile({
                   {data.reports.map(r => (
                     <div key={r.id} className="flex items-center justify-between bg-surface border border-line rounded-lg px-4 py-3">
                       <div>
-                        <p className="text-ink text-sm">{new Date(r.date || r.createdAt).toLocaleDateString('ca-ES')} · {r.profile}</p>
+                        <p className="text-ink text-sm">{new Date(r.createdAt).toLocaleDateString('ca-ES')} · Perfil {PROFILE_NAMES[r.profile] ?? r.profile}</p>
                         <p className="text-ink-soft text-xs font-mono">{r.id}</p>
                       </div>
                       <p className="text-ink-soft text-xs">{r.emailSent ? 'Enviat' : 'No enviat'}</p>

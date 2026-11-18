@@ -21,10 +21,12 @@ export default function MonthlyReportGenerator() {
   const [history, setHistory]           = useState<MonthlyReportRecord[]>([]);
   const [markingSent, setMarkingSent]   = useState<string | null>(null);
 
+  // Per defecte, l'últim mes tancat (el mes en curs encara no té tots els preus).
   const today   = new Date();
-  const y       = today.getFullYear();
-  const m       = String(today.getMonth() + 1).padStart(2, '0');
-  const lastDay = new Date(y, today.getMonth() + 1, 0).getDate();
+  const prev    = new Date(today.getFullYear(), today.getMonth() - 1, 1);
+  const y       = prev.getFullYear();
+  const m       = String(prev.getMonth() + 1).padStart(2, '0');
+  const lastDay = new Date(y, prev.getMonth() + 1, 0).getDate();
 
   const [form, setForm] = useState({
     portfolioId:     '',

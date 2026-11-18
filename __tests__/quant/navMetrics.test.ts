@@ -202,7 +202,7 @@ describe('fundNavs (memòria) i propostes', () => {
   it('amb prou historial, la proposta fa servir els preus entrats a mà', async () => {
     await upsertNavs(rows(60));
     const navs = await getNavPerformanceMap();
-    expect(navs[ISIN].source).toMatch(/Preus entrats a mà \(5 anys/);
+    expect(navs[ISIN].source).toMatch(/Valors liquidatius oficials \(5 anys/);
     const perf = verifiedPerformance(ISIN, navs);
     expect(perf.historicalReturn5Y).toBeCloseTo((Math.pow(1.006, 12) - 1) * 100, 1);
     const item = fundToItem(ISIN, 50, navs)!;

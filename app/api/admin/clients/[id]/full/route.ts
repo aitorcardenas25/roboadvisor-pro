@@ -46,8 +46,9 @@ export async function GET(
     ? allMonthly.filter(r => r.portfolioId === portfolio.id)
     : [];
 
-  // 6. Audit trail (últimes 50 entrades del client)
-  const audit = await getAuditLog({ userId: id, limit: 50 });
+  // 6. Audit trail (últimes 50 entrades del client): les que fa ell i les que l'admin fa
+  // sobre ell (abans només les seves i l'historial sortia buit: "(0)").
+  const audit = await getAuditLog({ clientId: id, limit: 50 });
 
   return NextResponse.json({ user, lead, portfolio, reports, monthly, audit });
 }

@@ -17,8 +17,14 @@ const PERSONAL_LABELS: Record<string, string> = {
 };
 const NOT_MONEY = new Set(['age', 'dependents']);
 const HORIZON_LABELS: Record<string, string> = { curt: 'Curt termini', mitja: 'Mitjà termini', llarg: 'Llarg termini' };
+// Codis interns de les preguntes amb desplegable → text que va triar el client
+const CHOICE_LABELS: Record<string, string> = {
+  indefinit: 'Indefinit', temporal: 'Temporal', autonom: 'Autònom', 'sense-feina': 'Sense feina',
+  conservador: 'Conservador', equilibrat: 'Equilibrat', dinamic: 'Dinàmic',
+  basic: 'Bàsic', mitja: 'Mitjà', alt: 'Alt',
+};
 const fmtPersonal = (k: string, v: number | string) =>
-  typeof v === 'string' ? v : NOT_MONEY.has(k) ? String(v) : eur(v);
+  typeof v === 'string' ? (CHOICE_LABELS[v] ?? v) : NOT_MONEY.has(k) ? String(v) : eur(v);
 const OP_LABELS: Record<string, string> = {
   buy: 'Compra', sell: 'Venda', deposit: 'Aportació', withdrawal: 'Retirada', rebalance: 'Rebalanceig',
 };
@@ -121,7 +127,7 @@ export default function ClientImport({ clientId, onImported }: { clientId: strin
               </ul>
             )}
             {!preview.context.hasLead && (Object.keys(preview.personal).length > 0 || preview.goals.length > 0) && (
-              <p className="text-warning/80 text-xs mt-3">Aquest client no té lead vinculat: les dades personals no es desaran.</p>
+              <p className="text-warning/80 text-xs mt-3">Aquest client encara no té fitxa de dades: en confirmar se'n crearà una i s'hi desaran les dades personals i els objectius.</p>
             )}
           </div>
 
