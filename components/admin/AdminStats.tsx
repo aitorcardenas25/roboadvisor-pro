@@ -52,13 +52,22 @@ const ALERT_STYLES = {
   info:    { border: 'border-info/20',  bg: 'bg-info/5',   dot: 'bg-info',  text: 'text-info',  icon: 'i' },
 };
 
-export default function AdminStats({ stats, onNavigate }: Props) {
+export default function AdminStats({ onNavigate }: Props) {
   const [alerts, setAlerts]           = useState<Alert[]>([]);
   const [alertsLoading, setAlertsLoading] = useState(true);
   const [portfolioCount, setPortfolioCount] = useState<number | null>(null);
   const [clientCount, setClientCount]       = useState<number | null>(null);
   const [dash, setDash]                     = useState<DashboardStats | null>(null);
   const [dashError, setDashError]           = useState(false);
+  const [fundsReady, setFundsReady]         = useState<{ ready: number; total: number } | null>(null);
+
+  // Fons reals de les propostes: els que tenen preus oficials suficients (Fons → Preus oficials).
+  useEffect(() => {
+    fetch('/api/admin/fund-navs')
+      .then(r => r.ok ? r.json() as Promise<{ funds: { metrics: { usable: boolean } }[] }> : Promise.reject(new Error(String(r.status))))
+      .then(d => setFundsReady({ ready: d.funds.filter(f => f.metrics?.usable).length, total: d.funds.length }))
+      .catch(() => setFundsReady(null));
+  }, []);
 
   useEffect(() => {
     fetch('/api/admin/dashboard-stats')
@@ -176,7 +185,7 @@ export default function AdminStats({ stats, onNavigate }: Props) {
   const kpis = [
     { label: 'Clients actius',  value: clientCount   ?? '—', sub: 'amb accés al portal' },
     { label: 'Carteres actives', value: portfolioCount ?? '—', sub: 'creades des de propostes' },
-    { label: 'Fons al catàleg', value: stats?.active ?? '—', sub: 'disponibles per a propostes' },
+    { label: 'Fons a punt',     value: fundsReady ? `${fundsReady.ready} de ${fundsReady.total}` : '—', sub: 'amb preus oficials per a propostes' },
   ];
 
   const tooltipStyle = {

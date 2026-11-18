@@ -12,14 +12,7 @@ const PROFILE_COLORS: Record<string, string> = {
 };
 
 
-// Mock inicial per quan no hi ha informes generats en la sessió actual
-const INITIAL_MOCK: ReportRecord[] = [
-  { id: 'RA-DEMO01', clientName: 'Carles Miró',    clientEmail: 'carles@ex.com', profile: 'dinamic',     date: '2026-04-29', score: 62, monthlyAmount: 500,  investable: 15000, horizon: 10, portfolio: ['vanguard-global-index','polar-capital-tech'], pdfGenerated: true,  emailSent: true,  createdAt: '2026-04-29T10:00:00Z' },
-  { id: 'RA-DEMO02', clientName: 'Maria Puig',     clientEmail: 'maria@ex.com',  profile: 'moderat',     date: '2026-04-28', score: 48, monthlyAmount: 300,  investable: 30000, horizon: 15, portfolio: ['amundi-msci-world','nordea-rf-europa'], pdfGenerated: true,  emailSent: false, createdAt: '2026-04-28T15:30:00Z' },
-  { id: 'RA-DEMO03', clientName: 'Joan Fernández', clientEmail: '',              profile: 'conservador', date: '2026-04-27', score: 28, monthlyAmount: 150,  investable: 8000,  horizon: 5,  portfolio: ['amundi-monetari-eur','pimco-rf-curta'], pdfGenerated: true,  emailSent: false, createdAt: '2026-04-27T09:15:00Z' },
-  { id: 'RA-DEMO04', clientName: 'Anna Costa',     clientEmail: 'anna@ex.com',   profile: 'agressiu',    date: '2026-04-25', score: 81, monthlyAmount: 1000, investable: 50000, horizon: 20, portfolio: ['bgf-world-technology','msif-global-opp','polar-capital-tech'], pdfGenerated: true,  emailSent: true,  createdAt: '2026-04-25T16:45:00Z' },
-  { id: 'RA-DEMO05', clientName: 'Pere Valls',     clientEmail: 'pere@ex.com',   profile: 'dinamic',     date: '2026-04-22', score: 67, monthlyAmount: 600,  investable: 22000, horizon: 12, portfolio: ['vanguard-ftse-all-world-etf','nordea-global-climate'], pdfGenerated: false, emailSent: false, createdAt: '2026-04-22T11:00:00Z' },
-];
+
 
 export default function ReportsHistory() {
   const [reports, setReports]     = useState<ReportRecord[]>([]);
@@ -34,15 +27,11 @@ export default function ReportsHistory() {
     fetch('/api/report-registry')
       .then(r => r.ok ? r.json() : null)
       .then(data => {
-        if (data?.reports?.length) {
-          setReports(data.reports);
-          setIsDemo(false);
-        } else {
-          setReports(INITIAL_MOCK);
-          setIsDemo(true);
-        }
+        // Mai mostrar informes inventats: si no n'hi ha, la llista queda buida.
+        setReports(data?.reports ?? []);
+        setIsDemo(!data?.reports?.length);
       })
-      .catch(() => { setReports(INITIAL_MOCK); setIsDemo(true); })
+      .catch(() => { setReports([]); setIsDemo(true); })
       .finally(() => setLoading(false));
   }, []);
 
@@ -107,7 +96,7 @@ export default function ReportsHistory() {
         <div className="flex items-center gap-3 px-4 py-3 bg-warning/8 border border-warning/20 rounded-lg">
           <span className="text-warning text-sm"></span>
           <p className="text-warning/80 text-xs">
-            <span className="font-semibold">Dades de demostració</span> — Encara no hi ha informes reals generats en aquesta sessió. Genera un informe al qüestionari per veure'l aquí.
+            <span className="font-semibold">Encara no hi ha informes del qüestionari.</span> Les propostes i els informes mensuals dels clients es generen i es guarden a la fitxa de cada client (Clients → fitxa → Proposta / Informes).
           </p>
         </div>
       )}
@@ -198,8 +187,8 @@ export default function ReportsHistory() {
                   </td>
                   <td className="px-4 py-3 text-center">
                     <div className="flex items-center justify-center gap-1.5">
-                      <span title="PDF generat" className={r.pdfGenerated ? 'text-positive' : 'text-ink-muted'}></span>
-                      <span title="Email enviat" className={r.emailSent ? 'text-positive' : 'text-ink-muted'}></span>
+                      <span title="PDF generat" className={`text-xs ${r.pdfGenerated ? 'text-positive' : 'text-ink-muted'}`}>PDF</span>
+                      <span title="Email enviat" className={`text-xs ${r.emailSent ? 'text-positive' : 'text-ink-muted'}`}>Email</span>
                     </div>
                   </td>
                   <td className="px-4 py-3 text-center text-ink-muted text-xs">

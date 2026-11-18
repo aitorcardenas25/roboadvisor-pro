@@ -87,9 +87,9 @@ export default function AuditLogViewer() {
       {/* Header */}
       <div className="flex items-start justify-between mb-6">
         <div>
-          <h2 className="text-ink text-xl font-bold mb-1">Audit Trail</h2>
+          <h2 className="text-ink text-xl font-bold mb-1">Registre d&apos;activitat</h2>
           <p className="text-ink-muted text-sm">
-            {stats?.total ?? 0} events registrats · s&apos;actualitza cada 30s
+            {`${stats?.total ?? 0} esdeveniments registrats · s'actualitza cada 30 s`}
           </p>
         </div>
         <button
