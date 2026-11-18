@@ -9,7 +9,7 @@ interface Props {
 }
 
 const PROFILE_OPTIONS = [
-  { value: 'beginner',    label: 'Vull começar a invertir' },
+  { value: 'beginner',    label: 'Vull començar a invertir' },
   { value: 'investor',    label: 'Ja inverteixo' },
   { value: 'business',    label: 'Empresa / autònom' },
   { value: 'information', label: 'Només vull informació' },
