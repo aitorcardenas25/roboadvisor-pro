@@ -14,6 +14,8 @@ export interface ManualAsset {
   justification: string;
   historicalReturn5Y?: number;
   historicalVolatility?: number;
+  expectedReturn?: number;   // CAPM (% anual): és el que es projecta
+  beta?: number;
 }
 
 export interface ManualPortfolioInput {

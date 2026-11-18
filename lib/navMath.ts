@@ -346,7 +346,61 @@ export function computeNavMetrics(points: Pick<NavPoint, 'date' | 'nav'>[], asOf
 }
 
 /** Dades de rendiment per a les propostes, amb la font explicada. */
-export interface NavPerformance { return5Y: number; volatility: number; source: string; name?: string }
+export interface NavPerformance {
+  return5Y: number; volatility: number; source: string; name?: string;
+  beta?: number;   // β respecte de l'índex de mercat (CAPM), dels mateixos valors liquidatius
+}
+
+// ─── Beta i rendiment esperat (CAPM) ──────────────────────────────────────────
+
+/** Índex de mercat per a la beta: Amundi Index MSCI World (EUR), amb preus oficials a fund_navs. */
+export const MARKET_PROXY_ISIN = 'LU0996182563';
+
+/**
+ * Hipòtesis del CAPM, Sharpe (1964): E(Ri) = Rf + βi × (E(Rm) − Rf).
+ * Rf: tipus de la facilitat de dipòsit del BCE (2,00 % des del 11/06/2025).
+ * Prima de risc: prima implícita de mercat madur de Damodaran (gener 2025, 4,33 %).
+ * Cal revisar-les un cop l'any (el BCE pot moure el tipus abans).
+ */
+export const CAPM_ASSUMPTIONS = {
+  riskFree: 2.0,
+  equityPremium: 4.33,
+  source: 'CAPM (Sharpe, 1964): tipus de dipòsit del BCE 2,00 % + β × prima de risc de mercat 4,33 % (Damodaran, gener 2025)',
+} as const;
+
+/** Rendiment anual esperat (%) segons el CAPM. */
+export function capmReturn(beta: number, a: { riskFree: number; equityPremium: number } = CAPM_ASSUMPTIONS): number {
+  return a.riskFree + beta * a.equityPremium;
+}
+
+/** Rendiments mensuals (%) per mes "aaaa-mm", amb l'últim preu de cada mes. */
+export function monthlyReturnsByMonth(points: Pick<NavPoint, 'date' | 'nav'>[]): Map<string, number> {
+  const lastOfMonth = new Map<string, number>();
+  for (const p of [...points].filter(p => p.nav > 0).sort((a, b) => a.date.localeCompare(b.date))) lastOfMonth.set(p.date.slice(0, 7), p.nav);
+  const months = [...lastOfMonth.keys()].sort();
+  const out = new Map<string, number>();
+  for (let i = 1; i < months.length; i++) {
+    const [py, pm] = months[i - 1].split('-').map(Number), [y, m] = months[i].split('-').map(Number);
+    if ((y * 12 + m) - (py * 12 + pm) !== 1) continue;   // mes saltat: no es calcula
+    out.set(months[i], (lastOfMonth.get(months[i])! / lastOfMonth.get(months[i - 1])! - 1) * 100);
+  }
+  return out;
+}
+
+/**
+ * Beta per MQO (mínims quadrats) dels rendiments mensuals del fons contra el mercat,
+ * amb els últims `maxMonths` mesos comuns. Null amb menys de 24 mesos comuns.
+ */
+export function estimateNavBeta(fund: Pick<NavPoint, 'date' | 'nav'>[], market: Pick<NavPoint, 'date' | 'nav'>[], maxMonths = 60): number | null {
+  const f = monthlyReturnsByMonth(fund), m = monthlyReturnsByMonth(market);
+  const common = [...f.keys()].filter(k => m.has(k)).sort().slice(-maxMonths);
+  if (common.length < 24) return null;
+  const xs = common.map(k => m.get(k)!), ys = common.map(k => f.get(k)!);
+  const mx = xs.reduce((s, x) => s + x, 0) / xs.length, my = ys.reduce((s, y) => s + y, 0) / ys.length;
+  let cov = 0, varX = 0;
+  for (let i = 0; i < xs.length; i++) { cov += (xs[i] - mx) * (ys[i] - my); varX += (xs[i] - mx) ** 2; }
+  return varX > 0 ? Math.round(cov / varX * 100) / 100 : null;
+}
 
 export function navPerformance(m: NavMetrics, name?: string): NavPerformance | null {
   if (!m.usable || m.annualReturn === null || m.volatility === null || !m.lastDate) return null;
@@ -356,4 +410,9 @@ export function navPerformance(m: NavMetrics, name?: string): NavPerformance | n
     source: `Valors liquidatius oficials (${yrs} anys, fins al ${fmtDate(m.lastDate)})`,
     ...(name ? { name } : {}),
   };
+}
+
+/** Proxy de mercat per a la beta: només si passa la mateixa validació que un fons (salts impossibles, historial curt…). */
+export function validMarketSeries<T extends Pick<NavPoint, 'date' | 'nav'>>(points: T[]): T[] {
+  return navPerformance(computeNavMetrics(points)) ? points : [];
 }

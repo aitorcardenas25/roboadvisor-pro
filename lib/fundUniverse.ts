@@ -19,28 +19,29 @@ export interface UniverseFund {
   ter?:        number;   // despeses corrents (%)
   srri?:       1 | 2 | 3 | 4 | 5 | 6 | 7;
   source?:     string;   // p. ex. "Morningstar, fitxa 30/09/2026"
+  terSource?:  string;   // d'on surt el TER (KID / fitxa oficial i data)
 }
 
 export const ADVISOR_FUNDS: UniverseFund[] = [
   { isin: 'LU2305834041', name: 'Invesco Continental European Small Cap Equity A EUR Acc', category: 'RV Europa Small Caps' },
-  { isin: 'IE00B42W4L06', name: 'Vanguard Global Small-Cap Index Fund EUR Acc',             category: 'RV Global Small Caps' },
+  { isin: 'IE00B42W4L06', name: 'Vanguard Global Small-Cap Index Fund EUR Acc',             category: 'RV Global Small Caps', ter: 0.29, terSource: 'Vanguard, web oficial 18/11/2026' },
   { isin: 'IE0031786696', name: 'Vanguard Emerging Markets Stock Index Fund EUR',           category: 'RV Emergents' },
   { isin: 'IE00B8H6X308', name: 'Federated Hermes Asia ex-Japan Equity Fund F Acc',         category: 'RV Àsia ex-Japó' },
   { isin: 'IE00B3VXGD32', name: 'Polar Capital Biotechnology R EUR Dist',                  category: 'RV Salut / Biotecnologia' },
   { isin: 'IE00BM95B621', name: 'Polar Capital Global Technology Fund R EUR Acc',           category: 'RV Tecnologia' },
   { isin: 'IE00BF0GL436', name: 'Polar Capital Artificial Intelligence Fund I EUR Acc',     category: 'RV Tecnologia / IA' },
   { isin: 'LU1841614867', name: 'Fidelity Funds Global Technology A-Acc-EUR (Hedged)',      category: 'RV Tecnologia' },
-  { isin: 'LU0273159177', name: 'DWS Invest Gold and Precious Metals Equities LC',          category: 'RV Mineres d\'or' },
+  { isin: 'LU0273159177', name: 'DWS Invest Gold and Precious Metals Equities LC',          category: 'RV Mineres d\'or', ter: 1.61, terSource: 'Finect 18/11/2026 (pendent de verificar al KID de DWS)' },
   { isin: 'LU0252963896', name: 'BlackRock GF World Energy Fund D2 EUR Acc',                category: 'RV Energia' },
   { isin: 'LU0329202252', name: 'JPMorgan Investment Funds - Global Dividend Fund A (acc) EUR', category: 'RV Global Dividends' },
   { isin: 'LU0625737910', name: 'Pictet China Index P EUR',                                 category: 'RV Xina' },
   // Fons indexats nucli de les carteres proposades a les sessions presencials
   // (Drive FACTOR OTC, document APUNTS, feb-mar 2026). Afegits 2026-11-09.
   // Noms revisats amb la web de la gestora el 2026-11-17.
-  { isin: 'LU0996182563', name: 'Amundi Index MSCI World AE Acc',                           category: 'RV Global' },
-  { isin: 'IE0008248803', name: 'Vanguard Eurozone Stock Index Fund EUR Acc',               category: 'RV Eurozona' },
+  { isin: 'LU0996182563', name: 'Amundi Index MSCI World AE Acc',                           category: 'RV Global', ter: 0.3, terSource: 'Amundi, fitxa 31/10/2026' },
+  { isin: 'IE0008248803', name: 'Vanguard Eurozone Stock Index Fund EUR Acc',               category: 'RV Eurozona', ter: 0.12, terSource: 'Vanguard, web oficial 18/11/2026' },
   { isin: 'LU0389811885', name: 'Amundi Core MSCI Europe AE Acc',                           category: 'RV Europa' },
-  { isin: 'LU0996177134', name: 'Amundi Core MSCI Emerging Markets AE Acc',                 category: 'RV Emergents' },
+  { isin: 'LU0996177134', name: 'Amundi Core MSCI Emerging Markets AE Acc',                 category: 'RV Emergents', ter: 0.45, terSource: 'Amundi, informe mensual 31/03/2026' },
   { isin: 'IE00BQQP9G91', name: 'VanEck Junior Gold Miners UCITS ETF',                      category: 'RV Mineres d\'or' },
   // Fons i ETF amb històric oficial de la gestora carregat a fund_navs
   // (2026-11-17, /mnt/project-files/fons/cobertura-historics.md). Nom oficial
@@ -96,13 +97,13 @@ export const ADVISOR_FUNDS: UniverseFund[] = [
   { isin: 'ES0112763000', name: 'Bestinver Norteamérica FI',                              category: 'RV EUA' },
   { isin: 'ES0114675038', name: 'Bestinver Renta FI',                                     category: 'RF Euro' },
   { isin: 'ES0183091000', name: 'Bestinver Corto Plazo FI',                               category: 'RF Curt termini' },
-  { isin: 'IE00B18GC888', name: 'Vanguard Global Bond Index Fund EUR Hedged Acc',           category: 'RF Global (cobert EUR)' },
+  { isin: 'IE00B18GC888', name: 'Vanguard Global Bond Index Fund EUR Hedged Acc',           category: 'RF Global (cobert EUR)', ter: 0.15, terSource: 'Vanguard, fitxa 31/10/2026' },
   { isin: 'IE00BDBRDM35', name: 'iShares Core Global Aggregate Bond UCITS ETF EUR Hedged Acc', category: 'RF Global (cobert EUR)' },
-  { isin: 'IE0007472115', name: 'Vanguard Euro Government Bond Index Fund EUR Acc',         category: 'RF Govern Euro' },
+  { isin: 'IE0007472115', name: 'Vanguard Euro Government Bond Index Fund EUR Acc',         category: 'RF Govern Euro', ter: 0.12, terSource: 'Vanguard, fitxa 31/10/2026' },
   { isin: 'IE00B4WXJJ64', name: 'iShares Core Euro Government Bond UCITS ETF EUR Dist',     category: 'RF Govern Euro' },
-  { isin: 'IE00BH65QP47', name: 'Vanguard Global Short-Term Bond Index Fund EUR Hedged Acc', category: 'RF Curt termini (cobert EUR)' },
+  { isin: 'IE00BH65QP47', name: 'Vanguard Global Short-Term Bond Index Fund EUR Hedged Acc', category: 'RF Curt termini (cobert EUR)', ter: 0.15, terSource: 'Vanguard, fitxa 31/10/2026' },
   { isin: 'LU0034353002', name: 'DWS Floating Rate Notes LC',                               category: 'RF Tipus variable' },
-  { isin: 'LU0290358497', name: 'Xtrackers II EUR Overnight Rate Swap UCITS ETF 1C',        category: 'Monetari EUR' },
+  { isin: 'LU0290358497', name: 'Xtrackers II EUR Overnight Rate Swap UCITS ETF 1C',        category: 'Monetari EUR', ter: 0.1, terSource: 'Xtrackers, fitxa 30/09/2026 (comissió total)' },
 ];
 
 // Altres classes del mateix fons que ja és a la llista (2026-11-17, decisió de

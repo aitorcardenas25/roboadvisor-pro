@@ -1,6 +1,7 @@
 'use client';
 
 import { PROPOSAL_TEMPLATES, templateItems } from '@/lib/proposalTemplates';
+import { CAPM_ASSUMPTIONS } from '@/lib/navMath';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   proposalStats, fundToItem, hasPerformanceData, validateForApproval, proposalToReportInput, checkProposalSuitability, PROFILES,
@@ -355,7 +356,7 @@ export default function ClientProposal({ clientId, onApplied }: { clientId: stri
       <div className={card}>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           <Metric label="Suma de pesos" value={pct(stats.totalWeight)} tone={stats.weightOk ? 'ok' : 'bad'} />
-          <Metric label="Rendiment net" value={stats.complete ? `${pct(stats.netReturn)} / any` : '—'} sub={!stats.complete ? 'Falten dades' : stats.terMissing.length ? `Brut ${pct(stats.grossReturn)} − TER incomplet` : `Brut ${pct(stats.grossReturn)} − TER ${pct(stats.ter)}`} />
+          <Metric label={stats.returnBasis === 'historic' ? 'Rendiment net (històric)' : 'Rendiment net esperat'} value={stats.complete ? `${pct(stats.netReturn)} / any` : '—'} sub={!stats.complete ? 'Falten dades' : stats.terMissing.length ? `Brut ${pct(stats.grossReturn)} − TER incomplet` : `Brut ${pct(stats.grossReturn)} − TER ${pct(stats.ter)}`} />
           <Metric label="Volatilitat" value={stats.complete ? pct(stats.volatility) : '—'} sub={`SRRI mitjà ${stats.risk.toFixed(1)}`} />
           <Metric label={`Total aportat (${params.horizon} anys)`} value={eur(stats.totalInvested)} />
           <Metric label="Escenari desfavorable" value={stats.complete ? eur(stats.p10) : '—'} />
@@ -365,7 +366,10 @@ export default function ClientProposal({ clientId, onApplied }: { clientId: stri
         </div>
 {stats.complete ? (
           <p className="text-ink-muted text-[11px] mt-4">
-            Rendibilitat i volatilitat històriques anualitzades de cada fons. Són les mateixes xifres que sortiran a l&apos;informe.
+            {stats.returnBasis === 'historic'
+              ? 'Rendibilitat i volatilitat històriques anualitzades de cada fons.'
+              : `Rendiment esperat amb el CAPM: ${CAPM_ASSUMPTIONS.riskFree.toLocaleString('ca-ES')} % (tipus de dipòsit del BCE) + beta de cada fons × ${CAPM_ASSUMPTIONS.equityPremium.toLocaleString('ca-ES')} % (prima de risc, Damodaran). Els últims anys la cartera va fer un ${pct(stats.historicReturn)} anual, però no es fa servir per projectar.${stats.returnBasis === 'mixed' ? ' Els fons sense beta fan servir la rendibilitat històrica.' : ''}`}
+            {' '}Són les mateixes xifres que sortiran a l&apos;informe.
           </p>
         ) : (
           <p className="text-negative/90 text-xs mt-4">
