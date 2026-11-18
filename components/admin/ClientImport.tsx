@@ -55,20 +55,20 @@ export default function ClientImport({ clientId, onImported }: { clientId: strin
     finally { setBusy(false); }
   };
 
-  const card = 'bg-[#0d1f1a] border border-white/10 rounded-xl p-5';
-  const th   = 'text-left text-white/30 text-[11px] uppercase tracking-wide font-medium pb-2 pr-3';
-  const td   = 'text-white/80 text-xs py-1.5 pr-3 border-t border-white/5';
+  const card = 'bg-surface border border-line rounded-lg p-5';
+  const th   = 'text-left text-ink-muted text-[11px] font-medium font-medium pb-2 pr-3';
+  const td   = 'text-ink text-xs py-1.5 pr-3 border-t border-line';
 
   return (
     <div className="space-y-5">
       {/* Pas 1 i 2 */}
       <div className={card}>
-        <h3 className="text-white/50 text-xs uppercase tracking-widest mb-4">Importar dades des d&apos;Excel</h3>
-        <ol className="text-white/60 text-sm space-y-3 list-decimal list-inside">
+        <h3 className="text-ink-soft text-xs font-medium mb-4">Importar dades des d&apos;Excel</h3>
+        <ol className="text-ink-soft text-sm space-y-3 list-decimal list-inside">
           <li>
             Descarrega la plantilla i envia-la al client perquè l&apos;ompli.{' '}
             <a href={`/api/admin/clients/${clientId}/import`}
-              className="text-[#c9a84c] hover:underline font-medium">Descarregar plantilla (.xlsx)</a>
+              className="text-accent hover:underline font-medium">Descarregar plantilla (.xlsx)</a>
           </li>
           <li>
             Puja el fitxer omplert:
@@ -82,17 +82,17 @@ export default function ClientImport({ clientId, onImported }: { clientId: strin
                   setPreview(null); setMsg(null);
                   setFile(f ? new File([await f.arrayBuffer()], f.name, { type: f.type }) : null);
                 }}
-                className="text-white/60 text-xs file:mr-3 file:px-3 file:py-1.5 file:rounded-lg file:border-0 file:bg-white/10 file:text-white file:text-xs" />
-              {file && <span className="text-white/50 text-xs">{file.name}</span>}
+                className="text-ink-soft text-xs file:mr-3 file:px-3 file:py-1.5 file:rounded-lg file:border-0 file:bg-subtle-strong file:text-ink file:text-xs" />
+              {file && <span className="text-ink-soft text-xs">{file.name}</span>}
               <button disabled={!file || busy} onClick={() => send('preview')}
-                className="px-4 py-1.5 rounded-lg bg-white/10 text-white text-xs font-medium disabled:opacity-40 hover:bg-white/15">
+                className="px-4 py-1.5 rounded-lg bg-subtle-strong text-ink text-xs font-medium disabled:opacity-40 hover:bg-subtle-strong">
                 {busy && !preview ? 'Llegint…' : 'Revisar'}
               </button>
             </div>
           </li>
         </ol>
         {msg && (
-          <p className={`mt-4 text-sm ${msg.ok ? 'text-green-400' : 'text-red-400'}`}>{msg.text}</p>
+          <p className={`mt-4 text-sm ${msg.ok ? 'text-positive' : 'text-negative'}`}>{msg.text}</p>
         )}
       </div>
 
@@ -101,38 +101,38 @@ export default function ClientImport({ clientId, onImported }: { clientId: strin
           {/* Resum i errors */}
           <div className={card}>
             <div className="flex flex-wrap gap-6 mb-4 text-sm">
-              <span className="text-white/70"><b className="text-white">{preview.holdings.length}</b> posicions</span>
-              <span className="text-white/70"><b className="text-white">{preview.transactions.length}</b> moviments</span>
-              <span className="text-white/70"><b className="text-white">{Object.keys(preview.personal).length}</b> dades personals</span>
-              <span className="text-white/70"><b className="text-white">{preview.goals.length}</b> objectius</span>
-              <span className={preview.errors.length ? 'text-red-400' : 'text-green-400'}>
+              <span className="text-ink-soft"><b className="text-ink">{preview.holdings.length}</b> posicions</span>
+              <span className="text-ink-soft"><b className="text-ink">{preview.transactions.length}</b> moviments</span>
+              <span className="text-ink-soft"><b className="text-ink">{Object.keys(preview.personal).length}</b> dades personals</span>
+              <span className="text-ink-soft"><b className="text-ink">{preview.goals.length}</b> objectius</span>
+              <span className={preview.errors.length ? 'text-negative' : 'text-positive'}>
                 {preview.errors.length ? `${preview.errors.length} errors` : 'Sense errors'}
               </span>
-              {preview.warnings.length > 0 && <span className="text-amber-300">{preview.warnings.length} avisos</span>}
+              {preview.warnings.length > 0 && <span className="text-warning">{preview.warnings.length} avisos</span>}
             </div>
             {[...preview.errors.map(e => ({ ...e, kind: 'error' })), ...preview.warnings.map(w => ({ ...w, kind: 'warn' }))].length > 0 && (
               <ul className="space-y-1 max-h-48 overflow-auto">
                 {preview.errors.map((e, i) => (
-                  <li key={`e${i}`} className="text-red-300 text-xs">✕ {e.sheet}{e.row ? `, fila ${e.row}` : ''}: {e.message}</li>
+                  <li key={`e${i}`} className="text-negative text-xs">✕ {e.sheet}{e.row ? `, fila ${e.row}` : ''}: {e.message}</li>
                 ))}
                 {preview.warnings.map((w, i) => (
-                  <li key={`w${i}`} className="text-amber-200/80 text-xs">! {w.sheet}{w.row ? `, fila ${w.row}` : ''}: {w.message}</li>
+                  <li key={`w${i}`} className="text-warning/80 text-xs">! {w.sheet}{w.row ? `, fila ${w.row}` : ''}: {w.message}</li>
                 ))}
               </ul>
             )}
             {!preview.context.hasLead && (Object.keys(preview.personal).length > 0 || preview.goals.length > 0) && (
-              <p className="text-amber-200/80 text-xs mt-3">Aquest client no té lead vinculat: les dades personals no es desaran.</p>
+              <p className="text-warning/80 text-xs mt-3">Aquest client no té lead vinculat: les dades personals no es desaran.</p>
             )}
           </div>
 
           {/* Taules */}
           {Object.keys(preview.personal).length > 0 && (
             <div className={card}>
-              <h4 className="text-white/50 text-xs uppercase tracking-widest mb-3">Dades personals</h4>
+              <h4 className="text-ink-soft text-xs font-medium mb-3">Dades personals</h4>
               <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
                 {Object.entries(preview.personal).map(([k, v]) => (
-                  <div key={k}><p className="text-white/30 text-xs">{PERSONAL_LABELS[k] ?? k}</p>
-                    <p className="text-white text-sm">{fmtPersonal(k, v as number | string)}</p></div>
+                  <div key={k}><p className="text-ink-muted text-xs">{PERSONAL_LABELS[k] ?? k}</p>
+                    <p className="text-ink text-sm">{fmtPersonal(k, v as number | string)}</p></div>
                 ))}
               </div>
             </div>
@@ -140,11 +140,11 @@ export default function ClientImport({ clientId, onImported }: { clientId: strin
 
           {preview.goals.length > 0 && (
             <div className={card}>
-              <h4 className="text-white/50 text-xs uppercase tracking-widest mb-3">Objectius</h4>
+              <h4 className="text-ink-soft text-xs font-medium mb-3">Objectius</h4>
               <ul className="space-y-1.5">
                 {preview.goals.map((g, i) => (
-                  <li key={i} className="text-white/80 text-sm">
-                    <span className="text-white/40 text-xs mr-2">{HORIZON_LABELS[g.horizon]}</span>
+                  <li key={i} className="text-ink text-sm">
+                    <span className="text-ink-muted text-xs mr-2">{HORIZON_LABELS[g.horizon]}</span>
                     {g.description}{g.amount ? ` · ${eur(g.amount)}` : ''}{g.targetYear ? ` · ${g.targetYear}` : ''}
                   </li>
                 ))}
@@ -154,12 +154,12 @@ export default function ClientImport({ clientId, onImported }: { clientId: strin
 
           {preview.holdings.length > 0 && (
             <div className={`${card} overflow-x-auto`}>
-              <h4 className="text-white/50 text-xs uppercase tracking-widest mb-3">Posicions</h4>
+              <h4 className="text-ink-soft text-xs font-medium mb-3">Posicions</h4>
               <table className="w-full">
                 <thead><tr>{['ISIN', 'Fons', 'Broker', 'Participacions', 'Preu mitjà', 'Cost'].map(h => <th key={h} className={th}>{h}</th>)}</tr></thead>
                 <tbody>{preview.holdings.map(h => (
                   <tr key={h.row}>
-                    <td className={`${td} font-mono`}>{h.isin}{!h.recognized && <span className="text-amber-300 ml-1">!</span>}</td>
+                    <td className={`${td} font-mono`}>{h.isin}{!h.recognized && <span className="text-warning ml-1">!</span>}</td>
                     <td className={td}>{h.name}</td><td className={td}>{h.broker}</td>
                     <td className={td}>{h.quantity.toLocaleString('ca-ES')}</td>
                     <td className={td}>{eur(h.avgEntryPrice)}</td>
@@ -171,7 +171,7 @@ export default function ClientImport({ clientId, onImported }: { clientId: strin
 
           {preview.transactions.length > 0 && (
             <div className={`${card} overflow-x-auto`}>
-              <h4 className="text-white/50 text-xs uppercase tracking-widest mb-3">Moviments</h4>
+              <h4 className="text-ink-soft text-xs font-medium mb-3">Moviments</h4>
               <table className="w-full">
                 <thead><tr>{['Data', 'Tipus', 'ISIN / Nom', 'Import', 'Comissió', 'Broker'].map(h => <th key={h} className={th}>{h}</th>)}</tr></thead>
                 <tbody>{preview.transactions.map(t => (
@@ -190,18 +190,18 @@ export default function ClientImport({ clientId, onImported }: { clientId: strin
           {/* Confirmació */}
           <div className={`${card} flex flex-wrap items-center gap-4`}>
             {(preview.context.existingHoldings > 0 || preview.context.existingTransactions > 0) && (
-              <label className="flex items-center gap-2 text-white/70 text-xs">
+              <label className="flex items-center gap-2 text-ink-soft text-xs">
                 <input type="checkbox" checked={replace} onChange={e => setReplace(e.target.checked)} />
                 Substituir les {preview.context.existingHoldings} posicions i {preview.context.existingTransactions} moviments actuals
                 (si no, s&apos;afegeixen)
               </label>
             )}
             <button disabled={busy || preview.errors.length > 0} onClick={() => send('commit')}
-              className="ml-auto px-5 py-2 rounded-lg bg-[#c9a84c] text-[#0d1f1a] text-sm font-bold disabled:opacity-40 hover:bg-[#b8963f]">
+              className="ml-auto px-5 py-2 rounded-lg bg-accent text-accent-ink text-sm font-bold disabled:opacity-40 hover:bg-accent-hover">
               {busy ? 'Important…' : 'Confirmar importació'}
             </button>
           </div>
-          <p className="text-white/30 text-xs">
+          <p className="text-ink-muted text-xs">
             Els preus actuals queden com a &quot;pendents&quot; (igual al cost) fins que facis &quot;Refrescar preus de mercat&quot;.
           </p>
         </>

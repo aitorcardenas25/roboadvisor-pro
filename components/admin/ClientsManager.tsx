@@ -1,7 +1,6 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
 import type { UserRole } from '@/lib/roles';
 
 interface ClientUser {
@@ -17,7 +16,7 @@ interface ClientUser {
 }
 
 const ROLE_META: Record<UserRole, { label: string; color: string; bg: string }> = {
-  client: { label: 'Client', color: '#c9a84c', bg: 'rgba(201,168,76,0.1)' },
+  client: { label: 'Client', color: 'rgb(var(--c-accent))', bg: 'rgb(var(--c-accent) / 0.1)' },
   admin:  { label: 'Admin',  color: '#ef4444', bg: 'rgba(239,68,68,0.1)'  },
 };
 
@@ -25,7 +24,7 @@ const ROLES: UserRole[] = ['client', 'admin'];
 
 const PLAN_META: Record<string, { label: string; color: string }> = {
   free:    { label: 'Free',    color: '#9ca3af' },
-  active:  { label: 'Actiu',  color: '#c9a84c' },
+  active:  { label: 'Actiu',  color: 'rgb(var(--c-accent))' },
   premium: { label: 'Premium',color: '#a78bfa' },
 };
 
@@ -159,14 +158,14 @@ export default function ClientsManager({ onViewClient }: { onViewClient?: (id: s
       {/* Header */}
       <div className="flex items-start justify-between mb-6">
         <div>
-          <h2 className="text-white text-xl font-bold mb-1">Gestió de Clients</h2>
-          <p className="text-white/40 text-sm">
+          <h2 className="text-ink text-xl font-bold mb-1">Gestió de Clients</h2>
+          <p className="text-ink-muted text-sm">
             {activeCount} usuaris actius · {clientCount} clients amb accés
           </p>
         </div>
         <button
           onClick={() => { setShowForm(!showForm); setError(''); }}
-          className="flex items-center gap-2 px-4 py-2 bg-[#c9a84c] hover:bg-[#b8963f] text-[#0d1f1a] font-semibold text-sm rounded-lg transition-all">
+          className="flex items-center gap-2 px-4 py-2 bg-accent hover:bg-accent-hover text-accent-ink font-semibold text-sm rounded-lg transition-all">
           <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
           </svg>
@@ -176,24 +175,21 @@ export default function ClientsManager({ onViewClient }: { onViewClient?: (id: s
 
       {/* Feedback */}
       {success && (
-        <div className="mb-4 p-3 bg-green-500/10 border border-green-500/30 rounded-lg text-green-400 text-sm">{success}</div>
+        <div className="mb-4 p-3 bg-positive/10 border border-positive/30 rounded-lg text-positive text-sm">{success}</div>
       )}
       {error && (
-        <div className="mb-4 p-3 bg-red-500/10 border border-red-500/30 rounded-lg text-red-400 text-sm">{error}</div>
+        <div className="mb-4 p-3 bg-negative/10 border border-negative/30 rounded-lg text-negative text-sm">{error}</div>
       )}
 
       {/* New client form */}
-      <AnimatePresence>
+      <>
         {showForm && (
-          <motion.div
-            initial={{ opacity: 0, height: 0 }}
-            animate={{ opacity: 1, height: 'auto' }}
-            exit={{ opacity: 0, height: 0 }}
+          <div
             className="mb-6 overflow-hidden">
             <form
               onSubmit={handleCreate}
-              className="bg-[#0d1f1a] border border-[#c9a84c]/30 rounded-xl p-5">
-              <h3 className="text-white font-semibold text-sm mb-4">Nou client</h3>
+              className="bg-surface border border-accent/30 rounded-lg p-5">
+              <h3 className="text-ink font-semibold text-sm mb-4">Nou client</h3>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-3">
                 {([
                   ['name',     'Nom complet',   'text',     'Joan Garcia'],
@@ -202,32 +198,32 @@ export default function ClientsManager({ onViewClient }: { onViewClient?: (id: s
                   ['password', 'Contrasenya (mín. 10)', 'password', '·····'],
                 ] as const).map(([field, label, type, ph]) => (
                   <div key={field}>
-                    <label className="block text-white/40 text-xs mb-1">{label}</label>
+                    <label className="block text-ink-muted text-xs mb-1">{label}</label>
                     <input
                       type={type}
                       value={form[field]}
                       onChange={e => setForm(prev => ({ ...prev, [field]: e.target.value }))}
                       placeholder={ph}
                       required
-                      className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-white text-sm placeholder-white/20 focus:outline-none focus:border-[#c9a84c]/50"
+                      className="w-full bg-subtle border border-line rounded-lg px-3 py-2 text-ink text-sm placeholder-ink-muted focus:outline-none focus:border-accent/50"
                     />
                   </div>
                 ))}
               </div>
               <div className="mb-4">
-                <label className="block text-white/40 text-xs mb-1">Rol</label>
+                <label className="block text-ink-muted text-xs mb-1">Rol</label>
                 <select
                   value={form.role}
                   onChange={e => setForm(prev => ({ ...prev, role: e.target.value as UserRole }))}
-                  className="bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#c9a84c]/50">
+                  className="bg-subtle border border-line rounded-lg px-3 py-2 text-ink text-sm focus:outline-none focus:border-accent/50">
                   {ROLES.map(r => (
-                    <option key={r} value={r} style={{ background: '#0d1f1a' }}>
+                    <option key={r} value={r} style={{ background: 'rgb(var(--c-surface))' }}>
                       {ROLE_META[r].label}
                     </option>
                   ))}
                 </select>
               </div>
-              <label className="flex items-center gap-2 mb-4 text-white/60 text-sm">
+              <label className="flex items-center gap-2 mb-4 text-ink-soft text-sm">
                 <input type="checkbox" checked={form.sendWelcome}
                   onChange={e => setForm(prev => ({ ...prev, sendWelcome: e.target.checked }))} />
                 Enviar correu de benvinguda (usuari i enllaç, sense contrasenya)
@@ -236,32 +232,32 @@ export default function ClientsManager({ onViewClient }: { onViewClient?: (id: s
                 <button
                   type="submit"
                   disabled={saving}
-                  className="px-4 py-2 bg-[#c9a84c] hover:bg-[#b8963f] disabled:opacity-50 text-[#0d1f1a] font-semibold text-sm rounded-lg transition-all">
+                  className="px-4 py-2 bg-accent hover:bg-accent-hover disabled:opacity-50 text-accent-ink font-semibold text-sm rounded-lg transition-all">
                   {saving ? 'Creant...' : 'Crear client'}
                 </button>
                 <button
                   type="button"
                   onClick={() => { setShowForm(false); setError(''); }}
-                  className="px-4 py-2 text-white/40 hover:text-white text-sm transition-colors">
+                  className="px-4 py-2 text-ink-muted hover:text-ink text-sm transition-colors">
                   Cancel·lar
                 </button>
               </div>
             </form>
-          </motion.div>
+          </div>
         )}
-      </AnimatePresence>
+      </>
 
       {/* Users table */}
       {loading ? (
         <div className="flex items-center justify-center py-16">
-          <div className="w-5 h-5 border-2 border-[#c9a84c] border-t-transparent rounded-full animate-spin" />
+          <div className="w-5 h-5 border-2 border-accent border-t-transparent rounded-full animate-spin" />
         </div>
       ) : users.length === 0 ? (
-        <div className="text-center py-16 text-white/30">No hi ha cap usuari registrat.</div>
+        <div className="text-center py-16 text-ink-muted">No hi ha cap usuari registrat.</div>
       ) : (
-        <div className="bg-[#0d1f1a] border border-white/10 rounded-xl overflow-hidden">
+        <div className="bg-surface border border-line rounded-lg overflow-hidden">
           {/* Table header */}
-          <div className="grid grid-cols-12 gap-2 px-4 py-2.5 border-b border-white/10 text-white/30 text-xs font-medium uppercase tracking-wide">
+          <div className="grid grid-cols-12 gap-2 px-4 py-2.5 border-b border-line text-ink-muted text-xs font-medium font-medium">
             <div className="col-span-3">Client</div>
             <div className="col-span-2">Email / Usuari</div>
             <div className="col-span-2">Rol</div>
@@ -270,27 +266,27 @@ export default function ClientsManager({ onViewClient }: { onViewClient?: (id: s
             <div className="col-span-1 text-right">—</div>
           </div>
 
-          <div className="divide-y divide-white/5">
+          <div className="divide-y divide-line">
             {users.map(u => (
-              <motion.div
+              <div
                 key={u.id}
-                layout
+
                 className={`grid grid-cols-12 gap-2 px-4 py-3 items-center ${!u.active ? 'opacity-40' : ''}`}>
                 {/* Name + status */}
                 <div className="col-span-3">
                   <div className="flex items-center gap-2">
-                    <div className={`w-2 h-2 rounded-full flex-shrink-0 ${u.active ? 'bg-green-400' : 'bg-white/20'}`} />
+                    <div className={`w-2 h-2 rounded-full flex-shrink-0 ${u.active ? 'bg-positive' : 'bg-subtle-strong'}`} />
                     <div>
-                      <div className="text-white text-sm font-medium truncate">{u.name}</div>
-                      <div className="text-white/25 text-xs">{u.createdAt}</div>
+                      <div className="text-ink text-sm font-medium truncate">{u.name}</div>
+                      <div className="text-ink-muted text-xs">{u.createdAt}</div>
                     </div>
                   </div>
                 </div>
 
                 {/* Email + username */}
                 <div className="col-span-2 min-w-0">
-                  <div className="text-white/60 text-xs truncate">{u.email}</div>
-                  <div className="text-white/30 text-xs font-mono">@{u.username}</div>
+                  <div className="text-ink-soft text-xs truncate">{u.email}</div>
+                  <div className="text-ink-muted text-xs font-mono">@{u.username}</div>
                 </div>
 
                 {/* Role selector */}
@@ -302,9 +298,9 @@ export default function ClientsManager({ onViewClient }: { onViewClient?: (id: s
                       value={u.role}
                       onChange={e => handleRoleChange(u.id, e.target.value as UserRole)}
                       disabled={!u.active}
-                      className="bg-white/5 border border-white/10 rounded-md px-2 py-1 text-xs text-white focus:outline-none focus:border-[#c9a84c]/50 disabled:opacity-40">
+                      className="bg-subtle border border-line rounded-md px-2 py-1 text-xs text-ink focus:outline-none focus:border-accent/50 disabled:opacity-40">
                       {ROLES.filter(r => r !== 'admin').map(r => (
-                        <option key={r} value={r} style={{ background: '#0d1f1a' }}>
+                        <option key={r} value={r} style={{ background: 'rgb(var(--c-surface))' }}>
                           {ROLE_META[r].label}
                         </option>
                       ))}
@@ -319,9 +315,9 @@ export default function ClientsManager({ onViewClient }: { onViewClient?: (id: s
                       value={u.subscriptionPlan ?? 'free'}
                       disabled={!u.active}
                       onChange={e => handleSubscriptionChange(u.id, e.target.value, u.subscriptionStatus ?? 'active')}
-                      className="bg-white/5 border border-white/10 rounded-md px-2 py-1 text-xs text-white focus:outline-none focus:border-[#c9a84c]/50 disabled:opacity-40">
+                      className="bg-subtle border border-line rounded-md px-2 py-1 text-xs text-ink focus:outline-none focus:border-accent/50 disabled:opacity-40">
                       {Object.entries(PLAN_META).map(([v, m]) => (
-                        <option key={v} value={v} style={{ background: '#0d1f1a' }}>{m.label}</option>
+                        <option key={v} value={v} style={{ background: 'rgb(var(--c-surface))' }}>{m.label}</option>
                       ))}
                     </select>
                   ) : (
@@ -338,9 +334,9 @@ export default function ClientsManager({ onViewClient }: { onViewClient?: (id: s
                       value={u.subscriptionStatus ?? 'active'}
                       disabled={!u.active}
                       onChange={e => handleSubscriptionChange(u.id, u.subscriptionPlan ?? 'free', e.target.value)}
-                      className="bg-white/5 border border-white/10 rounded-md px-2 py-1 text-xs text-white focus:outline-none focus:border-[#c9a84c]/50 disabled:opacity-40">
+                      className="bg-subtle border border-line rounded-md px-2 py-1 text-xs text-ink focus:outline-none focus:border-accent/50 disabled:opacity-40">
                       {Object.entries(STATUS_META).map(([v, m]) => (
-                        <option key={v} value={v} style={{ background: '#0d1f1a' }}>{m.label}</option>
+                        <option key={v} value={v} style={{ background: 'rgb(var(--c-surface))' }}>{m.label}</option>
                       ))}
                     </select>
                   ) : (
@@ -354,7 +350,7 @@ export default function ClientsManager({ onViewClient }: { onViewClient?: (id: s
                     <button
                       onClick={() => onViewClient(u.id)}
                       title="Veure fitxa"
-                      className="p-1.5 text-white/20 hover:text-[#c9a84c] hover:bg-[#c9a84c]/10 rounded-md transition-all">
+                      className="p-1.5 text-ink-muted hover:text-accent hover:bg-accent-soft rounded-md transition-all">
                       <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
                       </svg>
@@ -365,7 +361,7 @@ export default function ClientsManager({ onViewClient }: { onViewClient?: (id: s
                       onClick={() => handleWelcome(u)}
                       title="Enviar correu de benvinguda"
                       aria-label={`Enviar correu de benvinguda a ${u.name}`}
-                      className="p-1.5 text-white/20 hover:text-blue-300 hover:bg-blue-500/10 rounded-md transition-all">
+                      className="p-1.5 text-ink-muted hover:text-info hover:bg-info/10 rounded-md transition-all">
                       <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
                       </svg>
@@ -375,24 +371,24 @@ export default function ClientsManager({ onViewClient }: { onViewClient?: (id: s
                     <button
                       onClick={() => handleDeactivate(u.id)}
                       title="Desactivar"
-                      className="p-1.5 text-white/20 hover:text-red-400 hover:bg-red-500/10 rounded-md transition-all">
+                      className="p-1.5 text-ink-muted hover:text-negative hover:bg-negative/10 rounded-md transition-all">
                       <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636" />
                       </svg>
                     </button>
                   )}
                   {!u.active && (
-                    <span className="text-white/20 text-xs">Off</span>
+                    <span className="text-ink-muted text-xs">Off</span>
                   )}
                 </div>
-              </motion.div>
+              </div>
             ))}
           </div>
         </div>
       )}
 
       {/* Info note */}
-      <p className="mt-4 text-white/20 text-xs">
+      <p className="mt-4 text-ink-muted text-xs">
         Els usuaris autoritzats poden accedir al dashboard de cartera i al robo-advisor.
         Els canvis de rol s&apos;apliquen immediatament. Les contrasenyes no es mostren per seguretat.
       </p>

@@ -1,10 +1,13 @@
 import type { Metadata, Viewport } from 'next';
-import { Inter } from 'next/font/google';
+import { Inter, IBM_Plex_Sans, IBM_Plex_Mono } from 'next/font/google';
 import './globals.css';
 import { SessionProviderWrapper } from '@/components/SessionProviderWrapper';
 import CookieBanner from '@/components/CookieBanner';
 
 const inter = Inter({ subsets: ['latin'], variable: '--font-inter', display: 'swap' });
+// Sistema de disseny A+B (2026-11-18): IBM Plex per a l'admin i les dades.
+const plex      = IBM_Plex_Sans({ subsets: ['latin'], weight: ['400', '500', '600'], variable: '--font-plex', display: 'swap' });
+const plexMono  = IBM_Plex_Mono({ subsets: ['latin'], weight: ['400', '500'], variable: '--font-plex-mono', display: 'swap' });
 
 export const metadata: Metadata = {
   title: 'Factor OTC — Assessorament Financer Independent',
@@ -44,7 +47,7 @@ export const viewport: Viewport = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="ca" className={inter.variable}>
+    <html lang="ca" className={`${inter.variable} ${plex.variable} ${plexMono.variable}`}>
       <body className="font-sans antialiased">
         <SessionProviderWrapper>{children}</SessionProviderWrapper>
         <CookieBanner />

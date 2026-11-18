@@ -114,10 +114,10 @@ export default function LeadsManager() {
     <div>
       <div className="flex items-center justify-between mb-6">
         <div>
-          <h2 className="text-white font-bold text-xl">Leads captats</h2>
-          <p className="text-white/40 text-sm mt-1">{leads.length} lead{leads.length !== 1 ? 's' : ''} totals</p>
+          <h2 className="text-ink font-bold text-xl">Leads captats</h2>
+          <p className="text-ink-muted text-sm mt-1">{leads.length} lead{leads.length !== 1 ? 's' : ''} totals</p>
         </div>
-        <button onClick={load} className="text-white/40 hover:text-white transition-colors text-sm">↻ Actualitzar</button>
+        <button onClick={load} className="text-ink-muted hover:text-ink transition-colors text-sm">↻ Actualitzar</button>
       </div>
 
       {/* Status filter */}
@@ -125,7 +125,7 @@ export default function LeadsManager() {
         <button
           onClick={() => setFilter('all')}
           className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
-            filter === 'all' ? 'bg-[#c9a84c] text-[#0d1f1a]' : 'bg-white/5 text-white/50 hover:bg-white/10'
+            filter === 'all' ? 'bg-accent text-accent-ink' : 'bg-subtle text-ink-soft hover:bg-subtle-strong'
           }`}>
           Tots ({leads.length})
         </button>
@@ -134,7 +134,7 @@ export default function LeadsManager() {
             key={s}
             onClick={() => setFilter(s)}
             className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
-              filter === s ? 'bg-[#c9a84c] text-[#0d1f1a]' : 'bg-white/5 text-white/50 hover:bg-white/10'
+              filter === s ? 'bg-accent text-accent-ink' : 'bg-subtle text-ink-soft hover:bg-subtle-strong'
             }`}>
             {STATUS_META[s].label} ({counts[s] ?? 0})
           </button>
@@ -143,11 +143,10 @@ export default function LeadsManager() {
 
       {loading ? (
         <div className="flex items-center justify-center py-20">
-          <div className="w-6 h-6 border-2 border-[#c9a84c] border-t-transparent rounded-full animate-spin" />
+          <div className="w-6 h-6 border-2 border-accent border-t-transparent rounded-full animate-spin" />
         </div>
       ) : visible.length === 0 ? (
-        <div className="text-center py-20 text-white/30">
-          <div className="text-4xl mb-3">📬</div>
+        <div className="text-center py-20 text-ink-muted">
           <p>Encara no hi ha leads{filter !== 'all' ? ` amb estat "${STATUS_META[filter as Lead['status']].label}"` : ''}.</p>
         </div>
       ) : (
@@ -156,41 +155,41 @@ export default function LeadsManager() {
             const meta = STATUS_META[lead.status];
             const canConvert = lead.status !== 'converted' && lead.status !== 'discarded';
             return (
-              <div key={lead.id} className="bg-[#0d1f1a] border border-white/10 rounded-xl p-5">
+              <div key={lead.id} className="bg-surface border border-line rounded-lg p-5">
                 <div className="flex items-start justify-between gap-4">
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-3 mb-1 flex-wrap">
-                      <span className="text-white font-semibold text-sm">{lead.name}</span>
+                      <span className="text-ink font-semibold text-sm">{lead.name}</span>
                       <span
                         className="inline-block text-xs px-2 py-0.5 rounded-full font-medium"
                         style={{ color: meta.color, backgroundColor: meta.bg }}>
                         {meta.label}
                       </span>
                       {lead.questionnaireData && (
-                        <span className="inline-block text-xs px-2 py-0.5 rounded-full font-medium bg-blue-500/15 text-blue-400">
-                          📋 Qüestionari
+                        <span className="inline-block text-xs px-2 py-0.5 rounded-full font-medium bg-info/15 text-info">
+                          Qüestionari
                         </span>
                       )}
                       {lead.linkedUserId && (
-                        <span className="inline-block text-xs px-2 py-0.5 rounded-full font-medium bg-green-500/15 text-green-400">
+                        <span className="inline-block text-xs px-2 py-0.5 rounded-full font-medium bg-positive/15 text-positive">
                           ✓ Vinculat
                         </span>
                       )}
                     </div>
-                    <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-white/40 text-xs">
-                      <a href={`mailto:${lead.email}`} className="hover:text-[#c9a84c] transition-colors">{lead.email}</a>
+                    <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-ink-muted text-xs">
+                      <a href={`mailto:${lead.email}`} className="hover:text-accent transition-colors">{lead.email}</a>
                       {lead.phone && <span>{lead.phone}</span>}
                       <span>Font: {lead.source}</span>
                       <span>{new Date(lead.createdAt).toLocaleDateString('ca-ES')}</span>
                     </div>
                     {lead.interest && (
-                      <p className="mt-2 text-white/60 text-sm">
-                        <span className="text-white/30 text-xs uppercase tracking-wide mr-1">Interès:</span>
+                      <p className="mt-2 text-ink-soft text-sm">
+                        <span className="text-ink-muted text-xs font-medium mr-1">Interès:</span>
                         {lead.interest}
                       </p>
                     )}
                     {lead.message && (
-                      <p className="mt-1 text-white/40 text-xs italic leading-relaxed">{lead.message}</p>
+                      <p className="mt-1 text-ink-muted text-xs italic leading-relaxed">{lead.message}</p>
                     )}
                   </div>
 
@@ -200,7 +199,7 @@ export default function LeadsManager() {
                       value={lead.status}
                       onChange={e => setStatus(lead.id, e.target.value as Lead['status'])}
                       disabled={updating === lead.id}
-                      className="bg-white/5 border border-white/10 rounded-lg px-2 py-1.5 text-white/70 text-xs focus:outline-none focus:border-[#c9a84c]/40 disabled:opacity-50 cursor-pointer">
+                      className="bg-subtle border border-line rounded-lg px-2 py-1.5 text-ink-soft text-xs focus:outline-none focus:border-accent/40 disabled:opacity-50 cursor-pointer">
                       {(Object.keys(STATUS_META) as Lead['status'][]).map(s => (
                         <option key={s} value={s}>{STATUS_META[s].label}</option>
                       ))}
@@ -208,7 +207,7 @@ export default function LeadsManager() {
                     {canConvert && (
                       <button
                         onClick={() => openConvert(lead)}
-                        className="px-2.5 py-1.5 bg-[#c9a84c]/10 border border-[#c9a84c]/30 text-[#c9a84c] text-xs font-medium rounded-lg hover:bg-[#c9a84c]/20 transition-all whitespace-nowrap">
+                        className="px-2.5 py-1.5 bg-accent-soft border border-accent/30 text-accent text-xs font-medium rounded-lg hover:bg-accent-soft transition-all whitespace-nowrap">
                         + Convertir a client
                       </button>
                     )}
@@ -216,21 +215,21 @@ export default function LeadsManager() {
                 </div>
 
                 {/* Notes */}
-                <div className="mt-3 pt-3 border-t border-white/5">
-                  <label className="block text-white/30 text-[10px] uppercase tracking-widest mb-1.5">Notes internes</label>
+                <div className="mt-3 pt-3 border-t border-line">
+                  <label className="block text-ink-muted text-[10px] font-medium mb-1.5">Notes internes</label>
                   <div className="flex gap-2">
                     <textarea
                       rows={2}
                       placeholder="Afegeix notes sobre aquest lead..."
                       value={editNotes[lead.id] ?? lead.notes ?? ''}
                       onChange={e => setEditNotes(p => ({ ...p, [lead.id]: e.target.value }))}
-                      className="flex-1 bg-black/20 border border-white/8 rounded-lg px-3 py-2 text-white/60 text-xs resize-none focus:outline-none focus:border-[#c9a84c]/30 placeholder-white/15"
+                      className="flex-1 bg-black/20 border border-line rounded-lg px-3 py-2 text-ink-soft text-xs resize-none focus:outline-none focus:border-accent/30 placeholder-ink-muted"
                     />
                     {(editNotes[lead.id] !== undefined && editNotes[lead.id] !== (lead.notes ?? '')) && (
                       <button
                         onClick={() => saveNotes(lead.id)}
                         disabled={savingNotes === lead.id}
-                        className="px-3 py-1.5 bg-[#1a3a2a] border border-[#2d6a4f]/40 text-[#c9a84c] text-xs font-medium rounded-lg hover:bg-[#1f4432] transition-colors disabled:opacity-50 self-end">
+                        className="px-3 py-1.5 bg-subtle-strong border border-accent/40 text-accent text-xs font-medium rounded-lg hover:bg-subtle-strong transition-colors disabled:opacity-50 self-end">
                         {savingNotes === lead.id ? '...' : 'Desar'}
                       </button>
                     )}
@@ -245,72 +244,72 @@ export default function LeadsManager() {
       {/* Modal conversió a client */}
       {convertLead && (
         <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4">
-          <div className="bg-[#0d1f1a] border border-[#c9a84c]/30 rounded-2xl p-6 w-full max-w-md">
-            <h3 className="text-white font-bold text-lg mb-1">Convertir lead a client</h3>
-            <p className="text-white/40 text-sm mb-5">
-              Crea un compte d'accés per a <span className="text-white">{convertLead.name}</span> ({convertLead.email})
+          <div className="bg-surface border border-accent/30 rounded-lg p-6 w-full max-w-md">
+            <h3 className="text-ink font-bold text-lg mb-1">Convertir lead a client</h3>
+            <p className="text-ink-muted text-sm mb-5">
+              Crea un compte d'accés per a <span className="text-ink">{convertLead.name}</span> ({convertLead.email})
             </p>
 
             {convertOk ? (
-              <div className="p-4 bg-green-500/10 border border-green-500/30 rounded-xl text-green-400 text-sm text-center">
+              <div className="p-4 bg-positive/10 border border-positive/30 rounded-lg text-positive text-sm text-center">
                 {convertOk}
               </div>
             ) : (
               <form onSubmit={handleConvert} className="space-y-4">
                 {convertError && (
-                  <div className="p-3 bg-red-500/10 border border-red-500/30 rounded-lg text-red-400 text-sm">{convertError}</div>
+                  <div className="p-3 bg-negative/10 border border-negative/30 rounded-lg text-negative text-sm">{convertError}</div>
                 )}
                 <div>
-                  <label className="block text-white/40 text-xs uppercase tracking-wide mb-1">Nom complet</label>
+                  <label className="block text-ink-muted text-xs font-medium mb-1">Nom complet</label>
                   <input
                     type="text"
                     value={convertForm.name}
                     onChange={e => setConvertForm(p => ({ ...p, name: e.target.value }))}
                     required
-                    className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#c9a84c]/50"
+                    className="w-full bg-subtle border border-line rounded-lg px-3 py-2 text-ink text-sm focus:outline-none focus:border-accent/50"
                   />
                 </div>
                 <div>
-                  <label className="block text-white/40 text-xs uppercase tracking-wide mb-1">Nom d'usuari (login)</label>
+                  <label className="block text-ink-muted text-xs font-medium mb-1">Nom d'usuari (login)</label>
                   <input
                     type="text"
                     value={convertForm.username}
                     onChange={e => setConvertForm(p => ({ ...p, username: e.target.value }))}
                     required
-                    className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-white text-sm font-mono focus:outline-none focus:border-[#c9a84c]/50"
+                    className="w-full bg-subtle border border-line rounded-lg px-3 py-2 text-ink text-sm font-mono focus:outline-none focus:border-accent/50"
                   />
                 </div>
                 <div>
-                  <label className="block text-white/40 text-xs uppercase tracking-wide mb-1">Contrasenya inicial</label>
+                  <label className="block text-ink-muted text-xs font-medium mb-1">Contrasenya inicial</label>
                   <input
                     type="password"
                     value={convertForm.password}
                     onChange={e => setConvertForm(p => ({ ...p, password: e.target.value }))}
                     required minLength={6}
                     placeholder="Mínim 6 caràcters"
-                    className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#c9a84c]/50"
+                    className="w-full bg-subtle border border-line rounded-lg px-3 py-2 text-ink text-sm focus:outline-none focus:border-accent/50"
                   />
                 </div>
                 <div>
-                  <label className="block text-white/40 text-xs uppercase tracking-wide mb-1">Nom de la cartera</label>
+                  <label className="block text-ink-muted text-xs font-medium mb-1">Nom de la cartera</label>
                   <input
                     type="text"
                     value={convertForm.portfolioName}
                     onChange={e => setConvertForm(p => ({ ...p, portfolioName: e.target.value }))}
-                    className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#c9a84c]/50"
+                    className="w-full bg-subtle border border-line rounded-lg px-3 py-2 text-ink text-sm focus:outline-none focus:border-accent/50"
                   />
                 </div>
                 <div className="flex gap-3 pt-2">
                   <button
                     type="submit"
                     disabled={converting}
-                    className="flex-1 py-2.5 bg-[#c9a84c] hover:bg-[#b8963f] disabled:opacity-50 text-[#0d1f1a] font-bold text-sm rounded-lg transition-all">
+                    className="flex-1 py-2.5 bg-accent hover:bg-accent-hover disabled:opacity-50 text-accent-ink font-bold text-sm rounded-lg transition-all">
                     {converting ? 'Creant client...' : 'Crear client'}
                   </button>
                   <button
                     type="button"
                     onClick={() => setConvertLead(null)}
-                    className="px-4 py-2.5 text-white/40 hover:text-white text-sm transition-colors">
+                    className="px-4 py-2.5 text-ink-muted hover:text-ink text-sm transition-colors">
                     Cancel·lar
                   </button>
                 </div>

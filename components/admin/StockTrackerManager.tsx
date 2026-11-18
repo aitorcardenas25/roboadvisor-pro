@@ -64,7 +64,7 @@ export default function StockTrackerManager() {
     if (res.ok) { notify(`Senyal: ${SIGNAL_META[signal].label}`); fetchStocks(); }
   };
 
-  const inp = 'w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#c9a84c]/50';
+  const inp = 'w-full bg-subtle border border-line rounded-lg px-3 py-2 text-ink text-sm focus:outline-none focus:border-accent/50';
   const ta  = inp + ' resize-y';
 
   return (
@@ -72,56 +72,56 @@ export default function StockTrackerManager() {
       {/* Header */}
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div>
-          <h2 className="text-white font-bold text-xl">Seguiment d'Accions</h2>
-          <p className="text-white/40 text-sm">{stocks.filter(s => s.active).length} actives · {stocks.length} total</p>
+          <h2 className="text-ink font-bold text-xl">Seguiment d'Accions</h2>
+          <p className="text-ink-muted text-sm">{stocks.filter(s => s.active).length} actives · {stocks.length} total</p>
         </div>
         <div className="flex items-center gap-3">
-          {feedback && <span className="text-[#c9a84c] text-sm">{feedback}</span>}
-          <button onClick={openCreate} className="bg-[#c9a84c] hover:bg-[#b8973b] text-[#0d1f1a] font-bold text-sm px-4 py-2 rounded-lg transition-colors">
+          {feedback && <span className="text-accent text-sm">{feedback}</span>}
+          <button onClick={openCreate} className="bg-accent hover:bg-accent-hover text-accent-ink font-bold text-sm px-4 py-2 rounded-lg transition-colors">
             + Nova acció
           </button>
         </div>
       </div>
 
       {/* Disclaimer */}
-      <div className="bg-yellow-400/5 border border-yellow-400/20 rounded-xl px-4 py-3">
-        <p className="text-yellow-400/70 text-xs">⚠️ Les senyals configurades aquí es mostraran als usuaris com a informació orientativa, no com a recomanació d'inversió.</p>
+      <div className="bg-warning/5 border border-warning/20 rounded-lg px-4 py-3">
+        <p className="text-warning/70 text-xs">Les senyals configurades aquí es mostraran als usuaris com a informació orientativa, no com a recomanació d'inversió.</p>
       </div>
 
       {/* Form */}
       {showForm && (
-        <form onSubmit={handleSubmit} className="bg-white/5 border border-white/10 rounded-xl p-6 space-y-4">
-          <h3 className="text-white font-semibold">{editing ? `Editar ${editing.symbol}` : 'Nova acció'}</h3>
+        <form onSubmit={handleSubmit} className="bg-subtle border border-line rounded-lg p-6 space-y-4">
+          <h3 className="text-ink font-semibold">{editing ? `Editar ${editing.symbol}` : 'Nova acció'}</h3>
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
             <div>
-              <label className="block text-white/50 text-xs uppercase tracking-widest mb-1">Ticker/Symbol *</label>
+              <label className="block text-ink-soft text-xs font-medium mb-1">Ticker/Symbol *</label>
               <input required value={form.symbol} onChange={e => setForm(p => ({ ...p, symbol: e.target.value.toUpperCase() }))}
                 placeholder="AAPL" className={inp} />
             </div>
             <div className="sm:col-span-2">
-              <label className="block text-white/50 text-xs uppercase tracking-widest mb-1">Nom complet *</label>
+              <label className="block text-ink-soft text-xs font-medium mb-1">Nom complet *</label>
               <input required value={form.name} onChange={e => setForm(p => ({ ...p, name: e.target.value }))} className={inp} />
             </div>
             <div>
-              <label className="block text-white/50 text-xs uppercase tracking-widest mb-1">Sector</label>
+              <label className="block text-ink-soft text-xs font-medium mb-1">Sector</label>
               <input value={form.sector} onChange={e => setForm(p => ({ ...p, sector: e.target.value }))} className={inp} />
             </div>
             <div>
-              <label className="block text-white/50 text-xs uppercase tracking-widest mb-1">Regió</label>
+              <label className="block text-ink-soft text-xs font-medium mb-1">Regió</label>
               <input value={form.region} onChange={e => setForm(p => ({ ...p, region: e.target.value }))} className={inp} />
             </div>
             <div>
-              <label className="block text-white/50 text-xs uppercase tracking-widest mb-1">Divisa</label>
+              <label className="block text-ink-soft text-xs font-medium mb-1">Divisa</label>
               <input value={form.currency} onChange={e => setForm(p => ({ ...p, currency: e.target.value.toUpperCase() }))} className={inp} />
             </div>
             <div className="sm:col-span-3">
-              <label className="block text-white/50 text-xs uppercase tracking-widest mb-1">Senyal</label>
+              <label className="block text-ink-soft text-xs font-medium mb-1">Senyal</label>
               <div className="flex gap-2 flex-wrap">
                 {SIGNALS.map(sig => {
                   const m = SIGNAL_META[sig];
                   return (
                     <button key={sig} type="button" onClick={() => setForm(p => ({ ...p, signal: sig }))}
-                      className={`px-3 py-1.5 rounded-lg text-xs font-medium border transition-all ${form.signal === sig ? 'border-transparent' : 'border-white/10 text-white/50'}`}
+                      className={`px-3 py-1.5 rounded-lg text-xs font-medium border transition-all ${form.signal === sig ? 'border-transparent' : 'border-line text-ink-soft'}`}
                       style={form.signal === sig ? { backgroundColor: m.color + '30', color: m.color, borderColor: m.color + '50' } : {}}>
                       {m.icon} {m.label}
                     </button>
@@ -130,25 +130,25 @@ export default function StockTrackerManager() {
               </div>
             </div>
             <div className="sm:col-span-3">
-              <label className="block text-white/50 text-xs uppercase tracking-widest mb-1">Nota de senyal</label>
+              <label className="block text-ink-soft text-xs font-medium mb-1">Nota de senyal</label>
               <textarea rows={2} value={form.signalNote} onChange={e => setForm(p => ({ ...p, signalNote: e.target.value }))} className={ta} />
             </div>
             <div className="sm:col-span-3">
-              <label className="block text-white/50 text-xs uppercase tracking-widest mb-1">Anàlisi fonamental</label>
+              <label className="block text-ink-soft text-xs font-medium mb-1">Anàlisi fonamental</label>
               <textarea rows={3} value={form.fundamentalNote} onChange={e => setForm(p => ({ ...p, fundamentalNote: e.target.value }))} className={ta} />
             </div>
             <div className="sm:col-span-3">
-              <label className="block text-white/50 text-xs uppercase tracking-widest mb-1">Anàlisi tècnica</label>
+              <label className="block text-ink-soft text-xs font-medium mb-1">Anàlisi tècnica</label>
               <textarea rows={3} value={form.technicalNote} onChange={e => setForm(p => ({ ...p, technicalNote: e.target.value }))} className={ta} />
             </div>
             <div className="flex items-center gap-2">
-              <input type="checkbox" id="active" checked={form.active} onChange={e => setForm(p => ({ ...p, active: e.target.checked }))} className="w-4 h-4 accent-[#c9a84c]" />
-              <label htmlFor="active" className="text-white/60 text-sm">Visible al públic</label>
+              <input type="checkbox" id="active" checked={form.active} onChange={e => setForm(p => ({ ...p, active: e.target.checked }))} className="w-4 h-4 accent-accent" />
+              <label htmlFor="active" className="text-ink-soft text-sm">Visible al públic</label>
             </div>
           </div>
           <div className="flex gap-3">
-            <button type="button" onClick={() => setShowForm(false)} className="px-4 py-2 bg-white/10 hover:bg-white/20 text-white text-sm rounded-lg transition-colors">Cancel·lar</button>
-            <button type="submit" disabled={loading} className="px-6 py-2 bg-[#c9a84c] hover:bg-[#b8973b] disabled:opacity-50 text-[#0d1f1a] font-bold text-sm rounded-lg transition-colors">
+            <button type="button" onClick={() => setShowForm(false)} className="px-4 py-2 bg-subtle-strong hover:bg-subtle-strong text-ink text-sm rounded-lg transition-colors">Cancel·lar</button>
+            <button type="submit" disabled={loading} className="px-6 py-2 bg-accent hover:bg-accent-hover disabled:opacity-50 text-accent-ink font-bold text-sm rounded-lg transition-colors">
               {loading ? 'Desant...' : editing ? 'Desar' : 'Crear'}
             </button>
           </div>
@@ -157,20 +157,20 @@ export default function StockTrackerManager() {
 
       {/* Stock list */}
       <div className="space-y-3">
-        {stocks.length === 0 && <p className="text-white/30 text-sm text-center py-8">Cap acció afegida.</p>}
+        {stocks.length === 0 && <p className="text-ink-muted text-sm text-center py-8">Cap acció afegida.</p>}
         {stocks.map(s => {
           const m = SIGNAL_META[s.signal];
           return (
-            <div key={s.id} className="bg-white/5 border border-white/10 rounded-xl p-4">
+            <div key={s.id} className="bg-subtle border border-line rounded-lg p-4">
               <div className="flex items-start justify-between gap-4 flex-wrap">
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 mb-1 flex-wrap">
-                    <span className="text-white font-bold">{s.symbol}</span>
+                    <span className="text-ink font-bold">{s.symbol}</span>
                     <span className="text-xs px-2 py-0.5 rounded-full font-medium" style={{ color: m.color, backgroundColor: m.color + '20' }}>{m.icon} {m.label}</span>
-                    {!s.active && <span className="text-xs text-white/30 bg-white/5 px-2 py-0.5 rounded-full">Ocult</span>}
+                    {!s.active && <span className="text-xs text-ink-muted bg-subtle px-2 py-0.5 rounded-full">Ocult</span>}
                   </div>
-                  <p className="text-white/50 text-sm truncate">{s.name}</p>
-                  <p className="text-white/30 text-xs">{s.sector} · {s.region} · {s.updatedAt}</p>
+                  <p className="text-ink-soft text-sm truncate">{s.name}</p>
+                  <p className="text-ink-muted text-xs">{s.sector} · {s.region} · {s.updatedAt}</p>
                 </div>
                 <div className="flex items-center gap-1 flex-shrink-0 flex-wrap">
                   {/* Canvi ràpid de senyal */}
@@ -178,17 +178,17 @@ export default function StockTrackerManager() {
                     const sm = SIGNAL_META[sig];
                     return (
                       <button key={sig} onClick={() => handleSignal(s.id, sig)}
-                        className="text-xs px-2 py-1 rounded-lg border border-white/10 hover:bg-white/10 transition-colors"
+                        className="text-xs px-2 py-1 rounded-lg border border-line hover:bg-subtle-strong transition-colors"
                         style={{ color: sm.color }} title={sm.label}>
                         {sm.icon}
                       </button>
                     );
                   })}
-                  <button onClick={() => openEdit(s)} className="text-xs px-3 py-1.5 bg-white/10 hover:bg-white/20 text-white rounded-lg transition-colors">Editar</button>
-                  <button onClick={() => handleDelete(s.id)} className="text-xs px-3 py-1.5 bg-red-500/20 hover:bg-red-500/30 text-red-400 rounded-lg transition-colors">Eliminar</button>
+                  <button onClick={() => openEdit(s)} className="text-xs px-3 py-1.5 bg-subtle-strong hover:bg-subtle-strong text-ink rounded-lg transition-colors">Editar</button>
+                  <button onClick={() => handleDelete(s.id)} className="text-xs px-3 py-1.5 bg-negative/20 hover:bg-negative/30 text-negative rounded-lg transition-colors">Eliminar</button>
                 </div>
               </div>
-              {s.signalNote && <p className="text-white/40 text-xs mt-2 line-clamp-2 leading-relaxed">{s.signalNote}</p>}
+              {s.signalNote && <p className="text-ink-muted text-xs mt-2 line-clamp-2 leading-relaxed">{s.signalNote}</p>}
             </div>
           );
         })}

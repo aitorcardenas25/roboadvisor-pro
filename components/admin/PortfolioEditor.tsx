@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useCallback } from 'react';
 import {
   LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip as ReTT, ResponsiveContainer,
 } from 'recharts';
@@ -25,10 +25,10 @@ const OP_META: Record<OperationType, { label: string; color: string; bg: string 
   rebalance:  { label: 'Rebalanceig', color: '#a78bfa', bg: 'rgba(167,139,250,0.15)' },
 };
 
-const INPUT  = 'w-full bg-[#0a0f0d] border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#c9a84c]/40 placeholder-white/20';
-const LABEL  = 'block text-white/40 text-xs uppercase tracking-wide mb-1';
-const BTN_GOLD  = 'px-4 py-2 bg-[#c9a84c] hover:bg-[#b8963f] text-[#0d1f1a] font-bold text-sm rounded-lg disabled:opacity-50 transition-colors';
-const BTN_GHOST = 'px-3 py-1.5 bg-white/5 hover:bg-white/10 text-white/50 hover:text-white text-xs rounded-lg transition-colors';
+const INPUT  = 'w-full bg-canvas border border-line rounded-lg px-3 py-2 text-ink text-sm focus:outline-none focus:border-accent/40 placeholder-ink-muted';
+const LABEL  = 'block text-ink-muted text-xs font-medium mb-1';
+const BTN_GOLD  = 'px-4 py-2 bg-accent hover:bg-accent-hover text-accent-ink font-bold text-sm rounded-lg disabled:opacity-50 transition-colors';
+const BTN_GHOST = 'px-3 py-1.5 bg-subtle hover:bg-subtle-strong text-ink-soft hover:text-ink text-xs rounded-lg transition-colors';
 
 function patchPortfolio(id: string, body: Record<string, unknown>): Promise<Response> {
   return fetch(`/api/admin/client-portfolios/${id}`, {
@@ -40,7 +40,7 @@ function patchPortfolio(id: string, body: Record<string, unknown>): Promise<Resp
 
 // ─── Alerts ───────────────────────────────────────────────────────────────────
 
-function AlertsBar({ portfolios }: { portfolios: ClientPortfolio[] }) {
+export function AlertsBar({ portfolios }: { portfolios: ClientPortfolio[] }) {
   const today     = new Date().toISOString().split('T')[0];
   const thirtyAgo = new Date(Date.now() - 30 * 86_400_000).toISOString().split('T')[0];
 
@@ -56,18 +56,18 @@ function AlertsBar({ portfolios }: { portfolios: ClientPortfolio[] }) {
   return (
     <div className="mb-6 space-y-2">
       {stale.length > 0 && (
-        <div className="bg-amber-500/10 border border-amber-500/20 rounded-xl p-4">
-          <p className="text-amber-400 text-sm font-semibold mb-1">⚠ Preus sense actualitzar (+30 dies)</p>
-          <p className="text-amber-400/70 text-xs">
+        <div className="bg-warning/10 border border-warning/20 rounded-lg p-4">
+          <p className="text-warning text-sm font-semibold mb-1">⚠ Preus sense actualitzar (+30 dies)</p>
+          <p className="text-warning/70 text-xs">
             {stale.slice(0, 5).map(s => `${s.name} (${s.client})`).join(' · ')}
             {stale.length > 5 ? ` i ${stale.length - 5} més` : ''}
           </p>
         </div>
       )}
       {noFollowup.length > 0 && (
-        <div className="bg-blue-500/10 border border-blue-500/20 rounded-xl p-4">
-          <p className="text-blue-400 text-sm font-semibold mb-1">📅 Clients sense proper seguiment definit</p>
-          <p className="text-blue-400/70 text-xs">
+        <div className="bg-info/10 border border-info/20 rounded-lg p-4">
+          <p className="text-info text-sm font-semibold mb-1">Clients sense proper seguiment definit</p>
+          <p className="text-info/70 text-xs">
             {noFollowup.slice(0, 5).map(p => p.clientName).join(' · ')}
             {noFollowup.length > 5 ? ` i ${noFollowup.length - 5} més` : ''}
           </p>
@@ -77,55 +77,12 @@ function AlertsBar({ portfolios }: { portfolios: ClientPortfolio[] }) {
   );
 }
 
-// ─── Create form ──────────────────────────────────────────────────────────────
-
-function CreateForm({ onCreate }: { onCreate: () => void }) {
-  const [form, setForm]     = useState({ clientId: '', clientName: '', name: '', description: '' });
-  const [saving, setSaving] = useState(false);
-
-  async function submit(e: React.FormEvent) {
-    e.preventDefault(); setSaving(true);
-    await fetch('/api/admin/client-portfolios', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(form),
-    });
-    setSaving(false); onCreate();
-    setForm({ clientId: '', clientName: '', name: '', description: '' });
-  }
-
-  return (
-    <form onSubmit={submit} className="bg-[#0d1f1a] border border-white/10 rounded-xl p-5 mb-6">
-      <h3 className="text-white font-semibold text-sm mb-4">Nova cartera client</h3>
-      <div className="grid grid-cols-2 gap-3 mb-3">
-        <div>
-          <label className={LABEL}>ID Client (username) *</label>
-          <input required value={form.clientId} onChange={e => setForm(p => ({ ...p, clientId: e.target.value }))} placeholder="joan_garcia" className={INPUT} />
-        </div>
-        <div>
-          <label className={LABEL}>Nom Client *</label>
-          <input required value={form.clientName} onChange={e => setForm(p => ({ ...p, clientName: e.target.value }))} placeholder="Joan García" className={INPUT} />
-        </div>
-      </div>
-      <div className="mb-3">
-        <label className={LABEL}>Nom de la cartera *</label>
-        <input required value={form.name} onChange={e => setForm(p => ({ ...p, name: e.target.value }))} placeholder="Cartera principal" className={INPUT} />
-      </div>
-      <div className="mb-4">
-        <label className={LABEL}>Descripció</label>
-        <input value={form.description} onChange={e => setForm(p => ({ ...p, description: e.target.value }))} placeholder="Cartera de jubilació..." className={INPUT} />
-      </div>
-      <button type="submit" disabled={saving} className={BTN_GOLD}>{saving ? 'Creant...' : '+ Crear cartera'}</button>
-    </form>
-  );
-}
-
 // ─── Holdings tab ─────────────────────────────────────────────────────────────
 
 const PRICE_SOURCE_BADGE: Record<string, { label: string; cls: string }> = {
-  fmp:     { label: 'FMP',     cls: 'text-emerald-400/70' },
-  manual:  { label: 'Manual',  cls: 'text-amber-400/70'   },
-  pending: { label: 'Pendent', cls: 'text-white/25'        },
+  fmp:     { label: 'FMP',     cls: 'text-positive/70' },
+  manual:  { label: 'Manual',  cls: 'text-warning/70'   },
+  pending: { label: 'Pendent', cls: 'text-ink-muted'        },
 };
 
 function HoldingsTab({ portfolio, reload }: { portfolio: ClientPortfolio; reload: () => void }) {
@@ -250,7 +207,7 @@ function HoldingsTab({ portfolio, reload }: { portfolio: ClientPortfolio; reload
       {portfolio.holdings.length > 0 && (
         <>
           <div className="flex items-center justify-between">
-            <span className="text-white/40 text-xs">{activeHoldings.length} posicions actives{pendingHoldings.length > 0 ? ` · ${pendingHoldings.length} proposades` : ''}</span>
+            <span className="text-ink-muted text-xs">{activeHoldings.length} posicions actives{pendingHoldings.length > 0 ? ` · ${pendingHoldings.length} proposades` : ''}</span>
             {hasSymbols && (
               <button onClick={refreshAllPrices} disabled={refreshing} className={BTN_GHOST}>
                 {refreshing ? '↻ Actualitzant...' : '↻ Actualitzar tots els preus'}
@@ -263,13 +220,13 @@ function HoldingsTab({ portfolio, reload }: { portfolio: ClientPortfolio; reload
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead>
-                  <tr className="text-white/30 text-xs uppercase tracking-wide border-b border-white/5">
+                  <tr className="text-ink-muted text-xs font-medium border-b border-line">
                     {['Actiu', 'Qttat', 'P.Compra', 'P.Actual', 'Valor', 'P&L', 'Pes', 'Actualitzat', ''].map(h => (
                       <th key={h} className={`pb-2 font-medium ${h === 'Actiu' ? 'text-left' : 'text-right'}`}>{h}</th>
                     ))}
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-white/5">
+                <tbody className="divide-y divide-line">
                   {activeHoldings.map(h => {
                     const val      = h.currentPrice * h.quantity;
                     const cost     = h.avgEntryPrice * h.quantity;
@@ -280,11 +237,11 @@ function HoldingsTab({ portfolio, reload }: { portfolio: ClientPortfolio; reload
                     return (
                       <tr key={h.id}>
                         <td className="py-2.5 pr-4">
-                          <div className="text-white text-xs font-medium">{h.assetName}</div>
-                          <div className="text-white/30 text-xs">{h.assetSymbol || h.assetIsin || h.assetCategory}</div>
+                          <div className="text-ink text-xs font-medium">{h.assetName}</div>
+                          <div className="text-ink-muted text-xs">{h.assetSymbol || h.assetIsin || h.assetCategory}</div>
                         </td>
-                        <td className="py-2.5 text-right text-white/60 text-xs">{h.quantity}</td>
-                        <td className="py-2.5 text-right text-white/60 text-xs">{fEur(h.avgEntryPrice)}</td>
+                        <td className="py-2.5 text-right text-ink-soft text-xs">{h.quantity}</td>
+                        <td className="py-2.5 text-right text-ink-soft text-xs">{fEur(h.avgEntryPrice)}</td>
                         <td className="py-2.5 text-right text-xs">
                           {editPrice?.id === h.id ? (
                             <div className="flex items-center gap-1 justify-end">
@@ -292,32 +249,32 @@ function HoldingsTab({ portfolio, reload }: { portfolio: ClientPortfolio; reload
                                 type="number" step="0.01"
                                 value={editPrice.value}
                                 onChange={e => setEditPrice({ id: h.id, value: e.target.value })}
-                                className="w-20 bg-[#0a0f0d] border border-[#c9a84c]/40 rounded px-2 py-1 text-white text-xs"
+                                className="w-20 bg-canvas border border-accent/40 rounded px-2 py-1 text-ink text-xs"
                               />
-                              <button onClick={() => savePrice(h.id)} className="text-[#c9a84c] text-xs hover:underline">✓</button>
-                              <button onClick={() => setEditPrice(null)} className="text-white/30 text-xs hover:text-white">✕</button>
+                              <button onClick={() => savePrice(h.id)} className="text-accent text-xs hover:underline">✓</button>
+                              <button onClick={() => setEditPrice(null)} className="text-ink-muted text-xs hover:text-ink">✕</button>
                             </div>
                           ) : (
                             <div className="flex items-center gap-1 justify-end">
                               <button onClick={() => setEditPrice({ id: h.id, value: String(h.currentPrice) })}
-                                className="text-white hover:text-[#c9a84c] transition-colors" title="Clic per editar manualment">
+                                className="text-ink hover:text-accent transition-colors" title="Clic per editar manualment">
                                 {fEur(h.currentPrice)}
                               </button>
                               <span className={`text-xs ${srcBadge.cls}`}>{srcBadge.label}</span>
                               {h.assetSymbol && (
-                                <button onClick={() => refreshSinglePrice(h)} title="Actualitzar preu" className="text-white/20 hover:text-[#c9a84c] text-xs transition-colors">↻</button>
+                                <button onClick={() => refreshSinglePrice(h)} title="Actualitzar preu" className="text-ink-muted hover:text-accent text-xs transition-colors">↻</button>
                               )}
                             </div>
                           )}
                         </td>
-                        <td className="py-2.5 text-right text-white text-xs font-medium">{fEur(val)}</td>
-                        <td className={`py-2.5 text-right text-xs font-medium ${pnl >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
+                        <td className="py-2.5 text-right text-ink text-xs font-medium">{fEur(val)}</td>
+                        <td className={`py-2.5 text-right text-xs font-medium ${pnl >= 0 ? 'text-positive' : 'text-negative'}`}>
                           {fEur(pnl)} <span className="opacity-70">({fPct(pnlPct)})</span>
                         </td>
-                        <td className="py-2.5 text-right text-white/40 text-xs">{weight.toFixed(1)}%</td>
-                        <td className="py-2.5 text-right text-white/30 text-xs">{h.priceLastUpdated || '—'}</td>
+                        <td className="py-2.5 text-right text-ink-muted text-xs">{weight.toFixed(1)}%</td>
+                        <td className="py-2.5 text-right text-ink-muted text-xs">{h.priceLastUpdated || '—'}</td>
                         <td className="py-2.5 pl-2">
-                          <button onClick={() => removeH(h.id)} className="text-white/20 hover:text-red-400 transition-colors text-xs">✕</button>
+                          <button onClick={() => removeH(h.id)} className="text-ink-muted hover:text-negative transition-colors text-xs">✕</button>
                         </td>
                       </tr>
                     );
@@ -330,17 +287,17 @@ function HoldingsTab({ portfolio, reload }: { portfolio: ClientPortfolio; reload
           {/* Proposed (pending) holdings */}
           {pendingHoldings.length > 0 && (
             <div>
-              <p className="text-white/30 text-xs uppercase tracking-wide mb-2">Propostes de cartera (pendents de compra)</p>
+              <p className="text-ink-muted text-xs font-medium mb-2">Propostes de cartera (pendents de compra)</p>
               <div className="space-y-1.5">
                 {pendingHoldings.map(h => (
-                  <div key={h.id} className="flex items-center justify-between bg-white/[0.02] border border-white/5 rounded-lg px-4 py-2.5 opacity-60">
+                  <div key={h.id} className="flex items-center justify-between bg-subtle border border-line rounded-lg px-4 py-2.5 opacity-60">
                     <div>
-                      <span className="text-white text-xs font-medium">{h.assetName}</span>
-                      {h.assetSymbol && <span className="text-white/30 text-xs ml-1.5">({h.assetSymbol})</span>}
-                      <span className="text-white/20 text-xs ml-2">{h.assetCategory}</span>
-                      {h.notes && <span className="text-[#c9a84c]/50 text-xs ml-2">{h.notes.split('·')[0]?.trim()}</span>}
+                      <span className="text-ink text-xs font-medium">{h.assetName}</span>
+                      {h.assetSymbol && <span className="text-ink-muted text-xs ml-1.5">({h.assetSymbol})</span>}
+                      <span className="text-ink-muted text-xs ml-2">{h.assetCategory}</span>
+                      {h.notes && <span className="text-accent/50 text-xs ml-2">{h.notes.split('·')[0]?.trim()}</span>}
                     </div>
-                    <button onClick={() => removeH(h.id)} className="text-white/20 hover:text-red-400 transition-colors text-xs ml-4">✕</button>
+                    <button onClick={() => removeH(h.id)} className="text-ink-muted hover:text-negative transition-colors text-xs ml-4">✕</button>
                   </div>
                 ))}
               </div>
@@ -350,9 +307,9 @@ function HoldingsTab({ portfolio, reload }: { portfolio: ClientPortfolio; reload
       )}
 
       <details className="group">
-        <summary className="cursor-pointer text-[#c9a84c]/70 text-xs hover:text-[#c9a84c] transition-colors select-none">+ Registrar compra real</summary>
-        <form onSubmit={addHolding} className="mt-3 bg-[#080e0b] border border-white/5 rounded-xl p-4 space-y-3">
-          <p className="text-white/30 text-xs">Introdueix les dades reals de la compra. El preu actual s&apos;obtindrà automàticament via API.</p>
+        <summary className="cursor-pointer text-accent/70 text-xs hover:text-accent transition-colors select-none">+ Registrar compra real</summary>
+        <form onSubmit={addHolding} className="mt-3 bg-canvas border border-line rounded-lg p-4 space-y-3">
+          <p className="text-ink-muted text-xs">Introdueix les dades reals de la compra. El preu actual s&apos;obtindrà automàticament via API.</p>
           <div className="grid grid-cols-2 gap-3">
             <div><label className={LABEL}>Nom actiu *</label><input required value={form.assetName} onChange={e => setForm(p => ({ ...p, assetName: e.target.value }))} placeholder="iShares MSCI World" className={INPUT} /></div>
             <div><label className={LABEL}>ISIN</label><input value={form.assetIsin} onChange={e => setForm(p => ({ ...p, assetIsin: e.target.value }))} placeholder="IE00B4L5Y983" className={INPUT} /></div>
@@ -376,10 +333,10 @@ function HoldingsTab({ portfolio, reload }: { portfolio: ClientPortfolio; reload
           {(fetchingPrice || priceMsg) && (
             <div className={`text-xs px-3 py-2 rounded-lg border ${
               fetchedPrice
-                ? 'text-emerald-400 bg-emerald-500/10 border-emerald-500/20'
+                ? 'text-positive bg-positive/10 border-positive/20'
                 : priceMsg.includes('manualment')
-                  ? 'text-amber-400 bg-amber-500/10 border-amber-500/20'
-                  : 'text-white/40 bg-white/5 border-white/10'
+                  ? 'text-warning bg-warning/10 border-warning/20'
+                  : 'text-ink-muted bg-subtle border-line'
             }`}>
               {fetchingPrice ? '↻ Buscant preu actual...' : priceMsg}
             </div>
@@ -413,7 +370,7 @@ function HoldingsTab({ portfolio, reload }: { portfolio: ClientPortfolio; reload
             <div><label className={LABEL}>Notes</label><input value={form.notes} onChange={e => setForm(p => ({ ...p, notes: e.target.value }))} className={INPUT} /></div>
           </div>
           {form.quantity && form.avgEntryPrice && (
-            <p className="text-white/30 text-xs">
+            <p className="text-ink-muted text-xs">
               Import total: {fEur(parseFloat(form.quantity) * parseFloat(form.avgEntryPrice) || 0)}
               {form.commission ? ` + ${form.commission} € comissió` : ''}
             </p>
@@ -471,7 +428,7 @@ function TransactionsTab({ portfolio, reload }: { portfolio: ClientPortfolio; re
       </div>
 
       {show && (
-        <form onSubmit={addTx} className="bg-[#080e0b] border border-white/5 rounded-xl p-4 space-y-3">
+        <form onSubmit={addTx} className="bg-canvas border border-line rounded-lg p-4 space-y-3">
           <div className="grid grid-cols-3 gap-3">
             <div><label className={LABEL}>Tipus *</label>
               <select value={form.operationType} onChange={e => setForm(p => ({ ...p, operationType: e.target.value as OperationType }))} className={INPUT}>
@@ -499,22 +456,22 @@ function TransactionsTab({ portfolio, reload }: { portfolio: ClientPortfolio; re
       )}
 
       {sorted.length === 0 ? (
-        <p className="text-white/30 text-sm text-center py-10">Sense transaccions registrades.</p>
+        <p className="text-ink-muted text-sm text-center py-10">Sense transaccions registrades.</p>
       ) : (
         <div className="space-y-2">
           {sorted.map((tx: ClientTransaction) => {
             const meta = OP_META[tx.operationType];
             return (
-              <div key={tx.id} className="bg-[#0d1f1a] border border-white/5 rounded-xl p-4 flex items-center justify-between gap-4">
+              <div key={tx.id} className="bg-surface border border-line rounded-lg p-4 flex items-center justify-between gap-4">
                 <div className="flex items-center gap-3">
                   <span className="text-xs px-2 py-0.5 rounded-full font-medium flex-shrink-0"
                     style={{ color: meta.color, backgroundColor: meta.bg }}>{meta.label}</span>
                   <div>
-                    <div className="text-white text-sm">
+                    <div className="text-ink text-sm">
                       {tx.assetName || tx.ticker || '—'}
-                      {tx.ticker && tx.assetName && <span className="text-white/30 text-xs ml-1">({tx.ticker})</span>}
+                      {tx.ticker && tx.assetName && <span className="text-ink-muted text-xs ml-1">({tx.ticker})</span>}
                     </div>
-                    <div className="text-white/30 text-xs">
+                    <div className="text-ink-muted text-xs">
                       {tx.date} · {tx.broker || 'Broker no especificat'}
                       {tx.commission > 0 ? ` · Comissió: ${fEur(tx.commission)}` : ''}
                     </div>
@@ -522,10 +479,10 @@ function TransactionsTab({ portfolio, reload }: { portfolio: ClientPortfolio; re
                 </div>
                 <div className="flex items-center gap-4">
                   <div className="text-right">
-                    <div className="text-white font-medium text-sm">{fEur(tx.totalEur)}</div>
-                    {tx.quantity > 0 && <div className="text-white/30 text-xs">{tx.quantity} × {fEur(tx.priceEur)}</div>}
+                    <div className="text-ink font-medium text-sm">{fEur(tx.totalEur)}</div>
+                    {tx.quantity > 0 && <div className="text-ink-muted text-xs">{tx.quantity} × {fEur(tx.priceEur)}</div>}
                   </div>
-                  <button onClick={() => removeTx(tx.id)} className="text-white/20 hover:text-red-400 text-xs transition-colors">✕</button>
+                  <button onClick={() => removeTx(tx.id)} className="text-ink-muted hover:text-negative text-xs transition-colors">✕</button>
                 </div>
               </div>
             );
@@ -567,8 +524,8 @@ function SnapshotsTab({ portfolio, reload }: { portfolio: ClientPortfolio; reloa
 
   return (
     <div className="space-y-5">
-      <div className="bg-[#080e0b] border border-white/5 rounded-xl p-4">
-        <p className="text-white/40 text-xs mb-3">Registra el valor total de la cartera en una data concreta per construir l&apos;historial real d&apos;evolució.</p>
+      <div className="bg-canvas border border-line rounded-lg p-4">
+        <p className="text-ink-muted text-xs mb-3">Registra el valor total de la cartera en una data concreta per construir l&apos;historial real d&apos;evolució.</p>
         <form onSubmit={addSnap}>
           <div className="grid grid-cols-3 gap-3 mb-3">
             <div><label className={LABEL}>Data *</label><input required type="date" value={form.date} onChange={e => setForm(p => ({ ...p, date: e.target.value }))} className={INPUT} /></div>
@@ -580,37 +537,37 @@ function SnapshotsTab({ portfolio, reload }: { portfolio: ClientPortfolio; reloa
       </div>
 
       {chartData.length >= 2 && (
-        <div className="bg-[#0d1f1a] border border-white/10 rounded-xl p-4">
-          <p className="text-white/40 text-xs mb-3">Evolució del valor (basada en snapshots manuals)</p>
+        <div className="bg-surface border border-line rounded-lg p-4">
+          <p className="text-ink-muted text-xs mb-3">Evolució del valor (basada en snapshots manuals)</p>
           <ResponsiveContainer width="100%" height={200}>
             <LineChart data={chartData} margin={{ top: 4, right: 8, left: 0, bottom: 4 }}>
-              <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
-              <XAxis dataKey="date" tick={{ fill: 'rgba(255,255,255,0.3)', fontSize: 10 }} />
-              <YAxis tick={{ fill: 'rgba(255,255,255,0.3)', fontSize: 10 }} tickFormatter={(v: number) => `${(v / 1000).toFixed(0)}K`} />
+              <CartesianGrid strokeDasharray="3 3" stroke="#e4e8e6" />
+              <XAxis dataKey="date" tick={{ fill: '#5f6b67', fontSize: 10 }} />
+              <YAxis tick={{ fill: '#5f6b67', fontSize: 10 }} tickFormatter={(v: number) => `${(v / 1000).toFixed(0)}K`} />
               <ReTT
                 formatter={(v: number) => [fEur(v), 'Valor']}
-                contentStyle={{ background: '#0d1f1a', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 8 }}
-                labelStyle={{ color: 'rgba(255,255,255,0.5)' }}
-                itemStyle={{ color: '#c9a84c' }}
+                contentStyle={{ background: 'rgb(var(--c-surface))', border: '1px solid rgb(var(--c-line))', borderRadius: 8 }}
+                labelStyle={{ color: 'rgb(var(--c-ink-soft))' }}
+                itemStyle={{ color: 'rgb(var(--c-accent))' }}
               />
-              <Line type="monotone" dataKey="valor" stroke="#c9a84c" strokeWidth={2} dot={{ r: 3, fill: '#c9a84c' }} />
+              <Line type="monotone" dataKey="valor" stroke="#1e5a47" strokeWidth={2} dot={{ r: 3, fill: '#1e5a47' }} />
             </LineChart>
           </ResponsiveContainer>
         </div>
       )}
 
       {portfolio.snapshots.length === 0 ? (
-        <p className="text-white/30 text-sm text-center py-6">Sense snapshots. Crea el primer per iniciar l&apos;historial.</p>
+        <p className="text-ink-muted text-sm text-center py-6">Sense snapshots. Crea el primer per iniciar l&apos;historial.</p>
       ) : (
         <div className="space-y-2">
           {[...portfolio.snapshots].sort((a, b) => b.date.localeCompare(a.date)).map((s: PortfolioSnapshot) => (
-            <div key={s.id} className="flex items-center justify-between bg-[#0d1f1a] border border-white/5 rounded-xl px-4 py-3">
+            <div key={s.id} className="flex items-center justify-between bg-surface border border-line rounded-lg px-4 py-3">
               <div>
-                <span className="text-white font-medium text-sm">{fEur(s.totalValue)}</span>
-                <span className="text-white/30 text-xs ml-3">{s.date}</span>
-                {s.notes && <span className="text-white/40 text-xs ml-3 italic">{s.notes}</span>}
+                <span className="text-ink font-medium text-sm">{fEur(s.totalValue)}</span>
+                <span className="text-ink-muted text-xs ml-3">{s.date}</span>
+                {s.notes && <span className="text-ink-muted text-xs ml-3 italic">{s.notes}</span>}
               </div>
-              <button onClick={() => removeSnap(s.id)} className="text-white/20 hover:text-red-400 text-xs transition-colors">✕</button>
+              <button onClick={() => removeSnap(s.id)} className="text-ink-muted hover:text-negative text-xs transition-colors">✕</button>
             </div>
           ))}
         </div>
@@ -621,7 +578,7 @@ function SnapshotsTab({ portfolio, reload }: { portfolio: ClientPortfolio; reloa
 
 // ─── Notes tab ────────────────────────────────────────────────────────────────
 
-function NotesTab({ portfolio, reload }: { portfolio: ClientPortfolio; reload: () => void }) {
+export function NotesTab({ portfolio, reload }: { portfolio: ClientPortfolio; reload: () => void }) {
   const [text, setText]       = useState('');
   const [visible, setVisible] = useState(true);
   const [saving, setSaving]   = useState(false);
@@ -649,7 +606,7 @@ function NotesTab({ portfolio, reload }: { portfolio: ClientPortfolio; reload: (
 
   return (
     <div className="space-y-4">
-      <form onSubmit={addNote} className="bg-[#080e0b] border border-white/5 rounded-xl p-4">
+      <form onSubmit={addNote} className="bg-canvas border border-line rounded-lg p-4">
         <label className={LABEL}>Nova nota</label>
         <textarea
           value={text} onChange={e => setText(e.target.value)}
@@ -658,35 +615,35 @@ function NotesTab({ portfolio, reload }: { portfolio: ClientPortfolio; reload: (
         />
         <div className="flex items-center justify-between">
           <label className="flex items-center gap-2 cursor-pointer">
-            <input type="checkbox" checked={visible} onChange={e => setVisible(e.target.checked)} className="accent-[#c9a84c]" />
-            <span className="text-white/50 text-xs">Visible pel client</span>
+            <input type="checkbox" checked={visible} onChange={e => setVisible(e.target.checked)} className="accent-accent" />
+            <span className="text-ink-soft text-xs">Visible pel client</span>
           </label>
           <button type="submit" disabled={saving || !text.trim()} className={BTN_GOLD}>{saving ? 'Guardant...' : 'Afegir nota'}</button>
         </div>
       </form>
 
       {portfolio.advisorNotes.length === 0 ? (
-        <p className="text-white/30 text-sm text-center py-10">Sense notes.</p>
+        <p className="text-ink-muted text-sm text-center py-10">Sense notes.</p>
       ) : (
         <div className="space-y-3">
           {portfolio.advisorNotes.map((note: AdvisorNote) => (
-            <div key={note.id} className="bg-[#0d1f1a] border border-white/5 rounded-xl p-4">
+            <div key={note.id} className="bg-surface border border-line rounded-lg p-4">
               <div className="flex items-start justify-between gap-3 mb-2">
                 <div className="flex items-center gap-2">
-                  <span className="text-white/30 text-xs">{note.author} · {note.createdAt.split('T')[0]}</span>
+                  <span className="text-ink-muted text-xs">{note.author} · {note.createdAt.split('T')[0]}</span>
                   <button
                     onClick={() => toggleVisibility(note)}
                     className={`text-xs px-2 py-0.5 rounded-full transition-colors ${
                       note.isVisibleToClient
-                        ? 'bg-emerald-500/15 text-emerald-400 hover:bg-emerald-500/25'
-                        : 'bg-white/5 text-white/30 hover:bg-white/10'
+                        ? 'bg-positive/15 text-positive hover:bg-positive/25'
+                        : 'bg-subtle text-ink-muted hover:bg-subtle-strong'
                     }`}>
-                    {note.isVisibleToClient ? '👁 Client' : '🔒 Intern'}
+                    {note.isVisibleToClient ? 'Client' : 'Intern'}
                   </button>
                 </div>
-                <button onClick={() => removeNote(note.id)} className="text-white/20 hover:text-red-400 text-xs transition-colors flex-shrink-0">✕</button>
+                <button onClick={() => removeNote(note.id)} className="text-ink-muted hover:text-negative text-xs transition-colors flex-shrink-0">✕</button>
               </div>
-              <p className="text-white/70 text-sm leading-relaxed">{note.text}</p>
+              <p className="text-ink-soft text-sm leading-relaxed">{note.text}</p>
             </div>
           ))}
         </div>
@@ -719,15 +676,15 @@ function MetaEditor({ portfolio, reload }: { portfolio: ClientPortfolio; reload:
   if (!editing) return (
     <div className="mb-5 flex items-start justify-between">
       <div>
-        {portfolio.description && <p className="text-white/40 text-sm mb-1">{portfolio.description}</p>}
-        {portfolio.nextFollowup && <p className="text-[#c9a84c]/60 text-xs">Proper seguiment: {portfolio.nextFollowup}</p>}
+        {portfolio.description && <p className="text-ink-muted text-sm mb-1">{portfolio.description}</p>}
+        {portfolio.nextFollowup && <p className="text-accent/60 text-xs">Proper seguiment: {portfolio.nextFollowup}</p>}
       </div>
-      <button onClick={() => setEditing(true)} className="text-white/30 hover:text-white text-xs transition-colors flex-shrink-0">Editar info</button>
+      <button onClick={() => setEditing(true)} className="text-ink-muted hover:text-ink text-xs transition-colors flex-shrink-0">Editar info</button>
     </div>
   );
 
   return (
-    <form onSubmit={save} className="mb-5 bg-[#080e0b] border border-white/5 rounded-xl p-4 space-y-3">
+    <form onSubmit={save} className="mb-5 bg-canvas border border-line rounded-lg p-4 space-y-3">
       <div className="grid grid-cols-2 gap-3">
         <div><label className={LABEL}>Nom cartera</label><input value={form.name} onChange={e => setForm(p => ({ ...p, name: e.target.value }))} className={INPUT} /></div>
         <div><label className={LABEL}>Proper seguiment</label><input type="date" value={form.nextFollowup} onChange={e => setForm(p => ({ ...p, nextFollowup: e.target.value }))} className={INPUT} /></div>
@@ -744,11 +701,16 @@ function MetaEditor({ portfolio, reload }: { portfolio: ClientPortfolio; reload:
   );
 }
 
-// ─── Detail view ─────────────────────────────────────────────────────────────
+// ─── Editor (fitxa del client) ───────────────────────────────────────────────
 
-type DetailTab = 'posicions' | 'transaccions' | 'snapshots' | 'notes';
+type DetailTab = 'posicions' | 'transaccions' | 'snapshots';
 
-function PortfolioDetail({ portfolio: initial, onBack }: { portfolio: ClientPortfolio; onBack: () => void }) {
+/**
+ * Editor de la cartera activa d'un client: posicions, moviments i evolució.
+ * Es mostra dins la fitxa del client (pestanya "Cartera"); és l'únic lloc on
+ * s'edita una cartera. Les carteres noves es creen des de la Proposta.
+ */
+export function PortfolioEditor({ portfolio: initial, onChange }: { portfolio: ClientPortfolio; onChange?: () => void }) {
   const [portfolio, setPortfolio] = useState(initial);
   const [tab, setTab]             = useState<DetailTab>('posicions');
   const [loading, setLoading]     = useState(false);
@@ -759,53 +721,34 @@ function PortfolioDetail({ portfolio: initial, onBack }: { portfolio: ClientPort
     const data = await res.json() as { portfolio: ClientPortfolio };
     if (data.portfolio) setPortfolio(data.portfolio);
     setLoading(false);
-  }, [portfolio.id]);
-
-  const metrics = computeMetrics(portfolio);
+    onChange?.();
+  }, [portfolio.id, onChange]);
 
   const TABS: { id: DetailTab; label: string }[] = [
-    { id: 'posicions',    label: `Posicions (${portfolio.holdings.length})`    },
-    { id: 'transaccions', label: `Transaccions (${portfolio.transactions.length})` },
-    { id: 'snapshots',    label: `Snapshots (${portfolio.snapshots.length})`   },
-    { id: 'notes',        label: `Notes (${portfolio.advisorNotes.length})`    },
+    { id: 'posicions',    label: `Posicions (${portfolio.holdings.filter(h => h.quantity > 0).length})` },
+    { id: 'transaccions', label: `Moviments (${portfolio.transactions.length})` },
+    { id: 'snapshots',    label: 'Evolució' },
   ];
 
   return (
     <div>
-      <button onClick={onBack} className="text-white/40 hover:text-white text-sm transition-colors mb-4">← Totes les carteres</button>
-
       <div className="flex items-start justify-between mb-2">
         <div>
-          <h2 className="text-white font-bold text-xl">{portfolio.name}</h2>
-          <p className="text-white/40 text-sm">{portfolio.clientName} · <span className="text-white/20">{portfolio.clientId}</span></p>
+          <h3 className="text-ink font-semibold">{portfolio.name}</h3>
+          <p className="text-ink-soft text-xs">{portfolio.description || 'Sense descripció'}</p>
         </div>
-        {loading && <div className="w-4 h-4 border-2 border-[#c9a84c] border-t-transparent rounded-full animate-spin" />}
+        {loading && <div className="w-4 h-4 border-2 border-accent border-t-transparent rounded-full animate-spin" />}
       </div>
 
       <MetaEditor portfolio={portfolio} reload={reload} />
 
-      <div className="grid grid-cols-4 gap-3 mb-6">
-        {[
-          { label: 'Valor actual',     value: fEur(metrics.currentValue),    colored: false },
-          { label: 'Rendibilitat (€)', value: fEur(metrics.pnlEur),          colored: true  },
-          { label: 'Rendibilitat (%)', value: fPct(metrics.pnlPct),          colored: true  },
-          { label: 'Inversió neta',    value: fEur(metrics.netContributions > 0 ? metrics.netContributions : metrics.totalInvested), colored: false },
-        ].map(k => (
-          <div key={k.label} className="bg-[#0d1f1a] border border-white/10 rounded-xl p-4">
-            <div className={`font-bold text-lg ${k.colored ? (metrics.pnlEur >= 0 ? 'text-emerald-400' : 'text-red-400') : 'text-[#c9a84c]'}`}>{k.value}</div>
-            {k.label === 'Valor actual' && metrics.lastUpdated && <div className="text-white/30 text-xs mt-0.5">Actualitzat: {metrics.lastUpdated}</div>}
-            <div className="text-white/40 text-xs mt-1">{k.label}</div>
-          </div>
-        ))}
-      </div>
-
-      <div className="flex border-b border-white/10 mb-5 gap-1">
+      <div className="flex border-b border-line mb-5 gap-1">
         {TABS.map(t => (
           <button key={t.id} onClick={() => setTab(t.id)}
             className={`px-4 py-2 text-sm font-medium transition-colors ${
               tab === t.id
-                ? 'text-[#c9a84c] border-b-2 border-[#c9a84c]'
-                : 'text-white/40 hover:text-white'
+                ? 'text-accent border-b-2 border-accent'
+                : 'text-ink-muted hover:text-ink'
             }`}>
             {t.label}
           </button>
@@ -815,139 +758,6 @@ function PortfolioDetail({ portfolio: initial, onBack }: { portfolio: ClientPort
       {tab === 'posicions'    && <HoldingsTab     portfolio={portfolio} reload={reload} />}
       {tab === 'transaccions' && <TransactionsTab portfolio={portfolio} reload={reload} />}
       {tab === 'snapshots'    && <SnapshotsTab    portfolio={portfolio} reload={reload} />}
-      {tab === 'notes'        && <NotesTab        portfolio={portfolio} reload={reload} />}
-    </div>
-  );
-}
-
-// ─── Main ─────────────────────────────────────────────────────────────────────
-
-export default function ClientPortfoliosManager() {
-  const [portfolios, setPortfolios] = useState<ClientPortfolio[]>([]);
-  const [loading, setLoading]       = useState(true);
-  const [selected, setSelected]     = useState<ClientPortfolio | null>(null);
-  const [showCreate, setShowCreate] = useState(false);
-  const [search, setSearch]         = useState('');
-  const [deleting, setDeleting]     = useState<string | null>(null);
-
-  const load = useCallback(async () => {
-    setLoading(true);
-    try {
-      const res  = await fetch('/api/admin/client-portfolios');
-      const data = await res.json() as { portfolios: ClientPortfolio[] };
-      setPortfolios(data.portfolios ?? []);
-    } finally { setLoading(false); }
-  }, []);
-
-  useEffect(() => { load(); }, [load]);
-
-  async function deletePortfolio(p: ClientPortfolio, e: React.MouseEvent) {
-    e.stopPropagation();
-    const warnings: string[] = [];
-    if (p.holdings.length > 0)     warnings.push(`${p.holdings.length} posicions`);
-    if (p.transactions.length > 0) warnings.push(`${p.transactions.length} transaccions`);
-    if (p.advisorNotes.length > 0) warnings.push(`${p.advisorNotes.length} notes`);
-    const detail = warnings.length > 0 ? `\n\nConté: ${warnings.join(', ')}.` : '';
-    if (!confirm(`Eliminar la cartera "${p.name}" de ${p.clientName}?${detail}\n\nAquesta acció no es pot desfer.`)) return;
-    setDeleting(p.id);
-    await fetch(`/api/admin/client-portfolios/${p.id}`, { method: 'DELETE' });
-    setDeleting(null);
-    load();
-  }
-
-  const filtered = portfolios.filter(p => {
-    if (!search.trim()) return true;
-    const q = search.toLowerCase();
-    return p.clientName.toLowerCase().includes(q) || p.clientId.toLowerCase().includes(q) || p.name.toLowerCase().includes(q);
-  });
-
-  if (selected) {
-    return <PortfolioDetail portfolio={selected} onBack={() => { setSelected(null); load(); }} />;
-  }
-
-  return (
-    <div>
-      <div className="flex items-center justify-between mb-6">
-        <div>
-          <h2 className="text-white font-bold text-xl">Carteres Clients</h2>
-          <p className="text-white/40 text-sm mt-1">{portfolios.length} cartera{portfolios.length !== 1 ? 's' : ''}</p>
-        </div>
-        <div className="flex gap-2">
-          <button onClick={load} className={BTN_GHOST}>↻ Actualitzar</button>
-          <button onClick={() => setShowCreate(!showCreate)} className={BTN_GOLD}>
-            {showCreate ? 'Cancel·lar' : '+ Nova cartera'}
-          </button>
-        </div>
-      </div>
-
-      {!loading && portfolios.length > 0 && <AlertsBar portfolios={portfolios} />}
-
-      {showCreate && <CreateForm onCreate={() => { setShowCreate(false); load(); }} />}
-
-      {!loading && portfolios.length > 1 && (
-        <input
-          type="search"
-          value={search}
-          onChange={e => setSearch(e.target.value)}
-          placeholder="Cercar per client, ID o nom de cartera..."
-          className={INPUT + ' mb-4'}
-        />
-      )}
-
-      {loading ? (
-        <div className="flex items-center justify-center py-20">
-          <div className="w-6 h-6 border-2 border-[#c9a84c] border-t-transparent rounded-full animate-spin" />
-        </div>
-      ) : portfolios.length === 0 ? (
-        <div className="text-center py-20 text-white/30">
-          <div className="text-4xl mb-3">💼</div>
-          <p>Sense carteres. Crea la primera cartera d&apos;un client.</p>
-        </div>
-      ) : filtered.length === 0 ? (
-        <p className="text-center py-10 text-white/30 text-sm">Sense resultats per &ldquo;{search}&rdquo;</p>
-      ) : (
-        <div className="space-y-3">
-          {filtered.map(p => {
-            const m = computeMetrics(p);
-            return (
-              <div key={p.id}
-                onClick={() => setSelected(p)}
-                className="bg-[#0d1f1a] border border-white/10 rounded-xl p-5 cursor-pointer hover:border-[#c9a84c]/30 transition-colors group">
-                <div className="flex items-start justify-between gap-4">
-                  <div className="min-w-0">
-                    <p className="text-white font-semibold">{p.name}</p>
-                    <p className="text-white/40 text-sm">{p.clientName} <span className="text-white/20">·</span> <span className="text-white/20 text-xs">{p.clientId}</span></p>
-                    {p.nextFollowup && <p className="text-[#c9a84c]/50 text-xs mt-0.5">Seguiment: {p.nextFollowup}</p>}
-                  </div>
-                  <div className="flex items-center gap-4 flex-shrink-0">
-                    <div className="flex gap-6 text-right">
-                      <div>
-                        <div className="text-white font-bold">{fEur(m.currentValue)}</div>
-                        <div className="text-white/30 text-xs">Valor actual</div>
-                      </div>
-                      <div>
-                        <div className={`font-bold ${m.pnlEur >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>{fPct(m.pnlPct)}</div>
-                        <div className="text-white/30 text-xs">{fEur(m.pnlEur)}</div>
-                      </div>
-                      <div>
-                        <div className="text-white/60 text-sm">{m.holdingCount}</div>
-                        <div className="text-white/30 text-xs">posicions</div>
-                      </div>
-                    </div>
-                    <button
-                      onClick={e => deletePortfolio(p, e)}
-                      disabled={deleting === p.id}
-                      className="opacity-0 group-hover:opacity-100 text-white/20 hover:text-red-400 transition-all text-sm p-1"
-                      title="Eliminar cartera">
-                      {deleting === p.id ? '...' : '✕'}
-                    </button>
-                  </div>
-                </div>
-              </div>
-            );
-          })}
-        </div>
-      )}
     </div>
   );
 }

@@ -6,8 +6,8 @@
 import { useEffect, useRef, useState } from 'react';
 import { EXPENSE_CATEGORIES, parseSpokenExpense, type ExpenseCategory, type OneOffExpense } from '@/lib/oneOffExpenses';
 
-const card  = 'bg-[#0d1f1a] border border-white/10 rounded-xl p-5';
-const input = 'w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#c9a84c]/60';
+const card  = 'bg-surface border border-line rounded-xl p-5';
+const input = 'w-full bg-subtle border border-line rounded-lg px-3 py-2 text-ink text-sm focus:outline-none focus:border-accent/60';
 const eur = (n: number) => n.toLocaleString('ca-ES', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 });
 const today = () => new Date().toISOString().slice(0, 10);
 
@@ -100,64 +100,64 @@ export default function OneOffExpenses({ endpoint, data, onChange, audience = 'c
     <section className={card} aria-labelledby="oneoff-title">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h2 id="oneoff-title" className="text-white/50 text-xs uppercase tracking-widest">Despeses puntuals</h2>
-          <p className="text-white/40 text-xs mt-1">
+          <h2 id="oneoff-title" className="text-ink-soft text-xs uppercase tracking-widest">Despeses puntuals</h2>
+          <p className="text-ink-muted text-xs mt-1">
             {audience === 'client' ? 'Un viatge, un mòbil, un cotxe, un mes que has gastat més... Apunta-ho i el pla es reajusta sol.' : 'Entra el que t\'expliqui el client (escrivint o dictant). L\'estalvi i el diagnòstic es recalculen sols.'}
           </p>
         </div>
         <div className="flex gap-2">
           {canDictate && (
             <button type="button" onClick={dictate} aria-pressed={listening}
-              className={`px-3 py-2 rounded-lg text-sm ${listening ? 'bg-red-500/80 text-white' : 'bg-white/5 text-white/80 hover:bg-white/10'}`}>
+              className={`px-3 py-2 rounded-lg text-sm ${listening ? 'bg-negative/80 text-ink' : 'bg-subtle text-ink hover:bg-subtle-strong'}`}>
               {listening ? '● Escoltant… (toca per parar)' : '🎤 Dictar'}
             </button>
           )}
-          {!open && <button type="button" onClick={() => { setOpen(true); setImpact(''); }} className="px-3 py-2 rounded-lg bg-[#c9a84c] text-[#0d1f1a] font-semibold text-sm">+ Afegir</button>}
+          {!open && <button type="button" onClick={() => { setOpen(true); setImpact(''); }} className="px-3 py-2 rounded-lg bg-accent text-accent-ink font-semibold text-sm">+ Afegir</button>}
         </div>
       </div>
 
-      {heard && <p className="text-white/40 text-xs mt-3">He entès: «{heard}». Revisa-ho abans de desar.</p>}
+      {heard && <p className="text-ink-muted text-xs mt-3">He entès: «{heard}». Revisa-ho abans de desar.</p>}
 
       {open && (
         <form onSubmit={submit} className="mt-4 grid grid-cols-2 sm:grid-cols-[1fr_8rem_12rem_9rem] gap-3 items-end">
-          <label className="block col-span-2 sm:col-span-1"><span className="text-white/40 text-xs">Què ha estat</span>
+          <label className="block col-span-2 sm:col-span-1"><span className="text-ink-muted text-xs">Què ha estat</span>
             <input className={input} maxLength={120} value={description} onChange={e => setDescription(e.target.value)} placeholder="Viatge a Roma" /></label>
-          <label className="block"><span className="text-white/40 text-xs">Import (€)</span>
+          <label className="block"><span className="text-ink-muted text-xs">Import (€)</span>
             <input type="number" inputMode="decimal" min={0} step="any" className={input} value={amount} onChange={e => setAmount(e.target.value)} /></label>
-          <label className="block"><span className="text-white/40 text-xs">Tipus</span>
+          <label className="block"><span className="text-ink-muted text-xs">Tipus</span>
             <select className={input} value={category} onChange={e => setCategory(e.target.value as ExpenseCategory)}>
-              {Object.entries(EXPENSE_CATEGORIES).map(([k, v]) => <option key={k} value={k} className="bg-[#0d1f1a]">{v}</option>)}
+              {Object.entries(EXPENSE_CATEGORIES).map(([k, v]) => <option key={k} value={k} className="bg-surface">{v}</option>)}
             </select></label>
-          <label className="block col-span-2 sm:col-span-1"><span className="text-white/40 text-xs">Data</span>
+          <label className="block col-span-2 sm:col-span-1"><span className="text-ink-muted text-xs">Data</span>
             <input type="date" className={input} value={date} onChange={e => setDate(e.target.value)} /></label>
-          <label className="col-span-2 sm:col-span-4 flex items-center gap-2 text-white/60 text-sm">
+          <label className="col-span-2 sm:col-span-4 flex items-center gap-2 text-ink-soft text-sm">
             <input type="checkbox" checked={fromSavings} onChange={e => setFromSavings(e.target.checked)} />
             Ha sortit de l&apos;estalvi (es resta i es recalcula el fons d&apos;emergència)
           </label>
           <div className="col-span-2 sm:col-span-4 flex gap-3">
-            <button type="submit" disabled={saving} className="px-4 py-2 rounded-lg bg-[#c9a84c] text-[#0d1f1a] font-semibold text-sm disabled:opacity-50">{saving ? 'Desant…' : 'Desar'}</button>
-            <button type="button" onClick={() => { setOpen(false); setError(''); setHeard(''); }} className="px-4 py-2 rounded-lg bg-white/5 text-white/60 text-sm hover:bg-white/10">Cancel·lar</button>
+            <button type="submit" disabled={saving} className="px-4 py-2 rounded-lg bg-accent text-accent-ink font-semibold text-sm disabled:opacity-50">{saving ? 'Desant…' : 'Desar'}</button>
+            <button type="button" onClick={() => { setOpen(false); setError(''); setHeard(''); }} className="px-4 py-2 rounded-lg bg-subtle text-ink-soft text-sm hover:bg-subtle-strong">Cancel·lar</button>
           </div>
         </form>
       )}
 
-      {error && <p className="text-red-400 text-sm mt-3" role="alert">{error}</p>}
-      {impact && <p className="text-green-300/80 text-sm mt-3" role="status">{impact}</p>}
+      {error && <p className="text-negative text-sm mt-3" role="alert">{error}</p>}
+      {impact && <p className="text-positive/80 text-sm mt-3" role="status">{impact}</p>}
 
       {entries.length > 0 && (
-        <ul className="mt-4 divide-y divide-white/5">
+        <ul className="mt-4 divide-y divide-line">
           {entries.slice(0, 10).map(x => (
             <li key={x.id} className="py-2 flex items-center justify-between gap-3 text-sm">
               <div className="min-w-0">
-                <p className="text-white truncate">{x.description}</p>
-                <p className="text-white/35 text-xs">
+                <p className="text-ink truncate">{x.description}</p>
+                <p className="text-ink-muted text-xs">
                   {new Date(x.date).toLocaleDateString('ca-ES')} · {EXPENSE_CATEGORIES[x.category] ?? x.category}
                   {x.deducted > 0 ? ` · restat de l'estalvi` : ''}{x.addedBy === 'admin' ? ' · entrat per l\'assessor' : ''}
                 </p>
               </div>
               <div className="flex items-center gap-3 flex-shrink-0">
-                <span className="text-white font-semibold">{eur(x.amount)}</span>
-                <button type="button" onClick={() => remove(x)} className="text-white/30 hover:text-red-400 text-xs" aria-label={`Esborrar ${x.description}`}>Esborrar</button>
+                <span className="text-ink font-semibold">{eur(x.amount)}</span>
+                <button type="button" onClick={() => remove(x)} className="text-ink-muted hover:text-negative text-xs" aria-label={`Esborrar ${x.description}`}>Esborrar</button>
               </div>
             </li>
           ))}

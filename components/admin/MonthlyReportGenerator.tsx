@@ -92,30 +92,30 @@ export default function MonthlyReportGenerator() {
     } finally { setMarkingSent(null); }
   }
 
-  const inputCls = 'w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-white text-sm placeholder-white/20 focus:outline-none focus:border-[#c9a84c]/50';
-  const labelCls = 'block text-white/40 text-xs uppercase tracking-wide mb-1';
+  const inputCls = 'w-full bg-subtle border border-line rounded-lg px-3 py-2 text-ink text-sm placeholder-ink-muted focus:outline-none focus:border-accent/50';
+  const labelCls = 'block text-ink-muted text-xs font-medium mb-1';
 
   if (report) {
     return (
       <div>
         <div className="flex items-center gap-3 mb-6 no-print flex-wrap">
-          <button onClick={() => { setReport(null); setSavedReportId(null); }} className="text-white/40 hover:text-white transition-colors">
+          <button onClick={() => { setReport(null); setSavedReportId(null); }} className="text-ink-muted hover:text-ink transition-colors">
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
             </svg>
           </button>
-          <h2 className="text-white font-bold text-xl flex-1">Vista prèvia de l&apos;informe</h2>
+          <h2 className="text-ink font-bold text-xl flex-1">Vista prèvia de l&apos;informe</h2>
           {savedReportId && (
             <button
               onClick={() => handleMarkSent(savedReportId)}
               disabled={markingSent === savedReportId}
-              className="flex items-center gap-2 px-4 py-2 bg-green-600/20 border border-green-500/30 hover:bg-green-600/30 text-green-400 font-semibold text-sm rounded-lg transition-all disabled:opacity-50">
+              className="flex items-center gap-2 px-4 py-2 bg-positive/20 border border-positive/30 hover:bg-positive/30 text-positive font-semibold text-sm rounded-lg transition-all disabled:opacity-50">
               {markingSent === savedReportId ? '...' : '✓ Marcar com enviat'}
             </button>
           )}
           <button
             onClick={() => window.print()}
-            className="flex items-center gap-2 px-4 py-2 bg-[#c9a84c] hover:bg-[#b8963f] text-[#0d1f1a] font-semibold text-sm rounded-lg transition-all">
+            className="flex items-center gap-2 px-4 py-2 bg-accent hover:bg-accent-hover text-accent-ink font-semibold text-sm rounded-lg transition-all">
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
             </svg>
@@ -132,15 +132,15 @@ export default function MonthlyReportGenerator() {
   return (
     <div>
       <div className="mb-6">
-        <h2 className="text-white font-bold text-xl">Generador d&apos;Informe Mensual</h2>
-        <p className="text-white/40 text-sm mt-1">Genera un informe mensual per a una cartera de client</p>
+        <h2 className="text-ink font-bold text-xl">Generador d&apos;Informe Mensual</h2>
+        <p className="text-ink-muted text-sm mt-1">Genera un informe mensual per a una cartera de client</p>
       </div>
 
-      {error && <div className="mb-4 p-3 bg-red-500/10 border border-red-500/20 rounded-lg text-red-400 text-sm">{error}</div>}
+      {error && <div className="mb-4 p-3 bg-negative/10 border border-negative/20 rounded-lg text-negative text-sm">{error}</div>}
 
       {loading ? (
         <div className="flex items-center justify-center py-20">
-          <div className="w-6 h-6 border-2 border-[#c9a84c] border-t-transparent rounded-full animate-spin" />
+          <div className="w-6 h-6 border-2 border-accent border-t-transparent rounded-full animate-spin" />
         </div>
       ) : (
         <>
@@ -148,15 +148,15 @@ export default function MonthlyReportGenerator() {
           <div>
             <label className={labelCls}>Cartera del client *</label>
             {portfolios.length === 0 ? (
-              <p className="text-white/30 text-sm">No hi ha carteres disponibles.</p>
+              <p className="text-ink-muted text-sm">No hi ha carteres disponibles.</p>
             ) : (
               <select
                 value={form.portfolioId}
                 onChange={e => setForm(p => ({ ...p, portfolioId: e.target.value }))}
                 required className={inputCls}>
-                <option value="" style={{ background: '#0d1f1a' }}>Selecciona una cartera...</option>
+                <option value="" style={{ background: 'rgb(var(--c-surface))' }}>Selecciona una cartera...</option>
                 {portfolios.map(p => (
-                  <option key={p.id} value={p.id} style={{ background: '#0d1f1a' }}>
+                  <option key={p.id} value={p.id} style={{ background: 'rgb(var(--c-surface))' }}>
                     {p.clientName} — {p.name}
                   </option>
                 ))}
@@ -192,10 +192,10 @@ export default function MonthlyReportGenerator() {
           <button
             type="submit"
             disabled={generating || portfolios.length === 0}
-            className="px-6 py-2.5 bg-[#c9a84c] hover:bg-[#b8963f] text-[#0d1f1a] font-bold text-sm rounded-lg disabled:opacity-50 transition-all flex items-center gap-2">
+            className="px-6 py-2.5 bg-accent hover:bg-accent-hover text-accent-ink font-bold text-sm rounded-lg disabled:opacity-50 transition-all flex items-center gap-2">
             {generating ? (
               <>
-                <div className="w-4 h-4 border-2 border-[#0d1f1a]/30 border-t-[#0d1f1a] rounded-full animate-spin" />
+                <div className="w-4 h-4 border-2 border-accent-ink/30 border-t-accent-ink rounded-full animate-spin" />
                 Generant...
               </>
             ) : (
@@ -212,24 +212,24 @@ export default function MonthlyReportGenerator() {
         {/* Historial d'informes mensuals per la cartera seleccionada */}
         {history.length > 0 && (
           <div className="mt-10">
-            <h3 className="text-white/60 text-xs uppercase tracking-widest mb-3">Historial d&apos;informes</h3>
+            <h3 className="text-ink-soft text-xs font-medium mb-3">Historial d&apos;informes</h3>
             <div className="space-y-2">
               {history.map(r => (
-                <div key={r.id} className="flex items-center justify-between bg-white/3 border border-white/8 rounded-xl px-4 py-3">
+                <div key={r.id} className="flex items-center justify-between bg-subtle border border-line rounded-lg px-4 py-3">
                   <div>
-                    <p className="text-white/70 text-sm">
+                    <p className="text-ink-soft text-sm">
                       {new Date(r.periodStart).toLocaleDateString('ca-ES', { month: 'long', year: 'numeric' })}
                     </p>
-                    <p className="text-white/30 text-xs font-mono mt-0.5">{r.id}</p>
+                    <p className="text-ink-muted text-xs font-mono mt-0.5">{r.id}</p>
                   </div>
                   <div className="flex items-center gap-3">
                     {r.sentAt ? (
-                      <span className="text-xs text-green-400/70">✓ Enviat {new Date(r.sentAt).toLocaleDateString('ca-ES')}</span>
+                      <span className="text-xs text-positive/70">✓ Enviat {new Date(r.sentAt).toLocaleDateString('ca-ES')}</span>
                     ) : (
                       <button
                         onClick={() => handleMarkSent(r.id)}
                         disabled={markingSent === r.id}
-                        className="px-3 py-1 bg-green-500/10 border border-green-500/20 text-green-400 text-xs rounded-lg hover:bg-green-500/20 transition-all disabled:opacity-50">
+                        className="px-3 py-1 bg-positive/10 border border-positive/20 text-positive text-xs rounded-lg hover:bg-positive/20 transition-all disabled:opacity-50">
                         {markingSent === r.id ? '...' : 'Marcar enviat'}
                       </button>
                     )}

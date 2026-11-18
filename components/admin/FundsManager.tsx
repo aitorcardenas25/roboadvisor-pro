@@ -113,8 +113,8 @@ export default function FundsManager() {
     return matchSearch && matchRisk;
   });
 
-  const inputCls = "w-full bg-white/10 border border-white/20 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#c9a84c]/60 focus:ring-1 focus:ring-[#c9a84c]/30 transition-all";
-  const labelCls = "block text-white/50 text-xs uppercase tracking-wider mb-1";
+  const inputCls = "w-full bg-subtle-strong border border-line-strong rounded-lg px-3 py-2 text-ink text-sm focus:outline-none focus:border-accent/60 focus:ring-1 focus:ring-accent/30 transition-all";
+  const labelCls = "block text-ink-soft text-xs font-medium mb-1";
 
   return (
     <div className="space-y-6">
@@ -122,11 +122,11 @@ export default function FundsManager() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-black text-white mb-1">Gestió de Fons</h1>
-          <p className="text-white/40 text-sm">{funds.length} fons a la base de dades</p>
+          <h1 className="text-2xl font-semibold text-ink mb-1">Gestió de Fons</h1>
+          <p className="text-ink-muted text-sm">{funds.length} fons a la base de dades</p>
         </div>
         <button onClick={openCreate}
-          className="flex items-center gap-2 bg-[#c9a84c] hover:bg-[#b8963f] text-[#0d1f1a] font-bold px-5 py-2.5 rounded-lg text-sm transition-all">
+          className="flex items-center gap-2 bg-accent hover:bg-accent-hover text-accent-ink font-bold px-5 py-2.5 rounded-lg text-sm transition-all">
           <span>+</span> Nou fons
         </button>
       </div>
@@ -135,10 +135,10 @@ export default function FundsManager() {
       {message && (
         <div className={`p-3 rounded-lg text-sm ${
           message.type === 'success'
-            ? 'bg-emerald-500/20 border border-emerald-500/30 text-emerald-400'
-            : 'bg-red-500/20 border border-red-500/30 text-red-400'
+            ? 'bg-positive/20 border border-positive/30 text-positive'
+            : 'bg-negative/20 border border-negative/30 text-negative'
         }`}>
-          {message.type === 'success' ? '✅' : '⚠️'} {message.text}
+          {message.type === 'success' ? '✅' : ''} {message.text}
         </div>
       )}
 
@@ -149,12 +149,12 @@ export default function FundsManager() {
           placeholder="Cercar per nom, ISIN o gestora..."
           value={search}
           onChange={e => setSearch(e.target.value)}
-          className="flex-1 bg-white/5 border border-white/10 rounded-lg px-4 py-2.5 text-white text-sm focus:outline-none focus:border-[#c9a84c]/40 placeholder-white/20"
+          className="flex-1 bg-subtle border border-line rounded-lg px-4 py-2.5 text-ink text-sm focus:outline-none focus:border-accent/40 placeholder-ink-muted"
         />
         <select
           value={filterRisk}
           onChange={e => setFilterRisk(e.target.value === 'all' ? 'all' : Number(e.target.value))}
-          className="bg-white/5 border border-white/10 rounded-lg px-4 py-2.5 text-white text-sm focus:outline-none">
+          className="bg-subtle border border-line rounded-lg px-4 py-2.5 text-ink text-sm focus:outline-none">
           <option value="all">Tots els riscos</option>
           {[1,2,3,4,5].map(r => <option key={r} value={r}>Risc {r}</option>)}
         </select>
@@ -162,12 +162,12 @@ export default function FundsManager() {
 
       {/* Taula */}
       {loading ? (
-        <div className="text-center py-12 text-white/40">Carregant...</div>
+        <div className="text-center py-12 text-ink-muted">Carregant...</div>
       ) : (
-        <div className="bg-white/5 border border-white/10 rounded-xl overflow-hidden">
+        <div className="bg-subtle border border-line rounded-lg overflow-hidden">
           <table className="w-full text-sm">
             <thead>
-              <tr className="border-b border-white/10 text-white/40 text-xs uppercase tracking-wider">
+              <tr className="border-b border-line text-ink-muted text-xs font-medium">
                 <th className="text-left px-4 py-3">Fons</th>
                 <th className="text-left px-4 py-3">Gestora</th>
                 <th className="text-center px-4 py-3">Risc</th>
@@ -176,24 +176,24 @@ export default function FundsManager() {
                 <th className="text-center px-4 py-3">Accions</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-white/5">
+            <tbody className="divide-y divide-line">
               {filtered.map(fund => (
-                <tr key={fund.id} className="hover:bg-white/5 transition-colors">
+                <tr key={fund.id} className="hover:bg-subtle transition-colors">
                   <td className="px-4 py-3">
-                    <p className="text-white font-medium text-xs">{fund.name}</p>
-                    <p className="text-white/30 text-xs">{fund.isin}</p>
+                    <p className="text-ink font-medium text-xs">{fund.name}</p>
+                    <p className="text-ink-muted text-xs">{fund.isin}</p>
                   </td>
-                  <td className="px-4 py-3 text-white/60 text-xs">{fund.manager}</td>
+                  <td className="px-4 py-3 text-ink-soft text-xs">{fund.manager}</td>
                   <td className="px-4 py-3 text-center">
-                    <span className="text-white/60 text-xs">{'⭐'.repeat(fund.risk)}</span>
+                    <span className="text-ink-soft text-xs">{'⭐'.repeat(fund.risk)}</span>
                   </td>
-                  <td className="px-4 py-3 text-right text-white/60 text-xs">{fund.ter.toFixed(2)}%</td>
+                  <td className="px-4 py-3 text-right text-ink-soft text-xs">{fund.ter.toFixed(2)}%</td>
                   <td className="px-4 py-3 text-center">
                     <span className={`text-xs px-2 py-0.5 rounded-full ${
-                      fund.dataStatus === 'validated'   ? 'bg-emerald-500/20 text-emerald-400' :
-                      fund.dataStatus === 'partial'     ? 'bg-amber-500/20 text-amber-400'    :
-                      fund.dataStatus === 'pending'     ? 'bg-blue-500/20 text-blue-400'      :
-                      'bg-red-500/20 text-red-400'
+                      fund.dataStatus === 'validated'   ? 'bg-positive/20 text-positive' :
+                      fund.dataStatus === 'partial'     ? 'bg-warning/20 text-warning'    :
+                      fund.dataStatus === 'pending'     ? 'bg-info/20 text-info'      :
+                      'bg-negative/20 text-negative'
                     }`}>
                       {fund.dataStatus}
                     </span>
@@ -201,12 +201,12 @@ export default function FundsManager() {
                   <td className="px-4 py-3 text-center">
                     <div className="flex items-center justify-center gap-2">
                       <button onClick={() => openEdit(fund)}
-                        className="text-[#c9a84c]/60 hover:text-[#c9a84c] text-xs px-2 py-1 rounded hover:bg-[#c9a84c]/10 transition-all">
-                        ✏️ Editar
+                        className="text-accent/60 hover:text-accent text-xs px-2 py-1 rounded hover:bg-accent-soft transition-all">
+                        Editar
                       </button>
                       <button onClick={() => handleDelete(fund.id, fund.name)}
-                        className="text-red-400/60 hover:text-red-400 text-xs px-2 py-1 rounded hover:bg-red-500/10 transition-all">
-                        🗑️ Eliminar
+                        className="text-negative/60 hover:text-negative text-xs px-2 py-1 rounded hover:bg-negative/10 transition-all">
+                        Eliminar
                       </button>
                     </div>
                   </td>
@@ -214,7 +214,7 @@ export default function FundsManager() {
               ))}
               {filtered.length === 0 && (
                 <tr>
-                  <td colSpan={6} className="text-center py-8 text-white/30">
+                  <td colSpan={6} className="text-center py-8 text-ink-muted">
                     No s'han trobat fons amb els filtres actuals
                   </td>
                 </tr>
@@ -226,14 +226,14 @@ export default function FundsManager() {
 
       {/* Modal formulari */}
       {showForm && (
-        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-[#0d1f1a] border border-white/20 rounded-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+        <div className="fixed inset-0 bg-black/70 z-50 flex items-center justify-center p-4">
+          <div className="bg-surface border border-line-strong rounded-lg w-full max-w-2xl max-h-[90vh] overflow-y-auto">
 
-            <div className="flex items-center justify-between p-6 border-b border-white/10">
-              <h2 className="text-white font-bold text-lg">
-                {editingFund ? '✏️ Editar fons' : '➕ Nou fons'}
+            <div className="flex items-center justify-between p-6 border-b border-line">
+              <h2 className="text-ink font-bold text-lg">
+                {editingFund ? 'Editar fons' : '+ Nou fons'}
               </h2>
-              <button onClick={() => setShowForm(false)} className="text-white/40 hover:text-white text-xl">×</button>
+              <button onClick={() => setShowForm(false)} className="text-ink-muted hover:text-ink text-xl">×</button>
             </div>
 
             <div className="p-6 space-y-4">
@@ -309,8 +309,8 @@ export default function FundsManager() {
                   <select value={formData.dataStatus} className={inputCls}
                     onChange={e => setFormData(p => ({ ...p, dataStatus: e.target.value as AdminFund['dataStatus'] }))}>
                     <option value="validated">✅ Validat</option>
-                    <option value="partial">⚠️ Parcial</option>
-                    <option value="pending">🕐 Pendent</option>
+                    <option value="partial">Parcial</option>
+                    <option value="pending">Pendent</option>
                     <option value="unavailable">❌ No disponible</option>
                   </select>
                 </div>
@@ -327,13 +327,13 @@ export default function FundsManager() {
               </div>
             </div>
 
-            <div className="flex justify-end gap-3 p-6 border-t border-white/10">
+            <div className="flex justify-end gap-3 p-6 border-t border-line">
               <button onClick={() => setShowForm(false)}
-                className="px-5 py-2.5 rounded-lg border border-white/20 text-white/60 hover:text-white text-sm transition-all">
+                className="px-5 py-2.5 rounded-lg border border-line-strong text-ink-soft hover:text-ink text-sm transition-all">
                 Cancel·lar
               </button>
               <button onClick={handleSave} disabled={saving}
-                className="px-6 py-2.5 rounded-lg bg-[#c9a84c] text-[#0d1f1a] font-bold text-sm hover:bg-[#b8963f] transition-all disabled:opacity-50">
+                className="px-6 py-2.5 rounded-lg bg-accent text-accent-ink font-bold text-sm hover:bg-accent-hover transition-all disabled:opacity-50">
                 {saving ? 'Desant...' : editingFund ? 'Actualitzar' : 'Crear fons'}
               </button>
             </div>

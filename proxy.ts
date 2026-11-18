@@ -1,5 +1,6 @@
 import { withAuth } from 'next-auth/middleware';
 import { NextResponse } from 'next/server';
+import { SHOW_NON_BETA_FEATURES, isNonBetaPage } from '@/lib/featureFlags';
 
 const CLIENT_ROLES = new Set(['client', 'admin']);
 
@@ -7,6 +8,13 @@ export default withAuth(
   function proxy(req) {
     const { pathname } = req.nextUrl;
     const role = req.nextauth.token?.role as string | undefined;
+
+    // Beta tancada: les pàgines que no en formen part no es mostren als clients
+    // ni als visitants (l'admin sí que les pot obrir per revisar-les).
+    if (!SHOW_NON_BETA_FEATURES && isNonBetaPage(pathname) && role !== 'admin') {
+      const target = role === 'client' ? '/client/cartera' : '/';
+      return NextResponse.redirect(new URL(target, req.url));
+    }
 
     // Admin sub-routes: only admin role
     if (pathname.startsWith('/admin/') && role !== 'admin') {
@@ -66,6 +74,11 @@ export default withAuth(
 export const config = {
   matcher: [
     '/login',
+    '/comparador/:path*',
+    '/informe-bursatil/:path*',
+    '/noticies/:path*',
+    '/accions/:path*',
+    '/checkout/:path*',
     '/admin/:path*',
     '/client/:path*',
     '/api/admin/:path*',
