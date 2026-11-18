@@ -42,19 +42,19 @@ const TABS: { id: Tab; label: string }[] = [
 ];
 
 function SectionTitle({ children }: { children: React.ReactNode }) {
-  return <h3 className="text-white font-semibold text-sm mb-3">{children}</h3>;
+  return <h3 className="text-ink font-semibold text-sm mb-3">{children}</h3>;
 }
 
 function Empty({ children }: { children: React.ReactNode }) {
-  return <div className="text-center py-12 text-white/60 text-sm">{children}</div>;
+  return <div className="text-center py-12 text-ink-soft text-sm">{children}</div>;
 }
 
 function Kpi({ label, value, sub }: { label: string; value: string; sub?: string }) {
   return (
-    <div className="bg-white/5 rounded-xl p-4">
-      <p className="text-white/40 text-xs mb-1">{label}</p>
-      <p className="text-white font-bold text-lg">{value}</p>
-      {sub && <p className="text-white/30 text-xs mt-0.5">{sub}</p>}
+    <div className="bg-subtle rounded-lg p-4">
+      <p className="text-ink-muted text-xs mb-1">{label}</p>
+      <p className="text-ink font-bold text-lg">{value}</p>
+      {sub && <p className="text-ink-muted text-xs mt-0.5">{sub}</p>}
     </div>
   );
 }
@@ -88,14 +88,14 @@ export default function ClientFile({
 
   if (loading) return (
     <div className="flex items-center justify-center py-24">
-      <div className="w-6 h-6 border-2 border-[#c9a84c] border-t-transparent rounded-full animate-spin" />
+      <div className="w-6 h-6 border-2 border-accent border-t-transparent rounded-full animate-spin" />
     </div>
   );
 
   if (error || !data) return (
     <div className="text-center py-24">
-      <p className="text-red-400 mb-4">{error || 'Client no trobat'}</p>
-      <button onClick={onBack} className="text-white/40 hover:text-white text-sm transition-colors">← Tornar</button>
+      <p className="text-negative mb-4">{error || 'Client no trobat'}</p>
+      <button onClick={onBack} className="text-ink-muted hover:text-ink text-sm transition-colors">← Tornar</button>
     </div>
   );
 
@@ -113,7 +113,7 @@ export default function ClientFile({
       <div className="flex items-center gap-4 mb-6">
         <button
           onClick={onBack}
-          className="text-white/40 hover:text-white transition-colors flex items-center gap-2 text-sm">
+          className="text-ink-muted hover:text-ink transition-colors flex items-center gap-2 text-sm">
           <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
           </svg>
@@ -121,19 +121,19 @@ export default function ClientFile({
         </button>
         <div className="flex-1">
           <div className="flex items-center gap-3">
-            <h2 className="text-white font-bold text-xl">{user.name}</h2>
+            <h2 className="text-ink font-bold text-xl">{user.name}</h2>
             <span className={`text-xs px-2 py-0.5 rounded-full ${
-              user.active ? 'bg-green-500/15 text-green-400' : 'bg-white/10 text-white/30'
+              user.active ? 'bg-positive/15 text-positive' : 'bg-subtle-strong text-ink-muted'
             }`}>
               {user.active ? 'Actiu' : 'Inactiu'}
             </span>
             {lead?.status === 'converted' && (
-              <span className="text-xs px-2 py-0.5 rounded-full bg-[#c9a84c]/15 text-[#c9a84c]">Client</span>
+              <span className="text-xs px-2 py-0.5 rounded-full bg-accent-soft text-accent">Client</span>
             )}
           </div>
-          <p className="text-white/40 text-sm">{user.email} · @{user.username}</p>
+          <p className="text-ink-muted text-sm">{user.email} · @{user.username}</p>
         </div>
-        <button onClick={() => load()} className="text-white/30 hover:text-white text-xs transition-colors">↻</button>
+        <button onClick={() => load()} className="text-ink-muted hover:text-ink text-xs transition-colors">↻</button>
       </div>
 
       {/* KPIs ràpids */}
@@ -146,15 +146,15 @@ export default function ClientFile({
       </div>
 
       {/* Pestanyes */}
-      <div className="flex flex-wrap gap-1 mb-6 border-b border-white/10 pb-3">
+      <div className="flex flex-wrap gap-1 mb-6 border-b border-line pb-3">
         {TABS.map(t => (
           <button
             key={t.id}
             onClick={() => setTab(t.id)}
             className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
               tab === t.id
-                ? 'bg-[#c9a84c]/20 text-[#c9a84c] border border-[#c9a84c]/30'
-                : 'text-white/40 hover:text-white hover:bg-white/5'
+                ? 'bg-accent-soft text-accent border border-accent/30'
+                : 'text-ink-muted hover:text-ink hover:bg-subtle'
             }`}>
             {t.label}
           </button>
@@ -179,8 +179,8 @@ export default function ClientFile({
             <section>
               <SectionTitle>Dades d&apos;accés</SectionTitle>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div className="bg-[#0d1f1a] border border-white/10 rounded-xl p-5">
-              <h3 className="text-white/50 text-xs uppercase tracking-widest mb-4">Usuari d&apos;accés</h3>
+            <div className="bg-surface border border-line rounded-lg p-5">
+              <h3 className="text-ink-soft text-xs font-medium mb-4">Usuari d&apos;accés</h3>
               <dl className="space-y-2.5">
                 {[
                   ['Nom complet', user.name],
@@ -192,16 +192,16 @@ export default function ClientFile({
                   ['Alta', new Date(user.createdAt).toLocaleDateString('ca-ES')],
                 ].map(([label, val]) => (
                   <div key={label} className="flex items-start justify-between gap-4">
-                    <dt className="text-white/30 text-xs w-28 flex-shrink-0">{label}</dt>
-                    <dd className="text-white/80 text-sm text-right">{val}</dd>
+                    <dt className="text-ink-muted text-xs w-28 flex-shrink-0">{label}</dt>
+                    <dd className="text-ink text-sm text-right">{val}</dd>
                   </div>
                 ))}
               </dl>
             </div>
 
             {lead && (
-              <div className="bg-[#0d1f1a] border border-white/10 rounded-xl p-5">
-                <h3 className="text-white/50 text-xs uppercase tracking-widest mb-4">Estat comercial (Lead)</h3>
+              <div className="bg-surface border border-line rounded-lg p-5">
+                <h3 className="text-ink-soft text-xs font-medium mb-4">Estat comercial (Lead)</h3>
                 <dl className="space-y-2.5">
                   {[
                     ['ID Lead', lead.id],
@@ -213,15 +213,15 @@ export default function ClientFile({
                     ['Data lead', new Date(lead.createdAt).toLocaleDateString('ca-ES')],
                   ].map(([label, val]) => (
                     <div key={label} className="flex items-start justify-between gap-4">
-                      <dt className="text-white/30 text-xs w-28 flex-shrink-0">{label}</dt>
-                      <dd className="text-white/80 text-sm text-right">{val}</dd>
+                      <dt className="text-ink-muted text-xs w-28 flex-shrink-0">{label}</dt>
+                      <dd className="text-ink text-sm text-right">{val}</dd>
                     </div>
                   ))}
                 </dl>
                 {lead.notes && (
-                  <div className="mt-4 pt-4 border-t border-white/5">
-                    <p className="text-white/30 text-xs uppercase tracking-widest mb-2">Notes</p>
-                    <p className="text-white/60 text-sm leading-relaxed">{lead.notes}</p>
+                  <div className="mt-4 pt-4 border-t border-line">
+                    <p className="text-ink-muted text-xs font-medium mb-2">Notes</p>
+                    <p className="text-ink-soft text-sm leading-relaxed">{lead.notes}</p>
                   </div>
                 )}
               </div>
@@ -230,20 +230,20 @@ export default function ClientFile({
             </section>
             <section>
               <SectionTitle>Qüestionari de perfil</SectionTitle>
-          <div className="bg-[#0d1f1a] border border-white/10 rounded-xl p-5">
+          <div className="bg-surface border border-line rounded-lg p-5">
             {lead?.questionnaireData ? (
               <>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
                   {Object.entries(lead.questionnaireData).map(([key, val]) => (
-                    <div key={key} className="flex items-start justify-between gap-4 py-2 border-b border-white/5">
-                      <dt className="text-white/30 text-xs capitalize">{key.replace(/([A-Z])/g, ' $1').trim()}</dt>
-                      <dd className="text-white/70 text-xs text-right">{typeof val === 'object' && val !== null ? `${Array.isArray(val) ? val.length : 1} element(s)` : String(val)}</dd>
+                    <div key={key} className="flex items-start justify-between gap-4 py-2 border-b border-line">
+                      <dt className="text-ink-muted text-xs capitalize">{key.replace(/([A-Z])/g, ' $1').trim()}</dt>
+                      <dd className="text-ink-soft text-xs text-right">{typeof val === 'object' && val !== null ? `${Array.isArray(val) ? val.length : 1} element(s)` : String(val)}</dd>
                     </div>
                   ))}
                 </div>
               </>
             ) : (
-              <div className="text-center py-12 text-white/30">
+              <div className="text-center py-12 text-ink-muted">
                 <p>Encara no hi ha qüestionari guardat per a aquest client.</p>
               </div>
             )}
@@ -266,7 +266,7 @@ export default function ClientFile({
           ) : (
             <Empty>
               <p className="mb-3">Aquest client encara no té cartera activa.</p>
-              <button onClick={() => setTab('proposal')} className="text-[#c9a84c] hover:underline">
+              <button onClick={() => setTab('proposal')} className="text-accent hover:underline">
                 Crea-la des de la Proposta →
               </button>
             </Empty>
@@ -280,25 +280,25 @@ export default function ClientFile({
               <SectionTitle>Informes mensuals</SectionTitle>
           <div className="space-y-3">
             {data.monthly.length === 0 ? (
-              <div className="text-center py-12 text-white/30">
+              <div className="text-center py-12 text-ink-muted">
                 <p>Sense informes mensuals generats.</p>
               </div>
             ) : data.monthly.map(r => (
-              <div key={r.id} className="bg-[#0d1f1a] border border-white/10 rounded-xl p-4">
+              <div key={r.id} className="bg-surface border border-line rounded-lg p-4">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-white/80 text-sm font-medium">
+                    <p className="text-ink text-sm font-medium">
                       {new Date(r.periodStart).toLocaleDateString('ca-ES', { month: 'long', year: 'numeric' })}
                     </p>
-                    <p className="text-white/30 text-xs mt-0.5 font-mono">{r.id}</p>
+                    <p className="text-ink-muted text-xs mt-0.5 font-mono">{r.id}</p>
                   </div>
                   <div className="text-right">
-                    <p className="text-[#c9a84c] font-semibold">{r.data.metrics.currentValue.toFixed(0)} €</p>
-                    <p className={`text-xs ${r.data.metrics.pnlEur >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+                    <p className="text-accent font-semibold">{r.data.metrics.currentValue.toFixed(0)} €</p>
+                    <p className={`text-xs ${r.data.metrics.pnlEur >= 0 ? 'text-positive' : 'text-negative'}`}>
                       {r.data.metrics.pnlEur >= 0 ? '+' : ''}{r.data.metrics.pnlEur.toFixed(0)} €
                     </p>
                     {r.sentAt && (
-                      <p className="text-white/25 text-xs mt-1">Enviat {new Date(r.sentAt).toLocaleDateString('ca-ES')}</p>
+                      <p className="text-ink-muted text-xs mt-1">Enviat {new Date(r.sentAt).toLocaleDateString('ca-ES')}</p>
                     )}
                   </div>
                 </div>
@@ -313,12 +313,12 @@ export default function ClientFile({
               ) : (
                 <div className="space-y-2">
                   {data.reports.map(r => (
-                    <div key={r.id} className="flex items-center justify-between bg-[#0d1f1a] border border-white/10 rounded-xl px-4 py-3">
+                    <div key={r.id} className="flex items-center justify-between bg-surface border border-line rounded-lg px-4 py-3">
                       <div>
-                        <p className="text-white/80 text-sm">{new Date(r.date || r.createdAt).toLocaleDateString('ca-ES')} · {r.profile}</p>
-                        <p className="text-white/50 text-xs font-mono">{r.id}</p>
+                        <p className="text-ink text-sm">{new Date(r.date || r.createdAt).toLocaleDateString('ca-ES')} · {r.profile}</p>
+                        <p className="text-ink-soft text-xs font-mono">{r.id}</p>
                       </div>
-                      <p className="text-white/60 text-xs">{r.emailSent ? 'Enviat' : 'No enviat'}</p>
+                      <p className="text-ink-soft text-xs">{r.emailSent ? 'Enviat' : 'No enviat'}</p>
                     </div>
                   ))}
                 </div>
@@ -342,23 +342,23 @@ export default function ClientFile({
       </div>
 
       {/* Historial d'activitat: consulta puntual, no és una pestanya de treball */}
-      <div className="mt-10 pt-4 border-t border-white/10">
-        <button onClick={() => setShowHistory(v => !v)} className="text-white/60 hover:text-white text-xs">
+      <div className="mt-10 pt-4 border-t border-line">
+        <button onClick={() => setShowHistory(v => !v)} className="text-ink-soft hover:text-ink text-xs">
           {showHistory ? 'Amagar' : 'Veure'} l&apos;historial d&apos;activitat del client ({data.audit.length})
         </button>
         {showHistory && (
-          <div className="mt-4 bg-[#0d1f1a] border border-white/10 rounded-xl p-5">
+          <div className="mt-4 bg-surface border border-line rounded-lg p-5">
             {data.audit.length === 0 ? (
-              <p className="text-white/60 text-sm">Sense activitat enregistrada.</p>
+              <p className="text-ink-soft text-sm">Sense activitat enregistrada.</p>
             ) : (
               <div className="space-y-2">
                 {data.audit.map(e => (
-                  <div key={e.id} className="flex items-start gap-3 py-2.5 border-b border-white/5">
-                    <span className="text-white/50 text-xs font-mono flex-shrink-0 mt-0.5">
+                  <div key={e.id} className="flex items-start gap-3 py-2.5 border-b border-line">
+                    <span className="text-ink-soft text-xs font-mono flex-shrink-0 mt-0.5">
                       {new Date(e.timestamp).toLocaleString('ca-ES')}
                     </span>
-                    <span className="text-[#c9a84c]/80 text-xs font-mono">{e.action}</span>
-                    {e.resource && <span className="text-white/50 text-xs truncate">{e.resource}</span>}
+                    <span className="text-accent/80 text-xs font-mono">{e.action}</span>
+                    {e.resource && <span className="text-ink-soft text-xs truncate">{e.resource}</span>}
                   </div>
                 ))}
               </div>

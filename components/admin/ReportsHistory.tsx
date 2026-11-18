@@ -2,19 +2,15 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
 import type { ReportRecord } from '@/lib/reportRegistry';
 
 const PROFILE_COLORS: Record<string, string> = {
-  conservador: 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30',
-  moderat:     'bg-blue-500/20 text-blue-400 border-blue-500/30',
-  dinamic:     'bg-amber-500/20 text-amber-400 border-amber-500/30',
-  agressiu:    'bg-red-500/20 text-red-400 border-red-500/30',
+  conservador: 'bg-positive/20 text-positive border-positive/30',
+  moderat:     'bg-info/20 text-info border-info/30',
+  dinamic:     'bg-warning/20 text-warning border-warning/30',
+  agressiu:    'bg-negative/20 text-negative border-negative/30',
 };
 
-const PROFILE_ICONS: Record<string, string> = {
-  conservador: '🛡️', moderat: '⚖️', dinamic: '📈', agressiu: '🚀',
-};
 
 // Mock inicial per quan no hi ha informes generats en la sessió actual
 const INITIAL_MOCK: ReportRecord[] = [
@@ -83,13 +79,12 @@ export default function ReportsHistory() {
       {/* Header */}
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div>
-          <h1 className="text-2xl font-black text-white mb-1">Historial d'Informes</h1>
-          <p className="text-white/40 text-sm">
+          <h1 className="text-2xl font-semibold text-ink mb-1">Historial d'Informes</h1>
+          <p className="text-ink-muted text-sm">
             {loading ? 'Carregant...' : `${reports.length} informes registrats`}
           </p>
         </div>
-        <motion.button
-          whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}
+        <button
           onClick={() => {
             const csv = [
               'ID,Client,Email,Perfil,Score,Mensual,Capital,Horitzó,PDF,Email,Data',
@@ -102,16 +97,16 @@ export default function ReportsHistory() {
             const a    = document.createElement('a');
             a.href = url; a.download = 'factor_otc_informes.csv'; a.click();
           }}
-          className="flex items-center gap-2 px-4 py-2 bg-[#c9a84c]/20 border border-[#c9a84c]/30 rounded-lg text-[#c9a84c] text-sm hover:bg-[#c9a84c]/30 transition-all">
+          className="flex items-center gap-2 px-4 py-2 bg-accent-soft border border-accent/30 rounded-lg text-accent text-sm hover:bg-accent/30 transition-all">
           ⬇️ Exportar CSV
-        </motion.button>
+        </button>
       </div>
 
       {/* Demo notice */}
       {isDemo && !loading && (
-        <div className="flex items-center gap-3 px-4 py-3 bg-amber-500/8 border border-amber-500/20 rounded-xl">
-          <span className="text-amber-400 text-sm">⚠️</span>
-          <p className="text-amber-400/80 text-xs">
+        <div className="flex items-center gap-3 px-4 py-3 bg-warning/8 border border-warning/20 rounded-lg">
+          <span className="text-warning text-sm"></span>
+          <p className="text-warning/80 text-xs">
             <span className="font-semibold">Dades de demostració</span> — Encara no hi ha informes reals generats en aquesta sessió. Genera un informe al qüestionari per veure'l aquí.
           </p>
         </div>
@@ -125,14 +120,12 @@ export default function ReportsHistory() {
           { label: 'Score mitjà',       value: `${stats.avgScore}%`,    sub: 'de perfilació' },
           { label: 'Enviats per email', value: stats.withEmail,         sub: 'emails enviats' },
         ].map((kpi, i) => (
-          <motion.div key={i}
-            className="bg-white/5 border border-white/10 rounded-xl p-4"
-            initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: i * 0.07 }}>
-            <p className="text-white/40 text-xs uppercase tracking-widest mb-1">{kpi.label}</p>
-            <p className="text-2xl font-black text-white">{String(kpi.value)}</p>
-            <p className="text-white/25 text-xs mt-0.5">{kpi.sub}</p>
-          </motion.div>
+          <div key={i}
+            className="bg-subtle border border-line rounded-lg p-4">
+            <p className="text-ink-muted text-xs font-medium mb-1">{kpi.label}</p>
+            <p className="text-2xl font-semibold text-ink">{String(kpi.value)}</p>
+            <p className="text-ink-muted text-xs mt-0.5">{kpi.sub}</p>
+          </div>
         ))}
       </div>
 
@@ -141,18 +134,18 @@ export default function ReportsHistory() {
         <input
           type="text" placeholder="Cercar per client o ID..."
           value={search} onChange={e => setSearch(e.target.value)}
-          className="flex-1 min-w-[200px] bg-white/5 border border-white/10 rounded-lg px-4 py-2.5 text-white text-sm focus:outline-none focus:border-[#c9a84c]/40 placeholder-white/20"
+          className="flex-1 min-w-[200px] bg-subtle border border-line rounded-lg px-4 py-2.5 text-ink text-sm focus:outline-none focus:border-accent/40 placeholder-ink-muted"
         />
         <select value={filterProfile} onChange={e => setFilterProfile(e.target.value)}
-          className="bg-white/5 border border-white/10 rounded-lg px-4 py-2.5 text-white text-sm focus:outline-none">
+          className="bg-subtle border border-line rounded-lg px-4 py-2.5 text-ink text-sm focus:outline-none">
           <option value="all">Tots els perfils</option>
-          <option value="conservador">🛡️ Conservador</option>
-          <option value="moderat">⚖️ Moderat</option>
-          <option value="dinamic">📈 Dinàmic</option>
-          <option value="agressiu">🚀 Agressiu</option>
+          <option value="conservador">Conservador</option>
+          <option value="moderat">Moderat</option>
+          <option value="dinamic">Dinàmic</option>
+          <option value="agressiu">Agressiu</option>
         </select>
         <select value={sortBy} onChange={e => setSortBy(e.target.value as typeof sortBy)}
-          className="bg-white/5 border border-white/10 rounded-lg px-4 py-2.5 text-white text-sm focus:outline-none">
+          className="bg-subtle border border-line rounded-lg px-4 py-2.5 text-ink text-sm focus:outline-none">
           <option value="date">Ordenar per data</option>
           <option value="score">Ordenar per score</option>
           <option value="investable">Ordenar per capital</option>
@@ -160,10 +153,10 @@ export default function ReportsHistory() {
       </div>
 
       {/* Taula */}
-      <div className="bg-white/5 border border-white/10 rounded-xl overflow-x-auto">
+      <div className="bg-subtle border border-line rounded-lg overflow-x-auto">
         <table className="w-full text-sm min-w-[700px]">
           <thead>
-            <tr className="border-b border-white/10 text-white/40 text-xs uppercase tracking-wider">
+            <tr className="border-b border-line text-ink-muted text-xs font-medium">
               <th className="text-left px-4 py-3">Client</th>
               <th className="text-left px-4 py-3">Perfil</th>
               <th className="text-center px-4 py-3">Score</th>
@@ -174,60 +167,56 @@ export default function ReportsHistory() {
               <th className="text-center px-4 py-3">Acció</th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-white/5">
-            <AnimatePresence>
-              {filtered.map((r, i) => (
-                <motion.tr key={r.id}
-                  className="hover:bg-white/5 transition-colors cursor-pointer"
-                  initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0 }} transition={{ delay: i * 0.03 }}
+          <tbody className="divide-y divide-line">
+            <>
+              {filtered.map(r => (
+                <tr key={r.id}
+                  className="hover:bg-subtle transition-colors cursor-pointer"
                   onClick={() => setSelected(r)}>
                   <td className="px-4 py-3">
-                    <p className="text-white font-medium">{r.clientName}</p>
-                    <p className="text-white/30 text-xs">{r.id}</p>
+                    <p className="text-ink font-medium">{r.clientName}</p>
+                    <p className="text-ink-muted text-xs">{r.id}</p>
                   </td>
                   <td className="px-4 py-3">
-                    <span className={`text-xs px-2 py-1 rounded-full border ${PROFILE_COLORS[r.profile] ?? 'bg-white/10 text-white/60 border-white/20'}`}>
-                      {PROFILE_ICONS[r.profile] ?? '📋'} {r.profile.charAt(0).toUpperCase() + r.profile.slice(1)}
+                    <span className={`text-xs px-2 py-1 rounded-full border ${PROFILE_COLORS[r.profile] ?? 'bg-subtle-strong text-ink-soft border-line-strong'}`}>
+                      {r.profile.charAt(0).toUpperCase() + r.profile.slice(1)}
                     </span>
                   </td>
                   <td className="px-4 py-3 text-center">
                     <div className="flex items-center justify-center gap-2">
-                      <div className="w-16 bg-white/10 rounded-full h-1.5 overflow-hidden">
-                        <motion.div className="h-1.5 rounded-full bg-[#c9a84c]"
-                          initial={{ width: 0 }} animate={{ width: `${r.score}%` }}
-                          transition={{ duration: 0.6, delay: i * 0.03 }} />
+                      <div className="w-16 bg-subtle-strong rounded-full h-1.5 overflow-hidden">
+                        <div className="h-1.5 rounded-full bg-accent" style={{ width: `${r.score}%` }} />
                       </div>
-                      <span className="text-white text-xs font-bold">{r.score}%</span>
+                      <span className="text-ink text-xs font-bold">{r.score}%</span>
                     </div>
                   </td>
-                  <td className="px-4 py-3 text-right text-white/60 text-xs">
+                  <td className="px-4 py-3 text-right text-ink-soft text-xs">
                     {r.monthlyAmount > 0 ? fmt(r.monthlyAmount) + '/mes' : '—'}
                   </td>
-                  <td className="px-4 py-3 text-right text-white/70 font-medium">
+                  <td className="px-4 py-3 text-right text-ink-soft font-medium">
                     {r.investable > 0 ? fmt(r.investable) : '—'}
                   </td>
                   <td className="px-4 py-3 text-center">
                     <div className="flex items-center justify-center gap-1.5">
-                      <span title="PDF generat" className={r.pdfGenerated ? 'text-green-400' : 'text-white/20'}>📄</span>
-                      <span title="Email enviat" className={r.emailSent ? 'text-green-400' : 'text-white/20'}>✉️</span>
+                      <span title="PDF generat" className={r.pdfGenerated ? 'text-positive' : 'text-ink-muted'}></span>
+                      <span title="Email enviat" className={r.emailSent ? 'text-positive' : 'text-ink-muted'}></span>
                     </div>
                   </td>
-                  <td className="px-4 py-3 text-center text-white/40 text-xs">
+                  <td className="px-4 py-3 text-center text-ink-muted text-xs">
                     {r.date}
                   </td>
                   <td className="px-4 py-3 text-center">
                     <button onClick={e => { e.stopPropagation(); setSelected(r); }}
-                      className="text-[#c9a84c]/60 hover:text-[#c9a84c] text-xs px-3 py-1 rounded border border-[#c9a84c]/20 hover:border-[#c9a84c]/40 transition-all">
+                      className="text-accent/60 hover:text-accent text-xs px-3 py-1 rounded border border-accent/20 hover:border-accent/40 transition-all">
                       Veure
                     </button>
                   </td>
-                </motion.tr>
+                </tr>
               ))}
-            </AnimatePresence>
+            </>
             {filtered.length === 0 && (
               <tr>
-                <td colSpan={8} className="text-center py-10 text-white/30">
+                <td colSpan={8} className="text-center py-10 text-ink-muted">
                   No s'han trobat informes
                 </td>
               </tr>
@@ -237,50 +226,48 @@ export default function ReportsHistory() {
       </div>
 
       {/* Modal detall */}
-      <AnimatePresence>
+      <>
         {selected && (
-          <motion.div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-4"
-            initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+          <div className="fixed inset-0 bg-black/70 z-50 flex items-center justify-center p-4"
             onClick={() => setSelected(null)}>
-            <motion.div className="bg-[#0d1f1a] border border-white/20 rounded-2xl w-full max-w-lg p-6"
-              initial={{ scale: 0.9, y: 20 }} animate={{ scale: 1, y: 0 }} exit={{ scale: 0.9, y: 20 }}
+            <div className="bg-surface border border-line-strong rounded-lg w-full max-w-lg p-6"
               onClick={e => e.stopPropagation()}>
 
               <div className="flex items-center justify-between mb-5">
-                <h2 className="text-white font-bold text-lg">Detall de l'informe</h2>
-                <button onClick={() => setSelected(null)} className="text-white/40 hover:text-white text-xl">×</button>
+                <h2 className="text-ink font-bold text-lg">Detall de l'informe</h2>
+                <button onClick={() => setSelected(null)} className="text-ink-muted hover:text-ink text-xl">×</button>
               </div>
 
               <div className="space-y-4">
-                <div className="bg-white/5 rounded-xl p-4">
-                  <p className="text-white/40 text-xs uppercase tracking-widest mb-1">Client</p>
-                  <p className="text-white font-bold text-xl">{selected.clientName}</p>
-                  {selected.clientEmail && <p className="text-white/40 text-xs mt-1">{selected.clientEmail}</p>}
-                  <p className="text-white/30 text-xs mt-1">{selected.id}</p>
+                <div className="bg-subtle rounded-lg p-4">
+                  <p className="text-ink-muted text-xs font-medium mb-1">Client</p>
+                  <p className="text-ink font-bold text-xl">{selected.clientName}</p>
+                  {selected.clientEmail && <p className="text-ink-muted text-xs mt-1">{selected.clientEmail}</p>}
+                  <p className="text-ink-muted text-xs mt-1">{selected.id}</p>
                 </div>
 
                 <div className="grid grid-cols-2 gap-3">
                   {[
-                    { label: 'Perfil', value: `${PROFILE_ICONS[selected.profile] ?? ''} ${selected.profile}` },
+                    { label: 'Perfil', value: selected.profile },
                     { label: 'Score',  value: `${selected.score}%` },
                     { label: 'Aportació mensual', value: selected.monthlyAmount > 0 ? fmt(selected.monthlyAmount) : '—' },
                     { label: 'Capital a invertir', value: selected.investable > 0 ? fmt(selected.investable) : '—' },
                     { label: 'Horitzó temporal', value: `${selected.horizon} anys` },
                     { label: 'Data generació', value: selected.date },
                   ].map((item, i) => (
-                    <div key={i} className="bg-white/5 rounded-lg p-3">
-                      <p className="text-white/30 text-xs mb-1">{item.label}</p>
-                      <p className="text-white font-semibold text-sm">{item.value}</p>
+                    <div key={i} className="bg-subtle rounded-lg p-3">
+                      <p className="text-ink-muted text-xs mb-1">{item.label}</p>
+                      <p className="text-ink font-semibold text-sm">{item.value}</p>
                     </div>
                   ))}
                 </div>
 
                 {selected.portfolio.length > 0 && (
-                  <div className="bg-white/5 rounded-xl p-4">
-                    <p className="text-white/40 text-xs uppercase tracking-widest mb-2">Cartera recomanada</p>
+                  <div className="bg-subtle rounded-lg p-4">
+                    <p className="text-ink-muted text-xs font-medium mb-2">Cartera recomanada</p>
                     <div className="flex flex-wrap gap-2">
                       {selected.portfolio.map((p, i) => (
-                        <span key={i} className="text-xs bg-[#c9a84c]/10 text-[#c9a84c]/80 border border-[#c9a84c]/20 px-2 py-1 rounded-lg font-mono">
+                        <span key={i} className="text-xs bg-accent-soft text-accent/80 border border-accent/20 px-2 py-1 rounded-lg font-mono">
                           {p}
                         </span>
                       ))}
@@ -289,23 +276,23 @@ export default function ReportsHistory() {
                 )}
 
                 <div className="flex items-center gap-3 text-sm">
-                  <span className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs ${selected.pdfGenerated ? 'bg-green-500/10 text-green-400' : 'bg-white/5 text-white/30'}`}>
-                    📄 {selected.pdfGenerated ? 'PDF generat' : 'Sense PDF'}
+                  <span className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs ${selected.pdfGenerated ? 'bg-positive/10 text-positive' : 'bg-subtle text-ink-muted'}`}>
+                    {selected.pdfGenerated ? 'PDF generat' : 'Sense PDF'}
                   </span>
-                  <span className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs ${selected.emailSent ? 'bg-green-500/10 text-green-400' : 'bg-white/5 text-white/30'}`}>
-                    ✉️ {selected.emailSent ? 'Email enviat' : 'Sense email'}
+                  <span className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs ${selected.emailSent ? 'bg-positive/10 text-positive' : 'bg-subtle text-ink-muted'}`}>
+                    {selected.emailSent ? 'Email enviat' : 'Sense email'}
                   </span>
                 </div>
 
                 <button onClick={() => setSelected(null)}
-                  className="w-full py-2.5 border border-white/20 text-white/60 rounded-lg text-sm hover:text-white transition-colors">
+                  className="w-full py-2.5 border border-line-strong text-ink-soft rounded-lg text-sm hover:text-ink transition-colors">
                   Tancar
                 </button>
               </div>
-            </motion.div>
-          </motion.div>
+            </div>
+          </div>
         )}
-      </AnimatePresence>
+      </>
     </div>
   );
 }

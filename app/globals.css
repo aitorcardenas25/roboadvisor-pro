@@ -9,7 +9,56 @@
   --green:   #0d1f1a;
   --green-md:#1a3a2a;
   --green-lg:#2d6a4f;
+
+  /* Tokens semàntics (canals RGB) — portal del client, fosc mentre no es
+     redissenyi. Text secundari amb contrast suficient (≥ 4.5:1). */
+  --c-canvas:        10 15 13;
+  --c-surface:       13 31 26;
+  --c-subtle:        24 40 35;
+  --c-subtle-strong: 36 53 48;
+  --c-ink:           245 245 240;
+  --c-ink-soft:      205 212 209;
+  --c-ink-muted:     160 171 167;
+  --c-line:          38 54 49;
+  --c-line-strong:   62 78 73;
+  --c-accent:        201 168 76;
+  --c-accent-hover:  184 150 63;
+  --c-accent-soft:   42 52 36;
+  --c-accent-ink:    13 31 26;
+  --c-positive:      74 222 128;
+  --c-negative:      248 113 113;
+  --c-warning:       251 191 36;
+  --c-info:          96 165 250;
 }
+
+/* -- Admin (direcció B: eina de treball clara i densa) ------------------------ */
+.theme-admin {
+  --c-canvas:        244 245 245;
+  --c-surface:       255 255 255;
+  --c-subtle:        240 242 241;
+  --c-subtle-strong: 228 232 230;
+  --c-ink:           23 33 30;
+  --c-ink-soft:      66 78 74;
+  --c-ink-muted:     95 107 103;
+  --c-line:          221 225 223;
+  --c-line-strong:   196 202 200;
+  --c-accent:        30 90 71;
+  --c-accent-hover:  22 70 55;
+  --c-accent-soft:   226 239 233;
+  --c-accent-ink:    255 255 255;
+  --c-positive:      30 112 76;
+  --c-negative:      180 40 32;
+  --c-warning:       138 90 0;
+  --c-info:          31 93 140;
+  --font-sans: var(--font-plex);
+  background: rgb(var(--c-canvas));
+  color: rgb(var(--c-ink));
+  color-scheme: light;
+  font-variant-numeric: tabular-nums;
+}
+.theme-admin ::selection { background: rgb(var(--c-accent-soft)); color: rgb(var(--c-ink)); }
+.theme-admin ::-webkit-scrollbar-track { background: rgb(var(--c-subtle)); }
+.theme-admin ::-webkit-scrollbar-thumb { background: rgb(var(--c-line-strong)); }
 
 /* -- Base --------------------------------------------------------------------- */
 html { scroll-behavior: smooth; }

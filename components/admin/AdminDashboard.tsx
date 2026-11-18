@@ -2,7 +2,6 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
 import FundsManager       from './FundsManager';
 import ReportsHistory     from './ReportsHistory';
 import AdminStats         from './AdminStats';
@@ -132,141 +131,86 @@ export default function AdminDashboard({ onLogout }: Props) {
       .catch(console.error);
   }, []);
 
+  const sidebarW = collapsed ? 'w-16' : 'w-[220px]';
+
   return (
-    <div className="min-h-screen bg-[#0a0f0d] flex">
+    <div className="theme-admin min-h-screen flex text-sm">
 
-      {/* ── Sidebar ──────────────────────────────────────────────────────── */}
-      <motion.aside
-        animate={{ width: collapsed ? 64 : 220 }}
-        transition={{ duration: 0.3, ease: [0.22, 1, 0.36, 1] }}
-        className="fixed left-0 top-0 h-screen bg-[#0d1f1a] border-r border-white/10 flex flex-col z-20 overflow-hidden">
-
-        {/* Logo */}
-        <div className="p-4 border-b border-white/10 flex items-center justify-between min-h-[64px]">
-          <AnimatePresence>
-            {!collapsed && (
-              <motion.div
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                exit={{ opacity: 0 }}
-                className="flex items-center gap-2">
-                <div className="w-5 h-5 bg-[#c9a84c]/10 border border-[#c9a84c]/40 rounded flex items-center justify-center flex-shrink-0">
-                  <span className="text-[#c9a84c] font-black text-xs leading-none">F</span>
-                </div>
-                <div>
-                  <span className="text-white font-black text-sm">FACTOR</span>
-                  <span className="text-[#c9a84c]/70 text-sm ml-1">OTC</span>
-                </div>
-              </motion.div>
-            )}
-          </AnimatePresence>
-          <motion.button
+      {/* ── Menú lateral ─────────────────────────────────────────────────── */}
+      <aside className={`${sidebarW} fixed left-0 top-0 h-screen bg-subtle border-r border-line flex flex-col z-20 overflow-hidden`}>
+        <div className="h-14 px-4 border-b border-line flex items-center justify-between">
+          {!collapsed && (
+            <span className="text-ink font-semibold tracking-tight">
+              Factor <span className="text-ink-muted font-normal">OTC</span>
+            </span>
+          )}
+          <button
             onClick={() => setCollapsed(!collapsed)}
-            whileHover={{ scale: 1.1 }}
-            whileTap={{ scale: 0.9 }}
-            className="text-white/30 hover:text-white transition-colors flex-shrink-0">
+            aria-label={collapsed ? 'Obrir el menú' : 'Plegar el menú'}
+            className="p-1 rounded text-ink-muted hover:text-ink hover:bg-subtle-strong focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent">
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
-                d={collapsed ? "M9 5l7 7-7 7" : "M15 19l-7-7 7-7"} />
+                d={collapsed ? 'M9 5l7 7-7 7' : 'M15 19l-7-7 7-7'} />
             </svg>
-          </motion.button>
+          </button>
         </div>
 
-        {/* Nav */}
         {/* min-h-0 + overflow-y-auto: sense això el menú es talla quan no cap a la pantalla */}
-        <nav className="flex-1 min-h-0 overflow-y-auto overscroll-contain p-3 space-y-1">
-          {NAV_ITEMS.map(item => (
-            <motion.button
-              key={item.id}
-              onClick={() => openSection(item.id)}
-              whileHover={{ x: 2 }}
-              whileTap={{ scale: 0.98 }}
-              title={collapsed ? item.label : undefined}
-              className={`relative w-full text-left flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition-all ${
-                activeSection === item.id
-                  ? 'bg-[#c9a84c]/20 text-[#c9a84c] border border-[#c9a84c]/30'
-                  : 'text-white/50 hover:text-white hover:bg-white/5'
-              }`}>
-              <svg className="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d={item.iconPath} />
-              </svg>
-              <AnimatePresence>
-                {!collapsed && (
-                  <motion.span
-                    initial={{ opacity: 0, width: 0 }}
-                    animate={{ opacity: 1, width: 'auto' }}
-                    exit={{ opacity: 0, width: 0 }}
-                    className="whitespace-nowrap overflow-hidden">
-                    {item.label}
-                  </motion.span>
-                )}
-              </AnimatePresence>
-              {activeSection === item.id && (
-                <motion.div
-                  layoutId="activeNav"
-                  className="absolute left-0 w-0.5 h-6 bg-[#c9a84c] rounded-r"
-                  transition={{ type: 'spring', stiffness: 400, damping: 30 }}
-                />
-              )}
-            </motion.button>
-          ))}
+        <nav className="flex-1 min-h-0 overflow-y-auto overscroll-contain p-2 space-y-0.5">
+          {NAV_ITEMS.map(item => {
+            const on = activeSection === item.id;
+            return (
+              <button
+                key={item.id}
+                onClick={() => openSection(item.id)}
+                title={collapsed ? item.label : undefined}
+                aria-current={on ? 'page' : undefined}
+                className={`w-full text-left flex items-center gap-3 px-3 py-2 rounded-md border transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent ${
+                  on
+                    ? 'bg-surface border-line text-ink font-medium shadow-sm'
+                    : 'border-transparent text-ink-soft hover:text-ink hover:bg-subtle-strong'
+                }`}>
+                <svg className={`w-4 h-4 flex-shrink-0 ${on ? 'text-accent' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d={item.iconPath} />
+                </svg>
+                {!collapsed && <span className="whitespace-nowrap">{item.label}</span>}
+              </button>
+            );
+          })}
         </nav>
 
-        {/* Logout */}
-        <div className="p-3 border-t border-white/10">
-          <motion.button
+        <div className="p-2 border-t border-line">
+          <button
             onClick={onLogout}
-            whileHover={{ x: 2 }}
             title={collapsed ? 'Tancar sessió' : undefined}
-            className="w-full text-left flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-white/30 hover:text-red-400 hover:bg-red-500/10 transition-all">
+            className="w-full text-left flex items-center gap-3 px-3 py-2 rounded-md text-ink-soft hover:text-negative hover:bg-negative/10 transition-colors">
             <svg className="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
             </svg>
-            <AnimatePresence>
-              {!collapsed && (
-                <motion.span
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  exit={{ opacity: 0 }}
-                  className="whitespace-nowrap">
-                  Tancar sessió
-                </motion.span>
-              )}
-            </AnimatePresence>
-          </motion.button>
+            {!collapsed && <span className="whitespace-nowrap">Tancar sessió</span>}
+          </button>
         </div>
-      </motion.aside>
+      </aside>
 
       {/* ── Contingut principal ───────────────────────────────────────────── */}
-      <motion.main
-        animate={{ marginLeft: collapsed ? 64 : 220 }}
-        transition={{ duration: 0.3, ease: [0.22, 1, 0.36, 1] }}
-        className="flex-1 overflow-auto">
-
-        {/* Top bar amb notificacions */}
-        <div className="flex justify-end items-center px-8 py-3 border-b border-white/5">
+      <main className={`flex-1 min-w-0 ${collapsed ? 'ml-16' : 'ml-[220px]'}`}>
+        <div className="h-14 flex justify-between items-center px-8 border-b border-line bg-surface">
+          <h1 className="text-ink font-semibold">
+            {NAV_ITEMS.find(i => i.id === activeSection)?.label}
+          </h1>
           <NotificationBell />
         </div>
 
-        <div className="p-8">
-
-        <AnimatePresence mode="wait">
-          <motion.div
-            key={`${activeSection}-${activeSub ?? ''}-${selectedClientId ?? ''}`}
-            initial={{ opacity: 0, y: 16 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -8 }}
-            transition={{ duration: 0.3, ease: [0.22, 1, 0.36, 1] }}>
-
+        <div className="p-8 max-w-[1400px]">
             {tabs && !(activeSection === 'clients' && selectedClientId) && (
-              <div role="tablist" className="flex flex-wrap gap-1 mb-6 border-b border-white/10">
+              <div role="tablist" className="flex flex-wrap gap-1 mb-6 border-b border-line">
                 {tabs.map(t => (
                   <button key={t.id} role="tab" aria-selected={activeSub === t.id}
                     onClick={() => setSubTabs(prev => ({ ...prev, [activeSection]: t.id }))}
                     className={`px-4 py-2 -mb-px text-sm border-b-2 transition-colors ${
                       activeSub === t.id
-                        ? 'border-[#c9a84c] text-white font-medium'
-                        : 'border-transparent text-white/60 hover:text-white'
+                        ? 'border-accent text-ink font-medium'
+                        : 'border-transparent text-ink-soft hover:text-ink'
                     }`}>
                     {t.label}
                   </button>
@@ -303,10 +247,8 @@ export default function AdminDashboard({ onLogout }: Props) {
               {activeSub === 'fora-carteres-model'    && <AdminPortfolios />}
             </>)}
 
-          </motion.div>
-        </AnimatePresence>
         </div>
-      </motion.main>
+      </main>
     </div>
   );
 }

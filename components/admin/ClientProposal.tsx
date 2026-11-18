@@ -97,8 +97,8 @@ export default function ClientProposal({ clientId, onApplied }: { clientId: stri
   const needsOverride = suit?.status === 'inadequate' && overrideReason.trim().length < 10;
   const approvalProblem = params ? validateForApproval({ ...params, items }) : 'Carregant';
 
-  if (error) return <p className="text-red-400 text-sm">{error}</p>;
-  if (!data || !params || !stats || !suit) return <p className="text-white/40 text-sm">Carregant…</p>;
+  if (error) return <p className="text-negative text-sm">{error}</p>;
+  if (!data || !params || !stats || !suit) return <p className="text-ink-muted text-sm">Carregant…</p>;
 
   const setP = (patch: Partial<ProposalParams>) => { setParams({ ...params, ...patch }); setDirty(true); };
   const setItem = (i: number, patch: Partial<ProposalItem>) => {
@@ -257,44 +257,44 @@ export default function ClientProposal({ clientId, onApplied }: { clientId: stri
     finally { setBusy(null); }
   };
 
-  const card  = 'bg-[#0d1f1a] border border-white/10 rounded-xl p-5';
-  const input = 'bg-white/5 border border-white/10 rounded-lg px-2 py-1.5 text-white text-xs focus:outline-none focus:border-[#c9a84c]/50';
-  const th    = 'text-left text-white/30 text-[11px] uppercase tracking-wide font-medium pb-2 pr-2';
+  const card  = 'bg-surface border border-line rounded-lg p-5';
+  const input = 'bg-subtle border border-line rounded-lg px-2 py-1.5 text-ink text-xs focus:outline-none focus:border-accent/50';
+  const th    = 'text-left text-ink-muted text-[11px] font-medium font-medium pb-2 pr-2';
 
   return (
     <div className="space-y-5">
       {/* Estat */}
       <div className={`${card} flex flex-wrap items-center gap-3 text-sm`}>
-        {!latest && <span className="text-white/60">Encara no hi ha cap proposta per a aquest client.</span>}
-        {latest?.status === 'draft' && <span className="text-white/70">Editant l&apos;<b className="text-white">esborrany v{latest.version}</b>.</span>}
+        {!latest && <span className="text-ink-soft">Encara no hi ha cap proposta per a aquest client.</span>}
+        {latest?.status === 'draft' && <span className="text-ink-soft">Editant l&apos;<b className="text-ink">esborrany v{latest.version}</b>.</span>}
         {editingApproved && (
-          <span className="text-white/70">
-            La <b className="text-white">v{latest.version}</b> està aprovada. Si canvies alguna cosa i deses, es crearà la <b className="text-white">v{latest.version + 1}</b> (reestructuració).
+          <span className="text-ink-soft">
+            La <b className="text-ink">v{latest.version}</b> està aprovada. Si canvies alguna cosa i deses, es crearà la <b className="text-ink">v{latest.version + 1}</b> (reestructuració).
           </span>
         )}
-        {dirty && <span className="text-amber-300 text-xs">Canvis sense desar</span>}
+        {dirty && <span className="text-warning text-xs">Canvis sense desar</span>}
       </div>
 
       {/* Paràmetres */}
       <div className={card}>
-        <h3 className="text-white/50 text-xs uppercase tracking-widest mb-4">Paràmetres</h3>
+        <h3 className="text-ink-soft text-xs font-medium mb-4">Paràmetres</h3>
         <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
-          <label className="text-white/40 text-xs space-y-1">Perfil
+          <label className="text-ink-muted text-xs space-y-1">Perfil
             <select value={params.profile} onChange={e => setP({ profile: e.target.value as ProposalParams['profile'] })} className={`${input} w-full`}>
               {PROFILES.map(p => <option key={p} value={p}>{PROFILE_LABEL[p]}</option>)}
             </select>
           </label>
-          <label className="text-white/40 text-xs space-y-1 col-span-2 md:col-span-1">Objectiu
+          <label className="text-ink-muted text-xs space-y-1 col-span-2 md:col-span-1">Objectiu
             <input list="proposal-objectives" value={params.objective} onChange={e => setP({ objective: e.target.value })} className={`${input} w-full`} />
             <datalist id="proposal-objectives">{OBJECTIVES.map(o => <option key={o} value={o} />)}</datalist>
           </label>
-          <label className="text-white/40 text-xs space-y-1">Horitzó (anys)
+          <label className="text-ink-muted text-xs space-y-1">Horitzó (anys)
             <input type="number" min={1} max={50} value={params.horizon} onChange={e => setP({ horizon: Math.max(1, Math.round(Number(e.target.value) || 1)) })} className={`${input} w-full`} />
           </label>
-          <label className="text-white/40 text-xs space-y-1">Import inicial (€)
+          <label className="text-ink-muted text-xs space-y-1">Import inicial (€)
             <input type="number" min={0} value={params.initialAmount} onChange={e => setP({ initialAmount: Math.max(0, Number(e.target.value) || 0) })} className={`${input} w-full`} />
           </label>
-          <label className="text-white/40 text-xs space-y-1">Aportació mensual (€)
+          <label className="text-ink-muted text-xs space-y-1">Aportació mensual (€)
             <input type="number" min={0} value={params.monthlyAmount} onChange={e => setP({ monthlyAmount: Math.max(0, Number(e.target.value) || 0) })} className={`${input} w-full`} />
           </label>
         </div>
@@ -303,19 +303,19 @@ export default function ClientProposal({ clientId, onApplied }: { clientId: stri
       {/* Fons */}
       <div className={card}>
         <div className="flex flex-wrap items-center gap-2 mb-4">
-          <h3 className="text-white/50 text-xs uppercase tracking-widest mr-auto">Fons de la proposta</h3>
+          <h3 className="text-ink-soft text-xs font-medium mr-auto">Fons de la proposta</h3>
           <button disabled={!!busy} onClick={() => start('suggest')}
-            className="px-3 py-1.5 rounded-lg bg-white/10 text-white text-xs hover:bg-white/15 disabled:opacity-40">
+            className="px-3 py-1.5 rounded-lg bg-subtle-strong text-ink text-xs hover:bg-subtle-strong disabled:opacity-40">
             {busy === 'suggest' ? 'Calculant…' : 'Suggerir segons perfil'}
           </button>
           <select value="" disabled={!!busy} onChange={e => loadTemplate(e.target.value)} aria-label="Carregar plantilla"
-            className="px-2 py-1.5 rounded-lg bg-white/10 text-white text-xs hover:bg-white/15 disabled:opacity-40">
+            className="px-2 py-1.5 rounded-lg bg-subtle-strong text-ink text-xs hover:bg-subtle-strong disabled:opacity-40">
             <option value="">Plantilla de les sessions…</option>
             {PROPOSAL_TEMPLATES.map(t => <option key={t.id} value={t.id} title={t.description}>{t.label}</option>)}
           </select>
           {data.holdings > 0 && (
             <button disabled={!!busy} onClick={() => start('fromHoldings')}
-              className="px-3 py-1.5 rounded-lg bg-white/10 text-white text-xs hover:bg-white/15 disabled:opacity-40">
+              className="px-3 py-1.5 rounded-lg bg-subtle-strong text-ink text-xs hover:bg-subtle-strong disabled:opacity-40">
               Partir de la cartera actual
             </button>
           )}
@@ -329,11 +329,11 @@ export default function ClientProposal({ clientId, onApplied }: { clientId: stri
             {data.funds.map(f => <option key={f.isin} value={`${f.isin} · ${f.name}`}>{f.source === 'advisor' ? '★ Llista de l\'assessor' : f.category}</option>)}
           </datalist>
           <button onClick={addFund} disabled={!fundQuery.trim()}
-            className="px-3 py-1.5 rounded-lg bg-[#c9a84c]/20 text-[#c9a84c] text-xs font-medium hover:bg-[#c9a84c]/30 disabled:opacity-40">Afegir</button>
+            className="px-3 py-1.5 rounded-lg bg-accent-soft text-accent text-xs font-medium hover:bg-accent/30 disabled:opacity-40">Afegir</button>
         </div>
 
         {items.length === 0 ? (
-          <p className="text-white/30 text-sm">Afegeix fons o fes servir &quot;Suggerir segons perfil&quot; com a punt de partida.</p>
+          <p className="text-ink-muted text-sm">Afegeix fons o fes servir &quot;Suggerir segons perfil&quot; com a punt de partida.</p>
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full">
@@ -363,11 +363,11 @@ export default function ClientProposal({ clientId, onApplied }: { clientId: stri
           <Metric label="Fons" value={String(items.length)} sub={stats.complete ? 'Tots amb dades reals' : `${stats.missing.length} sense dades`} tone={stats.complete ? undefined : 'bad'} />
         </div>
 {stats.complete ? (
-          <p className="text-white/25 text-[11px] mt-4">
+          <p className="text-ink-muted text-[11px] mt-4">
             Rendibilitat i volatilitat històriques anualitzades de cada fons. Són les mateixes xifres que sortiran a l&apos;informe.
           </p>
         ) : (
-          <p className="text-red-300/90 text-xs mt-4">
+          <p className="text-negative/90 text-xs mt-4">
             Sense projecció: falten rendibilitat i volatilitat reals de {stats.missing.map(m => m.name).join(', ')}.
             Penja la fitxa del fons (Morningstar) per afegir-les. Fins llavors la proposta es pot desar però no aprovar.
           </p>
@@ -375,21 +375,21 @@ export default function ClientProposal({ clientId, onApplied }: { clientId: stri
       </div>
 
       {/* Idoneïtat */}
-      <div className={`${card} ${suit.status === 'inadequate' ? 'border-red-500/40' : suit.status === 'borderline' ? 'border-amber-400/30' : ''}`}>
-        <h3 className="text-white/50 text-xs uppercase tracking-widest mb-2">Idoneïtat per al client</h3>
+      <div className={`${card} ${suit.status === 'inadequate' ? 'border-negative/40' : suit.status === 'borderline' ? 'border-warning/30' : ''}`}>
+        <h3 className="text-ink-soft text-xs font-medium mb-2">Idoneïtat per al client</h3>
         {suit.status === 'adequate' ? (
-          <p className="text-green-400 text-sm">Idònia: encaixa amb el perfil, el coneixement i la liquiditat del client.</p>
+          <p className="text-positive text-sm">Idònia: encaixa amb el perfil, el coneixement i la liquiditat del client.</p>
         ) : (
           <ul className="space-y-1">
             {suit.issues.map((it, i) => (
-              <li key={i} className={`text-xs ${it.level === 'inadequate' ? 'text-red-300' : 'text-amber-200/80'}`}>
+              <li key={i} className={`text-xs ${it.level === 'inadequate' ? 'text-negative' : 'text-warning/80'}`}>
                 {it.level === 'inadequate' ? '✕' : '!'} {it.message}
               </li>
             ))}
           </ul>
         )}
         {suit.status === 'inadequate' && (
-          <label className="block mt-3 text-white/50 text-xs">
+          <label className="block mt-3 text-ink-soft text-xs">
             Per aprovar-la igualment, escriu el motiu (queda registrat):
             <textarea value={overrideReason} onChange={e => setOverrideReason(e.target.value)} rows={2}
               placeholder="p. ex. el client ho ha demanat explícitament després d'explicar-li el risc"
@@ -400,104 +400,104 @@ export default function ClientProposal({ clientId, onApplied }: { clientId: stri
 
       {/* Nota i accions */}
       <div className={card}>
-        <label className="text-white/40 text-xs block mb-1">Nota de l&apos;assessor (surt a l&apos;informe)</label>
+        <label className="text-ink-muted text-xs block mb-1">Nota de l&apos;assessor (surt a l&apos;informe)</label>
         <textarea value={params.adminNote} onChange={e => setP({ adminNote: e.target.value })} rows={3}
           className={`${input} w-full text-sm`} />
         <div className="flex flex-wrap items-center gap-3 mt-4">
-          {msg && <p className={`text-sm mr-auto ${msg.ok ? 'text-green-400' : 'text-red-400'}`}>{msg.text}</p>}
+          {msg && <p className={`text-sm mr-auto ${msg.ok ? 'text-positive' : 'text-negative'}`}>{msg.text}</p>}
           <button disabled={!!busy || !dirty} onClick={onSave}
-            className="ml-auto px-4 py-2 rounded-lg bg-white/10 text-white text-sm hover:bg-white/15 disabled:opacity-40">
+            className="ml-auto px-4 py-2 rounded-lg bg-subtle-strong text-ink text-sm hover:bg-subtle-strong disabled:opacity-40">
             {busy === 'save' ? 'Desant…' : 'Desar esborrany'}
           </button>
           <button disabled={!!busy || !!approvalProblem || needsOverride || (editingApproved && !dirty)} onClick={onApprove}
             title={approvalProblem ?? (needsOverride ? 'La proposta no és idònia: escriu el motiu' : editingApproved && !dirty ? 'Aquesta versió ja està aprovada' : '')}
-            className="px-5 py-2 rounded-lg bg-[#c9a84c] text-[#0d1f1a] text-sm font-bold hover:bg-[#b8963f] disabled:opacity-40">
+            className="px-5 py-2 rounded-lg bg-accent text-accent-ink text-sm font-bold hover:bg-accent-hover disabled:opacity-40">
             {busy === 'approve' ? 'Aprovant…' : busy === 'report' ? 'Generant informe…' : 'Aprovar i generar informe'}
           </button>
         </div>
-        {approvalProblem && items.length > 0 && <p className="text-amber-200/70 text-xs mt-2 text-right">{approvalProblem}</p>}
+        {approvalProblem && items.length > 0 && <p className="text-warning/70 text-xs mt-2 text-right">{approvalProblem}</p>}
       </div>
 
       {/* Historial */}
       {data.proposals.length > 0 && (
         <div className={card}>
-          <h3 className="text-white/50 text-xs uppercase tracking-widest mb-3">Versions</h3>
-          <ul className="divide-y divide-white/5">
+          <h3 className="text-ink-soft text-xs font-medium mb-3">Versions</h3>
+          <ul className="divide-y divide-line">
             {data.proposals.map(p => (
               <li key={p.id} className="flex flex-wrap items-center gap-3 py-2 text-xs">
-                <span className="text-white font-semibold w-8">v{p.version}</span>
-                <span className={`px-2 py-0.5 rounded-full ${p.status === 'approved' ? 'bg-green-500/15 text-green-400' : 'bg-white/10 text-white/50'}`}>
+                <span className="text-ink font-semibold w-8">v{p.version}</span>
+                <span className={`px-2 py-0.5 rounded-full ${p.status === 'approved' ? 'bg-positive/15 text-positive' : 'bg-subtle-strong text-ink-soft'}`}>
                   {p.status === 'approved' ? 'Aprovada' : 'Esborrany'}
                 </span>
-                <span className="text-white/40">{new Date(p.approvedAt ?? p.updatedAt).toLocaleDateString('ca-ES')}</span>
-                {p.suitabilityOverride && <span className="text-red-300" title={p.suitabilityOverride}>No idònia (justificada)</span>}
-                <span className="text-white/50">{p.items.length} fons · {PROFILE_LABEL[p.profile]} · {p.stats.complete ? `${pct(p.stats.netReturn)} net` : 'dades incompletes'}</span>
+                <span className="text-ink-muted">{new Date(p.approvedAt ?? p.updatedAt).toLocaleDateString('ca-ES')}</span>
+                {p.suitabilityOverride && <span className="text-negative" title={p.suitabilityOverride}>No idònia (justificada)</span>}
+                <span className="text-ink-soft">{p.items.length} fons · {PROFILE_LABEL[p.profile]} · {p.stats.complete ? `${pct(p.stats.netReturn)} net` : 'dades incompletes'}</span>
                 {p.status === 'approved' && (
                   <span className="ml-auto flex gap-2">
-                    {p.stats.complete && <button disabled={!!busy} onClick={() => fromHistory(p, 'pdf')} className="text-[#c9a84c] hover:underline disabled:opacity-40">
+                    {p.stats.complete && <button disabled={!!busy} onClick={() => fromHistory(p, 'pdf')} className="text-accent hover:underline disabled:opacity-40">
                       {busy === `pdf-${p.id}` ? 'Generant…' : 'PDF'}
                     </button>}
-                    <button disabled={!!busy} onClick={() => fromHistory(p, 'excel')} className="text-[#c9a84c] hover:underline disabled:opacity-40">
+                    <button disabled={!!busy} onClick={() => fromHistory(p, 'excel')} className="text-accent hover:underline disabled:opacity-40">
                       {busy === `excel-${p.id}` ? 'Descarregant…' : 'Excel'}
                     </button>
                     {p.appliedAt
-                      ? <span className="text-green-400/80">A la cartera des del {new Date(p.appliedAt).toLocaleDateString('ca-ES')}</span>
+                      ? <span className="text-positive/80">A la cartera des del {new Date(p.appliedAt).toLocaleDateString('ca-ES')}</span>
                       : <button
                           disabled={!!busy}
                           title={rebalance ? 'Calcula les vendes i compres per passar la cartera actual als pesos d\'aquesta versió' : undefined}
                           onClick={() => setApplying(a => a?.id === p.id ? null : { id: p.id, date: new Date().toISOString().slice(0, 10), amount: rebalance ? 0 : p.initialAmount, broker: '' })}
-                          className="text-[#c9a84c] hover:underline disabled:opacity-40">
+                          className="text-accent hover:underline disabled:opacity-40">
                           {rebalance ? 'Reestructurar la cartera' : 'Passar a cartera activa'}
                         </button>}
                   </span>
                 )}
                 {applying?.id === p.id && (
-                  <div className="w-full mt-2 p-3 rounded-lg bg-white/5 border border-white/10 space-y-3">
-                    <p className="text-white/60">
+                  <div className="w-full mt-2 p-3 rounded-lg bg-subtle border border-line space-y-3">
+                    <p className="text-ink-soft">
                       {rebalance
                         ? 'Es valora la cartera actual amb els valors liquidatius oficials (Preus dels fons) de la data triada, s\'hi suma l\'aportació nova i es calculen les vendes i compres per arribar als pesos d\'aquesta versió. Primer revisa les operacions; després, executa-les.'
                         : 'Es compra cada fons al seu valor liquidatiu oficial (Preus dels fons) de la data triada o de l\'últim dia anterior amb preu.'}
                     </p>
                     <div className="flex flex-wrap gap-3 items-end">
-                      <label className="flex flex-col gap-1 text-white/40">{rebalance ? 'Data de les operacions' : 'Data de compra'}
+                      <label className="flex flex-col gap-1 text-ink-muted">{rebalance ? 'Data de les operacions' : 'Data de compra'}
                         <input type="date" className={input} value={applying.date} max={new Date().toISOString().slice(0, 10)}
                           onChange={e => setApplying({ ...applying, date: e.target.value, problems: undefined, preview: undefined })} />
                       </label>
-                      <label className="flex flex-col gap-1 text-white/40">{rebalance ? 'Aportació nova (€)' : 'Import (€)'}
+                      <label className="flex flex-col gap-1 text-ink-muted">{rebalance ? 'Aportació nova (€)' : 'Import (€)'}
                         <input type="number" min={0} step={100} className={input} value={applying.amount}
                           onChange={e => setApplying({ ...applying, amount: Number(e.target.value), problems: undefined, preview: undefined })} />
                       </label>
-                      <label className="flex flex-col gap-1 text-white/40">{rebalance ? 'Entitat (fons nous)' : 'Entitat'}
+                      <label className="flex flex-col gap-1 text-ink-muted">{rebalance ? 'Entitat (fons nous)' : 'Entitat'}
                         <input type="text" className={input} value={applying.broker} placeholder="p. ex. MyInvestor"
                           onChange={e => setApplying({ ...applying, broker: e.target.value })} />
                       </label>
                       {rebalance && (
-                        <label className="flex items-center gap-2 text-white/60 pb-1.5" title="Els traspassos entre fons no tributen (art. 94 LIRPF); el fons nou hereta el cost i la data. Els ETF no es poden traspassar.">
+                        <label className="flex items-center gap-2 text-ink-soft pb-1.5" title="Els traspassos entre fons no tributen (art. 94 LIRPF); el fons nou hereta el cost i la data. Els ETF no es poden traspassar.">
                           <input type="checkbox" checked={applying.transfer !== false}
                             onChange={e => setApplying({ ...applying, transfer: e.target.checked })} />
                           Com a traspassos (no tributen)
                         </label>
                       )}
                       <button disabled={!!busy || !applying.date || (!rebalance && !(applying.amount > 0)) || applying.amount < 0} onClick={() => onApply(true)}
-                        className="px-3 py-1.5 rounded-lg bg-white/10 text-white hover:bg-white/15 disabled:opacity-40">
+                        className="px-3 py-1.5 rounded-lg bg-subtle-strong text-ink hover:bg-subtle-strong disabled:opacity-40">
                         {busy === `apply-${p.id}` && !applying.preview ? 'Calculant…' : 'Calcular les operacions'}
                       </button>
                     </div>
                     {!!applying.problems?.length && (
-                      <ul className="list-disc pl-5 text-red-300 space-y-0.5">
+                      <ul className="list-disc pl-5 text-negative space-y-0.5">
                         {applying.problems.map(x => <li key={x}>{x}</li>)}
                       </ul>
                     )}
                     {applying.preview && (
                       <div className="space-y-2">
                         {applying.preview.mode === 'rebalance' && (
-                          <p className="text-white/70">
+                          <p className="text-ink-soft">
                             Valor actual {eur2(applying.preview.currentValue)}
-                            {applying.amount > 0 && <> + aportació {eur2(applying.amount)}</>} = <span className="text-white font-semibold">{eur2(applying.preview.newValue)}</span> a repartir segons la v{p.version}.
+                            {applying.amount > 0 && <> + aportació {eur2(applying.amount)}</>} = <span className="text-ink font-semibold">{eur2(applying.preview.newValue)}</span> a repartir segons la v{p.version}.
                           </p>
                         )}
                         {applying.preview.lines.length === 0
-                          ? <p className="text-green-400/80">La cartera ja té aquests pesos: no cal cap operació.</p>
+                          ? <p className="text-positive/80">La cartera ja té aquests pesos: no cal cap operació.</p>
                           : (
                           <div className="overflow-x-auto">
                             <table className="w-full min-w-[560px]">
@@ -506,17 +506,17 @@ export default function ClientProposal({ clientId, onApplied }: { clientId: stri
                                 <th className={`${th} text-right`}>Participacions</th><th className={`${th} text-right`}>VL oficial</th>
                                 <th className={`${th} text-right`}>Import</th><th className={`${th} text-right`}>Pes objectiu</th>
                               </tr></thead>
-                              <tbody className="divide-y divide-white/5">
+                              <tbody className="divide-y divide-line">
                                 {applying.preview.lines.map(l => (
                                   <tr key={l.isin}>
-                                    <td className={`py-1.5 pr-2 font-semibold ${l.side === 'sell' ? 'text-red-300' : 'text-green-400'}`}>
+                                    <td className={`py-1.5 pr-2 font-semibold ${l.side === 'sell' ? 'text-negative' : 'text-positive'}`}>
                                       {l.side === 'sell' ? (l.targetQty === 0 ? 'Venda total' : 'Venda') : (l.currentQty === 0 ? 'Compra (nou)' : 'Compra')}
                                     </td>
-                                    <td className="py-1.5 pr-2 text-white/80">{l.name}<span className="text-white/30"> · {l.isin}</span></td>
-                                    <td className="py-1.5 pr-2 text-right tabular-nums text-white/80">{qty(l.quantity)}</td>
-                                    <td className="py-1.5 pr-2 text-right tabular-nums text-white/60">{eur2(l.nav)} <span className="text-white/30">({fdate(l.navDate)})</span></td>
-                                    <td className="py-1.5 pr-2 text-right tabular-nums text-white">{eur2(l.amount)}</td>
-                                    <td className="py-1.5 text-right tabular-nums text-white/60">{pct(l.weight)}</td>
+                                    <td className="py-1.5 pr-2 text-ink">{l.name}<span className="text-ink-muted"> · {l.isin}</span></td>
+                                    <td className="py-1.5 pr-2 text-right tabular-nums text-ink">{qty(l.quantity)}</td>
+                                    <td className="py-1.5 pr-2 text-right tabular-nums text-ink-soft">{eur2(l.nav)} <span className="text-ink-muted">({fdate(l.navDate)})</span></td>
+                                    <td className="py-1.5 pr-2 text-right tabular-nums text-ink">{eur2(l.amount)}</td>
+                                    <td className="py-1.5 text-right tabular-nums text-ink-soft">{pct(l.weight)}</td>
                                   </tr>
                                 ))}
                               </tbody>
@@ -524,7 +524,7 @@ export default function ClientProposal({ clientId, onApplied }: { clientId: stri
                           </div>
                         )}
                         {applying.preview.mode === 'rebalance' && applying.preview.lines.length > 0 && (
-                          <p className="text-white/50">
+                          <p className="text-ink-soft">
                             {applying.transfer !== false
                               ? 'Es registraran com a traspassos entre fons: no tributen i el fons nou hereta el cost i la data d\'adquisició. Si hi ha algun ETF, la seva venda sí que tributa.'
                               : 'Es registraran com a vendes i compres: les vendes amb guany tributen a la renda d\'aquest any.'}
@@ -532,7 +532,7 @@ export default function ClientProposal({ clientId, onApplied }: { clientId: stri
                         )}
                         {applying.preview.lines.length > 0 && (
                           <button disabled={!!busy} onClick={() => onApply(false)}
-                            className="px-3 py-1.5 rounded-lg bg-[#c9a84c] text-[#0a1612] font-semibold disabled:opacity-40">
+                            className="px-3 py-1.5 rounded-lg bg-accent text-accent-ink font-semibold disabled:opacity-40">
                             {busy === `apply-${p.id}` ? 'Registrant…' : applying.preview.mode === 'first' ? 'Crear les posicions' : 'Executar la reestructuració'}
                           </button>
                         )}
@@ -552,9 +552,9 @@ export default function ClientProposal({ clientId, onApplied }: { clientId: stri
 function Metric({ label, value, sub, tone }: { label: string; value: string; sub?: string; tone?: 'ok' | 'bad' }) {
   return (
     <div>
-      <p className="text-white/35 text-xs">{label}</p>
-      <p className={`font-bold text-base ${tone === 'bad' ? 'text-red-400' : tone === 'ok' ? 'text-green-400' : 'text-white'}`}>{value}</p>
-      {sub && <p className="text-white/30 text-[11px]">{sub}</p>}
+      <p className="text-ink-muted text-xs">{label}</p>
+      <p className={`font-bold text-base ${tone === 'bad' ? 'text-negative' : tone === 'ok' ? 'text-positive' : 'text-ink'}`}>{value}</p>
+      {sub && <p className="text-ink-muted text-[11px]">{sub}</p>}
     </div>
   );
 }
@@ -563,29 +563,29 @@ function FundRow({ x, i, amount, input, noteOpen, toggleNote, setItem, removeIte
   x: ProposalItem; i: number; amount: number; input: string; noteOpen: boolean; toggleNote: () => void;
   setItem: (i: number, p: Partial<ProposalItem>) => void; removeItem: (i: number) => void;
 }) {
-  const td = 'py-1.5 pr-2 border-t border-white/5 align-top';
+  const td = 'py-1.5 pr-2 border-t border-line align-top';
   return (
     <>
       <tr>
-        <td className={`${td} font-mono text-white/70 text-xs pt-3`}>{x.isin}</td>
+        <td className={`${td} font-mono text-ink-soft text-xs pt-3`}>{x.isin}</td>
         <td className={td}>
           <input value={x.name} onChange={e => setItem(i, { name: e.target.value })} placeholder="Nom del fons" className={`${input} w-full min-w-[220px]`} />
-          <p className="text-white/30 text-[11px] mt-0.5">{x.category || 'Sense categoria'}
+          <p className="text-ink-muted text-[11px] mt-0.5">{x.category || 'Sense categoria'}
             {hasPerformanceData(x)
               ? <span title={x.performanceSource}> · {pct(x.historicalReturn5Y!)} anual, volatilitat {pct(x.historicalVolatility!)}</span>
-              : <span className="text-red-300/80"> · sense dades de rendiment</span>}</p>
+              : <span className="text-negative/80"> · sense dades de rendiment</span>}</p>
         </td>
         <td className={td}><input type="number" min={0} max={100} step={0.5} value={x.weight}
           onChange={e => setItem(i, { weight: Math.min(100, Math.max(0, Number(e.target.value) || 0)) })} className={`${input} w-16`} /></td>
-        <td className={`${td} text-white/60 text-xs pt-3 whitespace-nowrap`}>{eur(amount)}</td>
+        <td className={`${td} text-ink-soft text-xs pt-3 whitespace-nowrap`}>{eur(amount)}</td>
         <td className={td}><select value={x.risk} onChange={e => setItem(i, { risk: Number(e.target.value) })} className={input}>
           {[1, 2, 3, 4, 5, 6, 7].map(r => <option key={r} value={r}>{r}</option>)}</select></td>
         <td className={td}><input type="number" min={0} max={10} step={0.01} value={x.ter}
           onChange={e => setItem(i, { ter: Math.min(10, Math.max(0, Number(e.target.value) || 0)) })} className={`${input} w-16`} /></td>
         <td className={td}><input value={x.platform} onChange={e => setItem(i, { platform: e.target.value })} placeholder="MyInvestor…" className={`${input} w-28`} /></td>
         <td className={`${td} whitespace-nowrap pt-2.5`}>
-          <button onClick={toggleNote} className="text-white/40 hover:text-white text-xs mr-2" title="Justificació">✎</button>
-          <button onClick={() => removeItem(i)} className="text-red-400/60 hover:text-red-400 text-xs" title="Treure">✕</button>
+          <button onClick={toggleNote} className="text-ink-muted hover:text-ink text-xs mr-2" title="Justificació">✎</button>
+          <button onClick={() => removeItem(i)} className="text-negative/60 hover:text-negative text-xs" title="Treure">✕</button>
         </td>
       </tr>
       {noteOpen && (

@@ -10,9 +10,40 @@ const config: Config = {
   theme: {
     extend: {
       fontFamily: {
-        sans: ['var(--font-inter)', 'system-ui', 'sans-serif'],
+        sans:  ['var(--font-sans, var(--font-inter))', 'system-ui', 'sans-serif'],
+        mono:  ['var(--font-plex-mono)', 'ui-monospace', 'monospace'],
+        serif: ['var(--font-newsreader)', 'Georgia', 'serif'],
       },
       colors: {
+        // ── Tokens semàntics (decisió de disseny 2026-11-18, direcció A+B) ──
+        // Els valors viuen a app/globals.css com a variables CSS: per defecte
+        // (portal, fosc) i dins .theme-admin (admin, clar). Així el mateix
+        // component es veu bé a tots dos llocs.
+        canvas:   'rgb(var(--c-canvas) / <alpha-value>)',
+        surface:  'rgb(var(--c-surface) / <alpha-value>)',
+        subtle: {
+          DEFAULT: 'rgb(var(--c-subtle) / <alpha-value>)',
+          strong:  'rgb(var(--c-subtle-strong) / <alpha-value>)',
+        },
+        ink: {
+          DEFAULT: 'rgb(var(--c-ink) / <alpha-value>)',
+          soft:    'rgb(var(--c-ink-soft) / <alpha-value>)',
+          muted:   'rgb(var(--c-ink-muted) / <alpha-value>)',
+        },
+        line: {
+          DEFAULT: 'rgb(var(--c-line) / <alpha-value>)',
+          strong:  'rgb(var(--c-line-strong) / <alpha-value>)',
+        },
+        accent: {
+          DEFAULT: 'rgb(var(--c-accent) / <alpha-value>)',
+          hover:   'rgb(var(--c-accent-hover) / <alpha-value>)',
+          soft:    'rgb(var(--c-accent-soft) / <alpha-value>)',
+          ink:     'rgb(var(--c-accent-ink) / <alpha-value>)',
+        },
+        positive: 'rgb(var(--c-positive) / <alpha-value>)',
+        negative: 'rgb(var(--c-negative) / <alpha-value>)',
+        warning:  'rgb(var(--c-warning) / <alpha-value>)',
+        info:     'rgb(var(--c-info) / <alpha-value>)',
         brand: {
           50:  '#eff6ff',
           100: '#dbeafe',

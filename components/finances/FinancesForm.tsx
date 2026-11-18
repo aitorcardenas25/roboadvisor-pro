@@ -29,8 +29,8 @@ const HORIZONS: { value: Horizon; label: string }[] = [
   { value: 'llarg', label: 'Llarg (+5 anys)' },
 ];
 
-const input = 'w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#c9a84c]/60';
-const card  = 'bg-[#0d1f1a] border border-white/10 rounded-xl p-5';
+const input = 'w-full bg-subtle border border-line rounded-lg px-3 py-2 text-ink text-sm focus:outline-none focus:border-accent/60';
+const card  = 'bg-surface border border-line rounded-xl p-5';
 
 const str = (v: unknown) => (typeof v === 'number' && Number.isFinite(v) ? String(v) : '');
 
@@ -103,12 +103,12 @@ export default function FinancesForm({ data, onSaved, onCancel }: {
   return (
     <form onSubmit={submit} className={`${card} space-y-5`}>
       <div>
-        <h2 className="text-white font-semibold">Les meves dades</h2>
-        <p className="text-white/40 text-xs mt-1">Xifres aproximades i mensuals. Si no saps alguna dada, deixa-la en blanc.</p>
+        <h2 className="text-ink font-semibold">Les meves dades</h2>
+        <p className="text-ink-muted text-xs mt-1">Xifres aproximades i mensuals. Si no saps alguna dada, deixa-la en blanc.</p>
       </div>
 
       {hasOldTotal && (
-        <p className="text-amber-200/80 text-xs">
+        <p className="text-warning/80 text-xs">
           Ara tens només la despesa total ({str(data.monthlyExpenses)} €). Si separes fixes i variables, el pressupost serà més precís.
         </p>
       )}
@@ -116,53 +116,53 @@ export default function FinancesForm({ data, onSaved, onCancel }: {
       <div className="grid sm:grid-cols-2 gap-4">
         {MONEY_FIELDS.map(f => (
           <label key={f.key} className="block">
-            <span className="text-white/60 text-sm">{f.label} (€)</span>
+            <span className="text-ink-soft text-sm">{f.label} (€)</span>
             <input type="number" inputMode="decimal" min={0} step="any" className={`${input} mt-1`}
               value={values[f.key]} onChange={e => setValues(v => ({ ...v, [f.key]: e.target.value }))} />
-            <span className="text-white/30 text-xs">{f.hint}</span>
+            <span className="text-ink-muted text-xs">{f.hint}</span>
           </label>
         ))}
         <label className="block">
-          <span className="text-white/60 text-sm">Situació laboral</span>
+          <span className="text-ink-soft text-sm">Situació laboral</span>
           <select className={`${input} mt-1`} value={employment} onChange={e => setEmployment(e.target.value)}>
-            {EMPLOYMENT.map(o => <option key={o.value} value={o.value} className="bg-[#0d1f1a]">{o.label}</option>)}
+            {EMPLOYMENT.map(o => <option key={o.value} value={o.value} className="bg-surface">{o.label}</option>)}
           </select>
-          <span className="text-white/30 text-xs">Serveix per calcular quants mesos ha de cobrir el fons d&apos;emergència.</span>
+          <span className="text-ink-muted text-xs">Serveix per calcular quants mesos ha de cobrir el fons d&apos;emergència.</span>
         </label>
       </div>
 
       <div>
         <div className="flex items-center justify-between mb-2">
-          <h3 className="text-white/70 text-sm font-semibold">Objectius</h3>
+          <h3 className="text-ink-soft text-sm font-semibold">Objectius</h3>
           {goals.length < 10 && (
             <button type="button" onClick={() => setGoals(gs => [...gs, { horizon: 'mitja', description: '', amount: '', targetYear: '' }])}
-              className="text-[#c9a84c] text-xs hover:underline">+ Afegir objectiu</button>
+              className="text-accent text-xs hover:underline">+ Afegir objectiu</button>
           )}
         </div>
-        {goals.length === 0 && <p className="text-white/30 text-xs">Per exemple: entrada d&apos;un pis, un cotxe, un viatge, la jubilació.</p>}
+        {goals.length === 0 && <p className="text-ink-muted text-xs">Per exemple: entrada d&apos;un pis, un cotxe, un viatge, la jubilació.</p>}
         <div className="space-y-3">
           {goals.map((g, i) => (
             <div key={i} className="grid grid-cols-2 sm:grid-cols-[9rem_1fr_7rem_6rem_auto] gap-2 items-end">
               <label className="block col-span-2 sm:col-span-1">
-                <span className="text-white/40 text-xs">Termini</span>
+                <span className="text-ink-muted text-xs">Termini</span>
                 <select className={input} value={g.horizon} onChange={e => setGoal(i, { horizon: e.target.value as Horizon })}>
-                  {HORIZONS.map(h => <option key={h.value} value={h.value} className="bg-[#0d1f1a]">{h.label}</option>)}
+                  {HORIZONS.map(h => <option key={h.value} value={h.value} className="bg-surface">{h.label}</option>)}
                 </select>
               </label>
               <label className="block col-span-2 sm:col-span-1">
-                <span className="text-white/40 text-xs">Què vols aconseguir</span>
+                <span className="text-ink-muted text-xs">Què vols aconseguir</span>
                 <input className={input} maxLength={200} value={g.description} onChange={e => setGoal(i, { description: e.target.value })} />
               </label>
               <label className="block">
-                <span className="text-white/40 text-xs">Import (€)</span>
+                <span className="text-ink-muted text-xs">Import (€)</span>
                 <input type="number" inputMode="decimal" min={0} className={input} value={g.amount} onChange={e => setGoal(i, { amount: e.target.value })} />
               </label>
               <label className="block">
-                <span className="text-white/40 text-xs">Any</span>
+                <span className="text-ink-muted text-xs">Any</span>
                 <input type="number" inputMode="numeric" min={2000} max={2100} className={input} value={g.targetYear} onChange={e => setGoal(i, { targetYear: e.target.value })} />
               </label>
               <button type="button" onClick={() => setGoals(gs => gs.filter((_, j) => j !== i))}
-                className="col-span-2 sm:col-span-1 text-white/40 hover:text-red-400 text-xs py-2" aria-label={`Treure l'objectiu ${i + 1}`}>
+                className="col-span-2 sm:col-span-1 text-ink-muted hover:text-negative text-xs py-2" aria-label={`Treure l'objectiu ${i + 1}`}>
                 Treure
               </button>
             </div>
@@ -170,15 +170,15 @@ export default function FinancesForm({ data, onSaved, onCancel }: {
         </div>
       </div>
 
-      {error && <p className="text-red-400 text-sm" role="alert">{error}</p>}
+      {error && <p className="text-negative text-sm" role="alert">{error}</p>}
 
       <div className="flex gap-3">
         <button type="submit" disabled={saving}
-          className="px-5 py-2 rounded-lg bg-[#c9a84c] text-[#0d1f1a] font-semibold text-sm disabled:opacity-50">
+          className="px-5 py-2 rounded-lg bg-accent text-accent-ink font-semibold text-sm disabled:opacity-50">
           {saving ? 'Desant…' : 'Desar'}
         </button>
         {onCancel && (
-          <button type="button" onClick={onCancel} className="px-5 py-2 rounded-lg bg-white/5 text-white/60 text-sm hover:bg-white/10">
+          <button type="button" onClick={onCancel} className="px-5 py-2 rounded-lg bg-subtle text-ink-soft text-sm hover:bg-subtle-strong">
             Cancel·lar
           </button>
         )}

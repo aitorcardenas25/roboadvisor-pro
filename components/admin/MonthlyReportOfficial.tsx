@@ -9,9 +9,9 @@ const pct = (n: number, sign = true) => `${sign && n > 0 ? '+' : ''}${n.toLocale
 const fdate = (d: string) => new Date(d.slice(0, 10) + 'T00:00:00').toLocaleDateString('ca-ES');
 const mon = (d: string) => new Date(d.slice(0, 10) + 'T00:00:00').toLocaleString('ca-ES', { month: 'short' }).replace(/^de |^d’|^d'/, '') + ' ' + d.slice(2, 4);
 
-const H2 = 'text-white font-semibold text-sm mb-3 uppercase tracking-wide print:text-black';
-const TH = 'text-left text-white/30 text-[11px] uppercase tracking-wide font-medium pb-2 pr-2 print:text-gray-500';
-const TD = 'py-1.5 pr-2 text-white/75 text-xs print:text-gray-800';
+const H2 = 'text-ink font-semibold text-sm mb-3 font-medium print:text-ink';
+const TH = 'text-left text-ink-muted text-[11px] font-medium font-medium pb-2 pr-2 print:text-ink-muted';
+const TD = 'py-1.5 pr-2 text-ink text-xs print:text-ink';
 
 /** Gràfic de línia en SVG (s'imprimeix bé, sense dependències). */
 function EvolutionSvg({ points }: { points: { date: string; value: number; invested: number }[] }) {
@@ -42,7 +42,7 @@ function EvolutionSvg({ points }: { points: { date: string; value: number; inves
 
 export default function MonthlyReportOfficialView({ data }: { data: MonthlyReportOfficial }) {
   const p = data.performance;
-  const col = (n: number) => n >= 0 ? 'text-green-400 print:text-green-700' : 'text-red-400 print:text-red-700';
+  const col = (n: number) => n >= 0 ? 'text-positive print:text-positive' : 'text-negative print:text-negative';
   return (
     <>
       {/* Resultat del període */}
@@ -59,28 +59,28 @@ export default function MonthlyReportOfficialView({ data }: { data: MonthlyRepor
                 { l: 'Rendibilitat del període', v: pct(p.periodReturn), c: col(p.periodReturn) },
                 { l: 'Rendibilitat acumulada', v: pct(p.cumulativeReturn), c: col(p.cumulativeReturn) },
               ].map(k => (
-                <div key={k.l} className="bg-white/5 rounded-xl p-3 print:bg-gray-50 print:rounded-none print:border print:border-gray-200">
-                  <p className="text-white/40 text-[11px] mb-1 print:text-gray-500">{k.l}</p>
-                  <p className={`font-bold ${k.c ?? 'text-white print:text-black'}`}>{k.v}</p>
+                <div key={k.l} className="bg-subtle rounded-lg p-3 print:bg-subtle print:rounded-none print:border print:border-line">
+                  <p className="text-ink-muted text-[11px] mb-1 print:text-ink-muted">{k.l}</p>
+                  <p className={`font-bold ${k.c ?? 'text-ink print:text-ink'}`}>{k.v}</p>
                 </div>
               ))}
             </div>
-            <p className="text-white/30 text-[11px] mt-2 print:text-gray-500">
+            <p className="text-ink-muted text-[11px] mt-2 print:text-ink-muted">
               Valor = participacions × valor liquidatiu oficial de cada fons a la data (o l&apos;últim dia anterior amb preu).
               La rendibilitat del període descompta les aportacions (mètode Modified Dietz).
             </p>
           </>
         ) : (
-          <p className="text-amber-300/80 text-sm print:text-amber-700">{data.note ?? 'No hi ha prou dades per calcular el resultat del període.'}</p>
+          <p className="text-warning/80 text-sm print:text-warning">{data.note ?? 'No hi ha prou dades per calcular el resultat del període.'}</p>
         )}
       </div>
 
       {/* Evolució */}
       {data.evolution.length >= 2 && (
-        <div className="mb-8 text-white print:text-black">
+        <div className="mb-8 text-ink print:text-ink">
           <h2 className={H2}>Evolució (finals de mes)</h2>
           <EvolutionSvg points={data.evolution} />
-          <p className="text-white/30 text-[11px] mt-1 print:text-gray-500">Línia contínua: valor de la cartera. Línia discontínua: capital aportat.</p>
+          <p className="text-ink-muted text-[11px] mt-1 print:text-ink-muted">Línia contínua: valor de la cartera. Línia discontínua: capital aportat.</p>
         </div>
       )}
 
@@ -93,20 +93,20 @@ export default function MonthlyReportOfficialView({ data }: { data: MonthlyRepor
               <th className={TH}>Fons</th><th className={`${TH} text-right`}>Objectiu (v{data.allocation.targetVersion})</th>
               <th className={`${TH} text-right`}>Actual</th><th className={`${TH} text-right`}>Diferència</th>
             </tr></thead>
-            <tbody className="divide-y divide-white/5 print:divide-gray-200">
+            <tbody className="divide-y divide-line print:divide-line">
               {data.allocation.rows.map(r => (
                 <tr key={r.isin}>
                   <td className={TD}>{r.name}</td>
                   <td className={`${TD} text-right tabular-nums`}>{pct(r.target, false)}</td>
                   <td className={`${TD} text-right tabular-nums`}>{pct(r.current, false)}</td>
-                  <td className={`${TD} text-right tabular-nums ${Math.abs(r.diff) >= data.allocation!.threshold ? 'text-amber-300 print:text-amber-700 font-semibold' : ''}`}>
+                  <td className={`${TD} text-right tabular-nums ${Math.abs(r.diff) >= data.allocation!.threshold ? 'text-warning print:text-warning font-semibold' : ''}`}>
                     {r.diff > 0 ? '+' : ''}{r.diff.toLocaleString('ca-ES', { maximumFractionDigits: 2 })} pp
                   </td>
                 </tr>
               ))}
             </tbody>
           </table>
-          <p className="text-white/30 text-[11px] mt-2 print:text-gray-500">
+          <p className="text-ink-muted text-[11px] mt-2 print:text-ink-muted">
             {data.allocation.rows.some(r => Math.abs(r.diff) >= data.allocation!.threshold)
               ? `Algun fons s'ha desviat ${data.allocation.threshold} punts o més del pes objectiu: es valorarà reequilibrar la cartera.`
               : `Tots els fons són a menys de ${data.allocation.threshold} punts del pes objectiu.`}
@@ -118,14 +118,14 @@ export default function MonthlyReportOfficialView({ data }: { data: MonthlyRepor
       <div className="mb-8">
         <h2 className={H2}>Operacions del període</h2>
         {data.operations.length === 0 ? (
-          <p className="text-white/40 text-sm print:text-gray-600">Cap operació en aquest període.</p>
+          <p className="text-ink-muted text-sm print:text-ink-soft">Cap operació en aquest període.</p>
         ) : (
           <table className="w-full">
             <thead><tr>
               <th className={TH}>Data</th><th className={TH}>Tipus</th><th className={TH}>Fons</th>
               <th className={`${TH} text-right`}>Participacions</th><th className={`${TH} text-right`}>Preu</th><th className={`${TH} text-right`}>Import</th>
             </tr></thead>
-            <tbody className="divide-y divide-white/5 print:divide-gray-200">
+            <tbody className="divide-y divide-line print:divide-line">
               {data.operations.map((o, i) => (
                 <tr key={i}>
                   <td className={TD}>{fdate(o.date)}</td><td className={TD}>{o.type}</td><td className={TD}>{o.name}</td>
@@ -141,9 +141,9 @@ export default function MonthlyReportOfficialView({ data }: { data: MonthlyRepor
 
       {/* Revisions */}
       {data.review.due && (
-        <div className="mb-8 p-3 rounded-xl border border-amber-500/25 bg-amber-500/5 print:border-amber-300 print:bg-amber-50">
+        <div className="mb-8 p-3 rounded-lg border border-warning/25 bg-warning/5 print:border-warning print:bg-warning">
           <h2 className={H2}>Revisió pendent</h2>
-          <ul className="list-disc pl-5 text-amber-200/90 text-sm print:text-amber-800">
+          <ul className="list-disc pl-5 text-warning/90 text-sm print:text-warning">
             {data.review.detail.map(d => <li key={d}>{d}</li>)}
           </ul>
         </div>

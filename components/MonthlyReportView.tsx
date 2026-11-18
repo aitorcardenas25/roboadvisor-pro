@@ -5,27 +5,27 @@ import type { MonthlyReportData } from '@/lib/portfolioReport';
 import MonthlyReportOfficialView from '@/components/admin/MonthlyReportOfficial';
 
 export default function MonthlyReportView({ report }: { report: MonthlyReportData }) {
-  const pnlColor = report.metrics.pnlEur >= 0 ? 'text-green-400' : 'text-red-400';
+  const pnlColor = report.metrics.pnlEur >= 0 ? 'text-positive' : 'text-negative';
   return (
-    <div id="monthly-report" className="bg-[#0d1f1a] border border-white/10 rounded-2xl p-8 print:bg-white print:text-black print:border-none print:rounded-none print:p-0">
+    <div id="monthly-report" className="bg-surface border border-line rounded-2xl p-8 print:bg-white print:text-ink print:border-none print:rounded-none print:p-0">
       {/* Header */}
-      <div className="flex items-start justify-between mb-8 pb-6 border-b border-white/10 print:border-gray-200">
+      <div className="flex items-start justify-between mb-8 pb-6 border-b border-line print:border-line">
         <div>
           <div className="flex items-center gap-2 mb-3">
-            <div className="w-6 h-6 bg-[#c9a84c]/20 border border-[#c9a84c]/40 rounded flex items-center justify-center">
-              <span className="text-[#c9a84c] font-black text-xs print:hidden">F</span>
+            <div className="w-6 h-6 bg-accent-soft border border-accent/40 rounded flex items-center justify-center">
+              <span className="text-accent font-black text-xs print:hidden">F</span>
             </div>
-            <span className="text-white font-black tracking-wider print:text-black">FACTOR OTC</span>
+            <span className="text-ink font-black tracking-wider print:text-ink">FACTOR OTC</span>
           </div>
-          <h1 className="text-white font-bold text-2xl mb-1 print:text-black">Informe Mensual de Cartera</h1>
-          <p className="text-white/50 text-sm print:text-gray-500">{report.clientName} · {report.portfolioName}</p>
+          <h1 className="text-ink font-bold text-2xl mb-1 print:text-ink">Informe Mensual de Cartera</h1>
+          <p className="text-ink-soft text-sm print:text-ink-muted">{report.clientName} · {report.portfolioName}</p>
         </div>
         <div className="text-right">
-          <p className="text-white/30 text-xs print:text-gray-400">ID: {report.reportId}</p>
-          <p className="text-white/40 text-sm mt-1 print:text-gray-600">
+          <p className="text-ink-muted text-xs print:text-ink-muted">ID: {report.reportId}</p>
+          <p className="text-ink-muted text-sm mt-1 print:text-ink-soft">
             {new Date(report.periodStart).toLocaleDateString('ca-ES')} – {new Date(report.periodEnd).toLocaleDateString('ca-ES')}
           </p>
-          <p className="text-white/20 text-xs mt-1 print:text-gray-400">
+          <p className="text-ink-muted text-xs mt-1 print:text-ink-muted">
             Generat: {new Date(report.generatedAt).toLocaleString('ca-ES')}
           </p>
         </div>
@@ -39,9 +39,9 @@ export default function MonthlyReportView({ report }: { report: MonthlyReportDat
           { label: 'Rendiment (€)',    value: `${report.metrics.pnlEur >= 0 ? '+' : ''}${report.metrics.pnlEur.toFixed(2)} €`, colored: true },
           { label: 'Rendiment (%)',    value: `${report.metrics.pnlPct >= 0 ? '+' : ''}${report.metrics.pnlPct.toFixed(2)}%`, colored: true },
         ].map(kpi => (
-          <div key={kpi.label} className="bg-white/5 rounded-xl p-4 print:bg-gray-50 print:rounded-none print:border print:border-gray-200">
-            <p className="text-white/40 text-xs mb-1 print:text-gray-500">{kpi.label}</p>
-            <p className={`font-bold text-lg ${kpi.colored ? pnlColor : 'text-white'} print:text-black`}>
+          <div key={kpi.label} className="bg-subtle rounded-xl p-4 print:bg-subtle print:rounded-none print:border print:border-line">
+            <p className="text-ink-muted text-xs mb-1 print:text-ink-muted">{kpi.label}</p>
+            <p className={`font-bold text-lg ${kpi.colored ? pnlColor : 'text-ink'} print:text-ink`}>
               {kpi.value}
             </p>
           </div>
@@ -54,23 +54,23 @@ export default function MonthlyReportView({ report }: { report: MonthlyReportDat
       {/* Top holdings */}
       {report.topHoldings.length > 0 && (
         <div className="mb-8">
-          <h2 className="text-white font-semibold text-sm mb-3 uppercase tracking-wide print:text-black">Principals posicions</h2>
+          <h2 className="text-ink font-semibold text-sm mb-3 uppercase tracking-wide print:text-ink">Principals posicions</h2>
           <div className="space-y-2">
             {report.topHoldings.map(h => (
               <div key={h.name} className="flex items-center gap-3">
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center justify-between mb-1">
-                    <span className="text-white/70 text-xs truncate print:text-gray-700">{h.name}</span>
+                    <span className="text-ink-soft text-xs truncate print:text-ink-soft">{h.name}</span>
                     <div className="flex items-center gap-3 flex-shrink-0">
-                      <span className="text-white/40 text-xs print:text-gray-500">{h.value.toFixed(0)} €</span>
-                      <span className={`text-xs font-mono ${h.pnlPct >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+                      <span className="text-ink-muted text-xs print:text-ink-muted">{h.value.toFixed(0)} €</span>
+                      <span className={`text-xs font-mono ${h.pnlPct >= 0 ? 'text-positive' : 'text-negative'}`}>
                         {h.pnlPct >= 0 ? '+' : ''}{h.pnlPct.toFixed(2)}%
                       </span>
-                      <span className="text-white/30 text-xs w-10 text-right print:text-gray-400">{h.weight.toFixed(1)}%</span>
+                      <span className="text-ink-muted text-xs w-10 text-right print:text-ink-muted">{h.weight.toFixed(1)}%</span>
                     </div>
                   </div>
-                  <div className="h-1 bg-white/5 rounded-full overflow-hidden print:bg-gray-200">
-                    <div className="h-full bg-[#c9a84c]/60 rounded-full" style={{ width: `${Math.min(h.weight, 100)}%` }} />
+                  <div className="h-1 bg-subtle rounded-full overflow-hidden print:bg-gray-200">
+                    <div className="h-full bg-accent/60 rounded-full" style={{ width: `${Math.min(h.weight, 100)}%` }} />
                   </div>
                 </div>
               </div>
@@ -82,16 +82,16 @@ export default function MonthlyReportView({ report }: { report: MonthlyReportDat
       {/* Advisor comments */}
       {report.advisorComments && (
         <div className="mb-6">
-          <h2 className="text-white font-semibold text-sm mb-3 uppercase tracking-wide print:text-black">Comentaris de l&apos;assessor</h2>
-          <div className="bg-white/3 border border-white/8 rounded-xl p-4 print:bg-gray-50 print:border-gray-200">
-            <p className="text-white/70 text-sm leading-relaxed whitespace-pre-wrap print:text-gray-700">{report.advisorComments}</p>
+          <h2 className="text-ink font-semibold text-sm mb-3 uppercase tracking-wide print:text-ink">Comentaris de l&apos;assessor</h2>
+          <div className="bg-subtle border border-line rounded-xl p-4 print:bg-subtle print:border-line">
+            <p className="text-ink-soft text-sm leading-relaxed whitespace-pre-wrap print:text-ink-soft">{report.advisorComments}</p>
           </div>
         </div>
       )}
 
       {/* Disclaimer */}
-      <div className="mt-8 pt-6 border-t border-white/5 print:border-gray-200">
-        <p className="text-white/20 text-xs leading-relaxed print:text-gray-400">
+      <div className="mt-8 pt-6 border-t border-line print:border-line">
+        <p className="text-ink-muted text-xs leading-relaxed print:text-ink-muted">
           Aquest informe és una eina de suport a la decisió i no constitueix assessorament financer regulat.
           Les dades de rendiment passades no garanteixen rendiments futurs. Factor OTC no executa operacions reals.
         </p>

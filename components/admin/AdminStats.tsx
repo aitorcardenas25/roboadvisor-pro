@@ -2,7 +2,6 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { motion } from 'framer-motion';
 import {
   BarChart, Bar, PieChart, Pie, Cell,
   XAxis, YAxis, CartesianGrid, Tooltip,
@@ -34,11 +33,9 @@ interface Alert {
   section?: Section;
 }
 
-const RISK_COLORS = ['#10b981','#3b82f6','#f59e0b','#f97316','#ef4444'];
-const RISK_LABELS = ['Risc 1 — Molt baix','Risc 2 — Baix','Risc 3 — Moderat','Risc 4 — Alt','Risc 5 — Molt alt'];
 
 const PROFILE_COLORS: Record<string, string> = {
-  conservador: '#10b981', moderat: '#3b82f6', dinamic: '#f59e0b', agressiu: '#ef4444',
+  conservador: '#7fb8a0', moderat: '#1e5a47', dinamic: '#c08a2d', agressiu: '#b4281f',
 };
 
 // Accions ràpides del flux de la beta (sense emojis ni seccions amagades).
@@ -50,9 +47,9 @@ const QUICK_ACTIONS: { label: string; sub: string; section: Section | 'fund-navs
 ]
 
 const ALERT_STYLES = {
-  warning: { border: 'border-amber-500/25', bg: 'bg-amber-500/6',  dot: 'bg-amber-400', text: 'text-amber-400', icon: '⚠' },
-  error:   { border: 'border-red-500/25',   bg: 'bg-red-500/6',    dot: 'bg-red-400',   text: 'text-red-400',   icon: '!' },
-  info:    { border: 'border-blue-500/20',  bg: 'bg-blue-500/5',   dot: 'bg-blue-400',  text: 'text-blue-400',  icon: 'i' },
+  warning: { border: 'border-warning/25', bg: 'bg-warning/6',  dot: 'bg-warning', text: 'text-warning', icon: '⚠' },
+  error:   { border: 'border-negative/25',   bg: 'bg-negative/6',    dot: 'bg-negative',   text: 'text-negative',   icon: '!' },
+  info:    { border: 'border-info/20',  bg: 'bg-info/5',   dot: 'bg-info',  text: 'text-info',  icon: 'i' },
 };
 
 export default function AdminStats({ stats, onNavigate }: Props) {
@@ -177,20 +174,15 @@ export default function AdminStats({ stats, onNavigate }: Props) {
   }, []);
 
   const kpis = [
-    { label: 'Total fons',      value: stats?.total  ?? '—', sub: 'base de dades',          color: 'blue'   },
-    { label: 'Fons actius',     value: stats?.active ?? '—', sub: 'disponibles',             color: 'green'  },
-    { label: 'Clients actius',  value: clientCount   ?? '—', sub: 'amb accés al portal',     color: 'purple' },
-    { label: 'Carteres',        value: portfolioCount ?? '—', sub: 'carteres de clients',    color: 'amber'  },
+    { label: 'Clients actius',  value: clientCount   ?? '—', sub: 'amb accés al portal' },
+    { label: 'Carteres actives', value: portfolioCount ?? '—', sub: 'creades des de propostes' },
+    { label: 'Fons al catàleg', value: stats?.active ?? '—', sub: 'disponibles per a propostes' },
   ];
 
-  const colBorder: Record<string, string> = { blue: 'border-blue-500/30', green: 'border-emerald-500/30', amber: 'border-amber-500/30', purple: 'border-purple-500/30' };
-  const colBg:     Record<string, string> = { blue: 'bg-blue-500/8',      green: 'bg-emerald-500/8',      amber: 'bg-amber-500/8',      purple: 'bg-purple-500/8'      };
-  const colText:   Record<string, string> = { blue: 'text-blue-400',      green: 'text-emerald-400',      amber: 'text-amber-400',      purple: 'text-purple-400'      };
-
   const tooltipStyle = {
-    contentStyle: { background: '#0d1f1a', border: '1px solid rgba(201,168,76,0.3)', borderRadius: 8 },
-    labelStyle:   { color: '#c9a84c', fontSize: 11 },
-    itemStyle:    { color: '#fff', fontSize: 12 },
+    contentStyle: { background: 'rgb(var(--c-surface))', border: '1px solid rgb(var(--c-line))', borderRadius: 8 },
+    labelStyle:   { color: 'rgb(var(--c-accent))', fontSize: 11 },
+    itemStyle:    { color: 'rgb(var(--c-ink))', fontSize: 12 },
   };
 
   return (
@@ -199,32 +191,29 @@ export default function AdminStats({ stats, onNavigate }: Props) {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <motion.h1 className="text-2xl font-black text-white mb-0.5"
-            initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }}>
-            Dashboard
-          </motion.h1>
-          <motion.p className="text-white/45 text-sm"
-            initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.1 }}>
-            Visió general del sistema Factor OTC
-          </motion.p>
+          <h1 className="text-2xl font-semibold text-ink mb-0.5">
+            Bon dia, Aitor
+          </h1>
+          <p className="text-ink-muted text-sm">
+            Avisos pendents, clients i accions habituals.
+          </p>
         </div>
       </div>
 
       {/* Alertes reals */}
       {!alertsLoading && alerts.length > 0 && (
-        <motion.div className="space-y-2"
-          initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.15 }}>
-          <p className="text-white/40 text-xs uppercase tracking-widest mb-2">Alertes actives</p>
+        <div className="space-y-2">
+          <p className="text-ink-muted text-xs font-medium mb-2">Alertes actives</p>
           {alerts.map((alert, i) => {
             const s = ALERT_STYLES[alert.type];
             return (
-              <div key={i} className={`flex items-start gap-3 p-3.5 border ${s.border} ${s.bg} rounded-xl`}>
-                <div className={`w-5 h-5 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5 text-[10px] font-black ${s.bg} border ${s.border}`}>
+              <div key={i} className={`flex items-start gap-3 p-3.5 border ${s.border} ${s.bg} rounded-lg`}>
+                <div className={`w-5 h-5 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5 text-[10px] font-semibold ${s.bg} border ${s.border}`}>
                   <span className={s.text}>{s.icon}</span>
                 </div>
                 <div className="flex-1 min-w-0">
                   <p className={`text-sm font-semibold ${s.text}`}>{alert.title}</p>
-                  <p className="text-white/45 text-xs mt-0.5 leading-relaxed">{alert.desc}</p>
+                  <p className="text-ink-muted text-xs mt-0.5 leading-relaxed">{alert.desc}</p>
                 </div>
                 {alert.action && alert.section && (
                   <button onClick={() => onNavigate(alert.section!)}
@@ -235,68 +224,52 @@ export default function AdminStats({ stats, onNavigate }: Props) {
               </div>
             );
           })}
-        </motion.div>
+        </div>
       )}
 
       {/* KPIs */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
         {kpis.map((kpi, i) => (
-          <motion.div key={i}
-            className={`border ${colBorder[kpi.color]} ${colBg[kpi.color]} rounded-xl p-5`}
-            initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.2 + i * 0.07 }} whileHover={{ y: -2 }}>
-            <div className="text-white/40 text-xs uppercase tracking-widest mb-3">{kpi.label}</div>
-            <p className={`text-3xl font-black ${colText[kpi.color]} mb-0.5`}>{String(kpi.value)}</p>
-            <p className="text-white/35 text-xs">{kpi.sub}</p>
-          </motion.div>
+          <div key={i} className="bg-surface border border-line rounded-lg px-5 py-4">
+            <div className="text-ink-muted text-xs font-medium mb-2">{kpi.label}</div>
+            <p className="text-2xl font-semibold text-ink mb-0.5">{String(kpi.value)}</p>
+            <p className="text-ink-muted text-xs">{kpi.sub}</p>
+          </div>
         ))}
       </div>
-
-      {/* TER real (from real data) */}
-      {stats && (
-        <motion.div className="bg-[#0d1f1a] border border-white/10 rounded-xl px-5 py-3 flex items-center gap-3"
-          initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.35 }}>
-          <div className="w-2 h-2 rounded-full bg-emerald-500 flex-shrink-0" />
-          <span className="text-white/50 text-xs">TER mitjà fons:</span>
-          <span className="text-[#c9a84c] font-bold text-sm">{stats.avgTER}%</span>
-          <span className="text-emerald-400/60 text-xs ml-1">· Dades reals de la base de dades</span>
-        </motion.div>
-      )}
 
       {/* Gràfics */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
 
-        <motion.div className="bg-[#0d1f1a] border border-white/10 rounded-xl p-5"
-          initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }}>
+        <div className="bg-surface border border-line rounded-lg p-5">
           <div className="flex items-start justify-between mb-0.5">
-            <h3 className="text-white font-semibold text-sm">Activitat mensual</h3>
+            <h3 className="text-ink font-semibold text-sm">Activitat mensual</h3>
           </div>
-          <p className="text-white/40 text-xs mb-4">Clients nous i propostes aprovades · últims 6 mesos · Dades reals</p>
+          <p className="text-ink-muted text-xs mb-4">Clients nous i propostes aprovades · últims 6 mesos · Dades reals</p>
           {!dash ? (
-            <p className="text-white/30 text-xs h-[190px] flex items-center justify-center">{dashError ? 'No s\'han pogut carregar les dades' : 'Carregant…'}</p>
+            <p className="text-ink-muted text-xs h-[190px] flex items-center justify-center">{dashError ? 'No s\'han pogut carregar les dades' : 'Carregant…'}</p>
           ) : (
           <ResponsiveContainer width="100%" height={190}>
             <BarChart data={dash.activity} margin={{ left: -15 }}>
-              <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.04)" />
+              <CartesianGrid strokeDasharray="3 3" stroke="#e4e8e6" />
               <XAxis dataKey="mes" tick={{ fontSize: 11, fill: '#6b7280' }} axisLine={false} tickLine={false} />
               <YAxis tick={{ fontSize: 10, fill: '#6b7280' }} axisLine={false} tickLine={false} allowDecimals={false} />
               <Tooltip {...tooltipStyle} />
               <Legend wrapperStyle={{ fontSize: 11, color: '#9ca3af' }} />
-              <Bar dataKey="propostes" name="Propostes aprovades" fill="#c9a84c" radius={[4,4,0,0]} />
-              <Bar dataKey="clients"   name="Clients nous"        fill="#2d6a4f" radius={[4,4,0,0]} />
+              <Bar dataKey="propostes" name="Propostes aprovades" fill="#1e5a47" radius={[4,4,0,0]} />
+              <Bar dataKey="clients"   name="Clients nous"        fill="#a9c4b8" radius={[4,4,0,0]} />
             </BarChart>
           </ResponsiveContainer>
           )}
-        </motion.div>
+        </div>
 
-        <motion.div className="bg-[#0d1f1a] border border-white/10 rounded-xl p-5"
-          initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.35 }}>
+        <div className="bg-surface border border-line rounded-lg p-5">
           <div className="flex items-start justify-between mb-0.5">
-            <h3 className="text-white font-semibold text-sm">Distribució per perfil</h3>
+            <h3 className="text-ink font-semibold text-sm">Distribució per perfil</h3>
           </div>
-          <p className="text-white/40 text-xs mb-4">Perfil de l&apos;última proposta aprovada de cada client · Dades reals</p>
+          <p className="text-ink-muted text-xs mb-4">Perfil de l&apos;última proposta aprovada de cada client · Dades reals</p>
           {!dash || dash.profiles.length === 0 ? (
-            <p className="text-white/30 text-xs h-[190px] flex items-center justify-center text-center px-6">
+            <p className="text-ink-muted text-xs h-[190px] flex items-center justify-center text-center px-6">
               {dashError ? 'No s\'han pogut carregar les dades' : !dash ? 'Carregant…' : 'Encara no hi ha cap proposta aprovada.'}
             </p>
           ) : (
@@ -308,75 +281,30 @@ export default function AdminStats({ stats, onNavigate }: Props) {
               </Pie>
               <Tooltip {...tooltipStyle} formatter={(v) => [`${v} client${Number(v) === 1 ? '' : 's'}`, '']} />
               <Legend wrapperStyle={{ fontSize: 11 }}
-                formatter={(v) => <span style={{ color: '#9ca3af' }}>{v}</span>} />
+                formatter={(v) => <span style={{ color: 'rgb(var(--c-ink-soft))' }}>{v}</span>} />
             </PieChart>
           </ResponsiveContainer>
           )}
-        </motion.div>
+        </div>
 
-        <motion.div className="bg-[#0d1f1a] border border-white/10 rounded-xl p-5"
-          initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.4 }}>
-          <h3 className="text-white font-semibold text-sm mb-0.5">Fons per nivell de risc</h3>
-          <p className="text-white/40 text-xs mb-4">Distribució de la base de dades · Dades reals</p>
-          {stats?.byRisk ? (
-            <div className="space-y-3 pt-1">
-              {stats.byRisk.map(({ risk, count }, i) => (
-                <motion.div key={risk}
-                  initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }}
-                  transition={{ delay: 0.45 + i * 0.07 }}>
-                  <div className="flex items-center justify-between text-xs mb-1.5">
-                    <span className="text-white/55">{RISK_LABELS[risk - 1]}</span>
-                    <span className="text-white font-bold tabular-nums">{count}</span>
-                  </div>
-                  <div className="w-full bg-white/8 rounded-full h-1.5 overflow-hidden">
-                    <motion.div className="h-1.5 rounded-full" style={{ backgroundColor: RISK_COLORS[risk - 1] }}
-                      initial={{ width: 0 }}
-                      animate={{ width: stats.total > 0 ? `${(count / stats.total) * 100}%` : '0%' }}
-                      transition={{ duration: 0.8, delay: 0.5 + i * 0.07 }} />
-                  </div>
-                </motion.div>
-              ))}
-            </div>
-          ) : (
-            <div className="h-32 flex items-center justify-center">
-              <p className="text-white/30 text-sm">Carregant dades...</p>
-            </div>
-          )}
-        </motion.div>
-
-        <motion.div className="bg-[#0d1f1a] border border-white/10 rounded-xl p-5"
-          initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.45 }}>
-          <h3 className="text-white font-semibold text-sm mb-0.5">TER mitjà actual</h3>
-          <p className="text-white/40 text-xs mb-4">Cost mitjà ponderat dels fons del catàleg</p>
-          <div className="flex items-baseline gap-2 h-[175px] items-center justify-center">
-            <span className="text-[#c9a84c] font-black text-4xl">
-              {stats?.avgTER != null ? `${stats.avgTER}%` : '—'}
-            </span>
-          </div>
-          <p className="text-white/25 text-xs">L&apos;evolució mensual es mostrarà quan hi hagi històric desat.</p>
-        </motion.div>
       </div>
 
       {/* Accions ràpides */}
-      <motion.div className="bg-[#0d1f1a] border border-white/10 rounded-xl p-5"
-        initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.55 }}>
-        <h3 className="text-white font-semibold text-sm mb-4">Accions ràpides</h3>
+      <div className="bg-surface border border-line rounded-lg p-5">
+        <h3 className="text-ink font-semibold text-sm mb-4">Accions ràpides</h3>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-2.5">
           {QUICK_ACTIONS.map((action, i) => (
-            <motion.button key={i}
+            <button key={i}
               onClick={() => action.section ? onNavigate(action.section) : window.open('/', '_blank')}
-              whileHover={{ scale: 1.02, y: -1 }} whileTap={{ scale: 0.98 }}
-              initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.55 + i * 0.05 }}
-              className="flex items-center gap-3 p-3.5 border border-white/10 bg-white/[0.03] hover:bg-white/[0.06] rounded-lg transition-all text-left">
+              className="flex items-center gap-3 p-3.5 border border-line bg-subtle hover:bg-subtle rounded-lg transition-all text-left">
               <div className="min-w-0">
-                <p className="text-white text-xs font-semibold">{action.label}</p>
-                <p className="text-white/40 text-xs truncate">{action.sub}</p>
+                <p className="text-ink text-xs font-semibold">{action.label}</p>
+                <p className="text-ink-muted text-xs truncate">{action.sub}</p>
               </div>
-            </motion.button>
+            </button>
           ))}
         </div>
-      </motion.div>
+      </div>
     </div>
   );
 }
