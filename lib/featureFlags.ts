@@ -14,3 +14,38 @@
 /** Recomanacions personalitzades: cartera amb fons concrets, senyals i ratings. */
 export const RECOMMENDATIONS_ENABLED =
   process.env.NEXT_PUBLIC_ENABLE_RECOMMENDATIONS !== 'false';
+
+// ── Beta tancada (decisió 2026-11-18) ─────────────────────────────────────────
+// Durant la beta només es veu el flux principal: Excel del client → proposta →
+// cartera amb preus oficials → informes. La resta (notícies, newsletter, accions,
+// informes borsaris, carteres model, comparador, qüestionari públic amb pagament,
+// fiscalitat sense revisar) queda amagada. El codi NO s'esborra: amb
+// NEXT_PUBLIC_SHOW_NON_BETA_FEATURES=true torna a aparèixer tot.
+
+/** Mostra les funcionalitats que no formen part de la beta tancada. */
+export const SHOW_NON_BETA_FEATURES =
+  process.env.NEXT_PUBLIC_SHOW_NON_BETA_FEATURES === 'true';
+
+/**
+ * Informe fiscal (IRPF) al portal del client. Amagat fins que un expert fiscal
+ * en revisi els càlculs. L'admin el continua veient a la fitxa de client.
+ */
+export const CLIENT_TAX_REPORT_ENABLED =
+  process.env.NEXT_PUBLIC_ENABLE_CLIENT_TAX_REPORT === 'true';
+
+/** Pàgines que no formen part de la beta tancada (prefixos de ruta). */
+export const NON_BETA_PAGES = [
+  '/client/roboadvisor',
+  '/client/carteres-model',
+  '/client/seguiment-accions',
+  '/comparador',
+  '/informe-bursatil',
+  '/noticies',
+  '/accions',
+  '/checkout',
+] as const;
+
+/** true si la ruta és d'una pàgina amagada durant la beta. */
+export function isNonBetaPage(pathname: string): boolean {
+  return NON_BETA_PAGES.some(p => pathname === p || pathname.startsWith(`${p}/`));
+}

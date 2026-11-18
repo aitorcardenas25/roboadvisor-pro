@@ -5,13 +5,11 @@ import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import FundsManager       from './FundsManager';
 import ReportsHistory     from './ReportsHistory';
-import AdminConfig        from './AdminConfig';
 import AdminStats         from './AdminStats';
 import NewsletterManager  from './NewsletterManager';
 import NewsManager          from './NewsManager';
 import StockTrackerManager  from './StockTrackerManager';
 import AdminPortfolios       from './AdminPortfolios';
-import ManualReportBuilder   from './ManualReportBuilder';
 import ClientsManager           from './ClientsManager';
 import AuditLogViewer           from './AuditLogViewer';
 import LeadsManager             from './LeadsManager';
@@ -23,6 +21,7 @@ import NotificationBell          from './NotificationBell';
 import IntegrationsManager        from './IntegrationsManager';
 import BetaPanel                  from './BetaPanel';
 import FundNavsManager            from './FundNavsManager';
+import { SHOW_NON_BETA_FEATURES } from '@/lib/featureFlags';
 
 interface Props {
   onLogout: () => void;
@@ -35,39 +34,101 @@ interface Stats {
   byRisk: { risk: number; count: number }[];
 }
 
-type Section = 'dashboard' | 'funds' | 'fund-navs' | 'reports' | 'news' | 'newsletter' | 'stocks' | 'portfolios' | 'manual-report' | 'clients' | 'client-portfolios' | 'leads' | 'stock-reports' | 'monthly-report' | 'audit' | 'integrations' | 'config' | 'client-file' | 'beta';
+// Menú de la beta (decisió 2026-11-18): 6 seccions. Cada secció pot tenir
+// subpestanyes. "Fora de la beta" només surt amb NEXT_PUBLIC_SHOW_NON_BETA_FEATURES=true.
+type Section = 'avui' | 'clients' | 'fons' | 'informes' | 'beta' | 'sistema' | 'fora-beta';
+
+type SubTab =
+  | 'clients-llista' | 'clients-carteres'
+  | 'fons-preus' | 'fons-cataleg'
+  | 'informes-mensual' | 'informes-historial'
+  | 'beta-us' | 'beta-contactes'
+  | 'sistema-connexions' | 'sistema-registre'
+  | 'fora-noticies' | 'fora-newsletter' | 'fora-accions' | 'fora-informes-borsaris' | 'fora-carteres-model';
+
+const SUBTABS: Partial<Record<Section, { id: SubTab; label: string }[]>> = {
+  clients:  [{ id: 'clients-llista',     label: 'Clients' },
+             { id: 'clients-carteres',   label: 'Carteres actives' }],
+  fons:     [{ id: 'fons-preus',         label: 'Preus oficials' },
+             { id: 'fons-cataleg',       label: 'Catàleg de fons' }],
+  informes: [{ id: 'informes-mensual',   label: 'Informe mensual' },
+             { id: 'informes-historial', label: 'Historial' }],
+  beta:     [{ id: 'beta-us',            label: 'Ús i consentiments' },
+             { id: 'beta-contactes',     label: 'Contactes' }],
+  sistema:  [{ id: 'sistema-connexions', label: 'Connexions' },
+             { id: 'sistema-registre',   label: "Registre d'activitat" }],
+  'fora-beta': [{ id: 'fora-noticies',          label: 'Notícies' },
+                { id: 'fora-newsletter',        label: 'Newsletter' },
+                { id: 'fora-accions',           label: 'Accions' },
+                { id: 'fora-informes-borsaris', label: 'Informes borsaris' },
+                { id: 'fora-carteres-model',    label: 'Carteres model' }],
+};
 
 const NAV_ITEMS: { id: Section; iconPath: string; label: string }[] = [
-  { id: 'dashboard',  iconPath: 'M4 5a1 1 0 011-1h4a1 1 0 011 1v4a1 1 0 01-1 1H5a1 1 0 01-1-1V5zm10 0a1 1 0 011-1h4a1 1 0 011 1v4a1 1 0 01-1 1h-4a1 1 0 01-1-1V5zM4 15a1 1 0 011-1h4a1 1 0 011 1v4a1 1 0 01-1 1H5a1 1 0 01-1-1v-4zm10 0a1 1 0 011-1h4a1 1 0 011 1v4a1 1 0 01-1 1h-4a1 1 0 01-1-1v-4z', label: 'Dashboard'         },
-  { id: 'funds',      iconPath: 'M21 13.255A23.931 23.931 0 0112 15c-3.183 0-6.22-.62-9-1.745M16 6V4a2 2 0 00-2-2h-4a2 2 0 00-2 2v2m4 6h.01M5 20h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z', label: 'Gestió de Fons'    },
-  { id: 'fund-navs',  iconPath: 'M3 3v18h18M7 14l4-4 3 3 5-6', label: 'Preus dels fons'   },
-  { id: 'reports',    iconPath: 'M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z', label: 'Historial Informes' },
-  { id: 'news',       iconPath: 'M19 20H5a2 2 0 01-2-2V6a2 2 0 012-2h10l6 6v8a2 2 0 01-2 2zM9 13h6M9 17h3', label: 'Notícies'          },
-  { id: 'newsletter', iconPath: 'M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z', label: 'Newsletter'         },
-  { id: 'stocks',     iconPath: 'M3 17l6-6 4 4 8-8',                                                                                                                                                                                                          label: 'Accions'           },
-  { id: 'portfolios',    iconPath: 'M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z',                                                                                                                                              label: 'Carteres Model'    },
-  { id: 'manual-report', iconPath: 'M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z',                                                                                              label: 'Informe Manual'    },
-  { id: 'beta',              iconPath: 'M7 12l3-3 3 3 4-4M8 21l4-4 4 4M3 4h18M4 4h16v12a1 1 0 01-1 1H5a1 1 0 01-1-1V4z', label: 'Seguiment clients' },
-  { id: 'clients',           iconPath: 'M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z', label: 'Clients'          },
-  { id: 'client-portfolios', iconPath: 'M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z', label: 'Carteres Clients' },
-  { id: 'leads',             iconPath: 'M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z', label: 'Leads'            },
-  { id: 'stock-reports',    iconPath: 'M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z', label: 'Informes Borsaris' },
-  { id: 'monthly-report',   iconPath: 'M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z', label: 'Informe Mensual'  },
-  { id: 'audit',             iconPath: 'M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4', label: 'Audit Trail'      },
-  { id: 'integrations', iconPath: 'M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1', label: 'Integracions'       },
-  { id: 'config',     iconPath: 'M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065zM15 12a3 3 0 11-6 0 3 3 0 016 0z', label: 'Configuració'      },
+  { id: 'avui',     iconPath: 'M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6', label: 'Avui' },
+  { id: 'clients',  iconPath: 'M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z', label: 'Clients' },
+  { id: 'fons',     iconPath: 'M3 3v18h18M7 14l4-4 3 3 5-6', label: 'Fons' },
+  { id: 'informes', iconPath: 'M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z', label: 'Informes' },
+  { id: 'beta',     iconPath: 'M7 12l3-3 3 3 4-4M8 21l4-4 4 4M3 4h18M4 4h16v12a1 1 0 01-1 1H5a1 1 0 01-1-1V4z', label: 'Beta' },
+  { id: 'sistema',  iconPath: 'M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065zM15 12a3 3 0 11-6 0 3 3 0 016 0z', label: 'Sistema' },
+  ...(SHOW_NON_BETA_FEATURES
+    ? [{ id: 'fora-beta' as Section, iconPath: 'M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4', label: 'Fora de la beta' }]
+    : []),
 ];
 
+/**
+ * Traducció dels identificadors antics (els fa servir el Dashboard per als
+ * enllaços d'alertes) a la secció i subpestanya noves.
+ */
+const LEGACY_TARGETS: Record<string, [Section, SubTab?]> = {
+  dashboard:           ['avui'],
+  clients:             ['clients', 'clients-llista'],
+  'client-portfolios': ['clients', 'clients-carteres'],
+  funds:               ['fons', 'fons-cataleg'],
+  'fund-navs':         ['fons', 'fons-preus'],
+  'monthly-report':    ['informes', 'informes-mensual'],
+  reports:             ['informes', 'informes-historial'],
+  beta:                ['beta', 'beta-us'],
+  leads:               ['beta', 'beta-contactes'],
+  integrations:        ['sistema', 'sistema-connexions'],
+  audit:               ['sistema', 'sistema-registre'],
+  news:                ['fora-beta', 'fora-noticies'],
+  newsletter:          ['fora-beta', 'fora-newsletter'],
+  stocks:              ['fora-beta', 'fora-accions'],
+  'stock-reports':     ['fora-beta', 'fora-informes-borsaris'],
+  portfolios:          ['fora-beta', 'fora-carteres-model'],
+};
+
 export default function AdminDashboard({ onLogout }: Props) {
-  const [activeSection, setActiveSection]   = useState<Section>('dashboard');
+  const [activeSection, setActiveSection]   = useState<Section>('avui');
+  const [subTabs, setSubTabs]               = useState<Partial<Record<Section, SubTab>>>({});
   const [stats, setStats]                   = useState<Stats | null>(null);
   const [collapsed, setCollapsed]           = useState(false);
   const [selectedClientId, setSelectedClientId] = useState<string | null>(null);
 
   function openClientFile(id: string) {
     setSelectedClientId(id);
-    setActiveSection('client-file');
+    setActiveSection('clients');
+    setSubTabs(t => ({ ...t, clients: 'clients-llista' }));
   }
+
+  function openSection(id: Section) {
+    setActiveSection(id);
+    if (id === 'clients') setSelectedClientId(null);
+  }
+
+  /** Enllaços del Dashboard (alertes, accions ràpides) amb els noms antics. */
+  function navigateLegacy(legacy: string) {
+    const target = LEGACY_TARGETS[legacy];
+    if (!target) return;
+    const [section, sub] = target;
+    if (section === 'fora-beta' && !SHOW_NON_BETA_FEATURES) return;
+    openSection(section);
+    if (sub) setSubTabs(t => ({ ...t, [section]: sub }));
+  }
+
+  const tabs      = SUBTABS[activeSection];
+  const activeSub = subTabs[activeSection] ?? tabs?.[0]?.id;
 
   useEffect(() => {
     fetch('/api/admin/funds')
@@ -122,7 +183,7 @@ export default function AdminDashboard({ onLogout }: Props) {
           {NAV_ITEMS.map(item => (
             <motion.button
               key={item.id}
-              onClick={() => setActiveSection(item.id)}
+              onClick={() => openSection(item.id)}
               whileHover={{ x: 2 }}
               whileTap={{ scale: 0.98 }}
               title={collapsed ? item.label : undefined}
@@ -196,38 +257,57 @@ export default function AdminDashboard({ onLogout }: Props) {
 
         <AnimatePresence mode="wait">
           <motion.div
-            key={activeSection}
+            key={`${activeSection}-${activeSub ?? ''}-${selectedClientId ?? ''}`}
             initial={{ opacity: 0, y: 16 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -8 }}
             transition={{ duration: 0.3, ease: [0.22, 1, 0.36, 1] }}>
 
-            {activeSection === 'dashboard' && (
-              <AdminStats
-                stats={stats}
-                onNavigate={setActiveSection}
-              />
+            {tabs && !(activeSection === 'clients' && selectedClientId) && (
+              <div role="tablist" className="flex flex-wrap gap-1 mb-6 border-b border-white/10">
+                {tabs.map(t => (
+                  <button key={t.id} role="tab" aria-selected={activeSub === t.id}
+                    onClick={() => setSubTabs(prev => ({ ...prev, [activeSection]: t.id }))}
+                    className={`px-4 py-2 -mb-px text-sm border-b-2 transition-colors ${
+                      activeSub === t.id
+                        ? 'border-[#c9a84c] text-white font-medium'
+                        : 'border-transparent text-white/60 hover:text-white'
+                    }`}>
+                    {t.label}
+                  </button>
+                ))}
+              </div>
             )}
-            {activeSection === 'funds'      && <FundsManager />}
-            {activeSection === 'fund-navs'  && <FundNavsManager />}
-            {activeSection === 'reports'    && <ReportsHistory />}
-            {activeSection === 'news'       && <NewsManager />}
-            {activeSection === 'newsletter' && <NewsletterManager />}
-            {activeSection === 'stocks'      && <StockTrackerManager />}
-            {activeSection === 'portfolios'    && <AdminPortfolios />}
-            {activeSection === 'manual-report' && <ManualReportBuilder />}
-            {activeSection === 'clients'           && <ClientsManager onViewClient={openClientFile} />}
-            {activeSection === 'client-file' && selectedClientId && (
-              <ClientFile clientId={selectedClientId} onBack={() => setActiveSection('clients')} />
+
+            {activeSection === 'avui' && (
+              <AdminStats stats={stats} onNavigate={navigateLegacy} />
             )}
-            {activeSection === 'client-portfolios' && <ClientPortfoliosManager />}
-            {activeSection === 'leads'             && <LeadsManager />}
-            {activeSection === 'stock-reports'     && <StockReportsManager />}
-            {activeSection === 'monthly-report'    && <MonthlyReportGenerator />}
-            {activeSection === 'audit'             && <AuditLogViewer />}
-            {activeSection === 'integrations'  && <IntegrationsManager />}
-            {activeSection === 'config'        && <AdminConfig />}
-            {activeSection === 'beta'          && <BetaPanel />}
+
+            {activeSection === 'clients' && selectedClientId && (
+              <ClientFile clientId={selectedClientId} onBack={() => setSelectedClientId(null)} />
+            )}
+            {activeSub === 'clients-llista'     && !selectedClientId && <ClientsManager onViewClient={openClientFile} />}
+            {activeSub === 'clients-carteres'   && <ClientPortfoliosManager />}
+
+            {activeSub === 'fons-preus'         && <FundNavsManager />}
+            {activeSub === 'fons-cataleg'       && <FundsManager />}
+
+            {activeSub === 'informes-mensual'   && <MonthlyReportGenerator />}
+            {activeSub === 'informes-historial' && <ReportsHistory />}
+
+            {activeSub === 'beta-us'            && <BetaPanel />}
+            {activeSub === 'beta-contactes'     && <LeadsManager />}
+
+            {activeSub === 'sistema-connexions' && <IntegrationsManager />}
+            {activeSub === 'sistema-registre'   && <AuditLogViewer />}
+
+            {SHOW_NON_BETA_FEATURES && activeSection === 'fora-beta' && (<>
+              {activeSub === 'fora-noticies'          && <NewsManager />}
+              {activeSub === 'fora-newsletter'        && <NewsletterManager />}
+              {activeSub === 'fora-accions'           && <StockTrackerManager />}
+              {activeSub === 'fora-informes-borsaris' && <StockReportsManager />}
+              {activeSub === 'fora-carteres-model'    && <AdminPortfolios />}
+            </>)}
 
           </motion.div>
         </AnimatePresence>

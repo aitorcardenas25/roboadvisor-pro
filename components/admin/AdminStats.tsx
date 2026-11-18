@@ -23,7 +23,7 @@ type Section = 'dashboard' | 'funds' | 'reports' | 'news' | 'newsletter' | 'stoc
 
 interface Props {
   stats:      Stats | null;
-  onNavigate: (section: Section) => void;
+  onNavigate: (section: string) => void;
 }
 
 interface Alert {
@@ -41,16 +41,13 @@ const PROFILE_COLORS: Record<string, string> = {
   conservador: '#10b981', moderat: '#3b82f6', dinamic: '#f59e0b', agressiu: '#ef4444',
 };
 
-const QUICK_ACTIONS: { icon: string; label: string; sub: string; section: Section | null; color: string }[] = [
-  { icon: '👥', label: 'Clients',       sub: 'Gestionar accés',          section: 'clients',          color: 'border-blue-500/20 bg-blue-500/5 hover:bg-blue-500/10'     },
-  { icon: '📊', label: 'Carteres',      sub: 'Seguiment de carteres',    section: 'client-portfolios',color: 'border-[#c9a84c]/20 bg-[#c9a84c]/5 hover:bg-[#c9a84c]/10'  },
-  { icon: '📝', label: 'Informe Manual',sub: 'Crear informe per client',  section: 'manual-report',    color: 'border-emerald-500/20 bg-emerald-500/5 hover:bg-emerald-500/10' },
-  { icon: '📈', label: 'Accions',       sub: 'Senyals i seguiment',      section: 'stocks',           color: 'border-amber-500/20 bg-amber-500/5 hover:bg-amber-500/10'   },
-  { icon: '📰', label: 'Notícies',      sub: 'Publicar articles',        section: 'news',             color: 'border-purple-500/20 bg-purple-500/5 hover:bg-purple-500/10' },
-  { icon: '📧', label: 'Newsletter',    sub: 'Enviar a subscriptors',    section: 'newsletter',       color: 'border-pink-500/20 bg-pink-500/5 hover:bg-pink-500/10'      },
-  { icon: '🗂',  label: 'Carteres Model',sub: 'Carteres predefinides',    section: 'portfolios',       color: 'border-white/10 bg-white/3 hover:bg-white/5'                },
-  { icon: '🚀', label: 'App pública',   sub: 'Obrir en pestanya nova',   section: null,               color: 'border-white/10 bg-white/3 hover:bg-white/5'                },
-];
+// Accions ràpides del flux de la beta (sense emojis ni seccions amagades).
+const QUICK_ACTIONS: { label: string; sub: string; section: Section | 'fund-navs' | 'beta' | null }[] = [
+  { label: 'Clients',          sub: 'Fitxes, Excel i propostes',      section: 'clients'        },
+  { label: 'Preus oficials',   sub: 'Pujar valors liquidatius',       section: 'fund-navs'      },
+  { label: 'Informe mensual',  sub: 'Generar i enviar',               section: 'monthly-report' },
+  { label: 'Beta',             sub: 'Ús i consentiments',             section: 'beta'           },
+]
 
 const ALERT_STYLES = {
   warning: { border: 'border-amber-500/25', bg: 'bg-amber-500/6',  dot: 'bg-amber-400', text: 'text-amber-400', icon: '⚠' },
@@ -211,12 +208,6 @@ export default function AdminStats({ stats, onNavigate }: Props) {
             Visió general del sistema Factor OTC
           </motion.p>
         </div>
-        <motion.div
-          initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.2 }}
-          className="flex items-center gap-2 px-3 py-1.5 bg-emerald-500/10 border border-emerald-500/20 rounded-full">
-          <div className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-          <span className="text-emerald-400 text-xs font-medium">Sistema actiu</span>
-        </motion.div>
       </div>
 
       {/* Alertes reals */}
@@ -377,8 +368,7 @@ export default function AdminStats({ stats, onNavigate }: Props) {
               whileHover={{ scale: 1.02, y: -1 }} whileTap={{ scale: 0.98 }}
               initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.55 + i * 0.05 }}
-              className={`flex items-center gap-3 p-3.5 border rounded-lg transition-all text-left ${action.color}`}>
-              <span className="text-xl flex-shrink-0">{action.icon}</span>
+              className="flex items-center gap-3 p-3.5 border border-white/10 bg-white/[0.03] hover:bg-white/[0.06] rounded-lg transition-all text-left">
               <div className="min-w-0">
                 <p className="text-white text-xs font-semibold">{action.label}</p>
                 <p className="text-white/40 text-xs truncate">{action.sub}</p>

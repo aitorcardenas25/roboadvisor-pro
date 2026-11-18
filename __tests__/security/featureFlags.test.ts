@@ -22,3 +22,46 @@ describe('RECOMMENDATIONS_ENABLED', () => {
     expect(await load('false')).toBe(false);
   });
 });
+
+// Decisió 2026-11-18: beta tancada. Pàgines fora del flux amagades i fiscalitat
+// del client amagada fins a revisió experta, tret que s'activin explícitament.
+describe('beta tancada', () => {
+  afterEach(() => { vi.unstubAllEnvs(); });
+
+  async function flags(env: Record<string, string> = {}) {
+    vi.resetModules();
+    vi.stubEnv('NEXT_PUBLIC_SHOW_NON_BETA_FEATURES', env.SHOW ?? (undefined as unknown as string));
+    vi.stubEnv('NEXT_PUBLIC_ENABLE_CLIENT_TAX_REPORT', env.TAX ?? (undefined as unknown as string));
+    return import('@/lib/featureFlags');
+  }
+
+  it('amaga per defecte les funcions fora de la beta i la fiscalitat', async () => {
+    const f = await flags();
+    expect(f.SHOW_NON_BETA_FEATURES).toBe(false);
+    expect(f.CLIENT_TAX_REPORT_ENABLED).toBe(false);
+  });
+
+  it('es tornen a mostrar només amb "true"', async () => {
+    const f = await flags({ SHOW: 'true', TAX: 'true' });
+    expect(f.SHOW_NON_BETA_FEATURES).toBe(true);
+    expect(f.CLIENT_TAX_REPORT_ENABLED).toBe(true);
+  });
+
+  it('isNonBetaPage reconeix les rutes amagades i les seves subrutes', async () => {
+    const { isNonBetaPage } = await flags();
+    expect(isNonBetaPage('/comparador')).toBe(true);
+    expect(isNonBetaPage('/client/seguiment-accions/ASML')).toBe(true);
+    expect(isNonBetaPage('/checkout/success')).toBe(true);
+    expect(isNonBetaPage('/client/roboadvisor')).toBe(true);
+  });
+
+  it('isNonBetaPage deixa passar el flux de la beta', async () => {
+    const { isNonBetaPage } = await flags();
+    expect(isNonBetaPage('/')).toBe(false);
+    expect(isNonBetaPage('/login')).toBe(false);
+    expect(isNonBetaPage('/client/cartera')).toBe(false);
+    expect(isNonBetaPage('/client/finances')).toBe(false);
+    expect(isNonBetaPage('/client/informes/abc')).toBe(false);
+    expect(isNonBetaPage('/accionsx')).toBe(false);
+  });
+});

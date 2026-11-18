@@ -16,6 +16,7 @@ import TaxReportView from '@/components/TaxReportView';
 import PortfolioExcelButton from '@/components/PortfolioExcelButton';
 import { DataSourceBadge } from '@/components/DataSourceBadge';
 import { DataSourcePanel } from '@/components/DataSourcePanel';
+import { CLIENT_TAX_REPORT_ENABLED } from '@/lib/featureFlags';
 
 // ── Formatters ─────────────────────────────────────────────────────────────
 
@@ -869,7 +870,8 @@ export default function ClientCarteraPage() {
     { id: 'posicions', label: 'Posicions',  cnt: activeHoldings.length        },
     { id: 'moviments', label: 'Moviments',  cnt: portfolio.transactions.length || undefined },
     { id: 'informes',  label: 'Informes'                                       },
-    { id: 'fiscal',    label: 'Fiscalitat'                                     },
+    // Fiscalitat amagada fins que un expert revisi els càlculs (beta 2026-11-18)
+    ...(CLIENT_TAX_REPORT_ENABLED ? [{ id: 'fiscal' as Tab, label: 'Fiscalitat' }] : []),
     { id: 'notes',     label: 'Notes',      cnt: visibleNotes.length || undefined },
   ];
 
@@ -1087,7 +1089,7 @@ export default function ClientCarteraPage() {
         {tab === 'informes' && <ReportsSection portfolioId={portfolio.id} />}
 
         {/* FISCALITAT */}
-        {tab === 'fiscal' && <TaxReportView url="/api/client/tax-report" />}
+        {tab === 'fiscal' && CLIENT_TAX_REPORT_ENABLED && <TaxReportView url="/api/client/tax-report" />}
 
         {/* ── NOTES ── */}
         {tab === 'notes' && (

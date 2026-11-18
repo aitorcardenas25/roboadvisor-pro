@@ -5,6 +5,10 @@ import { motion, useInView, AnimatePresence } from 'framer-motion';
 import Link from 'next/link';
 import { AppView } from '@/app/page';
 import LeadForm from '@/components/LeadForm';
+import { SHOW_NON_BETA_FEATURES, isNonBetaPage } from '@/lib/featureFlags';
+
+/** Durant la beta tancada no enllacem pàgines que estan amagades. */
+const showLink = (href: string) => SHOW_NON_BETA_FEATURES || !isNonBetaPage(href);
 
 interface Props {
   onNavigate: (view: AppView) => void;
@@ -15,7 +19,7 @@ const NAV_LINKS = [
   { label: 'Notícies',   href: '/noticies' },
   { label: 'Accions',    href: '/client/seguiment-accions' },
   { label: 'Informe',    href: '/informe-bursatil' },
-];
+].filter(l => showLink(l.href));
 
 const FEATURES = [
   {
@@ -66,7 +70,7 @@ const FEATURES = [
     badge: 'Clients',
     pub: false,
   },
-];
+].filter(f => showLink(f.href));
 
 const STEPS = [
   {
@@ -454,6 +458,8 @@ export default function LandingPage({ onNavigate }: Props) {
           </div>
         </section>
 
+        {/* Beta: si només queda una eina, la secció no aporta res */}
+        {FEATURES.length > 1 && (<>
         {/* ── Features 3×2 ───────────────────────── */}
         <section className="border-t border-[#1a3a2a]/40 px-6 md:px-10 lg:px-16 py-24 md:py-32">
           <div className="max-w-6xl mx-auto">
@@ -495,6 +501,7 @@ export default function LandingPage({ onNavigate }: Props) {
             </div>
           </div>
         </section>
+        </>)}
 
         {/* ── Pricing ────────────────────────────── */}
         <section className="border-t border-[#1a3a2a]/40 px-6 md:px-10 lg:px-16 py-24 md:py-32"
@@ -729,6 +736,7 @@ export default function LandingPage({ onNavigate }: Props) {
                 </p>
               </div>
 
+              {SHOW_NON_BETA_FEATURES && (
               <div>
                 <p className="text-white/52 text-[10px] uppercase tracking-widest mb-4">Eines</p>
                 <ul className="space-y-2.5">
@@ -737,7 +745,7 @@ export default function LandingPage({ onNavigate }: Props) {
                     { label: 'Notícies de Mercat', href: '/noticies' },
                     { label: "Seguiment d'Accions", href: '/client/seguiment-accions' },
                     { label: 'Informe Bursàtil', href: '/informe-bursatil' },
-                  ].map(l => (
+                  ].filter(l => showLink(l.href)).map(l => (
                     <li key={l.href}>
                       <Link href={l.href} className="text-white/38 hover:text-white/65 text-xs transition-colors duration-150">
                         {l.label}
@@ -746,6 +754,7 @@ export default function LandingPage({ onNavigate }: Props) {
                   ))}
                 </ul>
               </div>
+              )}
 
               <div>
                 <p className="text-white/52 text-[10px] uppercase tracking-widest mb-4">Serveis</p>
@@ -754,7 +763,7 @@ export default function LandingPage({ onNavigate }: Props) {
                     { label: 'Informe Inicial (20€)', href: '/login' },
                     { label: 'Seguiment Actiu', href: '/login' },
                     { label: 'Premium', href: '/login' },
-                  ].map(l => (
+                  ].filter(l => showLink(l.href)).map(l => (
                     <li key={l.label}>
                       <Link href={l.href} className="text-white/38 hover:text-white/65 text-xs transition-colors duration-150">
                         {l.label}
@@ -778,7 +787,7 @@ export default function LandingPage({ onNavigate }: Props) {
                     { label: 'Carteres Model', href: '/client/carteres-model' },
                     { label: 'La meva Cartera', href: '/client/cartera' },
                     { label: 'Comparador', href: '/comparador' },
-                  ].map(l => (
+                  ].filter(l => showLink(l.href)).map(l => (
                     <li key={l.href + l.label}>
                       <Link href={l.href} className="text-white/38 hover:text-white/65 text-xs transition-colors duration-150">
                         {l.label}
