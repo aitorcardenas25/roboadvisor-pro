@@ -22,20 +22,15 @@ import { CLIENT_TAX_REPORT_ENABLED } from '@/lib/featureFlags';
 
 // ── Formatters ─────────────────────────────────────────────────────────────
 
-function fEur(n: number, compact = false): string {
-  const abs = Math.abs(n);
-  if (compact) {
-    if (abs >= 1_000_000) return `${(n / 1_000_000).toFixed(1)} M€`;
-    if (abs >= 1_000)     return `${(n / 1_000).toFixed(0)} K€`;
-  }
-  if (abs >= 1_000_000) return `${(n / 1_000_000).toFixed(2)} M€`;
-  if (abs >= 1_000)     return `${(n / 1_000).toFixed(1)} K€`;
+// Sempre l'import exacte en format català (4.617,89 €): un client vol veure els seus diners sense arrodonir.
+function fEur(n: number, _compact = false): string {
   return n.toLocaleString('ca-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' €';
 }
 
 function fPct(n: number, sign = true): string {
-  return `${sign && n >= 0 ? '+' : ''}${n.toFixed(2)}%`;
+  return `${sign && n >= 0 ? '+' : ''}${n.toLocaleString('ca-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} %`;
 }
+const fPct1 = (n: number) => `${n.toLocaleString('ca-ES', { minimumFractionDigits: 1, maximumFractionDigits: 1 })} %`;
 
 function fDate(iso: string): string {
   if (!iso) return '—';
@@ -88,14 +83,17 @@ function deriveRisk(portfolio: ClientPortfolio): { label: string; color: string 
   return              { label: 'Molt conservador',    color: '#1e704c' };
 }
 
-function monthlyReturn(portfolio: ClientPortfolio, valuation?: Valuation | null): number | null {
-  // Amb valors liquidatius oficials: últim mes tancat, sense comptar les aportacions.
+/** Rendiment de l'últim mes tancat (sense comptar aportacions) i quin mes és. */
+function monthlyReturn(portfolio: ClientPortfolio, valuation?: Valuation | null): { pct: number; label: string } | null {
+  // Amb valors liquidatius oficials: l'últim mes acabat (no els últims dies del mes en curs).
   const pts = valuation?.points ?? [];
   if (pts.length >= 2) {
-    const a = pts[pts.length - 2], b = pts[pts.length - 1];
-    const flow = b.invested - a.invested;
-    const base = a.value + flow / 2;
-    return base > 0 ? ((b.value - a.value - flow) / base) * 100 : null;
+    const rows = aggregatePeriods(pts, 'month').filter(r => r.periodReturn !== null);
+    const closed = rows.filter(r => isPeriodEndDate(r.date, 'month'));
+    const r = closed.at(-1) ?? rows.at(-1);
+    if (!r || r.periodReturn === null) return null;
+    const m = new Date(r.date + 'T00:00:00').toLocaleString('ca-ES', { month: 'long' }).replace(/^de |^d’|^d'/, '');
+    return { pct: r.periodReturn, label: `Rendiment ${/^[aeiouà]/i.test(m) ? "d'" : 'de '}${m}` };
   }
   const snaps = [...portfolio.snapshots].sort((a, b) => a.date.localeCompare(b.date));
   if (snaps.length < 2) return null;
@@ -105,7 +103,7 @@ function monthlyReturn(portfolio: ClientPortfolio, valuation?: Valuation | null)
   const cStr = cutoff.toISOString().split('T')[0];
   const prev  = snaps.filter(s => s.date <= cStr).pop() ?? snaps[snaps.length - 2];
   if (!prev || prev.id === last.id || prev.totalValue <= 0) return null;
-  return ((last.totalValue - prev.totalValue) / prev.totalValue) * 100;
+  return { pct: ((last.totalValue - prev.totalValue) / prev.totalValue) * 100, label: 'Rendiment últim mes' };
 }
 
 function buildSummary(portfolio: ClientPortfolio, metrics: PortfolioMetrics, valuation?: Valuation | null): string {
@@ -121,9 +119,7 @@ function buildSummary(portfolio: ClientPortfolio, metrics: PortfolioMetrics, val
 
   if (mPct !== null) {
     parts.push(
-      mPct >= 0
-        ? `En el darrer mes ha crescut un ${fPct(mPct, false)}.`
-        : `En el darrer mes ha retrocedit un ${fPct(Math.abs(mPct), false)}.`,
+      `${mPct.label.replace('Rendiment', 'En el mes').replace('En el mes últim mes', 'En l\'últim mes')} ha ${mPct.pct >= 0 ? 'crescut' : 'retrocedit'} un ${fPct(Math.abs(mPct.pct), false)}.`,
     );
   }
 
@@ -134,8 +130,8 @@ function buildSummary(portfolio: ClientPortfolio, metrics: PortfolioMetrics, val
   }
   const top = Object.entries(catMap).sort((a, b) => b[1] - a[1])[0];
   if (top && metrics.currentValue > 0) {
-    const pct = ((top[1] / metrics.currentValue) * 100).toFixed(0);
-    parts.push(`Categoria principal: ${top[0]} (${pct}% de la cartera).`);
+    const pct = Math.round((top[1] / metrics.currentValue) * 100);
+    parts.push(`Categoria principal: ${top[0]} (${pct} % de la cartera).`);
   }
 
   return parts.join(' ');
@@ -251,9 +247,9 @@ const HeroSection = memo(function HeroSection({
           <Tile label="Capital invertit"  value={fEur(metrics.totalInvested, true)} />
           <Tile label="Posicions actives" value={String(metrics.holdingCount)} />
           <Tile
-            label="Rendiment mes"
-            value={mPct !== null ? fPct(mPct) : 'N/D'}
-            color={mPct !== null ? (mPct >= 0 ? '#1e704c' : '#b42820') : undefined}
+            label={mPct?.label ?? 'Rendiment últim mes'}
+            value={mPct !== null ? fPct(mPct.pct) : 'N/D'}
+            color={mPct !== null ? (mPct.pct >= 0 ? '#1e704c' : '#b42820') : undefined}
           />
           <Tile
             label="Última actualit."
@@ -504,7 +500,7 @@ const DistributionPanel = memo(function DistributionPanel({
 
   const byCategory = useMemo(() => {
     const m: Record<string, number> = {};
-    for (const h of portfolio.holdings) {
+    for (const h of portfolio.holdings.filter(h => h.quantity > 0)) {   // les venudes del tot no compten
       const k = h.assetCategory || 'Altres';
       m[k] = (m[k] ?? 0) + h.currentPrice * h.quantity;
     }
@@ -541,7 +537,7 @@ const DistributionPanel = memo(function DistributionPanel({
                   <span className="text-ink-muted text-xs truncate">{d.name}</span>
                 </div>
                 <span className="text-ink-muted text-xs flex-shrink-0 tabular-nums">
-                  {total > 0 ? ((d.val / total) * 100).toFixed(1) : 0}%
+                  {fPct1(total > 0 ? (d.val / total) * 100 : 0)}
                 </span>
               </div>
             ))}
@@ -560,7 +556,7 @@ const DistributionPanel = memo(function DistributionPanel({
             <div key={i}>
               <div className="flex items-center justify-between mb-1">
                 <span className="text-ink-muted text-xs truncate pr-2">{c.name}</span>
-                <span className="text-ink-muted text-xs flex-shrink-0 tabular-nums">{c.pct.toFixed(1)}%</span>
+                <span className="text-ink-muted text-xs flex-shrink-0 tabular-nums">{fPct1(c.pct)}</span>
               </div>
               <div className="h-1.5 bg-subtle rounded-full overflow-hidden">
                 <div className="h-full rounded-full transition-all duration-700"
@@ -670,7 +666,7 @@ const HoldingCard = memo(function HoldingCard({
         <StCell label="Preu entrada"   value={fEur(h.avgEntryPrice)}  />
         <StCell
           label="Participacions"
-          value={h.quantity % 1 === 0 ? String(h.quantity) : h.quantity.toFixed(4)}
+          value={h.quantity.toLocaleString('ca-ES', { maximumFractionDigits: 6 })}
         />
       </div>
 
@@ -678,7 +674,7 @@ const HoldingCard = memo(function HoldingCard({
       <div>
         <div className="flex items-center justify-between mb-1">
           <span className="text-ink-muted text-[10px]">Pes cartera</span>
-          <span className="text-ink-muted text-[10px] tabular-nums">{weight.toFixed(1)}%</span>
+          <span className="text-ink-muted text-[10px] tabular-nums">{fPct1(weight)}</span>
         </div>
         <div className="h-1 bg-subtle rounded-full overflow-hidden">
           <div className="h-full rounded-full transition-all duration-700"
