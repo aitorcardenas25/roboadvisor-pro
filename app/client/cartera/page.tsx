@@ -313,6 +313,12 @@ function periodLabel(iso: string, period: Period, isLast: boolean): string {
   // El període en curs encara no s'ha acabat: es diu fins a quin dia arriba
   return isLast && !isPeriodEndDate(iso, period) ? `${base} (fins al ${fDate(iso)})` : base;
 }
+/** Últim dia del període anterior al que conté `iso` (p. ex. 2026-03-15, trimestral → 2025-12-31). */
+function previousPeriodEnd(iso: string, period: Period): string {
+  const y = Number(iso.slice(0, 4)), m = Number(iso.slice(5, 7)) - 1;
+  const startMonth = period === 'year' ? 0 : period === 'quarter' ? m - (m % 3) : m;
+  return new Date(Date.UTC(y, startMonth, 0)).toISOString().slice(0, 10);
+}
 function isPeriodEndDate(iso: string, period: Period): boolean {
   const m = Number(iso.slice(5, 7));
   const last = new Date(Date.UTC(Number(iso.slice(0, 4)), m, 0)).toISOString().slice(0, 10) === iso;
@@ -436,10 +442,13 @@ const EvolutionChart = memo(function EvolutionChart({
                 <tr key={r.date}>
                   <td className="py-2 pr-3 text-ink-soft whitespace-nowrap">
                     {periodLabel(r.date, period, i === 0)}
-                    {/* El primer període comença el dia de la primera compra, no a l'inici del mes/trimestre/any */}
-                    {rows[1]?.date === r.date && !isPeriodEndDate(rows[0].date, period) && period !== 'month' && (
-                      <span className="text-ink-muted"> (des del {fDate(rows[0].date)})</span>
-                    )}
+                    {/* Si el punt anterior no és el final del període just anterior (primera compra a mig període,
+                        o mesos sense valor liquidatiu), la rendibilitat cobreix més temps: es diu des de quan */}
+                    {(() => {
+                      const prev = rows[rows.findIndex(x => x.date === r.date) - 1];
+                      return prev && prev.date !== previousPeriodEnd(r.date, period)
+                        ? <span className="text-ink-muted"> (des del {fDate(prev.date)})</span> : null;
+                    })()}
                   </td>
                   <td className="py-2 px-2 text-right text-ink whitespace-nowrap">{eurFull(r.value)}</td>
                   <td className="py-2 px-2 text-right text-ink-muted whitespace-nowrap">{Math.abs(r.flow) >= 0.005 ? eurFull(r.flow) : '—'}</td>
