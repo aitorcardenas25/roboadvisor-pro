@@ -14,6 +14,8 @@ import { computeMetrics, isSoldOut } from '@/lib/clientPortfolios';
 import { aggregatePeriods, type Valuation, type Period } from '@/lib/portfolioValuation';
 import TaxReportView from '@/components/TaxReportView';
 import PortfolioExcelButton from '@/components/PortfolioExcelButton';
+import MixHistoryPanel from '@/components/client/MixHistoryPanel';
+import type { MixHistory } from '@/lib/mixHistory';
 import { DataSourceBadge } from '@/components/DataSourceBadge';
 import { DataSourcePanel } from '@/components/DataSourcePanel';
 import { CLIENT_TAX_REPORT_ENABLED } from '@/lib/featureFlags';
@@ -880,15 +882,17 @@ export default function ClientCarteraPage() {
   const [panelOpen, setPanelOpen] = useState(false);
   const [valuation, setValuation] = useState<Valuation | null>(null);
   const [period, setPeriod]       = useState<Period>('month');   // agrupació del gràfic i de l'Excel
+  const [history, setHistory]     = useState<Record<string, MixHistory | null> | null>(null);
 
   useEffect(() => {
     if (status === 'unauthenticated') { router.push('/login'); return; }
     if (status === 'authenticated') {
       fetch('/api/client/portfolio')
         .then(r => r.json())
-        .then((d: { portfolio: ClientPortfolio | null; valuation?: Valuation | null }) => {
+        .then((d: { portfolio: ClientPortfolio | null; valuation?: Valuation | null; history?: Record<string, MixHistory | null> | null }) => {
           setPortfolio(d.portfolio ?? null);
           setValuation(d.valuation ?? null);
+          setHistory(d.history ?? null);
           setLoading(false);
         })
         .catch(() => setLoading(false));
@@ -995,6 +999,8 @@ export default function ClientCarteraPage() {
                 <ExecutiveSummary portfolio={portfolio} metrics={metrics} valuation={valuation} />
               </div>
             </div>
+
+            <MixHistoryPanel history={history} />
 
             {/* Latest note preview */}
             {visibleNotes.length > 0 && (
