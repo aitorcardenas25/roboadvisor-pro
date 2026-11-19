@@ -75,8 +75,9 @@ function deriveRisk(portfolio: ClientPortfolio): { label: string; color: string 
   const open = portfolio.holdings.filter(h => h.quantity > 0);
   const total = open.reduce((s, h) => s + Math.max(0, h.currentPrice * h.quantity), 0);
   if (open.length === 0 || total <= 0) return { label: 'No disponible', color: '#626e69' };
-  const eqPct = open.filter(h => isEquity(h.assetCategory ?? ''))
-    .reduce((s, h) => s + Math.max(0, h.currentPrice * h.quantity), 0) / total * 100;
+  // Arrodonit: 79,99 % per decimals de preu ha de comptar com el 80 % que és
+  const eqPct = Math.round(open.filter(h => isEquity(h.assetCategory ?? ''))
+    .reduce((s, h) => s + Math.max(0, h.currentPrice * h.quantity), 0) / total * 100);
   if (eqPct >= 80) return { label: 'Dinàmic',         color: '#8a5a00' };
   if (eqPct >= 50) return { label: 'Moderat',         color: '#1e4d3f' };
   if (eqPct >= 20) return { label: 'Conservador',     color: '#1f5d8c' };
@@ -644,7 +645,7 @@ const HoldingCard = memo(function HoldingCard({
               {h.assetSymbol && (
                 <span className="text-ink-muted text-xs font-mono bg-subtle px-1.5 py-0.5 rounded">{h.assetSymbol}</span>
               )}
-              <DataSourceBadge source={priceSourceId} variant="chip" />
+              {priceSourceId !== 'internal' && <DataSourceBadge source={priceSourceId} variant="chip" />}
             </div>
             <div className="flex items-center gap-2 text-xs text-ink-muted">
               {h.assetCategory && <span>{h.assetCategory}</span>}
@@ -682,9 +683,10 @@ const HoldingCard = memo(function HoldingCard({
         </div>
       </div>
 
-      {h.priceLastUpdated && (
-        <DataSourceBadge source={priceSourceId} updatedAt={h.priceLastUpdated} variant="inline" className="mt-2 block" />
-      )}
+      {/* Amb VL oficial ("manual" = sincronitzat de fund_navs) es diu en paraules de quin dia és el preu */}
+      {h.priceLastUpdated && (priceSourceId === 'internal'
+        ? <p className="mt-2 text-[11px] text-ink-muted">Valor liquidatiu oficial del {fDate(h.priceLastUpdated)}</p>
+        : <DataSourceBadge source={priceSourceId} updatedAt={h.priceLastUpdated} variant="inline" className="mt-2 block" />)}
     </div>
   );
 });
