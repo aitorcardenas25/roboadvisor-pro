@@ -11,7 +11,7 @@ import type {
   ClientPortfolio, ClientHolding, ClientTransaction, OperationType, PortfolioMetrics,
 } from '@/lib/clientPortfolios';
 import { computeMetrics, isSoldOut } from '@/lib/clientPortfolios';
-import type { Valuation } from '@/lib/portfolioValuation';
+import { aggregatePeriods, type Valuation, type Period } from '@/lib/portfolioValuation';
 import TaxReportView from '@/components/TaxReportView';
 import PortfolioExcelButton from '@/components/PortfolioExcelButton';
 import { DataSourceBadge } from '@/components/DataSourceBadge';
@@ -294,36 +294,73 @@ function Tile({ label, value, color }: { label: string; value: string; color?: s
 // EVOLUTION CHART
 // ─────────────────────────────────────────────────────────────────────────────
 
+const PERIODS: { id: Period; label: string; desc: string }[] = [
+  { id: 'month',   label: 'Mensual',    desc: 'cada final de mes' },
+  { id: 'quarter', label: 'Trimestral', desc: 'cada final de trimestre' },
+  { id: 'year',    label: 'Anual',      desc: 'cada final d\u2019any' },
+];
+
+const eurFull = (n: number) => n.toLocaleString('ca-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' €';
+const pctCa   = (n: number) => `${n >= 0 ? '+' : ''}${n.toLocaleString('ca-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} %`;
+
+function periodLabel(iso: string, period: Period, isLast: boolean): string {
+  const d = new Date(iso + 'T00:00:00');
+  const y = d.getFullYear();
+  const m = d.toLocaleString('ca-ES', { month: 'long' }).replace(/^de |^d’|^d'/, '');
+  const base = period === 'year' ? String(y)
+    : period === 'quarter' ? `T${Math.floor(d.getMonth() / 3) + 1} ${y}`
+    : `${m.charAt(0).toUpperCase()}${m.slice(1)} ${y}`;
+  // El període en curs encara no s'ha acabat: es diu fins a quin dia arriba
+  return isLast && !isPeriodEndDate(iso, period) ? `${base} (fins al ${fDate(iso)})` : base;
+}
+function isPeriodEndDate(iso: string, period: Period): boolean {
+  const m = Number(iso.slice(5, 7));
+  const last = new Date(Date.UTC(Number(iso.slice(0, 4)), m, 0)).toISOString().slice(0, 10) === iso;
+  return last && (period === 'month' || (period === 'quarter' ? m % 3 === 0 : m === 12));
+}
+
 const EvolutionChart = memo(function EvolutionChart({
-  portfolio, metrics, valuation,
-}: { portfolio: ClientPortfolio; metrics: PortfolioMetrics; valuation?: Valuation | null }) {
+  portfolio, metrics, valuation, period, onPeriod,
+}: { portfolio: ClientPortfolio; metrics: PortfolioMetrics; valuation?: Valuation | null; period: Period; onPeriod: (p: Period) => void }) {
   // Primer, l'evolució calculada amb els valors liquidatius oficials dels fons;
   // si no n'hi ha prou (falten preus), els snapshots que registra l'assessor.
   const fromNavs = (valuation?.points.length ?? 0) >= 2;
+  // Amb valors oficials, el selector agrupa la sèrie per mesos, trimestres o anys
+  // (els mateixos càlculs que l'Excel): canvien els punts del gràfic i la taula.
+  const rows = useMemo(() => fromNavs ? aggregatePeriods(valuation!.points, period) : [], [fromNavs, valuation, period]);
   const data = useMemo(
     () => fromNavs
-      ? valuation!.points.map(p => ({ date: p.date, valor: p.value }))
+      ? rows.map(r => ({ date: r.date, valor: r.value, aportat: r.invested }))
       : [...portfolio.snapshots]
         .sort((a, b) => a.date.localeCompare(b.date))
-        .map(s => ({ date: s.date, valor: s.totalValue })),
-    [fromNavs, valuation, portfolio.snapshots],
+        .map(s => ({ date: s.date, valor: s.totalValue, aportat: undefined as number | undefined })),
+    [fromNavs, rows, portfolio.snapshots],
   );
 
   const isPos = metrics.pnlEur >= 0;
   const col   = isPos ? '#1e704c' : '#b42820';
   const gid   = isPos ? 'eg-pos' : 'eg-neg';
+  const desc  = PERIODS.find(p => p.id === period)!.desc;
+  const table = rows.filter(r => r.periodReturn !== null).slice(-8).reverse();
 
   return (
     <div className="bg-surface border border-line rounded-lg p-5 sm:p-6">
-      <div className="flex items-start justify-between mb-5">
+      <div className="flex flex-wrap items-start justify-between gap-3 mb-5">
         <div>
           <h3 className="text-ink font-semibold text-sm">Evolució patrimonial</h3>
           <p className="text-ink-muted text-xs mt-0.5">
-            {fromNavs ? 'Calculada cada final de mes amb els valors liquidatius oficials dels fons' : 'Snapshots registrats per l\u2019assessor'}
+            {fromNavs ? `Valor ${desc}, amb els valors liquidatius oficials dels fons` : 'Snapshots registrats per l\u2019assessor'}
           </p>
         </div>
-        {data.length >= 2 && (
-          <span className="text-sm font-bold" style={{ color: col }}>{fPct(metrics.pnlPct)}</span>
+        {fromNavs && (
+          <div role="group" aria-label="Període" className="flex rounded-lg border border-line overflow-hidden text-xs">
+            {PERIODS.map(p => (
+              <button key={p.id} type="button" onClick={() => onPeriod(p.id)} aria-pressed={period === p.id}
+                className={`px-3 py-1.5 transition-colors ${period === p.id ? 'bg-accent text-accent-ink font-semibold' : 'text-ink-soft hover:bg-subtle'}`}>
+                {p.label}
+              </button>
+            ))}
+          </div>
         )}
       </div>
 
@@ -343,6 +380,10 @@ const EvolutionChart = memo(function EvolutionChart({
               axisLine={false} tickLine={false}
               tickFormatter={(v: string) => {
                 const d = new Date(v + 'T00:00:00');
+                // El primer i l'últim punt poden no ser final de període (inici de la cartera, avui)
+                const end = isPeriodEndDate(v, period);
+                if (fromNavs && end && period === 'year') return String(d.getFullYear());
+                if (fromNavs && end && period === 'quarter') return `T${Math.floor(d.getMonth() / 3) + 1} ${String(d.getFullYear()).slice(2)}`;
                 const m = d.toLocaleString('ca-ES', { month: 'short' }).replace(/^de |^d’|^d'/, '');
                 return fromNavs ? `${m} ${String(d.getFullYear()).slice(2)}` : `${d.getDate()} ${m}`;
               }}
@@ -350,18 +391,21 @@ const EvolutionChart = memo(function EvolutionChart({
             <YAxis
               tick={{ fill: '#7a8681', fontSize: 10 }}
               axisLine={false} tickLine={false} width={46}
-              tickFormatter={(v: number) => v >= 1000 ? `${(v / 1000).toFixed(0)}K` : String(v)}
+              tickFormatter={(v: number) => v >= 1000 ? `${(v / 1000).toLocaleString('ca-ES', { maximumFractionDigits: 1 })}K` : String(v)}
             />
-            {metrics.totalInvested > 0 && (
-              <ReferenceLine y={metrics.totalInvested} stroke="#7a8681" strokeDasharray="4 4"
-                label={{ value: 'Capital invertit', fill: '#7a8681', fontSize: 9, position: 'insideTopRight' }} />
-            )}
             <ReTT
-              formatter={(v: number) => [fEur(v), 'Valor']}
+              formatter={(v: number, k: string) => [eurFull(v), k === 'aportat' ? 'Capital aportat' : 'Valor']}
               labelFormatter={(l: string) => fDate(l)}
               {...TT}
             />
-            <Area type="monotone" dataKey="valor"
+            {fromNavs ? (
+              <Area type={period === 'month' ? 'stepAfter' : 'linear'} dataKey="aportat" stroke="#7a8681" strokeDasharray="4 4" strokeWidth={1.5} fill="none" dot={false} activeDot={false} />
+            ) : metrics.totalInvested > 0 && (
+              <ReferenceLine y={metrics.totalInvested} stroke="#7a8681" strokeDasharray="4 4"
+                label={{ value: 'Capital invertit', fill: '#7a8681', fontSize: 9, position: 'insideTopRight' }} />
+            )}
+            {/* Línia recta entre punts: una corba suau inventaria valors entre dos finals de període */}
+            <Area type={fromNavs ? 'linear' : 'monotone'} dataKey="valor"
               stroke={col} strokeWidth={2} fill={`url(#${gid})`}
               dot={{ r: 3, fill: col, strokeWidth: 0 }}
               activeDot={{ r: 5, fill: col, strokeWidth: 0 }} />
@@ -369,6 +413,47 @@ const EvolutionChart = memo(function EvolutionChart({
         </ResponsiveContainer>
       ) : (
         <EmptyChart text="El gràfic apareixerà quan hi hagi preus oficials de tots els fons o l'assessor registri snapshots de la cartera" />
+      )}
+
+      {fromNavs && (
+        <p className="text-ink-muted text-[11px] mt-2">Línia contínua: valor de la cartera. Línia discontínua: diners que hi has posat.</p>
+      )}
+
+      {table.length > 0 && (
+        <div className="mt-5 overflow-x-auto">
+          <table className="w-full text-xs">
+            <thead>
+              <tr className="text-ink-muted border-b border-line">
+                <th className="text-left font-medium py-2 pr-3">Període</th>
+                <th className="text-right font-medium py-2 px-2">Valor al final</th>
+                <th className="text-right font-medium py-2 px-2">Aportacions</th>
+                <th className="text-right font-medium py-2 px-2">Guany</th>
+                <th className="text-right font-medium py-2 pl-2">Rendibilitat</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-line">
+              {table.map((r, i) => (
+                <tr key={r.date}>
+                  <td className="py-2 pr-3 text-ink-soft whitespace-nowrap">
+                    {periodLabel(r.date, period, i === 0)}
+                    {/* El primer període comença el dia de la primera compra, no a l'inici del mes/trimestre/any */}
+                    {rows[1]?.date === r.date && !isPeriodEndDate(rows[0].date, period) && period !== 'month' && (
+                      <span className="text-ink-muted"> (des del {fDate(rows[0].date)})</span>
+                    )}
+                  </td>
+                  <td className="py-2 px-2 text-right text-ink whitespace-nowrap">{eurFull(r.value)}</td>
+                  <td className="py-2 px-2 text-right text-ink-muted whitespace-nowrap">{Math.abs(r.flow) >= 0.005 ? eurFull(r.flow) : '—'}</td>
+                  <td className={`py-2 px-2 text-right whitespace-nowrap ${r.gain >= 0 ? 'text-positive' : 'text-negative'}`}>{eurFull(r.gain)}</td>
+                  <td className={`py-2 pl-2 text-right font-medium whitespace-nowrap ${(r.periodReturn ?? 0) >= 0 ? 'text-positive' : 'text-negative'}`}>{pctCa(r.periodReturn ?? 0)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+          <p className="text-ink-muted text-[11px] mt-2">
+            La rendibilitat de cada període no compta els diners que hi has posat (mètode Modified Dietz).
+            {rows.filter(r => r.periodReturn !== null).length > table.length ? ` Es mostren els ${table.length} últims; l'Excel els té tots.` : ''}
+          </p>
+        </div>
       )}
     </div>
   );
@@ -423,7 +508,8 @@ const DistributionPanel = memo(function DistributionPanel({
     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
       {/* Donut */}
       <div className="bg-surface border border-line rounded-lg p-5">
-        <h3 className="text-ink font-semibold text-sm mb-4">Distribució per actiu</h3>
+        <h3 className="text-ink font-semibold text-sm">Distribució per actiu</h3>
+        <p className="text-ink-muted text-xs mt-0.5 mb-4">Avui, amb l&apos;últim valor liquidatiu de cada fons</p>
         <div className="flex items-center gap-4">
           <div className="flex-shrink-0">
             <ResponsiveContainer width={96} height={96}>
@@ -784,6 +870,7 @@ export default function ClientCarteraPage() {
   const [tab, setTab]             = useState<Tab>('overview');
   const [panelOpen, setPanelOpen] = useState(false);
   const [valuation, setValuation] = useState<Valuation | null>(null);
+  const [period, setPeriod]       = useState<Period>('month');   // agrupació del gràfic i de l'Excel
 
   useEffect(() => {
     if (status === 'unauthenticated') { router.push('/login'); return; }
@@ -891,8 +978,8 @@ export default function ClientCarteraPage() {
           <div className="space-y-5">
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
               <div className="lg:col-span-2 space-y-5">
-                <EvolutionChart portfolio={portfolio} metrics={metrics} valuation={valuation} />
-                <PortfolioExcelButton baseUrl="/api/client/portfolio/excel" className="justify-end -mt-2" />
+                <EvolutionChart portfolio={portfolio} metrics={metrics} valuation={valuation} period={period} onPeriod={setPeriod} />
+                <PortfolioExcelButton baseUrl="/api/client/portfolio/excel" className="justify-end -mt-2" period={period} />
                 <DistributionPanel portfolio={portfolio} total={metrics.currentValue} />
               </div>
               <div className="space-y-5">

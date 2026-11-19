@@ -6,8 +6,21 @@ type Period = 'month' | 'quarter' | 'year';
 const LABEL: Record<Period, string> = { month: 'Mensual', quarter: 'Trimestral', year: 'Anual' };
 
 /** Descàrrega de l'Excel d'evolució de la cartera (client o assessor). */
-export default function PortfolioExcelButton({ baseUrl, className = '' }: { baseUrl: string; className?: string }) {
-  const [period, setPeriod] = useState<Period>('month');
+export default function PortfolioExcelButton({ baseUrl, className = '', period: controlled }: {
+  baseUrl: string; className?: string;
+  /** Si es passa, el període el tria qui el fa servir (p. ex. el selector del gràfic) i aquí no surt el desplegable. */
+  period?: Period;
+}) {
+  const [own, setPeriod] = useState<Period>('month');
+  const period = controlled ?? own;
+  if (controlled) return (
+    <div className={`flex flex-wrap items-center gap-2 text-xs ${className}`}>
+      <a href={`${baseUrl}?period=${period}`} download
+        className="px-3 py-1.5 rounded-lg border border-accent/40 text-accent hover:bg-accent-soft transition-colors">
+        Descarregar l&apos;evolució {LABEL[period].toLowerCase()} en Excel
+      </a>
+    </div>
+  );
   return (
     <div className={`flex flex-wrap items-center gap-2 text-xs ${className}`}>
       <span className="text-ink-muted">Evolució en Excel</span>
