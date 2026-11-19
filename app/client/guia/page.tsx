@@ -35,12 +35,12 @@ const SHEETS: { name: string; when: string; rows: [string, string][] }[] = [
   },
   {
     name: 'Posicions',
-    when: 'Només si ja tens fons o ETF. Si no inverteixes, deixa-la buida.',
+    when: 'Només si ja tens fons o ETF. Si no inverteixes, deixa-la buida. Si l\'omples, cada fila necessita ISIN, participacions i preu mitjà.',
     rows: [
       ['ISIN', 'El codi de 12 lletres i números de cada fons (per exemple IE00B42W4L06). Surt a l\'app o a l\'extracte del banc o broker.'],
       ['Broker / entitat', 'On el tens: MyInvestor, Renta 4, Indexa, el teu banc...'],
       ['Participacions', 'Quantes participacions tens. Surt al mateix extracte, al costat del fons.'],
-      ['Preu mitjà de compra', 'El que et va costar cada participació de mitjana. Si no el trobes, deixa-ho en blanc.'],
+      ['Preu mitjà de compra', 'Obligatori. El que et va costar cada participació de mitjana; al broker sol sortir com a "preu mitjà" o "cost mitjà". Si no el trobes, divideix el total que hi has posat entre les participacions.'],
     ],
   },
   {
