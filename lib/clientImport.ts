@@ -92,6 +92,8 @@ export async function buildTemplate(clientName?: string): Promise<Buffer> {
     '   Format de data: dd/mm/aaaa. Tipus: Compra, Venda, Aportació, Retirada o Rebalanceig.',
     '5. No canviïs el nom de les pestanyes ni l\'ordre de les columnes.',
     '',
+    'Dubtes? Al portal (apartat "Guia") hi ha l\'explicació de cada casella amb exemples.',
+    '',
     'Aquestes dades són personals: torna el fitxer pel canal que t\'indiqui el teu assessor, no per xarxes socials.',
   ].forEach(t => info.addRow([t]));
   info.getRow(1).font = { bold: true, size: 13 };

@@ -749,8 +749,13 @@ function EmptyPortfolio({ name }: { name: string }) {
         </div>
         <h1 className="text-ink font-bold text-xl mb-2">Hola, {name}</h1>
         <p className="text-ink-muted text-sm leading-relaxed mb-6">
-          El teu assessor encara no t&apos;ha assignat cap cartera. Rebràs accés a la teva àrea personal ben aviat.
+          Encara no tens cap cartera aquí. Primer cal que ens expliquis la teva situació: el teu assessor prepara la proposta a partir d&apos;aquí.
         </p>
+        <a href="/client/guia"
+          className="inline-flex items-center gap-2 text-sm px-5 py-2.5 rounded-xl border border-line text-ink-soft hover:border-line-strong transition-all mb-3">
+          Com funciona, en 3 passos
+        </a>
+        <br />
         <a href="/client/finances"
           className="inline-flex items-center gap-2 text-sm px-5 py-2.5 rounded-xl bg-accent text-accent-ink font-semibold hover:bg-accent-hover transition-all mb-3">
           Veure les meves finances →
@@ -851,6 +856,7 @@ export default function ClientCarteraPage() {
             </button>
             <a href="/client/patrimoni" className="text-xs text-ink-muted hover:text-accent transition-colors">El meu patrimoni</a>
             <a href="/client/finances" className="text-xs text-ink-muted hover:text-accent transition-colors">Les meves finances</a>
+            <a href="/client/guia" className="text-xs text-ink-muted hover:text-accent transition-colors">Guia</a>
             <span className="text-ink-muted text-xs">{name}</span>
           </div>
         </div>

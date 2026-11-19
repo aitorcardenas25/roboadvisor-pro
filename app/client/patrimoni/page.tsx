@@ -5,6 +5,7 @@ import { useSession } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import WealthView from '@/components/wealth/WealthView';
+import WelcomeGuide from '@/components/beta/WelcomeGuide';
 
 export default function ClientPatrimoniPage() {
   const { data: session, status } = useSession();
@@ -27,6 +28,7 @@ export default function ClientPatrimoniPage() {
           <div className="flex items-center gap-4 flex-shrink-0 text-xs">
             <Link href="/client/cartera" className="text-ink-muted hover:text-accent transition-colors">La meva cartera</Link>
             <Link href="/client/finances" className="text-ink-muted hover:text-accent transition-colors">Les meves finances</Link>
+            <Link href="/client/guia" className="text-ink-muted hover:text-accent transition-colors">Guia</Link>
             {name && <span className="text-ink-muted hidden md:inline">{name}</span>}
           </div>
         </div>
@@ -35,6 +37,7 @@ export default function ClientPatrimoniPage() {
       <main className="max-w-5xl mx-auto px-4 py-6 sm:py-8">
         <h1 className="text-ink font-bold text-2xl mb-1">El meu patrimoni</h1>
         <p className="text-ink-muted text-sm mb-6">Tot el que tens, a tots els bancs i entitats, en una sola pantalla.</p>
+        {status === 'authenticated' && <WelcomeGuide name={name} />}
         {status === 'authenticated' && <WealthView endpoint="/api/client/wealth" />}
       </main>
     </div>
