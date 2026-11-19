@@ -45,6 +45,12 @@ describe('parseNavText', () => {
     ]);
   });
 
+  it('conserva el nom del fons encara que contingui la paraula NAV (regressió: es perdia sencer)', () => {
+    const r = parseNavText(`ISIN;Data;Valor liquidatiu;Moneda;Nom\nIE00B4L5Y983;2026-11-16;128.9651;EUR;iShares Core MSCI World UCITS ETF USD Acc (NAV convertit a EUR amb el canvi oficial del BCE)`);
+    expect(r.errors).toEqual([]);
+    expect(r.rows[0].name).toBe('iShares Core MSCI World UCITS ETF USD Acc (NAV convertit a EUR amb el canvi oficial del BCE)');
+  });
+
   it('en descàrregues tipus Yahoo/EODHD (Open,High,Low,Close…) llegeix el tancament ajustat, no l\'obertura', () => {
     const csv = 'Date,Open,High,Low,Close,Adjusted_close,Volume\n2026-11-12,130.8,131.86,130.24,131.63,131.63,387988\n2026-11-13,130.905,131.755,129.85,130.44,130.44,323081';
     const r = parseNavText(csv, { defaultIsin: ISIN });

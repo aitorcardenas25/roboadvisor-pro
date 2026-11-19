@@ -13,6 +13,7 @@ export type ActivityEvent =
   | 'portfolio.view'
   | 'reports.view'
   | 'data.export'
+  | 'template.download'
   | 'ping';
 
 export type ActivityPage = 'finances' | 'cartera' | 'altres';

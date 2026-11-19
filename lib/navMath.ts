@@ -94,6 +94,10 @@ function splitCells(line: string): string[] {
 
 const CURRENCIES = new Set(['EUR', 'USD', 'GBP', 'CHF', 'JPY', 'SEK', 'NOK', 'DKK', 'CAD', 'AUD']);
 const HEADER_RE = /\b(isin|data|date|fecha|nav|vl|valor|preu|precio|price|moneda|currency|divisa|nom|name)\b/i;
+// Una cel·la que és només una etiqueta de capçalera ("Nom", "NAV", "Valor liquidatiu").
+// No es pot fer servir HEADER_RE per al nom: "iShares … (NAV convertit a EUR …)"
+// conté la paraula NAV i el nom del fons es perdia sencer.
+const HEADER_CELL_RE = /^(isin|data|date|fecha|nav|vl|valor( liquidatiu)?|preu|precio|price|moneda|currency|divisa|nom|name)$/i;
 
 /**
  * A una capçalera tipus Date,Open,High,Low,Close,Adj Close,Volume, l'índex de la
@@ -166,7 +170,7 @@ export function parseNavText(text: string, opts: { defaultIsin?: string; default
     if (nav === null)     { res.errors.push({ line, message: 'Falta el valor liquidatiu' }); return; }
     if (nav <= 0)         { res.errors.push({ line, message: `El valor liquidatiu ha de ser més gran que 0 (${nav})` }); return; }
     if (date > new Date().toISOString().slice(0, 10)) { res.errors.push({ line, message: `La data ${fmtDate(date)} és futura` }); return; }
-    const name = words.filter(w => w.length > 2 && !HEADER_RE.test(w) && parseNavNumber(w) === null).join(' ').slice(0, 200) || undefined;
+    const name = words.filter(w => w.length > 2 && !HEADER_CELL_RE.test(w.trim()) && parseNavNumber(w) === null).join(' ').slice(0, 200) || undefined;
     const row: NavPoint = { isin, date, nav, currency: currency ?? defCur, ...(name ? { name } : {}) };
     const key = `${isin}|${date}`;
     const prev = seen.get(key);
