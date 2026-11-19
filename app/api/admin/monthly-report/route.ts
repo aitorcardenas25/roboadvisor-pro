@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/authOptions';
 import { getPortfolioById } from '@/lib/clientPortfolios';
-import { generateMonthlyReportData, buildOfficialSection } from '@/lib/portfolioReport';
+import { generateMonthlyReportData, buildOfficialSection, withPeriodEndFigures } from '@/lib/portfolioReport';
 import { getNavs } from '@/lib/fundNavs';
 import { targetProposal } from '@/lib/portfolioAlertsServer';
 import { saveMonthlyReport } from '@/lib/monthlyReports';
@@ -33,7 +33,7 @@ export async function POST(req: NextRequest) {
 
   if (parsed.data.periodStart > parsed.data.periodEnd) return NextResponse.json({ error: 'La data d\'inici és posterior a la final' }, { status: 400 });
 
-  const report = generateMonthlyReportData(
+  let report = generateMonthlyReportData(
     portfolio,
     parsed.data.advisorComments,
     parsed.data.periodStart,
@@ -43,8 +43,10 @@ export async function POST(req: NextRequest) {
   try {
     const isins = [...new Set(portfolio.holdings.map(h => (h.assetIsin ?? '').toUpperCase()).filter(Boolean))];
     const navs = (await Promise.all(isins.map(i => getNavs(i)))).flat();
-    const { target, lastApprovedAt } = await targetProposal(portfolio);
+    // Objectiu vigent a la data final (no una proposta aprovada després del període)
+    const { target, lastApprovedAt } = await targetProposal(portfolio, parsed.data.periodEnd);
     report.official = buildOfficialSection(portfolio, navs, target, lastApprovedAt, parsed.data.periodStart, parsed.data.periodEnd);
+    report = withPeriodEndFigures(report);
   } catch (err) {
     console.error('[monthly-report] secció oficial:', err instanceof Error ? err.message : err);
   }

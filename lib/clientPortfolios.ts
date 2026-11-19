@@ -86,6 +86,14 @@ export interface PortfolioMetrics {
   lastUpdated:      string | null;
 }
 
+/**
+ * Posició venuda del tot: 0 participacions i alguna venda registrada.
+ * No és una "proposta pendent de compra" (0 participacions sense cap venda).
+ */
+export function isSoldOut(h: Pick<ClientHolding, 'id' | 'quantity'>, transactions: Pick<ClientTransaction, 'holdingId' | 'operationType'>[]): boolean {
+  return h.quantity <= 1e-9 && transactions.some(t => t.holdingId === h.id && t.operationType === 'sell');
+}
+
 export function computeMetrics(p: ClientPortfolio): PortfolioMetrics {
   const currentValue = p.holdings.reduce((s, h) => s + h.currentPrice * h.quantity, 0);
 

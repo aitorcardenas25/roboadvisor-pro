@@ -27,7 +27,10 @@ export interface MonthlyReportOfficial {
   allocation:  { targetVersion: number; threshold: number; rows: DriftRow[] } | null;
   operations:  ReportOperation[];
   review:      ReviewStatus;
+  positions?:  ReportPosition[];          // posicions a la data final, amb el VL oficial d'aquell dia
 }
+
+export interface ReportPosition { name: string; value: number; weight: number; pnlPct: number }
 
 export interface MonthlyReportData {
   reportId:        string;
@@ -43,6 +46,7 @@ export interface MonthlyReportData {
   recommendations: string;
   nextFollowup?:   string;
   official?:       MonthlyReportOfficial;   // informes generats abans no en tenen
+  asOf?:           string;                  // data de les xifres de capçalera i posicions (final del període)
 }
 
 export function generateMonthlyReportData(
@@ -132,9 +136,26 @@ export function buildOfficialSection(
     .filter(t => t.holdingId === id && t.date.slice(0, 10) > end && (t.operationType === 'buy' || t.operationType === 'sell'))
     .reduce((q, t) => q - (t.operationType === 'buy' ? t.quantity : -t.quantity), qty);
   const open = portfolio.holdings.map(h => ({ ...h, quantity: qtyAtEnd(h.id, h.quantity) })).filter(h => h.quantity > 1e-9);
+  const by = navsByIsin(navs);
+  const priceAt = (isin: string) => navOnOrBefore(by.get(isin.toUpperCase()), end)?.nav;
+  let positions: ReportPosition[] | undefined;
+  if (performance) {
+    // Cost mitjà de les compres fetes fins a la data final (les vendes no el canvien)
+    const avgCostAt = (id: string, fallback: number) => {
+      const buys = portfolio.transactions.filter(t => t.holdingId === id && t.operationType === 'buy' && t.date.slice(0, 10) <= end && t.quantity > 0);
+      const q = buys.reduce((s, t) => s + t.quantity, 0);
+      return q > 0 ? buys.reduce((s, t) => s + t.totalEur, 0) / q : fallback;
+    };
+    const rows = open.map(h => {
+      const price = priceAt(h.assetIsin) ?? h.currentPrice;
+      const cost = avgCostAt(h.id, h.avgEntryPrice);
+      return { name: h.assetName, value: r2(price * h.quantity), pnlPct: cost > 0 ? r2((price - cost) / cost * 100) || 0 : 0 };   // || 0: sense "-0,00 %"
+    });
+    const total = rows.reduce((s, r) => s + r.value, 0);
+    positions = rows.map(r => ({ ...r, weight: total > 0 ? r2(r.value / total * 100) : 0 }))
+      .sort((a, b) => b.value - a.value).slice(0, 10);
+  }
   if (target && open.length && performance) {
-    const by = navsByIsin(navs);
-    const priceAt = (isin: string) => navOnOrBefore(by.get(isin.toUpperCase()), end)?.nav;
     allocation = {
       targetVersion: target.version, threshold: DRIFT_THRESHOLD_PP,
       rows: computeDrift(open.map(h => ({ ...h, currentPrice: priceAt(h.assetIsin) ?? h.currentPrice })), target.items).rows,
@@ -149,5 +170,28 @@ export function buildOfficialSection(
   return {
     source: 'navs', performance, note, evolution, allocation, operations,
     review: reviewStatus({ nextFollowup: portfolio.nextFollowup, lastApprovedAt }, end),
+    positions,
+  };
+}
+
+/**
+ * Amb la secció oficial calculada, la capçalera (valor, aportació, rendiment) i les
+ * principals posicions passen a ser les de la data final del període. Abans eren les
+ * d'avui: un informe d'octubre ensenyava la cartera de després d'una reestructuració
+ * del novembre.
+ */
+export function withPeriodEndFigures(report: MonthlyReportData): MonthlyReportData {
+  const perf = report.official?.performance;
+  if (!perf) return report;
+  return {
+    ...report,
+    asOf: perf.end,
+    metrics: {
+      ...report.metrics,
+      currentValue: perf.valueEnd, netContributions: perf.investedEnd, totalInvested: perf.investedEnd,
+      pnlEur: r2(perf.valueEnd - perf.investedEnd), pnlPct: perf.cumulativeReturn,
+      holdingCount: report.official!.positions?.length ?? report.metrics.holdingCount,
+    },
+    topHoldings: report.official!.positions ?? report.topHoldings,
   };
 }

@@ -36,7 +36,7 @@ export default function MonthlyReportView({ report }: { report: MonthlyReportDat
       {/* KPIs */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
         {[
-          { label: 'Valor actual',     value: `${eur(report.metrics.currentValue)} €` },
+          { label: report.asOf ? `Valor a ${new Date(report.asOf).toLocaleDateString('ca-ES')}` : 'Valor actual', value: `${eur(report.metrics.currentValue)} €` },
           { label: 'Aportació neta',   value: `${eur(report.metrics.netContributions)} €` },
           { label: 'Rendiment (€)',    value: `${report.metrics.pnlEur >= 0 ? '+' : ''}${eur(report.metrics.pnlEur)} €`, colored: true },
           { label: 'Rendiment (%)',    value: `${report.metrics.pnlPct >= 0 ? '+' : ''}${eur(report.metrics.pnlPct)} %`, colored: true },
@@ -56,7 +56,9 @@ export default function MonthlyReportView({ report }: { report: MonthlyReportDat
       {/* Top holdings */}
       {report.topHoldings.length > 0 && (
         <div className="mb-8">
-          <h2 className="text-ink font-semibold text-sm mb-3 print:text-ink">Principals posicions</h2>
+          <h2 className="text-ink font-semibold text-sm mb-3 print:text-ink">
+            Principals posicions{report.asOf ? ` a ${new Date(report.asOf).toLocaleDateString('ca-ES')}` : ''}
+          </h2>
           <div className="space-y-2">
             {report.topHoldings.map(h => (
               <div key={h.name} className="flex items-center gap-3">

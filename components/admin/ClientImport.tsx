@@ -50,7 +50,7 @@ export default function ClientImport({ clientId, onImported }: { clientId: strin
         if (!res.ok) setMsg({ ok: false, text: data.error ?? 'Error llegint el fitxer' });
         else setPreview(data);
       } else if (res.ok) {
-        setMsg({ ok: true, text: `Importat: ${data.imported.holdings} posicions i ${data.imported.transactions} moviments${data.personalSaved ? ' + dades personals' : ''}.` });
+        setMsg({ ok: true, text: `Importat: ${data.imported.holdings} posicions i ${data.imported.transactions} moviments${data.personalSaved ? ' + dades personals' : ''}.${data.pricesUpdated ? ' Els fons amb preus desats ja es valoren amb l\'últim VL oficial.' : ''}` });
         setPreview(null); setFile(null);
         onImported();
       } else {
@@ -212,7 +212,7 @@ export default function ClientImport({ clientId, onImported }: { clientId: strin
             </button>
           </div>
           <p className="text-ink-muted text-xs">
-            Els preus actuals queden com a &quot;pendents&quot; (igual al cost) fins que facis &quot;Refrescar preus de mercat&quot;.
+            Els fons amb valors liquidatius desats a &quot;Preus dels fons&quot; es valoren amb l&apos;últim VL oficial. La resta queden &quot;pendents&quot; (igual al cost) fins que en carreguis el preu.
           </p>
         </>
       )}
