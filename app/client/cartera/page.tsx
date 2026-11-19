@@ -430,15 +430,15 @@ const EvolutionChart = memo(function EvolutionChart({
               <tr className="text-ink-muted border-b border-line">
                 <th className="text-left font-medium py-2 pr-3">Període</th>
                 <th className="text-right font-medium py-2 px-2">Valor al final</th>
-                <th className="text-right font-medium py-2 px-2">Aportacions</th>
-                <th className="text-right font-medium py-2 px-2">Guany</th>
+                <th className="hidden sm:table-cell text-right font-medium py-2 px-2">Aportacions</th>
+                <th className="hidden sm:table-cell text-right font-medium py-2 px-2">Guany</th>
                 <th className="text-right font-medium py-2 pl-2">Rendibilitat</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-line">
               {table.map((r, i) => (
                 <tr key={r.date}>
-                  <td className="py-2 pr-3 text-ink-soft whitespace-nowrap">
+                  <td className="py-2 pr-3 text-ink-soft">
                     {periodLabel(r.date, period, i === 0)}
                     {/* Si el punt anterior no és el final del període just anterior (primera compra a mig període,
                         o mesos sense valor liquidatiu), la rendibilitat cobreix més temps: es diu des de quan */}
@@ -449,8 +449,8 @@ const EvolutionChart = memo(function EvolutionChart({
                     })()}
                   </td>
                   <td className="py-2 px-2 text-right text-ink whitespace-nowrap">{eurFull(r.value)}</td>
-                  <td className="py-2 px-2 text-right text-ink-muted whitespace-nowrap">{Math.abs(r.flow) >= 0.005 ? eurFull(r.flow) : '—'}</td>
-                  <td className={`py-2 px-2 text-right whitespace-nowrap ${r.gain >= 0 ? 'text-positive' : 'text-negative'}`}>{eurFull(r.gain)}</td>
+                  <td className="hidden sm:table-cell py-2 px-2 text-right text-ink-muted whitespace-nowrap">{Math.abs(r.flow) >= 0.005 ? eurFull(r.flow) : '—'}</td>
+                  <td className={`hidden sm:table-cell py-2 px-2 text-right whitespace-nowrap ${r.gain >= 0 ? 'text-positive' : 'text-negative'}`}>{eurFull(r.gain)}</td>
                   <td className={`py-2 pl-2 text-right font-medium whitespace-nowrap ${(r.periodReturn ?? 0) >= 0 ? 'text-positive' : 'text-negative'}`}>{pctCa(r.periodReturn ?? 0)}</td>
                 </tr>
               ))}

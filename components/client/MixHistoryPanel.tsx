@@ -99,16 +99,17 @@ export default function MixHistoryPanel({ history }: { history: Record<string, M
         Toca un fons per veure&apos;l al gràfic, com si hi haguessis posat tots els {eur0(h.initial)}.
       </p>
 
-      <div className="mt-5 overflow-x-auto">
+      <p className="mt-5 text-ink-muted text-[11px]">Del {fDate(h.start)} al {fDate(h.end)}</p>
+      <div className="mt-1 overflow-x-auto">
         <table className="w-full text-xs">
           <thead>
             <tr className="text-ink-muted border-b border-line">
-              <th className="text-left font-medium py-2 pr-3">Del {fDate(h.start)} al {fDate(h.end)}</th>
+              <th className="text-left font-medium py-2 pr-3">Fons</th>
               <th className="text-right font-medium py-2 px-2">Pes avui</th>
-              <th className="text-right font-medium py-2 px-2">Total</th>
+              <th className="hidden sm:table-cell text-right font-medium py-2 px-2">Total</th>
               <th className="text-right font-medium py-2 px-2">Anual</th>
               <th className="text-right font-medium py-2 px-2">Pitjor caiguda</th>
-              <th className="text-right font-medium py-2 pl-2">Pitjor any</th>
+              <th className="hidden sm:table-cell text-right font-medium py-2 pl-2">Pitjor any</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-line">
@@ -141,10 +142,10 @@ function Row({ name, weight, s, strong }: { name: string; weight: number; s: { t
     <tr className={strong ? 'font-semibold' : ''}>
       <td className="py-2 pr-3 text-ink">{name}</td>
       <td className="py-2 px-2 text-right text-ink-soft whitespace-nowrap">{pct(weight, false)}</td>
-      <td className={`py-2 px-2 text-right whitespace-nowrap ${tone(s.totalReturn)}`}>{pct(s.totalReturn)}</td>
+      <td className={`hidden sm:table-cell py-2 px-2 text-right whitespace-nowrap ${tone(s.totalReturn)}`}>{pct(s.totalReturn)}</td>
       <td className={`py-2 px-2 text-right whitespace-nowrap ${tone(s.annualReturn)}`}>{pct(s.annualReturn)}</td>
       <td className="py-2 px-2 text-right whitespace-nowrap text-negative">{pct(s.maxDrawdown)}</td>
-      <td className={`py-2 pl-2 text-right whitespace-nowrap ${tone(s.worst12M)}`}>{pct(s.worst12M)}</td>
+      <td className={`hidden sm:table-cell py-2 pl-2 text-right whitespace-nowrap ${tone(s.worst12M)}`}>{pct(s.worst12M)}</td>
     </tr>
   );
 }
