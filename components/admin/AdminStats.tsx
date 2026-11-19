@@ -7,7 +7,7 @@ import {
   XAxis, YAxis, CartesianGrid, Tooltip,
   ResponsiveContainer, Legend,
 } from 'recharts';
-import type { ClientPortfolio } from '@/lib/clientPortfolios';
+import { isSoldOut, type ClientPortfolio } from '@/lib/clientPortfolios';
 import type { PortfolioAlert } from '@/lib/portfolioAlertsServer';
 import type { DashboardStats } from '@/lib/dashboardStats';
 
@@ -93,7 +93,7 @@ export default function AdminStats({ onNavigate }: Props) {
 
           // Portfolios with pending holdings (no price set)
           const pendingPricePfs = portfolios.filter(p =>
-            p.holdings.some(h => h.priceSource === 'pending' || (h.currentPrice === 0 && h.quantity === 0))
+            p.holdings.some(h => !isSoldOut(h, p.transactions) && (h.priceSource === 'pending' || (h.currentPrice === 0 && h.quantity === 0)))
           );
           if (pendingPricePfs.length > 0) {
             newAlerts.push({

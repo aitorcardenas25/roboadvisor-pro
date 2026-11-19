@@ -10,7 +10,7 @@ import {
 import type {
   ClientPortfolio, ClientHolding, ClientTransaction, OperationType, PortfolioMetrics,
 } from '@/lib/clientPortfolios';
-import { computeMetrics } from '@/lib/clientPortfolios';
+import { computeMetrics, isSoldOut } from '@/lib/clientPortfolios';
 import type { Valuation } from '@/lib/portfolioValuation';
 import TaxReportView from '@/components/TaxReportView';
 import PortfolioExcelButton from '@/components/PortfolioExcelButton';
@@ -808,7 +808,7 @@ export default function ClientCarteraPage() {
   const isPending       = (h: ClientHolding) =>
     h.priceSource === 'pending' || (h.currentPrice === 0 && h.quantity === 0);
   const activeHoldings  = portfolio.holdings.filter(h => !isPending(h) && h.quantity > 0);   // les venudes del tot no surten
-  const pendingHoldings = portfolio.holdings.filter(h => isPending(h));
+  const pendingHoldings = portfolio.holdings.filter(h => isPending(h) && !isSoldOut(h, portfolio.transactions));
   const visibleNotes    = portfolio.advisorNotes.filter(n => n.isVisibleToClient);
 
   const TABS: { id: Tab; label: string; cnt?: number }[] = [

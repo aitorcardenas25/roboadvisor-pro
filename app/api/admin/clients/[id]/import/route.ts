@@ -8,8 +8,9 @@ import { getAllUsers } from '@/lib/users';
 import { getLeadByLinkedUser, getLeadByEmail, saveLeadQuestionnaire, createLead, updateLeadLinks } from '@/lib/leads';
 import {
   getPortfolioByClientId, createClientPortfolio, addHolding, addTransaction,
-  removeHolding, removeTransaction,
+  removeHolding, removeTransaction, syncHoldingsToNavs,
 } from '@/lib/clientPortfolios';
+import { latestNavs } from '@/lib/fundNavs';
 import { buildTemplate, parseClientWorkbook } from '@/lib/clientImport';
 import { logAuditEvent } from '@/lib/auditLog';
 
@@ -138,6 +139,16 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   for (const hid of oldHoldings) await removeHolding(hid, portfolio.id);
   for (const tid of oldTxs)      await removeTransaction(tid, portfolio.id);
 
+  // Les posicions entren amb el preu de compra com a provisional ('pending'). Si el
+  // fons ja té valors liquidatius oficials desats, es valora amb l'últim al moment:
+  // si no, la fitxa ensenyava la cartera a preu de cost (guany 0) fins a refrescar preus.
+  let pricesUpdated = 0;
+  try {
+    pricesUpdated = await syncHoldingsToNavs(await latestNavs(result.holdings.map(h => h.isin)));
+  } catch (err) {
+    console.error('[import] no s\'han pogut posar els VL oficials:', err instanceof Error ? err.message : err);
+  }
+
   let personalSaved = false;
   // Client donat d'alta des de "Nou client" (sense formulari de contacte): no té
   // fitxa on desar les dades personals. Se'n crea una, ja vinculada al client,
@@ -162,7 +173,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     metadata: {
       clientId: id, file: file.name, replace,
       holdings: result.holdings.length, transactions: result.transactions.length,
-      personalFields: Object.keys(result.personal).length, goals: result.goals.length, personalSaved,
+      personalFields: Object.keys(result.personal).length, goals: result.goals.length, personalSaved, pricesUpdated,
     },
     ip: req.headers.get('x-forwarded-for')?.split(',')[0] ?? undefined,
   });
@@ -170,6 +181,6 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   return NextResponse.json({
     ok: true, portfolioId: portfolio.id,
     imported: { holdings: result.holdings.length, transactions: result.transactions.length },
-    personalSaved, warnings: result.warnings,
+    personalSaved, pricesUpdated, warnings: result.warnings,
   });
 }

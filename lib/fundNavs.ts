@@ -125,6 +125,14 @@ function groupByIsin(points: NavPoint[]): Map<string, NavPoint[]> {
   return by;
 }
 
+/** Últim valor liquidatiu desat de cada ISIN donat (els que no en tenen no hi surten). */
+export async function latestNavs(isins: string[]): Promise<NavPoint[]> {
+  const uniq = [...new Set(isins.map(i => i.trim().toUpperCase()).filter(Boolean))];
+  const out: NavPoint[] = [];
+  for (const isin of uniq) { const last = (await getNavs(isin)).at(-1); if (last) out.push(last); }
+  return out;
+}
+
 /** Un fons per fila: els de la llista de l'assessor (encara que no tinguin preus) i qualsevol altre amb preus. */
 export async function getNavSummary(asOf = new Date()): Promise<FundNavSummary[]> {
   const by = groupByIsin(await getNavs());

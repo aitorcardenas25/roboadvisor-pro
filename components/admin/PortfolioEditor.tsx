@@ -1,11 +1,11 @@
 'use client';
 
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import {
   LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip as ReTT, ResponsiveContainer,
 } from 'recharts';
 import type { ClientPortfolio, ClientTransaction, PortfolioSnapshot, AdvisorNote, OperationType } from '@/lib/clientPortfolios';
-import { computeMetrics } from '@/lib/clientPortfolios';
+import { computeMetrics, isSoldOut } from '@/lib/clientPortfolios';
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -83,7 +83,38 @@ const PRICE_SOURCE_BADGE: Record<string, { label: string; cls: string }> = {
   fmp:     { label: 'FMP',     cls: 'text-positive/70' },
   manual:  { label: 'Manual',  cls: 'text-warning/70'   },
   pending: { label: 'Pendent', cls: 'text-ink-muted'        },
+  nav:     { label: 'VL oficial', cls: 'text-positive/70' },
 };
+
+/**
+ * La BD només distingeix 'manual': un preu que coincideix amb un valor liquidatiu
+ * desat a "Preus dels fons" (mateixa data i valor) és el VL oficial, no un preu
+ * escrit a mà. Retorna els ids de les posicions que estan en aquest cas.
+ */
+function useOfficialNavHoldings(holdings: ClientPortfolio['holdings']): Set<string> {
+  const [ids, setIds] = useState<Set<string>>(new Set());
+  const key = holdings.filter(h => h.priceSource === 'manual' && h.assetIsin)
+    .map(h => `${h.id}|${h.assetIsin}|${h.priceLastUpdated}|${h.currentPrice}`).join(',');
+  useEffect(() => {
+    const manual = holdings.filter(h => h.priceSource === 'manual' && h.assetIsin);
+    if (!manual.length) { setIds(new Set()); return; }
+    let alive = true;
+    Promise.all([...new Set(manual.map(h => h.assetIsin!.toUpperCase()))].map(isin =>
+      fetch(`/api/admin/fund-navs?isin=${encodeURIComponent(isin)}`, { cache: 'no-store' })
+        .then(r => (r.ok ? r.json() : { points: [] }))
+        .then((j: { points?: { date: string; nav: number }[] }): [string, { date: string; nav: number }[]] => [isin, j.points ?? []])
+        .catch((): [string, { date: string; nav: number }[]] => [isin, []]),
+    )).then(rows => {
+      if (!alive) return;
+      const by = new Map(rows);
+      setIds(new Set(manual.filter(h => (by.get(h.assetIsin!.toUpperCase()) ?? []).some(p =>
+        p.date === (h.priceLastUpdated ?? '').slice(0, 10) && Math.abs(p.nav - h.currentPrice) < 1e-6)).map(h => h.id)));
+    });
+    return () => { alive = false; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [key]);
+  return ids;
+}
 
 function HoldingsTab({ portfolio, reload }: { portfolio: ClientPortfolio; reload: () => void }) {
   const today = new Date().toISOString().split('T')[0];
@@ -95,6 +126,7 @@ function HoldingsTab({ portfolio, reload }: { portfolio: ClientPortfolio; reload
   const [fetchingPrice, setFetchingPrice] = useState(false);
   const [fetchedPrice, setFetchedPrice]   = useState<number | null>(null);
   const [priceSource, setPriceSource]     = useState<'fmp' | 'manual' | 'pending'>('pending');
+  const officialNav = useOfficialNavHoldings(portfolio.holdings);
   const [priceMsg, setPriceMsg]   = useState('');
   const [manualPrice, setManualPrice]     = useState('');
   const [showManualPrice, setShowManualPrice] = useState(false);
@@ -198,7 +230,8 @@ function HoldingsTab({ portfolio, reload }: { portfolio: ClientPortfolio; reload
   }
 
   const activeHoldings  = portfolio.holdings.filter(h => h.quantity > 0);
-  const pendingHoldings = portfolio.holdings.filter(h => h.quantity === 0);
+  // 0 participacions sense cap venda = proposta pendent de compra; les venudes del tot no hi surten
+  const pendingHoldings = portfolio.holdings.filter(h => h.quantity === 0 && !isSoldOut(h, portfolio.transactions));
   const totalVal   = activeHoldings.reduce((s, h) => s + h.currentPrice * h.quantity, 0);
   const hasSymbols = portfolio.holdings.some(h => h.assetSymbol);
 
@@ -233,7 +266,7 @@ function HoldingsTab({ portfolio, reload }: { portfolio: ClientPortfolio; reload
                     const pnl      = val - cost;
                     const pnlPct   = cost > 0 ? (pnl / cost) * 100 : 0;
                     const weight   = totalVal > 0 ? (val / totalVal) * 100 : 0;
-                    const srcBadge = PRICE_SOURCE_BADGE[h.priceSource ?? 'pending'];
+                    const srcBadge = PRICE_SOURCE_BADGE[officialNav.has(h.id) ? 'nav' : h.priceSource ?? 'pending'];
                     return (
                       <tr key={h.id}>
                         <td className="py-2.5 pr-4">

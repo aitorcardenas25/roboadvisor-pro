@@ -225,6 +225,22 @@ function stepsFor(h: ValuationHolding, txs: ValuationTx[]): Step[] {
   return [{ date: start, qty: h.quantity, cash: h.avgEntryPrice * h.quantity }];
 }
 
+/**
+ * Participacions i cost mitjà d'una posició en una data, amb els mateixos moviments
+ * que la valoració oficial (una posició entrada a mà compta des de la seva alta).
+ * Les compres recalculen el cost mitjà sobre les participacions que queden; les
+ * vendes no el canvien.
+ */
+export function holdingAt(h: ValuationHolding, txs: ValuationTx[], date: string): { quantity: number; avgCost: number } {
+  let quantity = 0, avgCost = 0;
+  for (const s of stepsFor(h, txs)) {
+    if (s.date > date) break;
+    if (s.qty > 0) { avgCost = (quantity * avgCost + s.cash) / (quantity + s.qty); quantity += s.qty; }
+    else quantity += s.qty;
+  }
+  return { quantity: quantity > 1e-9 ? quantity : 0, avgCost };
+}
+
 /** Valor i capital aportat en una data; null si algun fons que es té no té preu prou recent. */
 function pointAt(live: ValuationHolding[], steps: Map<string, Step[]>, by: Map<string, NavPoint[]>, d: string): ValuationPoint | null {
   let value = 0, invested = 0, any = false;

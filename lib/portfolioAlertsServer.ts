@@ -1,7 +1,7 @@
 // lib/portfolioAlertsServer.ts — avisos de revisió per a totes les carteres (o una), amb dades de la BD.
 import { getAllClientPortfolios, type ClientPortfolio } from './clientPortfolios';
 import { getProposals } from './proposals';
-import { computeDrift, reviewStatus, type DriftResult, type ReviewStatus } from './portfolioAlerts';
+import { computeDrift, reviewStatus, pickTargetAt, type DriftResult, type ReviewStatus } from './portfolioAlerts';
 
 export interface PortfolioAlert {
   clientId:        string;
@@ -16,8 +16,14 @@ export interface PortfolioAlert {
  * Proposta que fa d'objectiu d'una cartera: l'última versió que s'hi va passar
  * (per data d'aplicació); si no n'hi ha, l'última aprovada.
  */
-export async function targetProposal(p: Pick<ClientPortfolio, 'id' | 'clientId'>) {
+export async function targetProposal(p: Pick<ClientPortfolio, 'id' | 'clientId'> & Partial<Pick<ClientPortfolio, 'transactions'>>, asOf?: string) {
   const approved = (await getProposals(p.clientId)).filter(x => x.status === 'approved');
+  if (asOf) {
+    // Informe d'un període passat: l'objectiu i l'última aprovació d'aquella data
+    const day = asOf.slice(0, 10);
+    const before = approved.filter(x => (x.approvedAt ?? '').slice(0, 10) <= day);
+    return { target: pickTargetAt(approved, p.id, p.transactions ?? [], day), lastApprovedAt: before[0]?.approvedAt };
+  }
   const applied = approved.filter(x => x.appliedPortfolioId === p.id && x.appliedAt)
     .sort((a, b) => (b.appliedAt ?? '').localeCompare(a.appliedAt ?? '') || b.version - a.version);
   return { target: applied[0] ?? approved[0] ?? null, lastApprovedAt: approved[0]?.approvedAt };

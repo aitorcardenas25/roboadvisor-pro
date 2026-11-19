@@ -69,3 +69,42 @@ export function reviewStatus(input: { nextFollowup?: string; lastApprovedAt?: st
   }
   return { due: reasons.some(r => r !== 'no_followup'), reasons, detail };
 }
+
+// ─── Proposta objectiu a una data ─────────────────────────────────────────────
+
+export interface TargetCandidate {
+  version: number; status: string; approvedAt?: string; appliedAt?: string; appliedPortfolioId?: string;
+}
+export interface TargetTx { date: string; notes?: string }
+
+const APPLY_NOTE_RE = /(?:Proposta|Reestructuració a la proposta) v(\d+)$/;
+
+/**
+ * Data en què una versió es va passar a la cartera: la de les seves operacions
+ * (les notes acaben en "Proposta vN" o "Reestructuració a la proposta vN"),
+ * no el dia que es va prémer el botó. Sense operacions, la data d'aplicació.
+ */
+export function effectiveApplyDate(version: number, txs: TargetTx[], appliedAt?: string): string | undefined {
+  const dates = txs.filter(t => Number(APPLY_NOTE_RE.exec((t.notes ?? '').trim())?.[1]) === version).map(t => t.date.slice(0, 10)).sort();
+  return dates[0] ?? appliedAt?.slice(0, 10);
+}
+
+/**
+ * Proposta que feia d'objectiu d'una cartera en una data. Un informe d'octubre no
+ * es pot comparar amb una proposta aprovada o passada a la cartera al novembre.
+ * - Si alguna versió s'ha passat a aquesta cartera: l'última passada fins a la data
+ *   (cap, si totes són posteriors).
+ * - Si no se n'ha passat cap: l'última aprovada fins a la data.
+ */
+export function pickTargetAt<T extends TargetCandidate>(proposals: T[], portfolioId: string, txs: TargetTx[], asOf: string): T | null {
+  const day = asOf.slice(0, 10);
+  const approved = proposals.filter(p => p.status === 'approved');
+  const applied = approved.filter(p => p.appliedPortfolioId === portfolioId && p.appliedAt)
+    .map(p => ({ p, date: effectiveApplyDate(p.version, txs, p.appliedAt) ?? '' }));
+  if (applied.length) {
+    return applied.filter(a => a.date && a.date <= day)
+      .sort((a, b) => b.date.localeCompare(a.date) || b.p.version - a.p.version)[0]?.p ?? null;
+  }
+  return approved.filter(p => (p.approvedAt ?? '').slice(0, 10) <= day && p.approvedAt)
+    .sort((a, b) => b.version - a.version)[0] ?? null;
+}
