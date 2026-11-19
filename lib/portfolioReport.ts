@@ -1,7 +1,7 @@
 import type { ClientPortfolio, PortfolioMetrics } from './clientPortfolios';
 import { computeMetrics } from './clientPortfolios';
 import type { NavPoint } from './navMath';
-import { navOnOrBefore, navsByIsin, valuationAt, valuationSeries, type ValuationPoint } from './portfolioValuation';
+import { holdingAt, navOnOrBefore, navsByIsin, valuationAt, valuationSeries, type ValuationPoint } from './portfolioValuation';
 import { computeDrift, reviewStatus, DRIFT_THRESHOLD_PP, type DriftRow, type ReviewStatus } from './portfolioAlerts';
 
 /** Resultat del període calculat amb els valors liquidatius oficials (fund_navs). */
@@ -131,24 +131,17 @@ export function buildOfficialSection(
 
   // Pesos a la data final, amb el VL oficial d'aquell dia
   let allocation: MonthlyReportOfficial['allocation'] = null;
-  // Participacions a la data final: les actuals menys les compres/vendes posteriors.
-  const qtyAtEnd = (id: string, qty: number) => portfolio.transactions
-    .filter(t => t.holdingId === id && t.date.slice(0, 10) > end && (t.operationType === 'buy' || t.operationType === 'sell'))
-    .reduce((q, t) => q - (t.operationType === 'buy' ? t.quantity : -t.quantity), qty);
-  const open = portfolio.holdings.map(h => ({ ...h, quantity: qtyAtEnd(h.id, h.quantity) })).filter(h => h.quantity > 1e-9);
+  // Participacions i cost a la data final, reconstruïts igual que la valoració oficial
+  // (les compres/vendes posteriors no hi compten; una posició donada d'alta després, tampoc).
+  const atEnd = new Map(portfolio.holdings.map(h => [h.id, holdingAt(h, portfolio.transactions, end)]));
+  const open = portfolio.holdings.map(h => ({ ...h, quantity: atEnd.get(h.id)!.quantity })).filter(h => h.quantity > 1e-9);
   const by = navsByIsin(navs);
   const priceAt = (isin: string) => navOnOrBefore(by.get(isin.toUpperCase()), end)?.nav;
   let positions: ReportPosition[] | undefined;
   if (performance) {
-    // Cost mitjà de les compres fetes fins a la data final (les vendes no el canvien)
-    const avgCostAt = (id: string, fallback: number) => {
-      const buys = portfolio.transactions.filter(t => t.holdingId === id && t.operationType === 'buy' && t.date.slice(0, 10) <= end && t.quantity > 0);
-      const q = buys.reduce((s, t) => s + t.quantity, 0);
-      return q > 0 ? buys.reduce((s, t) => s + t.totalEur, 0) / q : fallback;
-    };
     const rows = open.map(h => {
       const price = priceAt(h.assetIsin) ?? h.currentPrice;
-      const cost = avgCostAt(h.id, h.avgEntryPrice);
+      const cost = atEnd.get(h.id)!.avgCost;
       return { name: h.assetName, value: r2(price * h.quantity), pnlPct: cost > 0 ? r2((price - cost) / cost * 100) || 0 : 0 };   // || 0: sense "-0,00 %"
     });
     const total = rows.reduce((s, r) => s + r.value, 0);

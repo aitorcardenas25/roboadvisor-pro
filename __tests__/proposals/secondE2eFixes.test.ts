@@ -17,6 +17,7 @@ import {
 import { buildOfficialSection, generateMonthlyReportData, withPeriodEndFigures } from '@/lib/portfolioReport';
 import { targetProposal } from '@/lib/portfolioAlertsServer';
 import { pickTargetAt, effectiveApplyDate } from '@/lib/portfolioAlerts';
+import { holdingAt } from '@/lib/portfolioValuation';
 
 const A = 'IE00B03HD191', B = 'ES0114673033';
 const item = (isin: string, weight: number): ProposalItem => ({
@@ -158,5 +159,23 @@ describe('importació d\'Excel', () => {
     expect(await syncHoldingsToNavs(latest)).toBeGreaterThanOrEqual(1);
     const h = (await getPortfolioById(p.id))!.holdings[0];
     expect(h).toMatchObject({ currentPrice: 110, priceLastUpdated: '2026-10-30', priceSource: 'manual' });
+  });
+});
+
+describe('participacions i cost a una data (posicions de l\'informe)', () => {
+  const h = { id: 'h1', assetIsin: A, assetName: 'A', quantity: 10, avgEntryPrice: 20, currentPrice: 30, createdAt: '2026-01-01T00:00:00Z' };
+  const tx = (date: string, op: 'buy' | 'sell', quantity: number, totalEur: number) =>
+    ({ holdingId: 'h1', operationType: op, date, quantity, totalEur, commission: 0 });
+
+  it('una venda parcial no canvia el cost mitjà i la compra següent pondera sobre el que queda', () => {
+    const txs = [tx('2026-01-10', 'buy', 10, 100), tx('2026-02-10', 'sell', 5, 75), tx('2026-03-10', 'buy', 5, 150)];
+    expect(holdingAt(h, txs, '2026-02-28')).toEqual({ quantity: 5, avgCost: 10 });
+    expect(holdingAt(h, txs, '2026-03-31')).toEqual({ quantity: 10, avgCost: 20 });   // no 16,67
+  });
+
+  it('una posició entrada a mà després de la data no hi és', () => {
+    const manual = { ...h, id: 'h2', createdAt: '2026-11-19T10:00:00Z' };
+    expect(holdingAt(manual, [], '2026-10-31').quantity).toBe(0);
+    expect(holdingAt(manual, [], '2026-11-30')).toEqual({ quantity: 10, avgCost: 20 });
   });
 });
