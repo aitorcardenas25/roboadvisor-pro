@@ -24,6 +24,7 @@ export async function GET() {
       // Un cop aprovada una versió, una nova versió en esborrany no torna a tancar el portal
       latestProposal: proposals.some(p => p.status === 'approved') ? 'approved' : proposals[0]?.status ?? null,
       holdings: portfolio?.holdings.length ?? 0,
+      shared: proposals.some(p => p.status === 'approved' && !!p.sharedAt),
     });
     return NextResponse.json(status, { headers: { 'Cache-Control': 'no-store' } });
   } catch (err) {

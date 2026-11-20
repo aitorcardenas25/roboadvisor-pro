@@ -1,7 +1,7 @@
 // Cartera proposada del client (fase C)
 // GET  → versions + dades per a l'editor (fons disponibles, valors per defecte)
 // PUT  → desa l'esborrany (crea versió nova si l'última està aprovada)
-// POST → { action: 'approve', id } | { action: 'suggest', profile, ... } | { action: 'fromHoldings' }
+// POST → { action: 'approve', id } | { action: 'share', id } (el client el veu a partir d'aquí) | { action: 'suggest', profile, ... } | { action: 'fromHoldings' }
 //        | { action: 'apply', id, date, amount, broker, dryRun? } (versió aprovada → cartera activa: primera inversió o reestructuració)
 import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
@@ -11,7 +11,7 @@ import { getAllUsers } from '@/lib/users';
 import { getLeadByLinkedUser, getLeadByEmail } from '@/lib/leads';
 import { getPortfolioByClientId, computeMetrics } from '@/lib/clientPortfolios';
 import {
-  getProposals, saveDraft, approveProposal, fundOptions,
+  getProposals, saveDraft, approveProposal, shareProposal, fundOptions,
   itemsFromHoldings, verifiedPerformance, proposalStats, checkProposalSuitability, getProposal, PROFILES, type ProposalItem, type ProposalProfile, type NavPerformanceMap,
 } from '@/lib/proposals';
 import { PROFILE_MODELS, templateItems } from '@/lib/proposalTemplates';
@@ -54,6 +54,7 @@ const PostSchema = z.discriminatedUnion('action', [
   }),
   z.object({ action: z.literal('suggest'), profile: z.enum(PROFILES), initialAmount: z.number().min(0), monthlyAmount: z.number().min(0) }),
   z.object({ action: z.literal('fromHoldings') }),
+  z.object({ action: z.literal('share'), id: z.string().min(1) }),   // envia l'informe inicial al client
   z.object({
     action: z.literal('apply'), id: z.string().min(1),
     date:   z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
@@ -144,6 +145,16 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
 
   if (body.action === 'suggest') {
     return NextResponse.json({ items: suggestItems(body.profile, await getNavPerformanceMap()) });
+  }
+
+  if (body.action === 'share') {
+    const res = await shareProposal(id, body.id, session.user?.email ?? 'admin');
+    if (!res.ok) return NextResponse.json({ error: res.error }, { status: 422 });
+    logAuditEvent('proposal.shared', {
+      userId: session.user?.id, userEmail: session.user?.email, resource: body.id,
+      metadata: { clientId: id, version: res.proposal.version },
+    });
+    return NextResponse.json({ proposal: withStats(res.proposal) });
   }
 
   if (body.action === 'apply') {

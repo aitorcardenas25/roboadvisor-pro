@@ -24,8 +24,8 @@ function rowToProposal(r: Record<string, unknown>): ClientProposal {
 }
 
 function dataOf(p: ClientProposal) {
-  const { profile, objective, horizon, initialAmount, monthlyAmount, adminNote, items, suitability, suitabilityOverride, appliedAt, appliedBy, appliedPortfolioId } = p;
-  return { profile, objective, horizon, initialAmount, monthlyAmount, adminNote, items, suitability, suitabilityOverride, appliedAt, appliedBy, appliedPortfolioId };
+  const { profile, objective, horizon, initialAmount, monthlyAmount, adminNote, items, suitability, suitabilityOverride, appliedAt, appliedBy, appliedPortfolioId, sharedAt, sharedBy } = p;
+  return { profile, objective, horizon, initialAmount, monthlyAmount, adminNote, items, suitability, suitabilityOverride, appliedAt, appliedBy, appliedPortfolioId, sharedAt, sharedBy };
 }
 
 /** Totes les versions d'un client, de la més nova a la més antiga. */
@@ -150,6 +150,31 @@ export async function markApplied(clientId: string, id: string, appliedBy: strin
     .eq('id', id).eq('status', 'approved').eq('updated_at', p.updatedAt).select('id');
   if (error) throw new Error(error.message);
   return !!data?.length;
+}
+
+/**
+ * Envia l'informe inicial (una versió aprovada) al client: fins llavors no el veu
+ * al portal. Només una vegada per versió; retorna la proposta enviada o un error.
+ */
+export async function shareProposal(clientId: string, id: string, sharedBy: string): Promise<ApproveResult> {
+  const p = await getProposal(clientId, id);
+  if (!p) return { ok: false, error: 'Proposta no trobada' };
+  if (p.status !== 'approved') return { ok: false, error: 'Primer cal aprovar aquesta versió' };
+  if (p.sharedAt) return { ok: true, proposal: p };
+  const now = new Date().toISOString();
+  const shared: ClientProposal = { ...p, sharedAt: now, sharedBy, updatedAt: now };
+  const db = getDb();
+  if (!db) {
+    const i = _mem.findIndex(x => x.id === id);
+    _mem[i] = structuredClone(shared);
+    return { ok: true, proposal: shared };
+  }
+  const { data, error } = await db.from('client_proposals')
+    .update({ data: dataOf(shared), updated_at: now })
+    .eq('id', id).eq('status', 'approved').eq('updated_at', p.updatedAt).select('id');
+  if (error) throw new Error(error.message);
+  if (!data?.length) return { ok: false, error: 'La proposta ha canviat mentre s\'enviava. Torna-ho a provar.' };
+  return { ok: true, proposal: shared };
 }
 
 /** Desfà markApplied si la creació de les posicions ha fallat (per poder-ho tornar a provar). */

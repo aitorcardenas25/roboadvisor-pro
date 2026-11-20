@@ -99,7 +99,7 @@ export default function InitialReportPage() {
         {data && !p && (
           <div className={card}>
             <h1 className="text-ink font-semibold text-lg">El teu informe inicial</h1>
-            <p className="text-ink-soft text-sm mt-2">Encara no està llest. Quan l&apos;assessor aprovi la teva proposta, aquí veuràs el punt de partida, els teus objectius i la cartera proposada.</p>
+            <p className="text-ink-soft text-sm mt-2">Encara no està llest. Quan l&apos;assessor te l&apos;enviï, aquí veuràs el punt de partida, els teus objectius i la cartera proposada.</p>
           </div>
         )}
 
@@ -112,7 +112,7 @@ export default function InitialReportPage() {
                   La foto del punt de partida: la teva situació, els teus objectius i la cartera que et vam proposar.
                 </p>
                 <p className="text-ink-muted text-xs mt-2">
-                  Proposta versió {p.version} · aprovada el {fDate(p.approvedAt)}
+                  Proposta versió {p.version} · enviada el {fDate(p.sharedAt ?? p.approvedAt)}
                   {data.versions > 1 ? ` · n'hi ha ${data.versions} versions; aquesta és la més recent` : ''}
                 </p>
               </div>
@@ -212,7 +212,7 @@ export default function InitialReportPage() {
                 Les rendibilitats són dels últims 5 anys amb els valors liquidatius oficials. No garanteixen el que passarà. El PDF té les projeccions i el detall complet.
               </p>
               <p className="text-ink-muted text-[11px] mt-2 leading-relaxed">
-                <span className="font-semibold">Avís legal.</span> Aquest informe l&apos;ha elaborat Factor OTC amb finalitat orientativa i educativa. No és assessorament financer regulat (MiFID II) ni una oferta o recomanació d&apos;inversió, i Factor OTC no és una entitat autoritzada per la CNMV. Les rendibilitats passades i les estimacions no garanteixen resultats futurs. Invertir implica risc de perdre part o tot el capital. Abans de decidir, pots consultar un assessor financer autoritzat per la CNMV.
+                <span className="font-semibold">Avís legal.</span>{' '}Aquest informe l&apos;ha elaborat Factor OTC amb finalitat orientativa i educativa. No és assessorament financer regulat (MiFID II) ni una oferta o recomanació d&apos;inversió, i Factor OTC no és una entitat autoritzada per la CNMV. Les rendibilitats passades i les estimacions no garanteixen resultats futurs. Invertir implica risc de perdre part o tot el capital. Abans de decidir, pots consultar un assessor financer autoritzat per la CNMV.
               </p>
             </section>
           </>

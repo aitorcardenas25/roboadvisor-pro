@@ -226,13 +226,14 @@ export default function MonthlyReportGenerator() {
                   </div>
                   <div className="flex items-center gap-3">
                     {r.sentAt ? (
-                      <span className="text-xs text-positive/70">✓ Enviat {new Date(r.sentAt).toLocaleDateString('ca-ES')}</span>
+                      <span className="text-xs text-positive/70">✓ Enviat al client el {new Date(r.sentAt).toLocaleDateString('ca-ES')}</span>
                     ) : (
                       <button
                         onClick={() => handleMarkSent(r.id)}
+                        title="El client el veurà al seu portal a partir d'ara (encara no s'envia cap correu)"
                         disabled={markingSent === r.id}
                         className="px-3 py-1 bg-positive/10 border border-positive/20 text-positive text-xs rounded-lg hover:bg-positive/20 transition-all disabled:opacity-50">
-                        {markingSent === r.id ? '...' : 'Marcar enviat'}
+                        {markingSent === r.id ? '...' : 'Enviar al client'}
                       </button>
                     )}
                   </div>
