@@ -197,7 +197,9 @@ export default function ClientProposal({ clientId, onApplied }: { clientId: stri
       const res = await fetch(api, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'share', id: p.id }) });
       const d = await res.json().catch(() => ({}));
       if (!res.ok) { setMsg({ ok: false, text: d.error ?? 'No s\'ha pogut enviar' }); return; }
-      setMsg({ ok: true, text: `Informe v${p.version} enviat: ${data.client.name} ja el pot veure al portal.` });
+      const mailNote = d.email?.sent ? ' Li hem enviat un correu d\'avís.'
+        : ` El correu d'avís no s'ha pogut enviar (${d.email?.error ?? 'error desconegut'}).`;
+      setMsg({ ok: true, text: `Informe v${p.version} enviat: ${data.client.name} ja el pot veure al portal.${mailNote}` });
       await load(false);   // no esborra els canvis sense desar de l'editor
       onApplied?.();
     } finally { setBusy(null); }

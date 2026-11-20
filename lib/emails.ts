@@ -1,24 +1,75 @@
+// lib/emails.ts — correus de l'app.
+//
+// Dues maneres d'enviar (la primera que estigui configurada a Vercel):
+//   1. Gmail: GMAIL_USER (l'adreça) + GMAIL_APP_PASSWORD (contrasenya d'aplicació de 16 lletres,
+//      no la contrasenya normal). Surten des d'aquest Gmail i les respostes hi arriben.
+//   2. Resend: RESEND_API_KEY (+ RESEND_FROM_EMAIL amb un domini verificat).
+// Si no n'hi ha cap, no s'envia res i es retorna NO_KEY_ERROR (queda a l'audit log).
 import { Resend } from 'resend';
+import nodemailer from 'nodemailer';
 
-const resend      = process.env.RESEND_API_KEY ? new Resend(process.env.RESEND_API_KEY) : null;
-const FROM        = `Factor OTC <${process.env.RESEND_FROM_EMAIL ?? process.env.FROM_EMAIL ?? 'noreply@factorotc.com'}>`;
 const ADMIN_EMAIL = process.env.ADMIN_EMAIL ?? 'admin@factorotc.com';
 
 interface EmailResult { success: boolean; error?: string }
 
+/** Adreça pública de l'app per als enllaços dels correus (la de Vercel si no hi ha domini propi). */
+export function appUrl(): string {
+  return (process.env.APP_URL ?? process.env.NEXTAUTH_URL ?? 'https://roboadvisor-pro.vercel.app').replace(/\/$/, '');
+}
+
+/** Missatge entenedor quan no es pot enviar (es mostra a l'admin i queda a l'audit log). */
+export const NO_KEY_ERROR = 'Correu no configurat: falten GMAIL_USER i GMAIL_APP_PASSWORD a Vercel';
+
+/** Quin sistema d'enviament hi ha configurat (per mostrar-ho a l'admin). */
+export function emailTransport(): 'gmail' | 'resend' | null {
+  if (process.env.GMAIL_USER && process.env.GMAIL_APP_PASSWORD) return 'gmail';
+  if (process.env.RESEND_API_KEY) return 'resend';
+  return null;
+}
+
+let gmail: nodemailer.Transporter | null = null;
+
+/** Envia un correu pel sistema configurat. Mai llença: retorna l'error en text. */
+async function deliver(to: string, subject: string, html: string): Promise<EmailResult> {
+  const t = emailTransport();
+  if (!t) { console.log('[email] no configurat:', subject); return { success: false, error: NO_KEY_ERROR }; }
+  try {
+    if (t === 'gmail') {
+      const user = process.env.GMAIL_USER!;
+      gmail ??= nodemailer.createTransport({
+        host: 'smtp.gmail.com', port: 465, secure: true,
+        auth: { user, pass: process.env.GMAIL_APP_PASSWORD!.replace(/\s+/g, '') },
+      });
+      await gmail.sendMail({ from: `Factor OTC <${user}>`, to, subject, html });
+      return { success: true };
+    }
+    const from = `Factor OTC <${process.env.RESEND_FROM_EMAIL ?? process.env.FROM_EMAIL ?? 'onboarding@resend.dev'}>`;
+    const { error } = await new Resend(process.env.RESEND_API_KEY).emails.send({ from, to, subject, html });
+    return error ? { success: false, error: error.message } : { success: true };
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : String(e);
+    // Gmail retorna 535 si la contrasenya d'aplicació no és bona
+    return { success: false, error: /535|Invalid login|BadCredentials/i.test(msg)
+      ? 'Gmail ha rebutjat la contrasenya d\'aplicació (GMAIL_APP_PASSWORD)' : msg };
+  }
+}
+
+const esc = (s: string) => s.replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]!));
+
+/** Plantilla clara (mateixa paleta que el portal del client). */
 function base(title: string, body: string): string {
-  return `<!DOCTYPE html><html lang="ca"><head><meta charset="UTF-8"><title>${title}</title></head>
-<body style="margin:0;padding:0;background:#0a0f0d;font-family:system-ui,sans-serif;">
-<table width="100%" cellpadding="0" cellspacing="0" style="background:#0a0f0d;padding:40px 20px;">
+  return `<!DOCTYPE html><html lang="ca"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${title}</title></head>
+<body style="margin:0;padding:0;background:#f4f6f5;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;color:#1f2a26;">
+<table width="100%" cellpadding="0" cellspacing="0" style="background:#f4f6f5;padding:32px 16px;">
 <tr><td align="center">
-<table width="560" cellpadding="0" cellspacing="0" style="background:#0d1f1a;border:1px solid rgba(255,255,255,0.08);border-radius:16px;overflow:hidden;">
-<tr><td style="padding:32px;border-bottom:1px solid rgba(255,255,255,0.06);">
-  <span style="font-size:18px;font-weight:900;color:#fff;letter-spacing:2px;">FACTOR</span>
-  <span style="font-size:18px;font-weight:300;color:#c9a84c;letter-spacing:3px;margin-left:6px;">OTC</span>
+<table width="100%" cellpadding="0" cellspacing="0" style="max-width:560px;background:#ffffff;border:1px solid #e3e8e5;border-radius:12px;overflow:hidden;">
+<tr><td style="padding:24px 28px;border-bottom:1px solid #eef1ef;">
+  <span style="font-size:16px;font-weight:700;color:#1e4d3f;">Factor</span>
+  <span style="font-size:16px;font-weight:400;color:#5f6b66;margin-left:4px;">OTC</span>
 </td></tr>
-<tr><td style="padding:32px;color:#fff;">${body}</td></tr>
-<tr><td style="padding:20px 32px;border-top:1px solid rgba(255,255,255,0.06);font-size:11px;color:rgba(255,255,255,0.3);">
-  Factor OTC · Planificació i seguiment financer · <a href="https://factorotc.com/privacitat" style="color:#c9a84c;">Política de privacitat</a>
+<tr><td style="padding:28px;font-size:15px;line-height:1.6;color:#33403b;">${body}</td></tr>
+<tr><td style="padding:18px 28px;border-top:1px solid #eef1ef;font-size:11px;line-height:1.5;color:#7a8681;">
+  Factor OTC · Planificació i seguiment financer. Factor OTC no és un banc i no mou els teus diners.
 </td></tr>
 </table>
 </td></tr>
@@ -26,57 +77,56 @@ function base(title: string, body: string): string {
 </body></html>`;
 }
 
+const h2 = (t: string) => `<h2 style="color:#1e4d3f;font-size:20px;margin:0 0 14px;">${t}</h2>`;
+const p_ = (t: string) => `<p style="margin:0 0 12px;">${t}</p>`;
+const small = (t: string) => `<p style="margin:16px 0 0;font-size:13px;color:#7a8681;">${t}</p>`;
+const button = (href: string, label: string) =>
+  `<a href="${href}" style="display:inline-block;margin:12px 0 4px;padding:12px 24px;background:#1e4d3f;color:#ffffff;font-weight:600;border-radius:8px;text-decoration:none;">${label}</a>`;
+
 export async function sendWelcomeEmail(to: string, name: string): Promise<EmailResult> {
   const subject = 'Benvingut/da a Factor OTC';
-  if (!resend) { console.log('[email]', subject, to); return { success: false, error: 'No API key' }; }
   const body = `
-    <h2 style="color:#c9a84c;margin:0 0 16px;">Benvingut/da, ${name}!</h2>
-    <p style="color:rgba(255,255,255,0.7);line-height:1.6;">El teu compte a Factor OTC ja és actiu. Ara pots accedir a la teva zona privada i consultar la teva cartera d'inversió.</p>
-    <a href="https://factorotc.com/login" style="display:inline-block;margin:24px 0;padding:12px 28px;background:#c9a84c;color:#0d1f1a;font-weight:700;border-radius:10px;text-decoration:none;">Accedir ara</a>
-    <p style="color:rgba(255,255,255,0.4);font-size:13px;">Si tens qualsevol dubte, respon a aquest email.</p>`;
-  const { error } = await resend.emails.send({ from: FROM, to, subject, html: base(subject, body) });
-  return error ? { success: false, error: error.message } : { success: true };
+    <h2 style="color:#1e4d3f;margin:0 0 16px;">Benvingut/da, ${name}!</h2>
+    <p style="color:#33403b;line-height:1.6;">El teu compte a Factor OTC ja és actiu. Ara pots accedir a la teva zona privada i consultar la teva cartera d'inversió.</p>
+    <a href="${appUrl()}/login" style="display:inline-block;margin:24px 0;padding:12px 28px;background:#1e4d3f;color:#ffffff;font-weight:700;border-radius:10px;text-decoration:none;">Accedir ara</a>
+    <p style="color:#7a8681;font-size:13px;">Si tens qualsevol dubte, respon a aquest email.</p>`;
+  return deliver(to, subject, base(subject, body));
 }
 
 export async function sendPaymentConfirmation(to: string, name: string, product: string, amount: number): Promise<EmailResult> {
   const subject = `Confirmació de pagament — ${product}`;
-  if (!resend) { console.log('[email]', subject, to); return { success: false, error: 'No API key' }; }
   const body = `
-    <h2 style="color:#c9a84c;margin:0 0 16px;">Pagament confirmat</h2>
-    <p style="color:rgba(255,255,255,0.7);line-height:1.6;">Hola ${name}, hem rebut el teu pagament correctament.</p>
-    <table style="width:100%;border:1px solid rgba(255,255,255,0.08);border-radius:10px;padding:20px;margin:20px 0;background:rgba(0,0,0,0.2);">
-      <tr><td style="color:rgba(255,255,255,0.5);font-size:13px;">Producte</td><td style="color:#fff;text-align:right;font-weight:600;">${product}</td></tr>
-      <tr><td style="color:rgba(255,255,255,0.5);font-size:13px;padding-top:8px;">Import</td><td style="color:#c9a84c;text-align:right;font-weight:700;padding-top:8px;">${amount.toFixed(2)} €</td></tr>
+    <h2 style="color:#1e4d3f;margin:0 0 16px;">Pagament confirmat</h2>
+    <p style="color:#33403b;line-height:1.6;">Hola ${name}, hem rebut el teu pagament correctament.</p>
+    <table style="width:100%;border:1px solid #e3e8e5;border-radius:10px;padding:20px;margin:20px 0;background:#f7f9f8;">
+      <tr><td style="color:#7a8681;font-size:13px;">Producte</td><td style="color:#1f2a26;text-align:right;font-weight:600;">${product}</td></tr>
+      <tr><td style="color:#7a8681;font-size:13px;padding-top:8px;">Import</td><td style="color:#1e4d3f;text-align:right;font-weight:700;padding-top:8px;">${amount.toFixed(2)} €</td></tr>
     </table>
-    <p style="color:rgba(255,255,255,0.4);font-size:13px;">Guarda aquest email com a comprovant del pagament.</p>`;
-  const { error } = await resend.emails.send({ from: FROM, to, subject, html: base(subject, body) });
-  return error ? { success: false, error: error.message } : { success: true };
+    <p style="color:#7a8681;font-size:13px;">Guarda aquest email com a comprovant del pagament.</p>`;
+  return deliver(to, subject, base(subject, body));
 }
 
-export async function sendReportReady(to: string, name: string, reportUrl: string): Promise<EmailResult> {
-  const subject = 'El teu informe financer està llest';
-  if (!resend) { console.log('[email]', subject, to); return { success: false, error: 'No API key' }; }
-  const body = `
-    <h2 style="color:#c9a84c;margin:0 0 16px;">El teu informe financer</h2>
-    <p style="color:rgba(255,255,255,0.7);line-height:1.6;">Hola ${name}, l'assessor ha preparat el teu informe financer personalitzat.</p>
-    <a href="${reportUrl}" style="display:inline-block;margin:24px 0;padding:12px 28px;background:#c9a84c;color:#0d1f1a;font-weight:700;border-radius:10px;text-decoration:none;">Veure informe</a>
-    <p style="color:rgba(255,255,255,0.4);font-size:13px;">L'informe inclou el diagnòstic de la teva situació financera, el teu perfil inversor i la proposta de cartera personalitzada.</p>`;
-  const { error } = await resend.emails.send({ from: FROM, to, subject, html: base(subject, body) });
-  return error ? { success: false, error: error.message } : { success: true };
+/** L'assessor ha enviat l'informe inicial: ja el pot veure al portal. */
+export async function sendReportReady(to: string, name: string, reportUrl = `${appUrl()}/client/informe-inicial`): Promise<EmailResult> {
+  const subject = 'El teu informe inicial ja està llest';
+  const first = esc(name.split(' ')[0] || name);
+  const body = `${h2(`Hola, ${first}`)}
+    ${p_('El teu assessor t\'ha preparat l\'informe inicial: la foto de la teva situació, els teus objectius i la proposta de cartera.')}
+    ${p_('A partir d\'ara també tens accés a tot el teu portal.')}
+    ${button(reportUrl, 'Veure l\'informe')}
+    ${small('Si tens cap dubte, respon a aquest correu i en parlem abans que decideixis res.')}`;
+  return deliver(to, subject, base(subject, body));
 }
-
 export async function sendAccessRequestConfirmation(to: string, name: string): Promise<EmailResult> {
   const subject = 'Hem rebut la teva sol·licitud d\'accés';
-  if (!resend) { console.log('[email]', subject, to); return { success: false, error: 'No API key' }; }
   const body = `
-    <h2 style="color:#c9a84c;margin:0 0 16px;">Sol·licitud rebuda, ${name}!</h2>
-    <p style="color:rgba(255,255,255,0.7);line-height:1.6;">Hem rebut la teva sol·licitud d'accés a Factor OTC. El nostre equip la revisarà aviat i et contactarà en les properes 24–48 hores.</p>
-    <div style="margin:24px 0;padding:16px;background:rgba(201,168,76,0.08);border:1px solid rgba(201,168,76,0.2);border-radius:10px;">
-      <p style="color:rgba(255,255,255,0.5);font-size:13px;margin:0;">Mentre tant, pots consultar les nostres <strong style="color:#c9a84c;">carteres model</strong> i els darrers <strong style="color:#c9a84c;">informes de mercat</strong> a la nostra web.</p>
+    <h2 style="color:#1e4d3f;margin:0 0 16px;">Sol·licitud rebuda, ${name}!</h2>
+    <p style="color:#33403b;line-height:1.6;">Hem rebut la teva sol·licitud d'accés a Factor OTC. El nostre equip la revisarà aviat i et contactarà en les properes 24–48 hores.</p>
+    <div style="margin:24px 0;padding:16px;background:#eef5f1;border:1px solid #cfe1d8;border-radius:10px;">
+      <p style="color:#7a8681;font-size:13px;margin:0;">Mentre tant, pots consultar les nostres <strong style="color:#1e4d3f;">carteres model</strong> i els darrers <strong style="color:#1e4d3f;">informes de mercat</strong> a la nostra web.</p>
     </div>
-    <p style="color:rgba(255,255,255,0.4);font-size:13px;">Si tens qualsevol dubte, respon directament a aquest email.</p>`;
-  const { error } = await resend.emails.send({ from: FROM, to, subject, html: base(subject, body) });
-  return error ? { success: false, error: error.message } : { success: true };
+    <p style="color:#7a8681;font-size:13px;">Si tens qualsevol dubte, respon directament a aquest email.</p>`;
+  return deliver(to, subject, base(subject, body));
 }
 
 export async function sendQuestionnaireReceivedToAdmin(lead: {
@@ -86,35 +136,29 @@ export async function sendQuestionnaireReceivedToAdmin(lead: {
   leadId: string;
 }): Promise<EmailResult> {
   const subject = `Qüestionari completat: ${lead.name}`;
-  if (!resend) { console.log('[email]', subject, ADMIN_EMAIL); return { success: false, error: 'No API key' }; }
   const row = (label: string, val: string, highlight = false) =>
-    `<tr><td style="color:rgba(255,255,255,0.45);font-size:12px;padding:5px 8px;white-space:nowrap;">${label}</td><td style="color:${highlight ? '#c9a84c' : '#fff'};padding:5px 8px;">${val}</td></tr>`;
+    `<tr><td style="color:#7a8681;font-size:12px;padding:5px 8px;white-space:nowrap;">${label}</td><td style="color:${highlight ? '#1e4d3f' : '#1f2a26'};padding:5px 8px;">${val}</td></tr>`;
   const body = `
-    <h2 style="color:#c9a84c;margin:0 0 16px;">Qüestionari de perfil completat</h2>
-    <table style="width:100%;border:1px solid rgba(255,255,255,0.08);border-radius:10px;overflow:hidden;background:rgba(0,0,0,0.2);">
+    <h2 style="color:#1e4d3f;margin:0 0 16px;">Qüestionari de perfil completat</h2>
+    <table style="width:100%;border:1px solid #e3e8e5;border-radius:10px;overflow:hidden;background:#f7f9f8;">
       ${row('Nom', lead.name)}
-      ${row('Email', `<a href="mailto:${lead.email}" style="color:#c9a84c;">${lead.email}</a>`, true)}
+      ${row('Email', `<a href="mailto:${lead.email}" style="color:#1e4d3f;">${lead.email}</a>`, true)}
       ${lead.profile ? row('Perfil calculat', lead.profile, true) : ''}
       ${row('ID Lead', lead.leadId)}
     </table>
-    <a href="https://factorotc.com/admin" style="display:inline-block;margin:24px 0;padding:10px 24px;background:#1a3a2a;border:1px solid rgba(45,106,79,0.5);color:#c9a84c;font-weight:600;border-radius:10px;text-decoration:none;">Veure al panell admin →</a>`;
-  const { error } = await resend.emails.send({ from: FROM, to: ADMIN_EMAIL, subject, html: base(subject, body) });
-  return error ? { success: false, error: error.message } : { success: true };
+    <a href="${appUrl()}/admin" style="display:inline-block;margin:24px 0;padding:10px 24px;background:#1e4d3f;border:1px solid #1e4d3f;color:#ffffff;font-weight:600;border-radius:10px;text-decoration:none;">Veure al panell admin →</a>`;
+  return deliver(ADMIN_EMAIL, subject, base(subject, body));
 }
 
 export async function sendMonthlyReportAvailable(to: string, name: string, period: string): Promise<EmailResult> {
-  const subject = `Informe mensual disponible — ${period}`;
-  if (!resend) { console.log('[email]', subject, to); return { success: false, error: 'No API key' }; }
-  const body = `
-    <h2 style="color:#c9a84c;margin:0 0 16px;">El teu informe mensual ja és disponible</h2>
-    <p style="color:rgba(255,255,255,0.7);line-height:1.6;">Hola ${name}, el teu assessor ha preparat l'informe mensual corresponent al <strong style="color:#c9a84c;">${period}</strong>.</p>
-    <p style="color:rgba(255,255,255,0.6);line-height:1.6;margin-top:12px;">L'informe inclou: valor actual de la cartera, rendiment del mes, principals posicions i comentaris de l'assessor.</p>
-    <a href="https://factorotc.com/client/cartera" style="display:inline-block;margin:24px 0;padding:12px 28px;background:#c9a84c;color:#0d1f1a;font-weight:700;border-radius:10px;text-decoration:none;">Veure la meva cartera</a>
-    <p style="color:rgba(255,255,255,0.4);font-size:13px;">Si tens qualsevol pregunta sobre l'informe, contacta directament amb el teu assessor.</p>`;
-  const { error } = await resend.emails.send({ from: FROM, to, subject, html: base(subject, body) });
-  return error ? { success: false, error: error.message } : { success: true };
+  const subject = `El teu informe mensual ja és disponible (${period})`;
+  const first = esc(name.split(' ')[0] || name);
+  const body = `${h2(`Hola, ${first}`)}
+    ${p_(`Ja tens l'informe mensual (<strong>${esc(period)}</strong>): quant val la teva cartera, com ha anat el mes i el comentari del teu assessor.`)}
+    ${button(`${appUrl()}/client/cartera`, 'Veure l\'informe')}
+    ${small('Si tens cap pregunta sobre l\'informe, respon a aquest correu.')}`;
+  return deliver(to, subject, base(subject, body));
 }
-
 export async function sendLeadNotification(lead: {
   name: string;
   lastName?: string;
@@ -127,52 +171,42 @@ export async function sendLeadNotification(lead: {
 }): Promise<EmailResult> {
   const fullName = [lead.name, lead.lastName].filter(Boolean).join(' ');
   const subject  = `Nou lead: ${fullName}`;
-  if (!resend) { console.log('[email]', subject, ADMIN_EMAIL); return { success: false, error: 'No API key' }; }
   const originLabel = lead.type === 'questionnaire'   ? 'Qüestionari completat'
     : lead.type === 'report-request' ? "Sol·licitud d'informe"
     : lead.source ?? lead.type ?? 'Formulari';
   const row = (label: string, val: string, highlight = false) =>
-    `<tr><td style="color:rgba(255,255,255,0.45);font-size:12px;padding:5px 8px;white-space:nowrap;">${label}</td><td style="color:${highlight ? '#c9a84c' : '#fff'};padding:5px 8px;">${val}</td></tr>`;
+    `<tr><td style="color:#7a8681;font-size:12px;padding:5px 8px;white-space:nowrap;">${label}</td><td style="color:${highlight ? '#1e4d3f' : '#1f2a26'};padding:5px 8px;">${val}</td></tr>`;
   const body = `
-    <h2 style="color:#c9a84c;margin:0 0 16px;">Nou lead capturat</h2>
-    <table style="width:100%;border:1px solid rgba(255,255,255,0.08);border-radius:10px;overflow:hidden;background:rgba(0,0,0,0.2);">
+    <h2 style="color:#1e4d3f;margin:0 0 16px;">Nou lead capturat</h2>
+    <table style="width:100%;border:1px solid #e3e8e5;border-radius:10px;overflow:hidden;background:#f7f9f8;">
       ${row('Nom', fullName)}
-      ${row('Email', `<a href="mailto:${lead.email}" style="color:#c9a84c;">${lead.email}</a>`, true)}
+      ${row('Email', `<a href="mailto:${lead.email}" style="color:#1e4d3f;">${lead.email}</a>`, true)}
       ${lead.phone ? row('Telèfon', lead.phone) : ''}
       ${row('Origen', originLabel)}
       ${lead.profile ? row('Perfil', lead.profile) : ''}
       ${row('Interès', lead.interest)}
     </table>
-    <a href="https://factorotc.com/admin" style="display:inline-block;margin:24px 0;padding:10px 24px;background:#1a3a2a;border:1px solid rgba(45,106,79,0.5);color:#c9a84c;font-weight:600;border-radius:10px;text-decoration:none;">Gestionar al panell admin →</a>`;
-  const { error } = await resend.emails.send({ from: FROM, to: ADMIN_EMAIL, subject, html: base(subject, body) });
-  return error ? { success: false, error: error.message } : { success: true };
+    <a href="${appUrl()}/admin" style="display:inline-block;margin:24px 0;padding:10px 24px;background:#1e4d3f;border:1px solid #1e4d3f;color:#ffffff;font-weight:600;border-radius:10px;text-decoration:none;">Gestionar al panell admin →</a>`;
+  return deliver(ADMIN_EMAIL, subject, base(subject, body));
 }
 
 export async function sendDeletionRequestToAdmin(req: { userId: string; email: string; name: string; reason?: string }): Promise<EmailResult> {
   const subject = `Sol·licitud d'eliminació de dades: ${req.name}`;
-  if (!resend) { console.log('[email]', subject, ADMIN_EMAIL); return { success: false, error: 'No API key' }; }
-  const esc = (s: string) => s.replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]!));
   const body = `
-    <h2 style="color:#c9a84c;margin:0 0 16px;">Sol·licitud d'eliminació de dades (RGPD art. 17)</h2>
-    <p style="color:rgba(255,255,255,0.7);">El client <strong>${esc(req.name)}</strong> (${esc(req.email)}, usuari ${esc(req.userId)}) demana esborrar les seves dades.</p>
-    ${req.reason ? `<p style="color:rgba(255,255,255,0.7);">Motiu: ${esc(req.reason)}</p>` : ''}
-    <p style="color:rgba(255,255,255,0.5);font-size:13px;">Termini per respondre: 1 mes (RGPD art. 12.3). Comprova abans si alguna llei obliga a conservar part de les dades.</p>`;
-  const { error } = await resend.emails.send({ from: FROM, to: ADMIN_EMAIL, subject, html: base(subject, body) });
-  return error ? { success: false, error: error.message } : { success: true };
+    <h2 style="color:#1e4d3f;margin:0 0 16px;">Sol·licitud d'eliminació de dades (RGPD art. 17)</h2>
+    <p style="color:#33403b;">El client <strong>${esc(req.name)}</strong> (${esc(req.email)}, usuari ${esc(req.userId)}) demana esborrar les seves dades.</p>
+    ${req.reason ? `<p style="color:#33403b;">Motiu: ${esc(req.reason)}</p>` : ''}
+    <p style="color:#7a8681;font-size:13px;">Termini per respondre: 1 mes (RGPD art. 12.3). Comprova abans si alguna llei obliga a conservar part de les dades.</p>`;
+  return deliver(ADMIN_EMAIL, subject, base(subject, body));
 }
 
 export async function sendBetaWelcome(to: string, name: string, username: string): Promise<EmailResult> {
   const subject = 'Benvingut/da a la beta de Factor OTC';
-  if (!resend) { console.log('[email]', subject, to); return { success: false, error: 'No API key' }; }
-  const esc = (s: string) => s.replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]!));
-  const base_url = (process.env.NEXTAUTH_URL ?? 'https://factorotc.com').replace(/\/$/, '');
   const first = esc(name.split(' ')[0] || name);
-  const body = `
-    <h2 style="color:#c9a84c;margin:0 0 16px;">Hola, ${first}!</h2>
-    <p style="color:rgba(255,255,255,0.7);line-height:1.6;">Ja tens el compte a la beta privada de Factor OTC. Durant 3 mesos podràs ordenar el pressupost, veure el fons d'emergència que et convé i seguir els teus objectius.</p>
-    <p style="color:rgba(255,255,255,0.7);line-height:1.6;">El teu usuari és <strong style="color:#fff;">${esc(username)}</strong>. La contrasenya te la passo per un altre canal. Quan entris, canvia-la des de "Les meves finances".</p>
-    <a href="${base_url}/login" style="display:inline-block;margin:24px 0;padding:12px 28px;background:#c9a84c;color:#0d1f1a;font-weight:700;border-radius:10px;text-decoration:none;">Entrar a l'app</a>
-    <p style="color:rgba(255,255,255,0.4);font-size:13px;">El primer cop et demanarem que acceptis com tractem les teves dades. Si tens dubtes, respon a aquest correu.</p>`;
-  const { error } = await resend.emails.send({ from: FROM, to, subject, html: base(subject, body) });
-  return error ? { success: false, error: error.message } : { success: true };
+  const body = `${h2(`Hola, ${first}!`)}
+    ${p_('Ja tens el compte a la beta privada de Factor OTC. Primer explica\'ns la teva situació a «Les meves finances» (o envia\'ns l\'Excel): amb això et preparem l\'informe inicial.')}
+    ${p_(`El teu usuari és <strong>${esc(username)}</strong>. La contrasenya te la passo per un altre canal. Quan entris, canvia-la des de «Les meves finances».`)}
+    ${button(`${appUrl()}/login`, 'Entrar a l\'app')}
+    ${small('El primer cop et demanarem que acceptis com tractem les teves dades. Si tens dubtes, respon a aquest correu.')}`;
+  return deliver(to, subject, base(subject, body));
 }

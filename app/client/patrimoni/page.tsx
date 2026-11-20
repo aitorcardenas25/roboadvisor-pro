@@ -5,6 +5,7 @@ import { useSession } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import WealthView from '@/components/wealth/WealthView';
+import GoalsProgress from '@/components/goals/GoalsProgress';
 import WelcomeGuide from '@/components/beta/WelcomeGuide';
 import { useClientName } from '@/components/client/ClientPreview';
 
@@ -39,6 +40,7 @@ export default function ClientPatrimoniPage() {
         <h1 className="text-ink font-bold text-2xl mb-1">El meu patrimoni</h1>
         <p className="text-ink-muted text-sm mb-6">Tot el que tens, a tots els bancs i entitats, en una sola pantalla.</p>
         {status === 'authenticated' && <WelcomeGuide name={name} />}
+        {status === 'authenticated' && <GoalsProgress />}
         {status === 'authenticated' && <WealthView endpoint="/api/client/wealth" />}
       </main>
     </div>

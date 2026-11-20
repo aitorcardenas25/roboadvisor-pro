@@ -16,6 +16,7 @@ import {
 } from '@/lib/proposals';
 import { PROFILE_MODELS, templateItems } from '@/lib/proposalTemplates';
 import { saveReport } from '@/lib/reportRegistry';
+import { sendReportReady } from '@/lib/emails';
 import { logAuditEvent } from '@/lib/auditLog';
 import { getNavPerformanceMap } from '@/lib/fundNavs';
 import { applyProposal } from '@/lib/proposalApply';
@@ -154,7 +155,15 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
       userId: session.user?.id, userEmail: session.user?.email, resource: body.id,
       metadata: { clientId: id, version: res.proposal.version },
     });
-    return NextResponse.json({ proposal: withStats(res.proposal) });
+    // Avís per correu. L'informe ja és visible al portal encara que el correu falli.
+    const mail = ctx.user.email
+      ? await sendReportReady(ctx.user.email, ctx.user.name)
+      : { success: false, error: 'El client no té correu' };
+    logAuditEvent('email.report_ready', {
+      userId: session.user?.id, userEmail: session.user?.email, resource: id,
+      metadata: { ok: mail.success, error: mail.error, proposalId: body.id },
+    });
+    return NextResponse.json({ proposal: withStats(res.proposal), email: { sent: mail.success, error: mail.error } });
   }
 
   if (body.action === 'apply') {
