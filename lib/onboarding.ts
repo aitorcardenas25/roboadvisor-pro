@@ -11,6 +11,8 @@ export interface OnboardingStatus {
   steps: OnboardingStep[];
   /** Tots els passos fets: la guia ja no cal a la portada. */
   complete: boolean;
+  /** L'assessor ja ha aprovat l'informe inicial (o hi ha cartera): el client veu tot el portal. */
+  released: boolean;
 }
 
 export interface OnboardingInput {
@@ -42,5 +44,31 @@ export function onboardingStatus(i: OnboardingInput): OnboardingStatus {
     { id: 'proposta',  state: proposalDone ? 'fet' : (data || i.latestProposal === 'draft') ? 'en-curs' : 'pendent' },
     { id: 'seguiment', state: portfolio ? 'fet' : proposalDone ? 'en-curs' : 'pendent' },
   ];
-  return { steps, complete: steps.every(s => s.state === 'fet') };
+  return { steps, complete: steps.every(s => s.state === 'fet'), released: proposalDone };
+}
+
+// ── Alta del client vista per l'assessor ─────────────────────────────────────
+// Dades (Excel o a mà) → proposta → informe aprovat → cartera activa.
+export type AdvisorStage = 'sense-dades' | 'dades' | 'esborrany' | 'aprovat' | 'actiu';
+
+export const ADVISOR_STAGE_LABEL: Record<AdvisorStage, string> = {
+  'sense-dades': 'Falten les dades',
+  'dades':       'Dades rebudes · falta la proposta',
+  'esborrany':   'Proposta en esborrany',
+  'aprovat':     'Informe aprovat · falta la cartera',
+  'actiu':       'Cartera activa',
+};
+
+export interface AdvisorStageInput {
+  questionnaireData?: Record<string, unknown> | null;
+  /** Estats de totes les propostes del client (qualsevol ordre). */
+  proposals: ('draft' | 'approved')[];
+  holdings: number;
+}
+
+export function advisorStage(i: AdvisorStageInput): AdvisorStage {
+  if (i.holdings > 0) return 'actiu';
+  if (i.proposals.includes('approved')) return 'aprovat';
+  if (i.proposals.includes('draft')) return 'esborrany';
+  return hasClientData(i.questionnaireData) ? 'dades' : 'sense-dades';
 }

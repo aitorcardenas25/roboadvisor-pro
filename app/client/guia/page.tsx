@@ -8,6 +8,7 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { StepList } from '@/components/beta/WelcomeGuide';
 import type { OnboardingStatus } from '@/lib/onboarding';
+import { useClientName } from '@/components/client/ClientPreview';
 
 const card = 'bg-surface border border-line rounded-lg p-5 sm:p-6';
 
@@ -75,7 +76,7 @@ export default function ClientGuidePage() {
     fetch('/api/client/onboarding', { cache: 'no-store' })
       .then(r => (r.ok ? r.json() : null)).then(j => { if (j) setSteps(j); }).catch(() => {});
   }, [status]);
-  const name = session?.user?.name ?? '';
+  const name = useClientName(session?.user?.name);
 
   return (
     <div className="theme-client min-h-screen bg-canvas">

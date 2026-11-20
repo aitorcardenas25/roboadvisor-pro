@@ -7,6 +7,8 @@ import { getAllClientPortfolios, getPortfolioById } from '@/lib/clientPortfolios
 import { getReports } from '@/lib/reportRegistry';
 import { getAllMonthlyReports } from '@/lib/monthlyReports';
 import { getAuditLog } from '@/lib/auditLog';
+import { getProposals } from '@/lib/proposals';
+import { advisorStage } from '@/lib/onboarding';
 
 type S = { user?: { role?: string } } | null;
 function isAdmin(s: S): boolean { return s?.user?.role === 'admin'; }
@@ -50,5 +52,12 @@ export async function GET(
   // sobre ell (abans només les seves i l'historial sortia buit: "(0)").
   const audit = await getAuditLog({ clientId: id, limit: 50 });
 
-  return NextResponse.json({ user, lead, portfolio, reports, monthly, audit });
+  const proposals = await getProposals(id).catch(() => []);
+  const stage = advisorStage({
+    questionnaireData: lead?.questionnaireData ?? null,
+    proposals: proposals.map(p => p.status),
+    holdings: portfolio?.holdings.length ?? 0,
+  });
+
+  return NextResponse.json({ user, lead, portfolio, reports, monthly, audit, stage });
 }

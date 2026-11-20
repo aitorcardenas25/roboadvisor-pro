@@ -1,8 +1,6 @@
 // GET → descarrega totes les dades del client de la sessió en JSON
 // (RGPD art. 15 dret d'accés i art. 20 portabilitat).
 import { NextResponse } from 'next/server';
-import { getServerSession } from 'next-auth';
-import { authOptions } from '@/lib/authOptions';
 import { findLeadForUser } from '@/lib/leads';
 import { findUserById } from '@/lib/users';
 import { getPortfolioByClientId } from '@/lib/clientPortfolios';
@@ -12,14 +10,14 @@ import { logAuditEvent } from '@/lib/auditLog';
 import { rateLimit, rateLimitResponse } from '@/lib/rateLimiter';
 import { recordActivity } from '@/lib/betaActivity';
 import { getConsent } from '@/lib/betaConsent';
+import { getClientTarget } from '@/lib/clientTarget';
 
-type S = { user?: { id?: string; email?: string; role?: string } } | null;
 
 export async function GET() {
-  const session = await getServerSession(authOptions) as S;
-  const userId = session?.user?.id;
-  const role   = session?.user?.role;
-  if (!userId || (role !== 'client' && role !== 'admin')) {
+  const t = await getClientTarget();
+  const userId = t?.id;
+  const role   = t?.role;
+  if (!userId) {
     return NextResponse.json({ error: 'No autoritzat' }, { status: 401 });
   }
   const rl = rateLimit(`client-export:${userId}`, 5, 60_000);
@@ -27,7 +25,7 @@ export async function GET() {
 
   const [account, lead, portfolio, proposals, consent] = await Promise.all([
     findUserById(userId),
-    findLeadForUser(userId, session?.user?.email),
+    findLeadForUser(userId, t.email),
     getPortfolioByClientId(userId),
     getProposals(userId).catch(() => []),
     getConsent(userId),
@@ -42,7 +40,7 @@ export async function GET() {
   });
 
   if (role === 'client') recordActivity(userId, 'data.export');
-  logAuditEvent('client.data_exported', { userId, userEmail: session?.user?.email, resource: lead?.id });
+  logAuditEvent('client.data_exported', { userId, userEmail: t.email ?? undefined, resource: lead?.id, metadata: t.preview ? { by: 'admin-preview' } : undefined });
 
   const date = payload.exportedAt.slice(0, 10);
   return new NextResponse(JSON.stringify(payload, null, 2), {

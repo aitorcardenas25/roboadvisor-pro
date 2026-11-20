@@ -6,12 +6,13 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import WealthView from '@/components/wealth/WealthView';
 import WelcomeGuide from '@/components/beta/WelcomeGuide';
+import { useClientName } from '@/components/client/ClientPreview';
 
 export default function ClientPatrimoniPage() {
   const { data: session, status } = useSession();
   const router = useRouter();
   useEffect(() => { if (status === 'unauthenticated') router.push('/login?callbackUrl=/client/patrimoni'); }, [status, router]);
-  const name = session?.user?.name ?? '';
+  const name = useClientName(session?.user?.name);
 
   return (
     <div className="theme-client min-h-screen bg-canvas">

@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import type { UserRole } from '@/lib/roles';
+import { ADVISOR_STAGE_LABEL, type AdvisorStage } from '@/lib/onboarding';
 
 interface ClientUser {
   id:                 string;
@@ -13,7 +14,16 @@ interface ClientUser {
   createdAt:          string;
   subscriptionPlan?:   'free' | 'active' | 'premium';
   subscriptionStatus?: 'active' | 'inactive' | 'suspended';
+  stage?:              AdvisorStage;
 }
+
+const STAGE_TONE: Record<AdvisorStage, string> = {
+  'sense-dades': 'bg-subtle-strong text-ink-soft',
+  'dades':       'bg-info/10 text-info',
+  'esborrany':   'bg-warning/10 text-warning',
+  'aprovat':     'bg-accent-soft text-accent',
+  'actiu':       'bg-positive/15 text-positive',
+};
 
 const ROLE_META: Record<UserRole, { label: string; color: string; bg: string }> = {
   client: { label: 'Client', color: 'rgb(var(--c-accent))', bg: 'rgb(var(--c-accent) / 0.1)' },
@@ -21,18 +31,6 @@ const ROLE_META: Record<UserRole, { label: string; color: string; bg: string }> 
 };
 
 const ROLES: UserRole[] = ['client', 'admin'];
-
-const PLAN_META: Record<string, { label: string; color: string }> = {
-  free:    { label: 'Gratuït',    color: '#9ca3af' },
-  active:  { label: 'Bàsic',  color: 'rgb(var(--c-accent))' },
-  premium: { label: 'Premium',color: '#a78bfa' },
-};
-
-const STATUS_META: Record<string, { label: string; color: string }> = {
-  active:    { label: 'Actiu',     color: '#10b981' },
-  inactive:  { label: 'Inactiu',  color: '#9ca3af' },
-  suspended: { label: 'Suspès',   color: '#ef4444' },
-};
 
 function Badge({ role, active }: { role: UserRole; active: boolean }) {
   const meta = ROLE_META[role];
@@ -139,19 +137,6 @@ export default function ClientsManager({ onViewClient }: { onViewClient?: (id: s
         body: JSON.stringify({ id }),
       });
       setUsers(prev => prev.map(u => u.id === id ? { ...u, active: false } : u));
-    } catch { /* silent */ }
-  }
-
-  async function handleSubscriptionChange(id: string, plan: string, status: string) {
-    try {
-      await fetch(`/api/admin/clients/${id}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ subscriptionPlan: plan, subscriptionStatus: status }),
-      });
-      setUsers(prev => prev.map(u => u.id === id
-        ? { ...u, subscriptionPlan: plan as ClientUser['subscriptionPlan'], subscriptionStatus: status as ClientUser['subscriptionStatus'] }
-        : u));
     } catch { /* silent */ }
   }
 
@@ -270,9 +255,8 @@ export default function ClientsManager({ onViewClient }: { onViewClient?: (id: s
             <div className="col-span-3">Client</div>
             <div className="col-span-2">Email / Usuari</div>
             <div className="col-span-2">Rol</div>
-            <div className="col-span-2">Pla</div>
-            <div className="col-span-2">Estat sub.</div>
-            <div className="col-span-1 text-right">—</div>
+            <div className="col-span-3">Pas de l&apos;alta</div>
+            <div className="col-span-2 text-right">—</div>
           </div>
 
           <div className="divide-y divide-line">
@@ -282,14 +266,15 @@ export default function ClientsManager({ onViewClient }: { onViewClient?: (id: s
 
                 className={`grid grid-cols-12 gap-2 px-4 py-3 items-center ${!u.active ? 'opacity-40' : ''}`}>
                 {/* Name + status */}
-                <div className="col-span-3">
-                  <div className="flex items-center gap-2">
+                <div className="col-span-3 min-w-0">
+                  <button type="button" disabled={!onViewClient || u.role !== 'client'} onClick={() => onViewClient?.(u.id)}
+                    className="group flex items-center gap-2 text-left w-full disabled:cursor-default">
                     <div className={`w-2 h-2 rounded-full flex-shrink-0 ${u.active ? 'bg-positive' : 'bg-subtle-strong'}`} />
-                    <div>
-                      <div className="text-ink text-sm font-medium truncate">{u.name}</div>
+                    <div className="min-w-0">
+                      <div className="text-ink text-sm font-medium truncate group-enabled:group-hover:text-accent group-enabled:group-hover:underline">{u.name}</div>
                       <div className="text-ink-muted text-xs">{fmtDate(u.createdAt)}</div>
                     </div>
-                  </div>
+                  </button>
                 </div>
 
                 {/* Email + username */}
@@ -317,52 +302,24 @@ export default function ClientsManager({ onViewClient }: { onViewClient?: (id: s
                   )}
                 </div>
 
-                {/* Subscription plan */}
-                <div className="col-span-2">
-                  {u.role !== 'admin' ? (
-                    <select
-                      value={u.subscriptionPlan ?? 'free'}
-                      disabled={!u.active}
-                      onChange={e => handleSubscriptionChange(u.id, e.target.value, u.subscriptionStatus ?? 'active')}
-                      className="bg-subtle border border-line rounded-md px-2 py-1 text-xs text-ink focus:outline-none focus:border-accent/50 disabled:opacity-40">
-                      {Object.entries(PLAN_META).map(([v, m]) => (
-                        <option key={v} value={v} style={{ background: 'rgb(var(--c-surface))' }}>{m.label}</option>
-                      ))}
-                    </select>
-                  ) : (
-                    <span className="text-xs px-2 py-0.5 rounded-full" style={{ color: PLAN_META.premium.color, background: 'rgba(167,139,250,0.1)' }}>
-                      Premium
-                    </span>
-                  )}
-                </div>
-
-                {/* Subscription status */}
-                <div className="col-span-2">
-                  {u.role !== 'admin' ? (
-                    <select
-                      value={u.subscriptionStatus ?? 'active'}
-                      disabled={!u.active}
-                      onChange={e => handleSubscriptionChange(u.id, u.subscriptionPlan ?? 'free', e.target.value)}
-                      className="bg-subtle border border-line rounded-md px-2 py-1 text-xs text-ink focus:outline-none focus:border-accent/50 disabled:opacity-40">
-                      {Object.entries(STATUS_META).map(([v, m]) => (
-                        <option key={v} value={v} style={{ background: 'rgb(var(--c-surface))' }}>{m.label}</option>
-                      ))}
-                    </select>
-                  ) : (
-                    <span className="text-xs" style={{ color: STATUS_META.active.color }}>Actiu</span>
-                  )}
+                {/* Pas de l'alta */}
+                <div className="col-span-3">
+                  {u.role === 'client' && u.stage ? (
+                    <button type="button" onClick={() => onViewClient?.(u.id)}
+                      className={`text-xs px-2 py-0.5 rounded-full ${STAGE_TONE[u.stage]}`}>
+                      {ADVISOR_STAGE_LABEL[u.stage]}
+                    </button>
+                  ) : <span className="text-ink-muted text-xs">—</span>}
                 </div>
 
                 {/* Actions */}
-                <div className="col-span-1 flex items-center justify-end gap-1">
-                  {onViewClient && (
+                <div className="col-span-2 flex items-center justify-end gap-1">
+                  {onViewClient && u.role === 'client' && (
                     <button
                       onClick={() => onViewClient(u.id)}
-                      title="Veure fitxa"
-                      className="p-1.5 text-ink-muted hover:text-accent hover:bg-accent-soft rounded-md transition-all">
-                      <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
-                      </svg>
+                      title="Obrir la fitxa del client"
+                      className="px-2 py-1 text-xs font-medium text-accent hover:bg-accent-soft rounded-md transition-all whitespace-nowrap">
+                      Obrir
                     </button>
                   )}
                   {u.active && u.role === 'client' && (

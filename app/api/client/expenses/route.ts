@@ -9,6 +9,7 @@ import { getConsent } from '@/lib/betaConsent';
 import { logAuditEvent } from '@/lib/auditLog';
 import { recordActivity } from '@/lib/betaActivity';
 import { rateLimit, rateLimitResponse } from '@/lib/rateLimiter';
+import { isPreviewSession, previewReadOnly } from '@/lib/clientTarget';
 
 type S = { user?: { id?: string; email?: string; role?: string } } | null;
 
@@ -25,6 +26,7 @@ async function guard() {
 }
 
 export async function POST(req: NextRequest) {
+  if (await isPreviewSession()) return previewReadOnly();
   const g = await guard();
   if ('error' in g) return g.error;
   const parsed = OneOffInputSchema.safeParse(await req.json().catch(() => null));
@@ -37,6 +39,7 @@ export async function POST(req: NextRequest) {
 }
 
 export async function DELETE(req: NextRequest) {
+  if (await isPreviewSession()) return previewReadOnly();
   const g = await guard();
   if ('error' in g) return g.error;
   const id = req.nextUrl.searchParams.get('id');

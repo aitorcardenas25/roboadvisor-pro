@@ -6,6 +6,7 @@ import { z } from 'zod';
 import { authOptions } from '@/lib/authOptions';
 import { consentText, getConsent, saveConsent, CONSENT_VERSION } from '@/lib/betaConsent';
 import { logAuditEvent } from '@/lib/auditLog';
+import { isPreviewSession, previewReadOnly } from '@/lib/clientTarget';
 
 type S = { user?: { id?: string; email?: string; role?: string } } | null;
 
@@ -31,6 +32,7 @@ export async function GET() {
 }
 
 export async function POST(req: NextRequest) {
+  if (await isPreviewSession()) return previewReadOnly();
   const user = await sessionUser();
   if (!user) return NextResponse.json({ error: 'No autoritzat' }, { status: 401 });
   const parsed = BodySchema.safeParse(await req.json().catch(() => null));

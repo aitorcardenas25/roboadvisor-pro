@@ -4,28 +4,22 @@
 // DELETE → l'esborra (?id=...)
 // Només es consulta i es modifica la fitxa de l'usuari de la sessió.
 import { NextRequest, NextResponse } from 'next/server';
-import { getServerSession } from 'next-auth';
-import { authOptions } from '@/lib/authOptions';
 import { WealthItemInputSchema } from '@/lib/wealth';
 import { buildWealthForUser, addWealthItemForUser, updateWealthItemForUser, removeWealthItemForUser } from '@/lib/wealthStore';
 import { getConsent } from '@/lib/betaConsent';
 import { logAuditEvent } from '@/lib/auditLog';
 import { recordActivity } from '@/lib/betaActivity';
+import { getClientTarget, previewReadOnly } from '@/lib/clientTarget';
 import { rateLimit, rateLimitResponse } from '@/lib/rateLimiter';
 
-type S = { user?: { id?: string; email?: string; role?: string } } | null;
 const NO_STORE = { 'Cache-Control': 'no-store' };
 
-async function sessionUser() {
-  const s = await getServerSession(authOptions) as S;
-  const u = s?.user;
-  if (!u?.id || (u.role !== 'client' && u.role !== 'admin')) return null;
-  return { id: u.id, email: u.email ?? null, role: u.role };
-}
+async function sessionUser() { return getClientTarget(); }
 
 async function guardWrite() {
   const user = await sessionUser();
   if (!user) return { error: NextResponse.json({ error: 'No autoritzat' }, { status: 401 }) };
+  if (user.preview) return { error: previewReadOnly() };
   if (user.role === 'client' && !(await getConsent(user.id))) {
     return { error: NextResponse.json({ error: 'Cal acceptar el consentiment de la beta', code: 'consent_required' }, { status: 403 }) };
   }
