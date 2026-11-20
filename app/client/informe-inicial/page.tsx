@@ -1,10 +1,10 @@
 'use client';
 // Informe inicial del client: la foto del punt de partida (situació, objectius)
 // i la cartera que l'assessor va proposar i aprovar. El mateix PDF que rep de l'assessor.
+import ClientNav from '@/components/client/ClientNav';
 import { useEffect, useMemo, useState } from 'react';
 import { useSession } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
-import Link from 'next/link';
 import DiagnosisCard from '@/components/finances/DiagnosisCard';
 import { diagnose } from '@/lib/diagnosis';
 import { proposalToReportInput, type ClientProposal, type ProposalStats } from '@/lib/proposalMath';
@@ -75,23 +75,7 @@ export default function InitialReportPage() {
 
   return (
     <div className="theme-client min-h-screen bg-canvas">
-      <nav className="border-b border-line bg-surface sticky top-0 z-30">
-        <div className="max-w-5xl mx-auto px-4 h-14 flex items-center justify-between gap-3">
-          <div className="flex items-center gap-2 min-w-0">
-            <div className="w-5 h-5 bg-subtle-strong border border-accent/50 rounded flex items-center justify-center flex-shrink-0">
-              <span className="text-accent font-semibold text-[9px] leading-none">F</span>
-            </div>
-            <span className="text-ink-muted text-sm hidden sm:inline">Factor OTC</span>
-            <span className="text-ink-muted text-sm hidden sm:inline">/</span>
-            <span className="text-ink-soft text-sm truncate">Informe inicial</span>
-          </div>
-          <div className="flex items-center gap-4 flex-shrink-0 text-xs">
-            <Link href="/client/patrimoni" className="text-ink-muted hover:text-accent transition-colors">El meu patrimoni</Link>
-            <Link href="/client/cartera" className="text-ink-muted hover:text-accent transition-colors">La meva cartera</Link>
-            <Link href="/client/finances" className="text-ink-muted hover:text-accent transition-colors">Les meves finances</Link>
-          </div>
-        </div>
-      </nav>
+      <ClientNav />
       <div className="max-w-4xl mx-auto px-4 py-6 space-y-5">
         {error && <p className="text-negative text-sm" role="alert">{error}</p>}
         {!data && !error && <div className="animate-pulse bg-subtle rounded-lg h-96" />}

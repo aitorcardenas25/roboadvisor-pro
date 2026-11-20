@@ -1,5 +1,6 @@
 'use client';
 
+import ClientNav from '@/components/client/ClientNav';
 import { useState, useEffect, useMemo, memo } from 'react';
 import { useSession } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
@@ -181,7 +182,7 @@ function SkeletonPage() {
 // ─────────────────────────────────────────────────────────────────────────────
 
 const HeroSection = memo(function HeroSection({
-  portfolio, metrics, name, valuation,
+  portfolio, metrics, name: _name, valuation,
 }: {
   portfolio: ClientPortfolio;
   metrics:   PortfolioMetrics;
@@ -224,7 +225,6 @@ const HeroSection = memo(function HeroSection({
         </div>
 
         {/* Value + return */}
-        <p className="text-ink-muted text-sm mb-1.5">{name}</p>
         <div className="flex flex-wrap items-end gap-x-5 gap-y-2 mb-5">
           <div>
             <div className="text-ink font-semibold text-4xl sm:text-5xl tabular-nums tracking-tight leading-none">
@@ -853,33 +853,24 @@ function TabEmpty({ text, sub }: { text: string; sub?: string }) {
 
 function EmptyPortfolio({ name }: { name: string }) {
   return (
-    <div className="theme-client min-h-screen bg-canvas flex items-center justify-center px-4">
-      <div className="text-center max-w-xs">
-        <div className="w-20 h-20 bg-subtle-strong border border-accent/22 rounded-3xl flex items-center justify-center mx-auto mb-6">
-          <svg className="w-9 h-9 text-accent/22" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1}
-              d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
-          </svg>
-        </div>
-        <h1 className="text-ink font-bold text-xl mb-2">Hola, {name}</h1>
+    <div className="theme-client min-h-screen bg-canvas">
+      <ClientNav name={name} />
+      <main className="max-w-md mx-auto px-4 py-16 text-center">
+        <h1 className="text-ink font-bold text-xl mb-2">Encara no hi ha cap inversió</h1>
         <p className="text-ink-muted text-sm leading-relaxed mb-6">
-          Encara no tens cap cartera aquí. Primer cal que ens expliquis la teva situació: el teu assessor prepara la proposta a partir d&apos;aquí.
+          Quan compris els fons de la teva proposta i el teu assessor ho registri, aquí veuràs quant val la teva cartera i com evoluciona.
         </p>
-        <a href="/client/guia"
-          className="inline-flex items-center gap-2 text-sm px-5 py-2.5 rounded-xl border border-line text-ink-soft hover:border-line-strong transition-all mb-3">
-          Com funciona, en 3 passos
-        </a>
-        <br />
-        <a href="/client/finances"
-          className="inline-flex items-center gap-2 text-sm px-5 py-2.5 rounded-xl bg-accent text-accent-ink font-semibold hover:bg-accent-hover transition-all mb-3">
-          Veure les meves finances →
-        </a>
-        <br />
-        <a href="/login"
-          className="inline-flex items-center gap-2 text-sm px-5 py-2.5 rounded-xl border border-accent/18 text-accent/60 hover:text-accent hover:bg-accent-soft transition-all">
-          ← Tornar a l&apos;inici
-        </a>
-      </div>
+        <div className="flex flex-col sm:flex-row gap-3 justify-center">
+          <a href="/client/informe-inicial"
+            className="inline-flex justify-center text-sm px-5 py-2.5 rounded-lg bg-accent text-accent-ink font-semibold hover:bg-accent-hover transition-colors">
+            Veure el meu informe inicial
+          </a>
+          <a href="/client/guia"
+            className="inline-flex justify-center text-sm px-5 py-2.5 rounded-lg border border-line text-ink-soft hover:border-line-strong transition-colors">
+            Com funciona
+          </a>
+        </div>
+      </main>
     </div>
   );
 }
@@ -942,17 +933,7 @@ export default function ClientCarteraPage() {
     <div className="theme-client min-h-screen bg-canvas">
 
       {/* ── Navbar ── */}
-      <nav className="border-b border-line bg-surface sticky top-0 z-30">
-        <div className="max-w-5xl mx-auto px-4 h-14 flex items-center justify-between">
-          <div className="flex items-center gap-2 min-w-0">
-            <div className="w-5 h-5 bg-subtle-strong border border-accent/50 rounded flex items-center justify-center flex-shrink-0">
-              <span className="text-accent font-semibold text-[9px] leading-none">F</span>
-            </div>
-            <span className="text-ink-muted text-sm hidden sm:inline">Factor OTC</span>
-            <span className="text-ink-muted text-sm hidden sm:inline">/</span>
-            <span className="text-ink-soft text-sm truncate">La meva cartera</span>
-          </div>
-          <div className="flex items-center gap-3 flex-shrink-0">
+      <ClientNav name={name} actions={<>
             {portfolio.nextFollowup && (
               <span className="hidden md:flex items-center gap-1.5 text-xs text-accent/52 border border-accent/12 px-2.5 py-1 rounded-full">
                 <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -971,13 +952,7 @@ export default function ClientCarteraPage() {
               </svg>
               <span className="hidden sm:inline">Fonts de dades</span>
             </button>
-            <a href="/client/patrimoni" className="text-xs text-ink-muted hover:text-accent transition-colors">El meu patrimoni</a>
-            <a href="/client/finances" className="text-xs text-ink-muted hover:text-accent transition-colors">Les meves finances</a>
-            <a href="/client/guia" className="text-xs text-ink-muted hover:text-accent transition-colors">Guia</a>
-            <span className="text-ink-muted text-xs">{name}</span>
-          </div>
-        </div>
-      </nav>
+          </>} />
 
       <div className="max-w-5xl mx-auto px-4 py-6 sm:py-8">
 
