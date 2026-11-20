@@ -15,9 +15,15 @@ describe('onboardingStatus (primers passos del client)', () => {
     expect(states(s)).toEqual(['fet', 'en-curs', 'pendent']);
   });
 
-  it('proposta aprovada però sense cartera: el seguiment és el pas en curs', () => {
-    const s = onboardingStatus({ questionnaireData: { goals: [{ horizon: 'curt', description: 'Fons d\'emergència' }] }, latestProposal: 'approved', holdings: 0 });
+  it('informe enviat però sense cartera: el seguiment és el pas en curs', () => {
+    const s = onboardingStatus({ questionnaireData: { goals: [{ horizon: 'curt', description: 'Fons d\'emergència' }] }, latestProposal: 'approved', holdings: 0, shared: true });
     expect(states(s)).toEqual(['fet', 'fet', 'en-curs']);
+  });
+
+  it('proposta aprovada però encara no enviada: per al client, la proposta continua en curs', () => {
+    const s = onboardingStatus({ questionnaireData: { goals: [{ horizon: 'curt', description: 'Fons d\'emergència' }] }, latestProposal: 'approved', holdings: 0 });
+    expect(states(s)).toEqual(['fet', 'en-curs', 'pendent']);
+    expect(s.released).toBe(false);
   });
 
   it('cartera activa: tot fet', () => {

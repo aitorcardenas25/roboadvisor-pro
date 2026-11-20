@@ -28,7 +28,8 @@ export async function GET(req: NextRequest) {
     resolvedPortfolioId = portfolio.id;
   }
 
-  const reports = await getMonthlyReportsByPortfolio(resolvedPortfolioId);
+  // El client només veu els informes que l'assessor li ha enviat (l'admin, tots)
+  const reports = (await getMonthlyReportsByPortfolio(resolvedPortfolioId)).filter(r => role === 'admin' && !t?.preview ? true : !!r.sentAt);
 
   return NextResponse.json({
     reports: reports.map(r => ({

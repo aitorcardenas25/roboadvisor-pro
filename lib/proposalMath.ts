@@ -57,6 +57,8 @@ export interface ClientProposal extends ProposalParams {
   appliedAt?:           string;               // quan s'ha passat a la cartera activa
   appliedBy?:           string;
   appliedPortfolioId?:  string;
+  sharedAt?:            string;               // quan s'ha enviat al client (abans no el veu)
+  sharedBy?:            string;
 }
 
 // ─── Dades de rendiment ───────────────────────────────────────────────────────

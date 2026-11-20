@@ -16,7 +16,7 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
   if (!parsed.success) return NextResponse.json({ error: 'Petició no vàlida' }, { status: 400 });
 
   const portfolio = await getPortfolioByClientId(userId);
-  const report = portfolio ? (await getMonthlyReportsByPortfolio(portfolio.id)).find(r => r.id === parsed.data) : undefined;
+  const report = portfolio ? (await getMonthlyReportsByPortfolio(portfolio.id)).find(r => r.id === parsed.data && !!r.sentAt) : undefined;   // només si ja s'ha enviat
   if (!report) return NextResponse.json({ error: 'Informe no trobat' }, { status: 404 });
   if (t.role === 'client') recordActivity(userId, 'reports.view');
   return NextResponse.json({ report: report.data }, { headers: { 'Cache-Control': 'no-store' } });

@@ -21,6 +21,8 @@ export interface OnboardingInput {
   latestProposal?: 'draft' | 'approved' | null;
   /** Nombre de posicions de la cartera activa. */
   holdings: number;
+  /** L'assessor ha enviat l'informe inicial al client (una versió aprovada amb sharedAt). */
+  shared?: boolean;
 }
 
 const DATA_KEYS: string[] = [
@@ -37,11 +39,13 @@ export function hasClientData(q?: Record<string, unknown> | null): boolean {
 export function onboardingStatus(i: OnboardingInput): OnboardingStatus {
   const data = hasClientData(i.questionnaireData);
   const portfolio = i.holdings > 0;
-  // Una cartera activa implica que la proposta ja s'ha fet, encara que no consti.
-  const proposalDone = portfolio || i.latestProposal === 'approved';
+  // Per al client, la proposta està feta quan l'assessor li ha enviat l'informe
+  // (aprovar-la no n'hi ha prou). Una cartera activa implica que ja s'ha fet.
+  const proposalDone = portfolio || !!i.shared;
+  const preparing = data || i.latestProposal === 'draft' || i.latestProposal === 'approved';
   const steps: OnboardingStep[] = [
     { id: 'dades',     state: data || portfolio ? 'fet' : 'en-curs' },
-    { id: 'proposta',  state: proposalDone ? 'fet' : (data || i.latestProposal === 'draft') ? 'en-curs' : 'pendent' },
+    { id: 'proposta',  state: proposalDone ? 'fet' : preparing ? 'en-curs' : 'pendent' },
     { id: 'seguiment', state: portfolio ? 'fet' : proposalDone ? 'en-curs' : 'pendent' },
   ];
   return { steps, complete: steps.every(s => s.state === 'fet'), released: proposalDone };
@@ -49,26 +53,28 @@ export function onboardingStatus(i: OnboardingInput): OnboardingStatus {
 
 // ── Alta del client vista per l'assessor ─────────────────────────────────────
 // Dades (Excel o a mà) → proposta → informe aprovat → cartera activa.
-export type AdvisorStage = 'sense-dades' | 'dades' | 'esborrany' | 'aprovat' | 'actiu';
+export type AdvisorStage = 'sense-dades' | 'dades' | 'esborrany' | 'aprovat' | 'enviat' | 'actiu';
 
 export const ADVISOR_STAGE_LABEL: Record<AdvisorStage, string> = {
   'sense-dades': 'Falten les dades',
   'dades':       'Dades rebudes · falta la proposta',
   'esborrany':   'Proposta en esborrany',
-  'aprovat':     'Informe aprovat · falta la cartera',
+  'aprovat':     'Informe aprovat · falta enviar-lo al client',
+  'enviat':      'Informe enviat · falta la cartera',
   'actiu':       'Cartera activa',
 };
 
 export interface AdvisorStageInput {
   questionnaireData?: Record<string, unknown> | null;
-  /** Estats de totes les propostes del client (qualsevol ordre). */
-  proposals: ('draft' | 'approved')[];
+  /** Totes les propostes del client (qualsevol ordre). */
+  proposals: { status: 'draft' | 'approved'; sharedAt?: string }[];
   holdings: number;
 }
 
 export function advisorStage(i: AdvisorStageInput): AdvisorStage {
   if (i.holdings > 0) return 'actiu';
-  if (i.proposals.includes('approved')) return 'aprovat';
-  if (i.proposals.includes('draft')) return 'esborrany';
+  if (i.proposals.some(p => p.status === 'approved' && p.sharedAt)) return 'enviat';
+  if (i.proposals.some(p => p.status === 'approved')) return 'aprovat';
+  if (i.proposals.some(p => p.status === 'draft')) return 'esborrany';
   return hasClientData(i.questionnaireData) ? 'dades' : 'sense-dades';
 }

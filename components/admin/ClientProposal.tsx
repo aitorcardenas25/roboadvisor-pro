@@ -189,6 +189,20 @@ export default function ClientProposal({ clientId, onApplied }: { clientId: stri
     download(await res.blob(), `FACTOR_OTC_proposta_${safeName(data.client.name)}_v${p.version}.xlsx`);
   };
 
+  // Envia l'informe inicial al client: fins llavors no el veu (ni el portal sencer)
+  const onShare = async (p: ClientProposal) => {
+    if (!confirm(`Enviar l'informe inicial (v${p.version}) a ${data.client.name}? A partir d'ara el veurà al seu portal i tindrà accés a tot.`)) return;
+    setBusy(`share-${p.id}`); setMsg(null);
+    try {
+      const res = await fetch(api, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'share', id: p.id }) });
+      const d = await res.json().catch(() => ({}));
+      if (!res.ok) { setMsg({ ok: false, text: d.error ?? 'No s\'ha pogut enviar' }); return; }
+      setMsg({ ok: true, text: `Informe v${p.version} enviat: ${data.client.name} ja el pot veure al portal.` });
+      await load(false);   // no esborra els canvis sense desar de l'editor
+      onApplied?.();
+    } finally { setBusy(null); }
+  };
+
   const onApprove = async () => {
     if (!confirm('Un cop aprovada, aquesta versió queda congelada i es genera l\'informe. Continuar?')) return;
     setBusy('approve'); setMsg(null);
@@ -209,7 +223,7 @@ export default function ClientProposal({ clientId, onApplied }: { clientId: stri
       setBusy('report');
       await generatePdf(approved);
       await downloadExcel(approved).catch(() => setMsg({ ok: false, text: 'Aprovada i PDF generat, però l\'Excel ha fallat. Torna-ho a provar des de l\'historial.' }));
-      setMsg(m => m ?? { ok: true, text: `Versió ${approved.version} aprovada. S'han descarregat el PDF i l'Excel.` });
+      setMsg(m => m ?? { ok: true, text: `Versió ${approved.version} aprovada. S'han descarregat el PDF i l'Excel. El client encara no la veu: prem «Enviar al client» quan la vulguis ensenyar.` });
       await load();
       onApplied?.();   // refresca els comptadors de la capçalera (informes inicials)
     } catch (err) {
@@ -437,8 +451,15 @@ export default function ClientProposal({ clientId, onApplied }: { clientId: stri
                 <span className="text-ink-muted">{new Date(p.approvedAt ?? p.updatedAt).toLocaleDateString('ca-ES')}</span>
                 {p.suitabilityOverride && <span className="text-negative" title={p.suitabilityOverride}>No idònia (justificada)</span>}
                 <span className="text-ink-soft">{p.items.length} fons · {PROFILE_LABEL[p.profile]} · {p.stats.complete ? `${pct(p.stats.netReturn)} net` : 'dades incompletes'}</span>
+                {p.status === 'approved' && (p.sharedAt
+                  ? <span className="text-positive/80">Enviat al client el {new Date(p.sharedAt).toLocaleDateString('ca-ES')}</span>
+                  : <span className="text-warning">Encara no l&apos;ha vist el client</span>)}
                 {p.status === 'approved' && (
                   <span className="ml-auto flex gap-2">
+                    {!p.sharedAt && <button disabled={!!busy} onClick={() => onShare(p)}
+                      className="px-2 py-0.5 rounded-md bg-accent text-accent-ink font-semibold disabled:opacity-40">
+                      {busy === `share-${p.id}` ? 'Enviant…' : 'Enviar al client'}
+                    </button>}
                     {p.stats.complete && <button disabled={!!busy} onClick={() => fromHistory(p, 'pdf')} className="text-accent hover:underline disabled:opacity-40">
                       {busy === `pdf-${p.id}` ? 'Generant…' : 'PDF'}
                     </button>}

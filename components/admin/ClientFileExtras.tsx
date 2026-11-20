@@ -6,18 +6,20 @@ import { useState } from 'react';
 import FinancesForm from '@/components/finances/FinancesForm';
 import { ADVISOR_STAGE_LABEL, type AdvisorStage } from '@/lib/onboarding';
 
-const ORDER: AdvisorStage[] = ['sense-dades', 'dades', 'esborrany', 'aprovat', 'actiu'];
+const ORDER: AdvisorStage[] = ['sense-dades', 'dades', 'esborrany', 'aprovat', 'enviat', 'actiu'];
 const STEPS: { label: string; doneFrom: AdvisorStage; tab: 'dades' | 'proposal' | 'portfolio' }[] = [
   { label: 'Dades',            doneFrom: 'dades',    tab: 'dades' },
   { label: 'Proposta',         doneFrom: 'esborrany', tab: 'proposal' },
   { label: 'Informe aprovat',  doneFrom: 'aprovat',  tab: 'proposal' },
+  { label: 'Enviat al client', doneFrom: 'enviat',   tab: 'proposal' },
   { label: 'Cartera activa',   doneFrom: 'actiu',    tab: 'portfolio' },
 ];
 const NEXT: Record<AdvisorStage, string> = {
   'sense-dades': 'Puja l\'Excel del client o entra les dades a mà (pestanya 1).',
   'dades':       'Prepara la proposta: tria els fons i els pesos (pestanya 2).',
   'esborrany':   'Revisa la proposta i aprova-la per generar l\'informe inicial (pestanya 2).',
-  'aprovat':     'Quan el client hagi comprat, crea la cartera des de la proposta aprovada.',
+  'aprovat':     'Revisa l\'informe i, quan el vulguis ensenyar, prem «Enviar al client» a la versió aprovada (pestanya 2). Fins llavors el client només veu la pantalla d\'espera.',
+  'enviat':      'Quan el client hagi comprat, crea la cartera des de la proposta aprovada (pestanya 2).',
   'actiu':       'Seguiment: informes mensuals i revisió de la cartera.',
 };
 
@@ -106,7 +108,7 @@ export function InternalNotes({ clientId, initial }: { clientId: string; initial
   return (
     <div className="bg-surface border border-line rounded-lg p-5">
       <h3 className="text-ink font-semibold text-sm">Notes internes</h3>
-      <p className="text-ink-muted text-xs mt-0.5 mb-3">Només les veus tu. Per exemple: què t&apos;ha explicat per WhatsApp, dubtes, coses a revisar.</p>
+      <p className="text-ink-muted text-xs mt-0.5 mb-3">No surten al portal del client. Per exemple: què t&apos;ha explicat per WhatsApp, dubtes, coses a revisar. Ull: si el client descarrega «les meves dades» (dret RGPD), hi surten.</p>
       <textarea value={text} onChange={e => { setText(e.target.value); setState('idle'); }} rows={6} maxLength={10_000}
         className="w-full bg-subtle border border-line rounded-md px-3 py-2 text-sm text-ink focus:outline-none focus:border-accent/50" />
       <div className="flex items-center gap-3 mt-2">

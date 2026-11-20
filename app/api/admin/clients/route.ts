@@ -45,7 +45,7 @@ export async function GET(_req: NextRequest) {
     const lead = leads.find(l => l.linkedUserId === u.id) ?? leads.find(l => l.email?.toLowerCase() === u.email.toLowerCase());
     const stage = advisorStage({
       questionnaireData: lead?.questionnaireData ?? null,
-      proposals: proposals.filter(p => p.clientId === u.id).map(p => p.status),
+      proposals: proposals.filter(p => p.clientId === u.id),
       holdings: portfolios.find(p => p.clientId === u.id)?.holdings.length ?? 0,
     });
     return { ...u, stage };

@@ -21,7 +21,8 @@ const STAGE_TONE: Record<AdvisorStage, string> = {
   'sense-dades': 'bg-subtle-strong text-ink-soft',
   'dades':       'bg-info/10 text-info',
   'esborrany':   'bg-warning/10 text-warning',
-  'aprovat':     'bg-accent-soft text-accent',
+  'aprovat':     'bg-warning/10 text-warning',
+  'enviat':      'bg-accent-soft text-accent',
   'actiu':       'bg-positive/15 text-positive',
 };
 

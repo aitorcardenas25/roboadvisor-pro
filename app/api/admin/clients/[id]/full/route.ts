@@ -55,7 +55,7 @@ export async function GET(
   const proposals = await getProposals(id).catch(() => []);
   const stage = advisorStage({
     questionnaireData: lead?.questionnaireData ?? null,
-    proposals: proposals.map(p => p.status),
+    proposals,
     holdings: portfolio?.holdings.length ?? 0,
   });
 

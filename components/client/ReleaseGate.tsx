@@ -1,6 +1,6 @@
 'use client';
 
-// Fins que l'assessor aprova l'informe inicial, el client només veu una pantalla
+// Fins que l'assessor envia l'informe inicial, el client només veu una pantalla
 // d'espera i "Les meves finances" (i la guia). Després, tot el portal.
 // L'admin el veu igual en la vista del client; fora d'aquesta vista, no se li aplica.
 import { useEffect, useState } from 'react';
