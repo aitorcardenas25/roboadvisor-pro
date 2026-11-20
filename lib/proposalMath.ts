@@ -261,6 +261,10 @@ export function proposalToReportInput(
 ): ManualPortfolioInput {
   const num = (k: string) => (typeof personal[k] === 'number' ? personal[k] as number : undefined);
   const annualIncome = num('annualIncome');
+  // Des de «Les meves finances» es desen ingressos nets mensuals i despeses fixes + variables
+  // (sense annualIncome ni monthlyExpenses): sense això el PDF amagava tot el perfil financer.
+  const fixed = num('monthlyFixedExpenses'), variable = num('monthlyVariableExpenses');
+  const expenses = num('monthlyExpenses') ?? (fixed !== undefined || variable !== undefined ? (fixed ?? 0) + (variable ?? 0) : undefined);
   return {
     clientName: client.name, clientEmail: client.email,
     investorProfile: p.profile, objective: p.objective, horizon: p.horizon,
@@ -272,8 +276,8 @@ export function proposalToReportInput(
       historicalReturn5Y: x.historicalReturn5Y, historicalVolatility: x.historicalVolatility,
       expectedReturn: expectedReturn(x), beta: x.beta,
     })),
-    monthlyIncome:   annualIncome != null ? Math.round(annualIncome / 12) : undefined,
-    monthlyExpenses: num('monthlyExpenses'),
+    monthlyIncome:   annualIncome != null ? Math.round(annualIncome / 12) : num('monthlyNetIncome'),
+    monthlyExpenses: expenses,
     deutes:          num('totalDebt'),
     patrimoni:       num('netWorth'),
     fondEmergencia:  num('currentSavings'),

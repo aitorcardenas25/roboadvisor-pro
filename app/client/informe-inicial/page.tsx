@@ -211,6 +211,9 @@ export default function InitialReportPage() {
               <p className="text-ink-muted text-[11px] mt-3">
                 Les rendibilitats són dels últims 5 anys amb els valors liquidatius oficials. No garanteixen el que passarà. El PDF té les projeccions i el detall complet.
               </p>
+              <p className="text-ink-muted text-[11px] mt-2 leading-relaxed">
+                <span className="font-semibold">Avís legal.</span> Aquest informe l&apos;ha elaborat Factor OTC amb finalitat orientativa i educativa. No és assessorament financer regulat (MiFID II) ni una oferta o recomanació d&apos;inversió, i Factor OTC no és una entitat autoritzada per la CNMV. Les rendibilitats passades i les estimacions no garanteixen resultats futurs. Invertir implica risc de perdre part o tot el capital. Abans de decidir, pots consultar un assessor financer autoritzat per la CNMV.
+              </p>
             </section>
           </>
         )}

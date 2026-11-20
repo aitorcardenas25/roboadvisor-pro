@@ -189,6 +189,13 @@ describe('informe i Excel', () => {
     expect(input.assets[0].weight).toBe(100);
   });
 
+  it('dades desades des de «Les meves finances» (mensuals, fixes + variables) també omplen el perfil financer del PDF', async () => {
+    const p = await saveDraft('c1', { ...params, items: [item('A', 100)] });
+    const input = proposalToReportInput(p, { name: 'M', email: 'm@x' }, { monthlyNetIncome: 1550, monthlyFixedExpenses: 800, monthlyVariableExpenses: 350 });
+    expect(input.monthlyIncome).toBe(1550);
+    expect(input.monthlyExpenses).toBe(1150);
+  });
+
   it('passa els objectius del client a l\'informe inicial (sense els buits ni imports a 0)', async () => {
     const p = await saveDraft('c1', { ...params, items: [item('A', 100)] });
     const input = proposalToReportInput(p, { name: 'Marta', email: 'm@x' }, {
