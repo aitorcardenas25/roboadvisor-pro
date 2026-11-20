@@ -11,29 +11,26 @@ import type {
   ClientPortfolio, ClientHolding, ClientTransaction, OperationType, PortfolioMetrics,
 } from '@/lib/clientPortfolios';
 import { computeMetrics, isSoldOut } from '@/lib/clientPortfolios';
-import type { Valuation } from '@/lib/portfolioValuation';
+import { aggregatePeriods, type Valuation, type Period } from '@/lib/portfolioValuation';
 import TaxReportView from '@/components/TaxReportView';
 import PortfolioExcelButton from '@/components/PortfolioExcelButton';
+import MixHistoryPanel from '@/components/client/MixHistoryPanel';
+import type { MixHistory } from '@/lib/mixHistory';
 import { DataSourceBadge } from '@/components/DataSourceBadge';
 import { DataSourcePanel } from '@/components/DataSourcePanel';
 import { CLIENT_TAX_REPORT_ENABLED } from '@/lib/featureFlags';
 
 // ── Formatters ─────────────────────────────────────────────────────────────
 
-function fEur(n: number, compact = false): string {
-  const abs = Math.abs(n);
-  if (compact) {
-    if (abs >= 1_000_000) return `${(n / 1_000_000).toFixed(1)} M€`;
-    if (abs >= 1_000)     return `${(n / 1_000).toFixed(0)} K€`;
-  }
-  if (abs >= 1_000_000) return `${(n / 1_000_000).toFixed(2)} M€`;
-  if (abs >= 1_000)     return `${(n / 1_000).toFixed(1)} K€`;
+// Sempre l'import exacte en format català (4.617,89 €): un client vol veure els seus diners sense arrodonir.
+function fEur(n: number, _compact = false): string {
   return n.toLocaleString('ca-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' €';
 }
 
 function fPct(n: number, sign = true): string {
-  return `${sign && n >= 0 ? '+' : ''}${n.toFixed(2)}%`;
+  return `${sign && n >= 0 ? '+' : ''}${n.toLocaleString('ca-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} %`;
 }
+const fPct1 = (n: number) => `${n.toLocaleString('ca-ES', { minimumFractionDigits: 1, maximumFractionDigits: 1 })} %`;
 
 function fDate(iso: string): string {
   if (!iso) return '—';
@@ -78,22 +75,26 @@ function deriveRisk(portfolio: ClientPortfolio): { label: string; color: string 
   const open = portfolio.holdings.filter(h => h.quantity > 0);
   const total = open.reduce((s, h) => s + Math.max(0, h.currentPrice * h.quantity), 0);
   if (open.length === 0 || total <= 0) return { label: 'No disponible', color: '#626e69' };
-  const eqPct = open.filter(h => isEquity(h.assetCategory ?? ''))
-    .reduce((s, h) => s + Math.max(0, h.currentPrice * h.quantity), 0) / total * 100;
+  // Arrodonit: 79,99 % per decimals de preu ha de comptar com el 80 % que és
+  const eqPct = Math.round(open.filter(h => isEquity(h.assetCategory ?? ''))
+    .reduce((s, h) => s + Math.max(0, h.currentPrice * h.quantity), 0) / total * 100);
   if (eqPct >= 80) return { label: 'Dinàmic',         color: '#8a5a00' };
   if (eqPct >= 50) return { label: 'Moderat',         color: '#1e4d3f' };
   if (eqPct >= 20) return { label: 'Conservador',     color: '#1f5d8c' };
   return              { label: 'Molt conservador',    color: '#1e704c' };
 }
 
-function monthlyReturn(portfolio: ClientPortfolio, valuation?: Valuation | null): number | null {
-  // Amb valors liquidatius oficials: últim mes tancat, sense comptar les aportacions.
+/** Rendiment de l'últim mes tancat (sense comptar aportacions) i quin mes és. */
+function monthlyReturn(portfolio: ClientPortfolio, valuation?: Valuation | null): { pct: number; label: string } | null {
+  // Amb valors liquidatius oficials: l'últim mes acabat (no els últims dies del mes en curs).
   const pts = valuation?.points ?? [];
   if (pts.length >= 2) {
-    const a = pts[pts.length - 2], b = pts[pts.length - 1];
-    const flow = b.invested - a.invested;
-    const base = a.value + flow / 2;
-    return base > 0 ? ((b.value - a.value - flow) / base) * 100 : null;
+    const rows = aggregatePeriods(pts, 'month').filter(r => r.periodReturn !== null);
+    const closed = rows.filter(r => isPeriodEndDate(r.date, 'month'));
+    const r = closed.at(-1) ?? rows.at(-1);
+    if (!r || r.periodReturn === null) return null;
+    const m = new Date(r.date + 'T00:00:00').toLocaleString('ca-ES', { month: 'long' }).replace(/^de |^d’|^d'/, '');
+    return { pct: r.periodReturn, label: `Rendiment ${/^[aeiouà]/i.test(m) ? "d'" : 'de '}${m}` };
   }
   const snaps = [...portfolio.snapshots].sort((a, b) => a.date.localeCompare(b.date));
   if (snaps.length < 2) return null;
@@ -103,7 +104,7 @@ function monthlyReturn(portfolio: ClientPortfolio, valuation?: Valuation | null)
   const cStr = cutoff.toISOString().split('T')[0];
   const prev  = snaps.filter(s => s.date <= cStr).pop() ?? snaps[snaps.length - 2];
   if (!prev || prev.id === last.id || prev.totalValue <= 0) return null;
-  return ((last.totalValue - prev.totalValue) / prev.totalValue) * 100;
+  return { pct: ((last.totalValue - prev.totalValue) / prev.totalValue) * 100, label: 'Rendiment últim mes' };
 }
 
 function buildSummary(portfolio: ClientPortfolio, metrics: PortfolioMetrics, valuation?: Valuation | null): string {
@@ -119,9 +120,7 @@ function buildSummary(portfolio: ClientPortfolio, metrics: PortfolioMetrics, val
 
   if (mPct !== null) {
     parts.push(
-      mPct >= 0
-        ? `En el darrer mes ha crescut un ${fPct(mPct, false)}.`
-        : `En el darrer mes ha retrocedit un ${fPct(Math.abs(mPct), false)}.`,
+      `${mPct.label.replace('Rendiment', 'En el mes').replace('En el mes últim mes', 'En l\'últim mes')} ha ${mPct.pct >= 0 ? 'crescut' : 'retrocedit'} un ${fPct(Math.abs(mPct.pct), false)}.`,
     );
   }
 
@@ -132,8 +131,8 @@ function buildSummary(portfolio: ClientPortfolio, metrics: PortfolioMetrics, val
   }
   const top = Object.entries(catMap).sort((a, b) => b[1] - a[1])[0];
   if (top && metrics.currentValue > 0) {
-    const pct = ((top[1] / metrics.currentValue) * 100).toFixed(0);
-    parts.push(`Categoria principal: ${top[0]} (${pct}% de la cartera).`);
+    const pct = Math.round((top[1] / metrics.currentValue) * 100);
+    parts.push(`Categoria principal: ${top[0]} (${pct} % de la cartera).`);
   }
 
   return parts.join(' ');
@@ -249,9 +248,9 @@ const HeroSection = memo(function HeroSection({
           <Tile label="Capital invertit"  value={fEur(metrics.totalInvested, true)} />
           <Tile label="Posicions actives" value={String(metrics.holdingCount)} />
           <Tile
-            label="Rendiment mes"
-            value={mPct !== null ? fPct(mPct) : 'N/D'}
-            color={mPct !== null ? (mPct >= 0 ? '#1e704c' : '#b42820') : undefined}
+            label={mPct?.label ?? 'Rendiment últim mes'}
+            value={mPct !== null ? fPct(mPct.pct) : 'N/D'}
+            color={mPct !== null ? (mPct.pct >= 0 ? '#1e704c' : '#b42820') : undefined}
           />
           <Tile
             label="Última actualit."
@@ -294,36 +293,79 @@ function Tile({ label, value, color }: { label: string; value: string; color?: s
 // EVOLUTION CHART
 // ─────────────────────────────────────────────────────────────────────────────
 
+const PERIODS: { id: Period; label: string; desc: string }[] = [
+  { id: 'month',   label: 'Mensual',    desc: 'cada final de mes' },
+  { id: 'quarter', label: 'Trimestral', desc: 'cada final de trimestre' },
+  { id: 'year',    label: 'Anual',      desc: 'cada final d\u2019any' },
+];
+
+const eurFull = (n: number) => n.toLocaleString('ca-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' €';
+const pctCa   = (n: number) => `${n >= 0 ? '+' : ''}${n.toLocaleString('ca-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} %`;
+
+function periodLabel(iso: string, period: Period, isLast: boolean): string {
+  const d = new Date(iso + 'T00:00:00');
+  const y = d.getFullYear();
+  const m = d.toLocaleString('ca-ES', { month: 'long' }).replace(/^de |^d’|^d'/, '');
+  const base = period === 'year' ? String(y)
+    : period === 'quarter' ? `T${Math.floor(d.getMonth() / 3) + 1} ${y}`
+    : `${m.charAt(0).toUpperCase()}${m.slice(1)} ${y}`;
+  // El període en curs encara no s'ha acabat: es diu fins a quin dia arriba
+  return isLast && !isPeriodEndDate(iso, period) ? `${base} (fins al ${fDate(iso)})` : base;
+}
+/** Últim dia del període anterior al que conté `iso` (p. ex. 2026-03-15, trimestral → 2025-12-31). */
+function previousPeriodEnd(iso: string, period: Period): string {
+  const y = Number(iso.slice(0, 4)), m = Number(iso.slice(5, 7)) - 1;
+  const startMonth = period === 'year' ? 0 : period === 'quarter' ? m - (m % 3) : m;
+  return new Date(Date.UTC(y, startMonth, 0)).toISOString().slice(0, 10);
+}
+function isPeriodEndDate(iso: string, period: Period): boolean {
+  const m = Number(iso.slice(5, 7));
+  const last = new Date(Date.UTC(Number(iso.slice(0, 4)), m, 0)).toISOString().slice(0, 10) === iso;
+  return last && (period === 'month' || (period === 'quarter' ? m % 3 === 0 : m === 12));
+}
+
 const EvolutionChart = memo(function EvolutionChart({
-  portfolio, metrics, valuation,
-}: { portfolio: ClientPortfolio; metrics: PortfolioMetrics; valuation?: Valuation | null }) {
+  portfolio, metrics, valuation, period, onPeriod,
+}: { portfolio: ClientPortfolio; metrics: PortfolioMetrics; valuation?: Valuation | null; period: Period; onPeriod: (p: Period) => void }) {
   // Primer, l'evolució calculada amb els valors liquidatius oficials dels fons;
   // si no n'hi ha prou (falten preus), els snapshots que registra l'assessor.
   const fromNavs = (valuation?.points.length ?? 0) >= 2;
+  // Amb valors oficials, el selector agrupa la sèrie per mesos, trimestres o anys
+  // (els mateixos càlculs que l'Excel): canvien els punts del gràfic i la taula.
+  const rows = useMemo(() => fromNavs ? aggregatePeriods(valuation!.points, period) : [], [fromNavs, valuation, period]);
   const data = useMemo(
     () => fromNavs
-      ? valuation!.points.map(p => ({ date: p.date, valor: p.value }))
+      ? rows.map(r => ({ date: r.date, valor: r.value, aportat: r.invested }))
       : [...portfolio.snapshots]
         .sort((a, b) => a.date.localeCompare(b.date))
-        .map(s => ({ date: s.date, valor: s.totalValue })),
-    [fromNavs, valuation, portfolio.snapshots],
+        .map(s => ({ date: s.date, valor: s.totalValue, aportat: undefined as number | undefined })),
+    [fromNavs, rows, portfolio.snapshots],
   );
 
   const isPos = metrics.pnlEur >= 0;
   const col   = isPos ? '#1e704c' : '#b42820';
   const gid   = isPos ? 'eg-pos' : 'eg-neg';
+  const desc  = PERIODS.find(p => p.id === period)!.desc;
+  const table = rows.filter(r => r.periodReturn !== null).slice(-8).reverse();
 
   return (
     <div className="bg-surface border border-line rounded-lg p-5 sm:p-6">
-      <div className="flex items-start justify-between mb-5">
+      <div className="flex flex-wrap items-start justify-between gap-3 mb-5">
         <div>
           <h3 className="text-ink font-semibold text-sm">Evolució patrimonial</h3>
           <p className="text-ink-muted text-xs mt-0.5">
-            {fromNavs ? 'Calculada cada final de mes amb els valors liquidatius oficials dels fons' : 'Snapshots registrats per l\u2019assessor'}
+            {fromNavs ? `Valor ${desc}, amb els valors liquidatius oficials dels fons` : 'Snapshots registrats per l\u2019assessor'}
           </p>
         </div>
-        {data.length >= 2 && (
-          <span className="text-sm font-bold" style={{ color: col }}>{fPct(metrics.pnlPct)}</span>
+        {fromNavs && (
+          <div role="group" aria-label="Període" className="flex rounded-lg border border-line overflow-hidden text-xs">
+            {PERIODS.map(p => (
+              <button key={p.id} type="button" onClick={() => onPeriod(p.id)} aria-pressed={period === p.id}
+                className={`px-3 py-1.5 transition-colors ${period === p.id ? 'bg-accent text-accent-ink font-semibold' : 'text-ink-soft hover:bg-subtle'}`}>
+                {p.label}
+              </button>
+            ))}
+          </div>
         )}
       </div>
 
@@ -343,6 +385,10 @@ const EvolutionChart = memo(function EvolutionChart({
               axisLine={false} tickLine={false}
               tickFormatter={(v: string) => {
                 const d = new Date(v + 'T00:00:00');
+                // El primer i l'últim punt poden no ser final de període (inici de la cartera, avui)
+                const end = isPeriodEndDate(v, period);
+                if (fromNavs && end && period === 'year') return String(d.getFullYear());
+                if (fromNavs && end && period === 'quarter') return `T${Math.floor(d.getMonth() / 3) + 1} ${String(d.getFullYear()).slice(2)}`;
                 const m = d.toLocaleString('ca-ES', { month: 'short' }).replace(/^de |^d’|^d'/, '');
                 return fromNavs ? `${m} ${String(d.getFullYear()).slice(2)}` : `${d.getDate()} ${m}`;
               }}
@@ -350,18 +396,21 @@ const EvolutionChart = memo(function EvolutionChart({
             <YAxis
               tick={{ fill: '#7a8681', fontSize: 10 }}
               axisLine={false} tickLine={false} width={46}
-              tickFormatter={(v: number) => v >= 1000 ? `${(v / 1000).toFixed(0)}K` : String(v)}
+              tickFormatter={(v: number) => v >= 1000 ? `${(v / 1000).toLocaleString('ca-ES', { maximumFractionDigits: 1 })}K` : String(v)}
             />
-            {metrics.totalInvested > 0 && (
-              <ReferenceLine y={metrics.totalInvested} stroke="#7a8681" strokeDasharray="4 4"
-                label={{ value: 'Capital invertit', fill: '#7a8681', fontSize: 9, position: 'insideTopRight' }} />
-            )}
             <ReTT
-              formatter={(v: number) => [fEur(v), 'Valor']}
+              formatter={(v: number, k: string) => [eurFull(v), k === 'aportat' ? 'Capital aportat' : 'Valor']}
               labelFormatter={(l: string) => fDate(l)}
               {...TT}
             />
-            <Area type="monotone" dataKey="valor"
+            {fromNavs ? (
+              <Area type={period === 'month' ? 'stepAfter' : 'linear'} dataKey="aportat" stroke="#7a8681" strokeDasharray="4 4" strokeWidth={1.5} fill="none" dot={false} activeDot={false} />
+            ) : metrics.totalInvested > 0 && (
+              <ReferenceLine y={metrics.totalInvested} stroke="#7a8681" strokeDasharray="4 4"
+                label={{ value: 'Capital invertit', fill: '#7a8681', fontSize: 9, position: 'insideTopRight' }} />
+            )}
+            {/* Línia recta entre punts: una corba suau inventaria valors entre dos finals de període */}
+            <Area type={fromNavs ? 'linear' : 'monotone'} dataKey="valor"
               stroke={col} strokeWidth={2} fill={`url(#${gid})`}
               dot={{ r: 3, fill: col, strokeWidth: 0 }}
               activeDot={{ r: 5, fill: col, strokeWidth: 0 }} />
@@ -369,6 +418,50 @@ const EvolutionChart = memo(function EvolutionChart({
         </ResponsiveContainer>
       ) : (
         <EmptyChart text="El gràfic apareixerà quan hi hagi preus oficials de tots els fons o l'assessor registri snapshots de la cartera" />
+      )}
+
+      {fromNavs && (
+        <p className="text-ink-muted text-[11px] mt-2">Línia contínua: valor de la cartera. Línia discontínua: diners que hi has posat.</p>
+      )}
+
+      {table.length > 0 && (
+        <div className="mt-5 overflow-x-auto">
+          <table className="w-full text-xs">
+            <thead>
+              <tr className="text-ink-muted border-b border-line">
+                <th className="text-left font-medium py-2 pr-3">Període</th>
+                <th className="text-right font-medium py-2 px-2">Valor al final</th>
+                <th className="hidden sm:table-cell text-right font-medium py-2 px-2">Aportacions</th>
+                <th className="hidden sm:table-cell text-right font-medium py-2 px-2">Guany</th>
+                <th className="text-right font-medium py-2 pl-2">Rendibilitat</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-line">
+              {table.map((r, i) => (
+                <tr key={r.date}>
+                  <td className="py-2 pr-3 text-ink-soft">
+                    {periodLabel(r.date, period, i === 0)}
+                    {/* Si el punt anterior no és el final del període just anterior (primera compra a mig període,
+                        o mesos sense valor liquidatiu), la rendibilitat cobreix més temps: es diu des de quan */}
+                    {(() => {
+                      const prev = rows[rows.findIndex(x => x.date === r.date) - 1];
+                      return prev && prev.date !== previousPeriodEnd(r.date, period)
+                        ? <span className="text-ink-muted"> (des del {fDate(prev.date)})</span> : null;
+                    })()}
+                  </td>
+                  <td className="py-2 px-2 text-right text-ink whitespace-nowrap">{eurFull(r.value)}</td>
+                  <td className="hidden sm:table-cell py-2 px-2 text-right text-ink-muted whitespace-nowrap">{Math.abs(r.flow) >= 0.005 ? eurFull(r.flow) : '—'}</td>
+                  <td className={`hidden sm:table-cell py-2 px-2 text-right whitespace-nowrap ${r.gain >= 0 ? 'text-positive' : 'text-negative'}`}>{eurFull(r.gain)}</td>
+                  <td className={`py-2 pl-2 text-right font-medium whitespace-nowrap ${(r.periodReturn ?? 0) >= 0 ? 'text-positive' : 'text-negative'}`}>{pctCa(r.periodReturn ?? 0)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+          <p className="text-ink-muted text-[11px] mt-2">
+            La rendibilitat de cada període no compta els diners que hi has posat (mètode Modified Dietz).
+            {rows.filter(r => r.periodReturn !== null).length > table.length ? ` Es mostren els ${table.length} últims; l'Excel els té tots.` : ''}
+          </p>
+        </div>
       )}
     </div>
   );
@@ -408,7 +501,7 @@ const DistributionPanel = memo(function DistributionPanel({
 
   const byCategory = useMemo(() => {
     const m: Record<string, number> = {};
-    for (const h of portfolio.holdings) {
+    for (const h of portfolio.holdings.filter(h => h.quantity > 0)) {   // les venudes del tot no compten
       const k = h.assetCategory || 'Altres';
       m[k] = (m[k] ?? 0) + h.currentPrice * h.quantity;
     }
@@ -423,7 +516,8 @@ const DistributionPanel = memo(function DistributionPanel({
     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
       {/* Donut */}
       <div className="bg-surface border border-line rounded-lg p-5">
-        <h3 className="text-ink font-semibold text-sm mb-4">Distribució per actiu</h3>
+        <h3 className="text-ink font-semibold text-sm">Distribució per actiu</h3>
+        <p className="text-ink-muted text-xs mt-0.5 mb-4">Avui, amb l&apos;últim valor liquidatiu de cada fons</p>
         <div className="flex items-center gap-4">
           <div className="flex-shrink-0">
             <ResponsiveContainer width={96} height={96}>
@@ -444,7 +538,7 @@ const DistributionPanel = memo(function DistributionPanel({
                   <span className="text-ink-muted text-xs truncate">{d.name}</span>
                 </div>
                 <span className="text-ink-muted text-xs flex-shrink-0 tabular-nums">
-                  {total > 0 ? ((d.val / total) * 100).toFixed(1) : 0}%
+                  {fPct1(total > 0 ? (d.val / total) * 100 : 0)}
                 </span>
               </div>
             ))}
@@ -463,7 +557,7 @@ const DistributionPanel = memo(function DistributionPanel({
             <div key={i}>
               <div className="flex items-center justify-between mb-1">
                 <span className="text-ink-muted text-xs truncate pr-2">{c.name}</span>
-                <span className="text-ink-muted text-xs flex-shrink-0 tabular-nums">{c.pct.toFixed(1)}%</span>
+                <span className="text-ink-muted text-xs flex-shrink-0 tabular-nums">{fPct1(c.pct)}</span>
               </div>
               <div className="h-1.5 bg-subtle rounded-full overflow-hidden">
                 <div className="h-full rounded-full transition-all duration-700"
@@ -551,7 +645,7 @@ const HoldingCard = memo(function HoldingCard({
               {h.assetSymbol && (
                 <span className="text-ink-muted text-xs font-mono bg-subtle px-1.5 py-0.5 rounded">{h.assetSymbol}</span>
               )}
-              <DataSourceBadge source={priceSourceId} variant="chip" />
+              {priceSourceId !== 'internal' && <DataSourceBadge source={priceSourceId} variant="chip" />}
             </div>
             <div className="flex items-center gap-2 text-xs text-ink-muted">
               {h.assetCategory && <span>{h.assetCategory}</span>}
@@ -573,7 +667,7 @@ const HoldingCard = memo(function HoldingCard({
         <StCell label="Preu entrada"   value={fEur(h.avgEntryPrice)}  />
         <StCell
           label="Participacions"
-          value={h.quantity % 1 === 0 ? String(h.quantity) : h.quantity.toFixed(4)}
+          value={h.quantity.toLocaleString('ca-ES', { maximumFractionDigits: 6 })}
         />
       </div>
 
@@ -581,7 +675,7 @@ const HoldingCard = memo(function HoldingCard({
       <div>
         <div className="flex items-center justify-between mb-1">
           <span className="text-ink-muted text-[10px]">Pes cartera</span>
-          <span className="text-ink-muted text-[10px] tabular-nums">{weight.toFixed(1)}%</span>
+          <span className="text-ink-muted text-[10px] tabular-nums">{fPct1(weight)}</span>
         </div>
         <div className="h-1 bg-subtle rounded-full overflow-hidden">
           <div className="h-full rounded-full transition-all duration-700"
@@ -589,9 +683,10 @@ const HoldingCard = memo(function HoldingCard({
         </div>
       </div>
 
-      {h.priceLastUpdated && (
-        <DataSourceBadge source={priceSourceId} updatedAt={h.priceLastUpdated} variant="inline" className="mt-2 block" />
-      )}
+      {/* Amb VL oficial ("manual" = sincronitzat de fund_navs) es diu en paraules de quin dia és el preu */}
+      {h.priceLastUpdated && (priceSourceId === 'internal'
+        ? <p className="mt-2 text-[11px] text-ink-muted">Valor liquidatiu oficial del {fDate(h.priceLastUpdated)}</p>
+        : <DataSourceBadge source={priceSourceId} updatedAt={h.priceLastUpdated} variant="inline" className="mt-2 block" />)}
     </div>
   );
 });
@@ -784,15 +879,18 @@ export default function ClientCarteraPage() {
   const [tab, setTab]             = useState<Tab>('overview');
   const [panelOpen, setPanelOpen] = useState(false);
   const [valuation, setValuation] = useState<Valuation | null>(null);
+  const [period, setPeriod]       = useState<Period>('month');   // agrupació del gràfic i de l'Excel
+  const [history, setHistory]     = useState<Record<string, MixHistory | null> | null>(null);
 
   useEffect(() => {
     if (status === 'unauthenticated') { router.push('/login'); return; }
     if (status === 'authenticated') {
       fetch('/api/client/portfolio')
         .then(r => r.json())
-        .then((d: { portfolio: ClientPortfolio | null; valuation?: Valuation | null }) => {
+        .then((d: { portfolio: ClientPortfolio | null; valuation?: Valuation | null; history?: Record<string, MixHistory | null> | null }) => {
           setPortfolio(d.portfolio ?? null);
           setValuation(d.valuation ?? null);
+          setHistory(d.history ?? null);
           setLoading(false);
         })
         .catch(() => setLoading(false));
@@ -891,14 +989,16 @@ export default function ClientCarteraPage() {
           <div className="space-y-5">
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
               <div className="lg:col-span-2 space-y-5">
-                <EvolutionChart portfolio={portfolio} metrics={metrics} valuation={valuation} />
-                <PortfolioExcelButton baseUrl="/api/client/portfolio/excel" className="justify-end -mt-2" />
+                <EvolutionChart portfolio={portfolio} metrics={metrics} valuation={valuation} period={period} onPeriod={setPeriod} />
+                <PortfolioExcelButton baseUrl="/api/client/portfolio/excel" className="justify-end -mt-2" period={period} />
                 <DistributionPanel portfolio={portfolio} total={metrics.currentValue} />
               </div>
               <div className="space-y-5">
                 <ExecutiveSummary portfolio={portfolio} metrics={metrics} valuation={valuation} />
               </div>
             </div>
+
+            <MixHistoryPanel history={history} />
 
             {/* Latest note preview */}
             {visibleNotes.length > 0 && (
