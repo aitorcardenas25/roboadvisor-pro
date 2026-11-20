@@ -198,7 +198,7 @@ export default function ClientProposal({ clientId, onApplied }: { clientId: stri
       const d = await res.json().catch(() => ({}));
       if (!res.ok) { setMsg({ ok: false, text: d.error ?? 'No s\'ha pogut enviar' }); return; }
       setMsg({ ok: true, text: `Informe v${p.version} enviat: ${data.client.name} ja el pot veure al portal.` });
-      await load();
+      await load(false);   // no esborra els canvis sense desar de l'editor
       onApplied?.();
     } finally { setBusy(null); }
   };
