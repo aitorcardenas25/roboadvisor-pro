@@ -40,7 +40,8 @@ export async function PATCH(req: NextRequest) {
 
   const rep = await getMonthlyReportById(parsed.data.id);
   if (!rep) return NextResponse.json({ error: 'Informe no trobat' }, { status: 404 });
-  const ok = await markMonthlyReportSent(rep.id);
+  // Si ja era visible al portal, només es torna a provar el correu (no es canvia la data d'enviament)
+  const ok = rep.sentAt ? true : await markMonthlyReportSent(rep.id);
   if (!ok) return NextResponse.json({ error: 'No s\'ha pogut marcar com a enviat' }, { status: 500 });
 
   // Avís per correu. L'informe ja és visible al portal encara que el correu falli.

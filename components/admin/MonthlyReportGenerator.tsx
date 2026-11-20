@@ -97,7 +97,7 @@ export default function MonthlyReportGenerator() {
         ? { ok: true, text: 'Informe enviat: el client ja el veu al portal i li hem enviat un correu d\'avís.' }
         : { ok: false, text: `El client ja el veu al portal, però el correu d'avís no s'ha pogut enviar (${d.email?.error ?? 'error desconegut'}).` });
       const now = new Date().toISOString();
-      setHistory(prev => prev.map(r => r.id === id ? { ...r, sentAt: now, emailedAt: d.email?.sent ? now : r.emailedAt } : r));
+      setHistory(prev => prev.map(r => r.id === id ? { ...r, sentAt: r.sentAt ?? now, emailedAt: d.email?.sent ? now : r.emailedAt } : r));
       if (savedReportId === id) setSavedReportId(null);
     } finally { setMarkingSent(null); }
   }
@@ -237,7 +237,15 @@ export default function MonthlyReportGenerator() {
                   </div>
                   <div className="flex items-center gap-3">
                     {r.sentAt ? (
-                      <span className="text-xs text-positive/70">✓ Enviat al client el {new Date(r.sentAt).toLocaleDateString('ca-ES')}{r.emailedAt ? ' · correu enviat' : ' · sense correu'}</span>
+                      <>
+                        <span className="text-xs text-positive/70">✓ Enviat al client el {new Date(r.sentAt).toLocaleDateString('ca-ES')}{r.emailedAt ? ' · correu enviat' : ' · sense correu'}</span>
+                        {!r.emailedAt && (
+                          <button onClick={() => handleMarkSent(r.id)} disabled={markingSent === r.id}
+                            className="text-xs text-accent hover:underline disabled:opacity-50">
+                            {markingSent === r.id ? 'Enviant…' : 'Tornar a enviar el correu'}
+                          </button>
+                        )}
+                      </>
                     ) : (
                       <button
                         onClick={() => handleMarkSent(r.id)}

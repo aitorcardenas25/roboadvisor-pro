@@ -14,6 +14,7 @@ import {
   getProposals, saveDraft, approveProposal, shareProposal, fundOptions,
   itemsFromHoldings, verifiedPerformance, proposalStats, checkProposalSuitability, getProposal, PROFILES, type ProposalItem, type ProposalProfile, type NavPerformanceMap,
 } from '@/lib/proposals';
+import type { ClientProposal } from '@/lib/proposalMath';
 import { PROFILE_MODELS, templateItems } from '@/lib/proposalTemplates';
 import { saveReport } from '@/lib/reportRegistry';
 import { sendReportReady } from '@/lib/emails';
@@ -56,6 +57,7 @@ const PostSchema = z.discriminatedUnion('action', [
   z.object({ action: z.literal('suggest'), profile: z.enum(PROFILES), initialAmount: z.number().min(0), monthlyAmount: z.number().min(0) }),
   z.object({ action: z.literal('fromHoldings') }),
   z.object({ action: z.literal('share'), id: z.string().min(1) }),   // envia l'informe inicial al client
+  z.object({ action: z.literal('notify'), id: z.string().min(1) }),  // torna a enviar el correu d'avís (informe ja enviat)
   z.object({
     action: z.literal('apply'), id: z.string().min(1),
     date:   z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
@@ -148,13 +150,23 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     return NextResponse.json({ items: suggestItems(body.profile, await getNavPerformanceMap()) });
   }
 
-  if (body.action === 'share') {
-    const res = await shareProposal(id, body.id, session.user?.email ?? 'admin');
-    if (!res.ok) return NextResponse.json({ error: res.error }, { status: 422 });
-    logAuditEvent('proposal.shared', {
-      userId: session.user?.id, userEmail: session.user?.email, resource: body.id,
-      metadata: { clientId: id, version: res.proposal.version },
-    });
+  if (body.action === 'share' || body.action === 'notify') {
+    let proposal: ClientProposal;
+    if (body.action === 'share') {
+      const res = await shareProposal(id, body.id, session.user?.email ?? 'admin');
+      if (!res.ok) return NextResponse.json({ error: res.error }, { status: 422 });
+      proposal = res.proposal;
+      logAuditEvent('proposal.shared', {
+        userId: session.user?.id, userEmail: session.user?.email, resource: body.id,
+        metadata: { clientId: id, version: proposal.version },
+      });
+    } else {
+      const found = await getProposal(id, body.id);
+      if (!found || found.status !== 'approved' || !found.sharedAt) {
+        return NextResponse.json({ error: 'Aquest informe encara no s\'ha enviat al client' }, { status: 422 });
+      }
+      proposal = found;
+    }
     // Avís per correu. L'informe ja és visible al portal encara que el correu falli.
     const mail = ctx.user.email
       ? await sendReportReady(ctx.user.email, ctx.user.name)
@@ -163,7 +175,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
       userId: session.user?.id, userEmail: session.user?.email, resource: id,
       metadata: { ok: mail.success, error: mail.error, proposalId: body.id },
     });
-    return NextResponse.json({ proposal: withStats(res.proposal), email: { sent: mail.success, error: mail.error } });
+    return NextResponse.json({ proposal: withStats(proposal), email: { sent: mail.success, error: mail.error } });
   }
 
   if (body.action === 'apply') {

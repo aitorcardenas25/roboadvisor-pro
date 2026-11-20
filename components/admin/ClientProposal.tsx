@@ -205,6 +205,18 @@ export default function ClientProposal({ clientId, onApplied }: { clientId: stri
     } finally { setBusy(null); }
   };
 
+  // Torna a enviar el correu d'avís d'un informe que el client ja veu (p. ex. si abans fallava el correu)
+  const onNotify = async (p: ClientProposal) => {
+    setBusy(`notify-${p.id}`); setMsg(null);
+    try {
+      const res = await fetch(api, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'notify', id: p.id }) });
+      const d = await res.json().catch(() => ({}));
+      if (!res.ok) { setMsg({ ok: false, text: d.error ?? 'No s\'ha pogut enviar' }); return; }
+      setMsg(d.email?.sent ? { ok: true, text: `Correu d'avís enviat a ${data.client.name}.` }
+        : { ok: false, text: `El correu no s'ha pogut enviar (${d.email?.error ?? 'error desconegut'}).` });
+    } finally { setBusy(null); }
+  };
+
   const onApprove = async () => {
     if (!confirm('Un cop aprovada, aquesta versió queda congelada i es genera l\'informe. Continuar?')) return;
     setBusy('approve'); setMsg(null);
@@ -454,7 +466,10 @@ export default function ClientProposal({ clientId, onApplied }: { clientId: stri
                 {p.suitabilityOverride && <span className="text-negative" title={p.suitabilityOverride}>No idònia (justificada)</span>}
                 <span className="text-ink-soft">{p.items.length} fons · {PROFILE_LABEL[p.profile]} · {p.stats.complete ? `${pct(p.stats.netReturn)} net` : 'dades incompletes'}</span>
                 {p.status === 'approved' && (p.sharedAt
-                  ? <span className="text-positive/80">Enviat al client el {new Date(p.sharedAt).toLocaleDateString('ca-ES')}</span>
+                  ? <span className="text-positive/80">Enviat al client el {new Date(p.sharedAt).toLocaleDateString('ca-ES')}{' '}
+                      <button disabled={!!busy} onClick={() => onNotify(p)} className="text-accent hover:underline disabled:opacity-40">
+                        {busy === `notify-${p.id}` ? 'Enviant…' : 'Tornar a enviar el correu'}
+                      </button></span>
                   : <span className="text-warning">Encara no l&apos;ha vist el client</span>)}
                 {p.status === 'approved' && (
                   <span className="ml-auto flex gap-2">
