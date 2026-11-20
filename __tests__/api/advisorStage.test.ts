@@ -10,3 +10,14 @@ describe('advisorStage (pas de l\'alta a l\'admin)', () => {
     expect(advisorStage({ questionnaireData: null, proposals: [], holdings: 3 })).toBe('actiu');
   });
 });
+
+import { onboardingStatus } from '@/lib/onboarding';
+
+describe('portal bloquejat fins a l\'informe aprovat', () => {
+  it('només s\'obre amb una proposta aprovada o una cartera', () => {
+    expect(onboardingStatus({ questionnaireData: { monthlyNetIncome: 2000 }, latestProposal: null, holdings: 0 }).released).toBe(false);
+    expect(onboardingStatus({ questionnaireData: null, latestProposal: 'draft', holdings: 0 }).released).toBe(false);
+    expect(onboardingStatus({ questionnaireData: null, latestProposal: 'approved', holdings: 0 }).released).toBe(true);
+    expect(onboardingStatus({ questionnaireData: null, latestProposal: null, holdings: 2 }).released).toBe(true);
+  });
+});

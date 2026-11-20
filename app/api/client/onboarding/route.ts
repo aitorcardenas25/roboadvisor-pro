@@ -21,7 +21,8 @@ export async function GET() {
     ]);
     const status = onboardingStatus({
       questionnaireData: lead?.questionnaireData ?? null,
-      latestProposal: proposals[0]?.status ?? null,
+      // Un cop aprovada una versió, una nova versió en esborrany no torna a tancar el portal
+      latestProposal: proposals.some(p => p.status === 'approved') ? 'approved' : proposals[0]?.status ?? null,
       holdings: portfolio?.holdings.length ?? 0,
     });
     return NextResponse.json(status, { headers: { 'Cache-Control': 'no-store' } });

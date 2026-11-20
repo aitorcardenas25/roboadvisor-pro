@@ -11,6 +11,8 @@ export interface OnboardingStatus {
   steps: OnboardingStep[];
   /** Tots els passos fets: la guia ja no cal a la portada. */
   complete: boolean;
+  /** L'assessor ja ha aprovat l'informe inicial (o hi ha cartera): el client veu tot el portal. */
+  released: boolean;
 }
 
 export interface OnboardingInput {
@@ -42,7 +44,7 @@ export function onboardingStatus(i: OnboardingInput): OnboardingStatus {
     { id: 'proposta',  state: proposalDone ? 'fet' : (data || i.latestProposal === 'draft') ? 'en-curs' : 'pendent' },
     { id: 'seguiment', state: portfolio ? 'fet' : proposalDone ? 'en-curs' : 'pendent' },
   ];
-  return { steps, complete: steps.every(s => s.state === 'fet') };
+  return { steps, complete: steps.every(s => s.state === 'fet'), released: proposalDone };
 }
 
 // ── Alta del client vista per l'assessor ─────────────────────────────────────
