@@ -9,12 +9,14 @@ import { findUserById } from '@/lib/users';
 import { logAuditEvent } from '@/lib/auditLog';
 import { sendDeletionRequestToAdmin } from '@/lib/emails';
 import { rateLimit, rateLimitResponse } from '@/lib/rateLimiter';
+import { isPreviewSession, previewReadOnly } from '@/lib/clientTarget';
 
 type S = { user?: { id?: string; email?: string; name?: string; role?: string } } | null;
 
 const BodySchema = z.object({ reason: z.string().trim().max(500).optional() }).strict();
 
 export async function POST(req: NextRequest) {
+  if (await isPreviewSession()) return previewReadOnly();
   const session = await getServerSession(authOptions) as S;
   const userId = session?.user?.id;
   const role   = session?.user?.role;

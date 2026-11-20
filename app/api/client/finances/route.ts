@@ -2,8 +2,6 @@
 // PUT → el client omple o corregeix el pressupost i els objectius des del portal (sense Excel).
 // Només es consulta i es modifica la fitxa de l'usuari de la sessió: mai la d'un altre client.
 import { NextRequest, NextResponse } from 'next/server';
-import { getServerSession } from 'next-auth';
-import { authOptions } from '@/lib/authOptions';
 import { findLeadForUser, createLead, saveLeadQuestionnaire } from '@/lib/leads';
 import { findUserById } from '@/lib/users';
 import { pickFinanceFields } from '@/lib/budget';
@@ -11,16 +9,11 @@ import { FinanceUpdateSchema, applyFinanceUpdate } from '@/lib/clientData';
 import { logAuditEvent } from '@/lib/auditLog';
 import { rateLimit, rateLimitResponse } from '@/lib/rateLimiter';
 import { recordActivity } from '@/lib/betaActivity';
+import { getClientTarget, previewReadOnly } from '@/lib/clientTarget';
 import { getConsent } from '@/lib/betaConsent';
 
-type S = { user?: { id?: string; email?: string; name?: string; role?: string } } | null;
 
-async function sessionUser() {
-  const session = await getServerSession(authOptions) as S;
-  const u = session?.user;
-  if (!u?.id || (u.role !== 'client' && u.role !== 'admin')) return null;
-  return { id: u.id, email: u.email ?? null, name: u.name ?? null, role: u.role };
-}
+async function sessionUser() { return getClientTarget(); }
 
 export async function GET() {
   const user = await sessionUser();
@@ -33,6 +26,7 @@ export async function GET() {
 export async function PUT(req: NextRequest) {
   const user = await sessionUser();
   if (!user) return NextResponse.json({ error: 'No autoritzat' }, { status: 401 });
+  if (user.preview) return previewReadOnly();
 
   const rl = rateLimit(`client-finances:${user.id}`, 20, 60_000);
   if (!rl.ok) return rateLimitResponse(rl.resetInMs);

@@ -1,6 +1,4 @@
 import { NextResponse } from 'next/server';
-import { getServerSession } from 'next-auth';
-import { authOptions } from '@/lib/authOptions';
 import { getPortfolioByClientId } from '@/lib/clientPortfolios';
 import { recordActivity } from '@/lib/betaActivity';
 import { loadValuation } from '@/lib/portfolioExcel';
@@ -8,6 +6,7 @@ import type { Valuation } from '@/lib/portfolioValuation';
 import { getNavs } from '@/lib/fundNavs';
 import { simulateMix, type MixHistory } from '@/lib/mixHistory';
 import type { ClientPortfolio } from '@/lib/clientPortfolios';
+import { getClientTarget } from '@/lib/clientTarget';
 
 /** Composició d'avui (pes per valor amb l'últim VL oficial) simulada a 1, 3 i 5 anys. */
 async function loadMixHistory(portfolio: ClientPortfolio): Promise<Record<string, MixHistory | null> | null> {
@@ -27,14 +26,13 @@ async function loadMixHistory(portfolio: ClientPortfolio): Promise<Record<string
   return { '1': simulateMix(weights, navs, 1), '3': simulateMix(weights, navs, 3), '5': simulateMix(weights, navs, 5) };
 }
 
-type S = { user?: { id?: string; role?: string } } | null;
 
 export async function GET() {
-  const session = await getServerSession(authOptions) as S;
-  const userId  = session?.user?.id;
-  const role    = session?.user?.role;
+  const t = await getClientTarget();
+  const userId = t?.id;
+  const role   = t?.role;
 
-  if (!userId || (role !== 'client' && role !== 'admin')) {
+  if (!userId) {
     return NextResponse.json({ error: 'No autoritzat' }, { status: 401 });
   }
 

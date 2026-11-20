@@ -1,19 +1,16 @@
 // GET → en quin dels 3 primers passos és el client de la sessió.
 // Només llegeix dades del mateix usuari (mai d'un altre client).
 import { NextResponse } from 'next/server';
-import { getServerSession } from 'next-auth';
-import { authOptions } from '@/lib/authOptions';
 import { findLeadForUser } from '@/lib/leads';
 import { getProposals } from '@/lib/proposals';
 import { getPortfolioByClientId } from '@/lib/clientPortfolios';
 import { onboardingStatus } from '@/lib/onboarding';
+import { getClientTarget } from '@/lib/clientTarget';
 
-type S = { user?: { id?: string; email?: string; role?: string } } | null;
 
 export async function GET() {
-  const session = await getServerSession(authOptions) as S;
-  const u = session?.user;
-  if (!u?.id || (u.role !== 'client' && u.role !== 'admin')) {
+  const u = await getClientTarget();
+  if (!u) {
     return NextResponse.json({ error: 'No autoritzat' }, { status: 401 });
   }
   try {

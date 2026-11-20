@@ -19,6 +19,7 @@ import type { MixHistory } from '@/lib/mixHistory';
 import { DataSourceBadge } from '@/components/DataSourceBadge';
 import { DataSourcePanel } from '@/components/DataSourcePanel';
 import { CLIENT_TAX_REPORT_ENABLED } from '@/lib/featureFlags';
+import { useClientName } from '@/components/client/ClientPreview';
 
 // ── Formatters ─────────────────────────────────────────────────────────────
 
@@ -915,7 +916,7 @@ export default function ClientCarteraPage() {
     }
   }, [status, router]);
 
-  const name = (session?.user as { name?: string } | undefined)?.name ?? 'Client';
+  const name = useClientName((session?.user as { name?: string } | undefined)?.name) || 'Client';
 
   if (status === 'loading' || loading) return <SkeletonPage />;
   if (!portfolio) return <EmptyPortfolio name={name} />;

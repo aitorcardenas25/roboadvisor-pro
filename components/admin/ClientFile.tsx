@@ -15,6 +15,8 @@ import { PortfolioEditor, NotesTab } from './PortfolioEditor';
 import BudgetOverview from '@/components/finances/BudgetOverview';
 import OneOffExpenses from '@/components/finances/OneOffExpenses';
 import WealthView from '@/components/wealth/WealthView';
+import type { AdvisorStage } from '@/lib/onboarding';
+import { StageBar, PreviewButton, ManualFinances, InternalNotes } from './ClientFileExtras';
 
 // r.date es desa com a text "dd/mm/aaaa" i new Date() el llegeix com a Invalid Date
 const PROFILE_NAMES: Record<string, string> = { conservador: 'conservador', moderat: 'moderat', dinamic: 'dinàmic', agressiu: 'agressiu' };
@@ -32,6 +34,7 @@ interface ClientFileData {
   reports:   ReportRecord[];
   monthly:   MonthlyReportRecord[];
   audit:     AuditEntry[];
+  stage?:    AdvisorStage;
 }
 
 // Fitxa de client (beta 2026-11-18): 5 pestanyes en l'ordre real de la feina.
@@ -137,8 +140,11 @@ export default function ClientFile({
           </div>
           <p className="text-ink-muted text-sm">{user.email} · @{user.username}</p>
         </div>
-        <button onClick={() => load()} className="text-ink-muted hover:text-ink text-xs transition-colors">↻</button>
+        {user.role === 'client' && <PreviewButton clientId={clientId} />}
+        <button onClick={() => load()} title="Tornar a carregar" className="text-ink-muted hover:text-ink text-xs transition-colors">↻</button>
       </div>
+
+      {data.stage && <StageBar stage={data.stage} onGo={setTab} />}
 
       {/* KPIs ràpids */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
@@ -180,6 +186,7 @@ export default function ClientFile({
             </section>
             <section className="space-y-6">
               <SectionTitle>Finances</SectionTitle>
+              <ManualFinances clientId={clientId} data={lead?.questionnaireData ?? {}} onSaved={() => load(true)} />
               <OneOffExpenses endpoint={`/api/admin/clients/${clientId}/expenses`} data={lead?.questionnaireData ?? {}} audience="admin"
                 onChange={() => load(true)} />
               <BudgetOverview data={lead?.questionnaireData} goalsTitle="Objectius del client" audience="admin" />
@@ -343,9 +350,12 @@ export default function ClientFile({
 
         {/* NOTES */}
         {tab === 'notes' && (
-          portfolio
-            ? <NotesTab portfolio={portfolio} reload={() => load(true)} />
-            : <Empty>Les notes van lligades a la cartera. Primer cal crear-la des de la Proposta.</Empty>
+          <div className="space-y-6">
+            <InternalNotes key={lead?.id ?? 'nou'} clientId={clientId} initial={lead?.notes ?? ''} />
+            {portfolio
+              ? <NotesTab portfolio={portfolio} reload={() => load(true)} />
+              : <p className="text-ink-muted text-xs">Les notes que pot veure el client (a la seva cartera) apareixeran quan tingui cartera activa.</p>}
+          </div>
         )}
       </div>
 

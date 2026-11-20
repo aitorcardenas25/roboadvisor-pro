@@ -9,6 +9,10 @@ import { logAuditEvent } from '@/lib/auditLog';
 import { rateLimit, LIMITS, rateLimitResponse } from '@/lib/rateLimiter';
 import { sendBetaWelcome } from '@/lib/emails';
 import { z } from 'zod';
+import { getAllLeads } from '@/lib/leads';
+import { getAllProposals } from '@/lib/proposals';
+import { getAllClientPortfolios } from '@/lib/clientPortfolios';
+import { advisorStage } from '@/lib/onboarding';
 
 const CreateSchema = z.object({
   username:    z.string().trim().min(3, 'Usuari massa curt').max(60).regex(/^[\w.@-]+$/, 'Usuari: només lletres, números, punt, guió i @'),
@@ -32,7 +36,21 @@ function getIp(req: NextRequest): string {
 export async function GET(_req: NextRequest) {
   const session = await getServerSession(authOptions) as SessionLike;
   if (!isAdmin(session)) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-  return NextResponse.json({ users: await getAllUsers() });
+  const [users, leads, proposals, portfolios] = await Promise.all([
+    getAllUsers(), getAllLeads().catch(() => []), getAllProposals().catch(() => []), getAllClientPortfolios().catch(() => []),
+  ]);
+  // Pas de l'alta de cada client: dades → proposta → informe aprovat → cartera activa
+  const withStage = users.map(u => {
+    if (u.role !== 'client') return u;
+    const lead = leads.find(l => l.linkedUserId === u.id) ?? leads.find(l => l.email?.toLowerCase() === u.email.toLowerCase());
+    const stage = advisorStage({
+      questionnaireData: lead?.questionnaireData ?? null,
+      proposals: proposals.filter(p => p.clientId === u.id).map(p => p.status),
+      holdings: portfolios.find(p => p.clientId === u.id)?.holdings.length ?? 0,
+    });
+    return { ...u, stage };
+  });
+  return NextResponse.json({ users: withStage });
 }
 
 export async function POST(req: NextRequest) {

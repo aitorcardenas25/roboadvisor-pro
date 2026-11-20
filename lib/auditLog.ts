@@ -24,6 +24,7 @@ export type AuditAction =
   | 'client.expense_added'
   | 'client.expense_removed'
   | 'client.wealth_updated'
+  | 'client.preview_opened'
   | 'newsletter.sent'
   | 'fund.created'
   | 'fund.updated'

@@ -44,8 +44,11 @@ function toGoalRows(v: unknown): GoalRow[] {
   }));
 }
 
-export default function FinancesForm({ data, onSaved, onCancel }: {
+export default function FinancesForm({ data, onSaved, onCancel, endpoint = '/api/client/finances', title = 'Les meves dades' }: {
   data: Record<string, unknown>;
+  /** On es desa: el client, el seu; l'assessor, /api/admin/clients/{id}/finances. */
+  endpoint?: string;
+  title?: string;
   onSaved: (data: Record<string, unknown>) => void;
   onCancel?: () => void;
 }) {
@@ -87,7 +90,7 @@ export default function FinancesForm({ data, onSaved, onCancel }: {
 
     setSaving(true);
     try {
-      const r = await fetch('/api/client/finances', {
+      const r = await fetch(endpoint, {
         method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body),
       });
       const j = await r.json().catch(() => ({}));
@@ -103,7 +106,7 @@ export default function FinancesForm({ data, onSaved, onCancel }: {
   return (
     <form onSubmit={submit} className={`${card} space-y-5`}>
       <div>
-        <h2 className="text-ink font-semibold">Les meves dades</h2>
+        <h2 className="text-ink font-semibold">{title}</h2>
         <p className="text-ink-muted text-xs mt-1">Xifres aproximades i mensuals. Si no saps alguna dada, deixa-la en blanc.</p>
       </div>
 

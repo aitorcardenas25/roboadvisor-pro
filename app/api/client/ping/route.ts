@@ -6,11 +6,13 @@ import { z } from 'zod';
 import { authOptions } from '@/lib/authOptions';
 import { recordActivity } from '@/lib/betaActivity';
 import { rateLimit } from '@/lib/rateLimiter';
+import { isPreviewSession } from '@/lib/clientTarget';
 
 type S = { user?: { id?: string; role?: string } } | null;
 const BodySchema = z.object({ page: z.enum(['finances', 'cartera', 'altres']).default('altres') });
 
 export async function POST(req: NextRequest) {
+  if (await isPreviewSession()) return new NextResponse(null, { status: 204 });
   const session = await getServerSession(authOptions) as S;
   const userId = session?.user?.id;
   // Només es mesura els clients; l'admin no compta.

@@ -44,3 +44,29 @@ export function onboardingStatus(i: OnboardingInput): OnboardingStatus {
   ];
   return { steps, complete: steps.every(s => s.state === 'fet') };
 }
+
+// ── Alta del client vista per l'assessor ─────────────────────────────────────
+// Dades (Excel o a mà) → proposta → informe aprovat → cartera activa.
+export type AdvisorStage = 'sense-dades' | 'dades' | 'esborrany' | 'aprovat' | 'actiu';
+
+export const ADVISOR_STAGE_LABEL: Record<AdvisorStage, string> = {
+  'sense-dades': 'Falten les dades',
+  'dades':       'Dades rebudes · falta la proposta',
+  'esborrany':   'Proposta en esborrany',
+  'aprovat':     'Informe aprovat · falta la cartera',
+  'actiu':       'Cartera activa',
+};
+
+export interface AdvisorStageInput {
+  questionnaireData?: Record<string, unknown> | null;
+  /** Estats de totes les propostes del client (qualsevol ordre). */
+  proposals: ('draft' | 'approved')[];
+  holdings: number;
+}
+
+export function advisorStage(i: AdvisorStageInput): AdvisorStage {
+  if (i.holdings > 0) return 'actiu';
+  if (i.proposals.includes('approved')) return 'aprovat';
+  if (i.proposals.includes('draft')) return 'esborrany';
+  return hasClientData(i.questionnaireData) ? 'dades' : 'sense-dades';
+}

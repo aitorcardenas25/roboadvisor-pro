@@ -9,6 +9,7 @@ import MyDataCard from '@/components/finances/MyDataCard';
 import PasswordCard from '@/components/finances/PasswordCard';
 import OneOffExpenses from '@/components/finances/OneOffExpenses';
 import { analyzeBudget } from '@/lib/budget';
+import { useClientName } from '@/components/client/ClientPreview';
 
 const n = (v: unknown) => (typeof v === 'number' && Number.isFinite(v) ? v : undefined);
 function hasBudget(d: Record<string, unknown>): boolean {
@@ -42,7 +43,7 @@ export default function ClientFinancesPage() {
       .finally(() => setLoading(false));
   }, []);
 
-  const name = session?.user?.name ?? '';
+  const name = useClientName(session?.user?.name);
 
   return (
     <div className="theme-client min-h-screen bg-canvas">

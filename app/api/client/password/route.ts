@@ -6,6 +6,7 @@ import { authOptions } from '@/lib/authOptions';
 import { findUserById, findUserByCredentials, updatePassword } from '@/lib/users';
 import { logAuditEvent } from '@/lib/auditLog';
 import { rateLimit, LIMITS, rateLimitResponse } from '@/lib/rateLimiter';
+import { isPreviewSession, previewReadOnly } from '@/lib/clientTarget';
 
 type S = { user?: { id?: string; email?: string; role?: string } } | null;
 
@@ -15,6 +16,7 @@ const BodySchema = z.object({
 }).strict();
 
 export async function PUT(req: NextRequest) {
+  if (await isPreviewSession()) return previewReadOnly();
   const session = await getServerSession(authOptions) as S;
   const userId = session?.user?.id;
   if (!userId || (session?.user?.role !== 'client' && session?.user?.role !== 'admin')) {

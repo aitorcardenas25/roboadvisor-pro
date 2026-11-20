@@ -1,18 +1,16 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getServerSession } from 'next-auth';
-import { authOptions } from '@/lib/authOptions';
 import { getPortfolioByClientId } from '@/lib/clientPortfolios';
 import { getMonthlyReportsByPortfolio } from '@/lib/monthlyReports';
 import { recordActivity } from '@/lib/betaActivity';
+import { getClientTarget } from '@/lib/clientTarget';
 
-type S = { user?: { id?: string; role?: string } } | null;
 
 export async function GET(req: NextRequest) {
-  const session = await getServerSession(authOptions) as S;
-  const userId  = session?.user?.id;
-  const role    = session?.user?.role;
+  const t = await getClientTarget();
+  const userId = t?.id;
+  const role   = t?.role;
 
-  if (!userId || (role !== 'client' && role !== 'admin')) {
+  if (!userId) {
     return NextResponse.json({ error: 'No autoritzat' }, { status: 401 });
   }
 
