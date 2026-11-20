@@ -67,7 +67,8 @@ export default function ClientFinancesPage() {
 
       <main className="max-w-5xl mx-auto px-4 py-6 sm:py-8">
         <h1 className="text-ink font-bold text-2xl mb-1">{name ? `Hola, ${name.split(' ')[0]}` : 'Les meves finances'}</h1>
-        <p className="text-ink-muted text-sm mb-6">Primer, ordenar el pressupost i el fons d&apos;emergència. Després, invertir.</p>
+        <p className="text-ink-muted text-sm mb-2">Primer, ordenar el pressupost i el fons d&apos;emergència. Després, invertir.</p>
+        <Link href="/client/informe-inicial" className="inline-block text-accent text-sm hover:underline mb-6">Veure el meu informe inicial (punt de partida i objectius) →</Link>
 
         {loading && (
           <div className="flex items-center justify-center py-24" role="status" aria-label="Carregant">

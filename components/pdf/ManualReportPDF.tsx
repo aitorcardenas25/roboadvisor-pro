@@ -6,6 +6,8 @@ import {
 import type { ManualPortfolioInput, ManualAsset } from '@/lib/manualReport';
 import { capmReturn, CAPM_ASSUMPTIONS } from '@/lib/navMath';
 
+const GOAL_HORIZON: Record<string, string> = { curt: 'Curt termini', mitja: 'Mitjà termini', llarg: 'Llarg termini' };
+
 // Desactiva la partició de paraules: text net, sense guions de tall, com en
 // un document editorial professional.
 Font.registerHyphenationCallback(word => [word]);
@@ -690,6 +692,17 @@ function FinancialProfilePage({ d }: { d: ManualPortfolioInput }) {
             <DataRow label="Autonomia amb la liquiditat actual" value={`${fNum(c.mesosAutonomia, 0)} mesos de despeses`} />
           </View>
         </View>
+        {/* Objectius que el client va escriure (Excel o formulari): són la foto inicial del pla */}
+        {d.goals && d.goals.length > 0 && (
+          <View style={{ marginTop: 10 }}>
+            <Text style={S.subTag}>Els teus objectius</Text>
+            {d.goals.map((g, i) => (
+              <DataRow key={i}
+                label={`${GOAL_HORIZON[g.horizon ?? ''] ?? 'Sense termini'} · ${g.description}`}
+                value={[g.amount ? fEur(g.amount) : null, g.targetYear ? String(g.targetYear) : null].filter(Boolean).join(' · ') || 'Sense import'} />
+            ))}
+          </View>
+        )}
       </View>
     </Page>
   );

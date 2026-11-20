@@ -277,6 +277,16 @@ export function proposalToReportInput(
     deutes:          num('totalDebt'),
     patrimoni:       num('netWorth'),
     fondEmergencia:  num('currentSavings'),
+    goals:           Array.isArray(personal.goals)
+      ? (personal.goals as Record<string, unknown>[])
+          .filter(g => typeof g?.description === 'string' && (g.description as string).trim())
+          .map(g => ({
+            description: String(g.description).trim(),
+            horizon:     typeof g.horizon === 'string' ? g.horizon : undefined,
+            amount:      typeof g.amount === 'number' && g.amount > 0 ? g.amount : undefined,
+            targetYear:  typeof g.targetYear === 'number' ? g.targetYear : undefined,
+          }))
+      : undefined,
   };
 }
 

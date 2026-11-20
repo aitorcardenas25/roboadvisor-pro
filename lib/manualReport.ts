@@ -35,6 +35,8 @@ export interface ManualPortfolioInput {
   patrimoni?:       number;
   fondEmergencia?:  number;
   objectiuAmount?:  number;
+  /** Objectius escrits pel client (Excel o formulari), tal com estan a les seves dades. */
+  goals?:           { horizon?: string; description: string; amount?: number; targetYear?: number }[];
 }
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────

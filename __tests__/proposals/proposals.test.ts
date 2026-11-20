@@ -189,6 +189,24 @@ describe('informe i Excel', () => {
     expect(input.assets[0].weight).toBe(100);
   });
 
+  it('passa els objectius del client a l\'informe inicial (sense els buits ni imports a 0)', async () => {
+    const p = await saveDraft('c1', { ...params, items: [item('A', 100)] });
+    const input = proposalToReportInput(p, { name: 'Marta', email: 'm@x' }, {
+      goals: [
+        { horizon: 'curt', description: ' Fons d\'emergència ', amount: 4000 },
+        { horizon: 'mitja', description: 'Entrada d\'un pis', amount: 25000, targetYear: 2030 },
+        { horizon: 'llarg', description: 'Jubilació', amount: 0 },
+        { horizon: 'llarg', description: '   ' },
+      ],
+    });
+    expect(input.goals).toEqual([
+      { horizon: 'curt', description: 'Fons d\'emergència', amount: 4000, targetYear: undefined },
+      { horizon: 'mitja', description: 'Entrada d\'un pis', amount: 25000, targetYear: 2030 },
+      { horizon: 'llarg', description: 'Jubilació', amount: undefined, targetYear: undefined },
+    ]);
+    expect(proposalToReportInput(p, { name: 'M', email: 'm@x' }, {}).goals).toBeUndefined();
+  });
+
   it('Excel d\'una proposta incompleta: cap xifra de rendiment ni projecció', async () => {
     const p = await saveDraft('c1', { ...params, items: [item('A', 100, { performanceSource: undefined })] });
     const wb = new ExcelJS.Workbook();
