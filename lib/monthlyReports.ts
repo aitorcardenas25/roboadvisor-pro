@@ -101,3 +101,26 @@ export async function markMonthlyReportSent(id: string): Promise<boolean> {
   const { error } = await db.from('monthly_reports').update({ sent_at: now }).eq('id', id);
   return !error;
 }
+
+export async function getMonthlyReportById(id: string): Promise<MonthlyReportRecord | null> {
+  const db = getDb();
+  if (!db) return _mem.find(r => r.id === id) ?? null;
+  const { data, error } = await db.from('monthly_reports').select('*').eq('id', id).maybeSingle();
+  if (error || !data) return null;
+  return rowToRecord(data);
+}
+
+/** Desa quan s'ha enviat el correu d'avís al client. */
+export async function markMonthlyReportEmailed(id: string): Promise<void> {
+  const now = new Date().toISOString();
+  const db  = getDb();
+  if (!db) { const r = _mem.find(x => x.id === id); if (r) r.emailedAt = now; return; }
+  await db.from('monthly_reports').update({ emailed_at: now }).eq('id', id);
+}
+
+/** "octubre del 2026" a partir de l'inici del període (AAAA-MM-DD), com a l'historial de l'admin. */
+export function periodLabel(periodStart: string): string {
+  const d = new Date(`${periodStart.slice(0, 10)}T12:00:00Z`);
+  if (Number.isNaN(d.getTime())) return periodStart;
+  return d.toLocaleDateString('ca-ES', { month: 'long', year: 'numeric', timeZone: 'UTC' });
+}

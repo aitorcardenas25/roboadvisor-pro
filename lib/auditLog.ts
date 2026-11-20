@@ -22,6 +22,8 @@ export type AuditAction =
   | 'client.consent_accepted'
   | 'client.password_changed'
   | 'client.welcome_sent'
+  | 'email.report_ready'
+  | 'email.monthly_report'
   | 'client.expense_added'
   | 'client.expense_removed'
   | 'client.wealth_updated'
