@@ -176,8 +176,9 @@ export async function runNavAutoUpdate(trigger: 'cron' | 'admin', opts: { fetchF
   let ratesP: Promise<Map<string, number>> | null = null;
   const rates = () => (ratesP ??= ecbUsdRates(ctx, addDays(today, -LOOKBACK_DAYS - 10)));
 
-  // Fons a actualitzar: els que tenen font i, si ja tenen preus, a partir de l'últim
-  const results = await pool(NAV_SOURCES, CONCURRENCY, src => {
+  // Fons a actualitzar: els que tenen font i ja tenen l'històric carregat (un fons
+  // nou s'ha de carregar primer amb l'històric complet des de «Preus dels fons»).
+  const results = await pool(NAV_SOURCES.filter(src => stored.has(src.isin)), CONCURRENCY, src => {
     const last = stored.get(src.isin);
     const c = { ...ctx, since: last ? (last.date < ctx.since ? last.date : ctx.since) : ctx.since };
     return updateOne(src, c, last, rates);

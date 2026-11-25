@@ -31,6 +31,12 @@ export interface FeedSource {
   shareClass?: string;
   /** Classe de distribució amb l'històric ajustat pels dividends (iShares). */
   adjustDistributions?: boolean;
+  /**
+   * Moneda real dels preus quan la font n'indica una altra. Els fons indexats
+   * D Acc EUR d'iShares diuen "USD" al fitxer, però el preu és el de la classe
+   * en euros (coincideix exactament amb l'històric desat).
+   */
+  currency?: string;
 }
 
 /** Nom de la font per als avisos de l'admin. */
@@ -52,8 +58,8 @@ export const NAV_SOURCES: FeedSource[] = [
   // iShares (identificador de producte a ishares.com)
   s('IE00B4L5Y983', 'ishares', '251882'), s('IE00B4K48X80', 'ishares', '251861'), s('IE00BKM4GZ66', 'ishares', '264659'),
   s('IE00BDBRDM35', 'ishares', '291770'), s('IE00BF4RFH31', 'ishares', '296576'), s('IE00B5BMR087', 'ishares', '253743'),
-  s('IE00B6R51Z18', 'ishares', '251909'), s('IE000NFR7C63', 'ishares', '320429'), s('IE00BD0NCM55', 'ishares', '287649'),
-  s('IE00BYWYCC39', 'ishares', '287635'),
+  s('IE00B6R51Z18', 'ishares', '251909'), s('IE000NFR7C63', 'ishares', '320429'),
+  s('IE00BD0NCM55', 'ishares', '287649', { currency: 'EUR' }), s('IE00BYWYCC39', 'ishares', '287635', { currency: 'EUR' }),
   s('IE00B4WXJJ64', 'ishares', '251740', { adjustDistributions: true }),
   s('IE00BJ5JP105', 'ishares', '308904', { adjustDistributions: true }),
   // Xtrackers i DWS
@@ -140,7 +146,10 @@ const MONTHS: Record<string, number> = {
   sep: 9, set: 9, oct: 10, okt: 10, nov: 11, dec: 12, dic: 12, des: 12, dez: 12,
 };
 const pad = (n: number) => String(n).padStart(2, '0');
-const validYmd = (y: number, m: number, d: number) => y > 1980 && y < 2100 && m >= 1 && m <= 12 && d >= 1 && d <= 31 ? `${y}-${pad(m)}-${pad(d)}` : null;
+const validYmd = (y: number, m: number, d: number) => {
+  if (!(y > 1980 && y < 2100 && m >= 1 && m <= 12 && d >= 1)) return null;
+  return d <= new Date(Date.UTC(y, m, 0)).getUTCDate() ? `${y}-${pad(m)}-${pad(d)}` : null;
+};
 
 /** Data d'una cel·la: número de sèrie d'Excel, aaaa-mm-dd, dd/mm/aaaa, dd.mm.aaaa, dd-Mon-aaaa o ms des de 1970. */
 export function parseFeedDate(raw: unknown): string | null {
@@ -281,7 +290,9 @@ async function ishares(src: FeedSource, ctx: FeedContext): Promise<FeedResult> {
 async function xtrackers(src: FeedSource, ctx: FeedContext): Promise<FeedResult> {
   const url = `https://etf.dws.com/api/pdp/es-es/etf/${src.key}/historicaldata/download?startDate=${ctx.since}&endDate=${ctx.today}&includeTax=true`;
   const sheets = readSheets(await download(ctx, url));
-  return { points: firstSeries(sheets, /^(nav|valor liquidativo|net asset value|vl)\b/i, 'EUR') };
+  // La moneda va a la capçalera del fitxer: ["Currency", "USD"]
+  const meta = sheets[0]?.rows.find(r => /^(currency|moneda|divisa)$/i.test(r[0] ?? '') && /^[A-Z]{3}$/.test(r[1] ?? ''));
+  return { points: firstSeries(sheets, /^(nav|valor liquidativo|net asset value|vl)\b/i, meta?.[1] ?? 'EUR') };
 }
 
 async function dws(src: FeedSource, ctx: FeedContext): Promise<FeedResult> {
@@ -303,7 +314,7 @@ async function fidelity(src: FeedSource, ctx: FeedContext): Promise<FeedResult> 
 async function polar(src: FeedSource, ctx: FeedContext): Promise<FeedResult> {
   // La taula dona el preu d'un dia per a totes les classes del fons: en demanem
   // els últims dies laborables (la mateixa resposta serveix per a totes les classes).
-  const days = weekdaysBetween(ctx.since, ctx.today).slice(-7);
+  const days = weekdaysBetween(ctx.since, ctx.today).slice(-10);
   const out: FeedPoint[] = [];
   for (const day of days) {
     const [y, m, d] = day.split('-').map(Number);
@@ -408,7 +419,8 @@ const FETCHERS: Record<Provider, (src: FeedSource, ctx: FeedContext) => Promise<
 /** Preus oficials d'un fons des de `ctx.since` fins avui (en la moneda de la font). */
 export async function fetchFeed(src: FeedSource, ctx: FeedContext): Promise<FeedResult> {
   const res = await FETCHERS[src.provider](src, ctx);
-  return { ...res, points: keepSince(res.points, ctx) };
+  const points = src.currency ? res.points.map(p => ({ ...p, currency: src.currency! })) : res.points;
+  return { ...res, points: keepSince(points, ctx) };
 }
 
 // ─── Canvi oficial del BCE ───────────────────────────────────────────────────
