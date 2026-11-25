@@ -5,9 +5,9 @@ import { PROPOSAL_TEMPLATES, templateItems } from '@/lib/proposalTemplates';
 import { CAPM_ASSUMPTIONS } from '@/lib/navMath';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
-  proposalStats, fundToItem, hasPerformanceData, validateForApproval, proposalToReportInput, checkProposalSuitability, PROFILES,
+  proposalStats, fundToItem, hasPerformanceData, SAME_FUND_CLASS, sameFundClass, validateForApproval, proposalToReportInput, checkProposalSuitability, PROFILES,
   verifiedPerformance,
-  type ClientProposal, type ProposalItem, type ProposalParams, type ProposalStats, type NavPerformanceMap,
+  type ClientProposal, type ProposalItem, type ProposalParams, type ProposalStats, type NavPerformanceMap, type FundOption,
 } from '@/lib/proposalMath';
 import { isValidIsin } from '@/lib/fundUniverse';
 import type { RebalanceLine } from '@/lib/portfolioValuation';
@@ -21,7 +21,7 @@ interface Data {
   leadProfile: string | null;
   personal:  Record<string, unknown>;
   proposals: WithStats[];
-  funds:     { isin: string; name: string; category: string; source: 'advisor' | 'catalog' }[];
+  funds:     FundOption[];
   holdings:  number;
   defaults:  ProposalParams;
   navPerformance?: NavPerformanceMap;
@@ -78,14 +78,23 @@ export default function ClientProposal({ clientId, onApplied }: { clientId: stri
           const { profile, objective, horizon, initialAmount, monthlyAmount, adminNote } = latest;
           setParams({ profile, objective, horizon, initialAmount, monthlyAmount, adminNote });
           // Un esborrany agafa els preus entrats a mà des de l'últim desament
+          // i, si porta una classe sense preus d'un fons que tenim (SAME_FUND_CLASS), passa a la classe amb preus.
+          let swapped = 0;
           setItems(latest.status === 'draft'
-            ? latest.items.map(x => ({ ...x, ...verifiedPerformance(x.isin, d.navPerformance ?? {}) }))
+            ? latest.items.map(x => {
+                const alt = SAME_FUND_CLASS[x.isin] && !latest.items.some(y => y.isin === SAME_FUND_CLASS[x.isin])
+                  ? fundToItem(SAME_FUND_CLASS[x.isin], x.weight, d.navPerformance ?? {}) : null;
+                if (alt) { swapped++; return { ...alt, weight: x.weight, platform: x.platform, justification: x.justification || alt.justification }; }
+                return { ...x, ...verifiedPerformance(x.isin, d.navPerformance ?? {}) };
+              })
             : latest.items);
+          setDirty(swapped > 0);
+          if (swapped) setMsg({ ok: true, text: `${swapped === 1 ? 'Un fons s\'ha canviat' : `${swapped} fons s'han canviat`} a la classe amb preus oficials (mateix fons). Desa per guardar-ho.` });
         } else {
           setParams(d.defaults);
           setItems([]);
+          setDirty(false);
         }
-        setDirty(false);
       }
     } catch { setError('Error de connexió'); }
   }, [api]);
@@ -113,7 +122,8 @@ export default function ClientProposal({ clientId, onApplied }: { clientId: stri
 
   const addFund = () => {
     const raw = fundQuery.trim();
-    const isin = (raw.match(/[A-Z]{2}[A-Z0-9]{9}\d/i)?.[0] ?? raw).toUpperCase();
+    // Una classe sense preus d'un fons que tenim es resol abans de mirar si està repetit.
+    const isin = sameFundClass(raw.match(/[A-Z]{2}[A-Z0-9]{9}\d/i)?.[0] ?? raw);
     if (items.some(x => x.isin === isin)) { setMsg({ ok: false, text: 'Aquest fons ja és a la proposta' }); return; }
     const known = fundToItem(isin, 0, data.navPerformance ?? {});
     if (known) { setItems([...items, known]); }
@@ -366,7 +376,9 @@ export default function ClientProposal({ clientId, onApplied }: { clientId: stri
             onKeyDown={e => { if (e.key === 'Enter') addFund(); }}
             placeholder="Cerca un fons pel nom o l'ISIN…" className={`${input} flex-1 min-w-[240px]`} />
           <datalist id="proposal-funds">
-            {data.funds.map(f => <option key={f.isin} value={`${f.isin} · ${f.name}`}>{f.source === 'advisor' ? '★ Llista de l\'assessor' : f.category}</option>)}
+            {data.funds.map(f => <option key={f.isin} value={`${f.isin} · ${f.name}`}>
+              {(f.source === 'advisor' ? '★ Llista de l\'assessor' : f.category) + (f.hasData ? '' : ' · sense dades de rendiment (menys de 3 anys de preus)')}
+            </option>)}
           </datalist>
           <button onClick={addFund} disabled={!fundQuery.trim()}
             className="px-3 py-1.5 rounded-lg bg-accent-soft text-accent text-xs font-medium hover:bg-accent/30 disabled:opacity-40">Afegir</button>

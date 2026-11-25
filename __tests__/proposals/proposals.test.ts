@@ -112,6 +112,25 @@ describe('fundToItem / fundOptions', () => {
     expect(new Set(opts.map(o => o.isin)).size).toBe(opts.length);
     expect(opts[0].source).toBe('advisor');
   });
+  it('del catàleg antic només s\'ofereixen els fons amb dades de rendiment (bug: Vanguard Euro Govt IE00B04GQQ17 sense dades)', () => {
+    const opts = fundOptions();
+    expect(opts.some(o => o.source === 'catalog')).toBe(false);
+    expect(opts.find(o => o.isin === 'IE00B04GQQ17')).toBeUndefined();
+    const withNav = fundOptions({ IE00B11XZ871: { return5Y: 2, volatility: 2, source: 'VL oficials' } });
+    expect(withNav.find(o => o.isin === 'IE00B11XZ871')).toMatchObject({ source: 'catalog', hasData: true });
+  });
+  it('els fons de l\'assessor amb menys de 3 anys de preus surten marcats sense dades', () => {
+    const opts = fundOptions({ IE0007472115: { return5Y: 0.5, volatility: 5, source: 'VL oficials' } });
+    expect(opts.find(o => o.isin === 'IE0007472115')?.hasData).toBe(true);
+    expect(opts.find(o => o.isin === 'LU3123374798')?.hasData).toBe(false);
+  });
+  it('una classe sense preus d\'un fons que tenim passa a la classe amb preus', () => {
+    const navs = { IE0007472115: { return5Y: 0.5, volatility: 5, source: 'VL oficials' } };
+    const f = fundToItem('ie00b04gqq17', 20, navs);
+    expect(f?.isin).toBe('IE0007472115');
+    expect(f?.weight).toBe(20);
+    expect(hasPerformanceData(f!)).toBe(true);
+  });
 });
 
 describe('validateForApproval', () => {

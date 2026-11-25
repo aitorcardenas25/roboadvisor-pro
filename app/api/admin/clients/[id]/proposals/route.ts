@@ -90,13 +90,14 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
   const currentValue = ctx.portfolio ? computeMetrics(ctx.portfolio).currentValue : 0;
   const n = (v: unknown) => (typeof v === 'number' && Number.isFinite(v) ? v : undefined);
 
+  const navPerformance = await getNavPerformanceMap();
   return NextResponse.json({
     client:    { name: ctx.user.name, email: ctx.user.email },
     leadProfile: leadProfile ?? null,
     personal:  q,
     proposals: (await getProposals(id)).map(withStats),
-    funds:     fundOptions(),
-    navPerformance: await getNavPerformanceMap(),
+    funds:     fundOptions(navPerformance),
+    navPerformance,
     holdings:  ctx.portfolio?.holdings.filter(h => h.quantity > 0).length ?? 0,
     defaults: {
       profile:       (PROFILES as readonly string[]).includes(leadProfile ?? '') ? leadProfile : 'moderat',
