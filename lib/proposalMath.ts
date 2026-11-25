@@ -105,7 +105,7 @@ function guessSrri(category: string): number {
 
 /** Converteix un ISIN conegut en una línia de proposta amb les dades del catàleg. */
 export function fundToItem(rawIsin: string, weight = 0, navs: NavPerformanceMap = {}): ProposalItem | null {
-  const isin = rawIsin.trim().toUpperCase();
+  const isin = sameFundClass(rawIsin);
   const p = FINANCIAL_PRODUCTS.find(f => f.isin?.toUpperCase() === isin);
   if (p) {
     return {
@@ -134,17 +134,44 @@ export function fundToItem(rawIsin: string, weight = 0, navs: NavPerformanceMap 
   return null;
 }
 
-/** Llista de fons que l'assessor pot triar: primer els seus, després el catàleg. */
-export function fundOptions(): { isin: string; name: string; category: string; source: 'advisor' | 'catalog' }[] {
-  const seen = new Set<string>();
-  const out: { isin: string; name: string; category: string; source: 'advisor' | 'catalog' }[] = [];
+/**
+ * Classes del catàleg antic sense preus que són el MATEIX fons que una classe
+ * de la llista de l'assessor amb valors liquidatius oficials. Es fa servir la
+ * classe amb preus (si no, la proposta surt "sense dades de rendiment").
+ */
+export const SAME_FUND_CLASS: Record<string, string> = {
+  IE00B04GQQ17: 'IE0007472115', // Vanguard Euro Government Bond Index Fund: institucional → EUR Acc (Investor)
+};
+
+/** ISIN normalitzat; si és una classe sense preus d'un fons que ja tenim, la classe amb preus. */
+export function sameFundClass(rawIsin: string): string {
+  const isin = rawIsin.trim().toUpperCase();
+  return SAME_FUND_CLASS[isin] ?? isin;
+}
+
+export interface FundOption { isin: string; name: string; category: string; source: 'advisor' | 'catalog'; hasData: boolean }
+
+/**
+ * Llista de fons que l'assessor pot triar: primer els seus (tots tenen preus
+ * oficials; els que encara no arriben a 3 anys surten marcats sense dades) i,
+ * del catàleg antic, NOMÉS els que tenen dades de rendiment verificades. La
+ * resta del catàleg no té preus i omplia la proposta de "Falten dades".
+ * Un ISIN fora de la llista es pot continuar escrivint a mà.
+ */
+export function fundOptions(navs: NavPerformanceMap = {}): FundOption[] {
+  const seen = new Set<string>(Object.keys(SAME_FUND_CLASS));
+  const out: FundOption[] = [];
+  const hasData = (isin: string) => Number.isFinite(verifiedPerformance(isin, navs).historicalReturn5Y);
   for (const f of ALTERNATE_CLASSES) seen.add(f.isin); // es tria la classe principal del fons
-  for (const f of ADVISOR_FUNDS) { seen.add(f.isin); out.push({ ...f, source: 'advisor' }); }
+  for (const f of ADVISOR_FUNDS) {
+    seen.add(f.isin);
+    out.push({ isin: f.isin, name: f.name, category: f.category, source: 'advisor', hasData: hasData(f.isin) });
+  }
   for (const p of FINANCIAL_PRODUCTS) {
     const isin = p.isin?.toUpperCase();
     if (!isin || seen.has(isin)) continue;
     seen.add(isin);
-    out.push({ isin, name: p.name, category: p.category, source: 'catalog' });
+    if (hasData(isin)) out.push({ isin, name: p.name, category: p.category, source: 'catalog', hasData: true });
   }
   return out;
 }
