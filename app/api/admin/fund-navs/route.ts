@@ -1,5 +1,6 @@
 // Preus dels fons entrats a mà per l'admin (beta sense API de dades).
-// GET            → resum per fons (mètriques) · ?isin=X → preus d'un fons
+// GET            → resum per fons (mètriques) · ?isin=X → preus i caigudes històriques d'un fons
+//                  ?drawdowns=ISIN1,ISIN2 → caigudes històriques de diversos fons
 // POST (JSON)    → { text, isin?, currency?, mode: 'preview' | 'commit' }
 // POST (fitxer)  → multipart: file (.xlsx/.csv/.txt), isin?, currency?, mode
 // DELETE         → ?isin=X&date=aaaa-mm-dd (un preu) · ?isin=X&all=true (tots)
@@ -9,7 +10,7 @@ import { z } from 'zod';
 import { authOptions } from '@/lib/authOptions';
 import { logAuditEvent } from '@/lib/auditLog';
 import { computeNavMetrics, isIsin, parseNavText, type NavPoint } from '@/lib/navMath';
-import { currencyConflicts, deleteNavs, getNavs, getNavSummary, upsertNavs, workbookToText } from '@/lib/fundNavs';
+import { currencyConflicts, deleteNavs, getFundDrawdowns, getNavs, getNavSummary, upsertNavs, workbookToText } from '@/lib/fundNavs';
 import { reconcileHoldingsAfterNavDelete, syncHoldingsToNavs } from '@/lib/clientPortfolios';
 
 type S = { user?: { id?: string; email?: string; role?: string } } | null;
@@ -40,12 +41,20 @@ const dbError = (err: unknown) => {
 
 export async function GET(req: NextRequest) {
   if (!await admin()) return NextResponse.json({ error: 'No autoritzat' }, { status: 401 });
-  const isin = new URL(req.url).searchParams.get('isin')?.trim().toUpperCase();
+  const params = new URL(req.url).searchParams;
+  const isin = params.get('isin')?.trim().toUpperCase();
+  const many = params.get('drawdowns');
   try {
+    if (many !== null) {
+      // Caigudes històriques de diversos fons (per a l'informe PDF de la proposta)
+      const isins = many.split(',').map(s => s.trim().toUpperCase()).filter(Boolean);
+      if (!isins.length || isins.length > 40 || !isins.every(isIsin)) return NextResponse.json({ error: 'ISIN no vàlid' }, { status: 400 });
+      return NextResponse.json({ drawdowns: await getFundDrawdowns(isins) });
+    }
     if (isin) {
       if (!isIsin(isin)) return NextResponse.json({ error: 'ISIN no vàlid' }, { status: 400 });
-      const points = await getNavs(isin);
-      return NextResponse.json({ isin, points, metrics: computeNavMetrics(points) });
+      const [points, [drawdowns]] = await Promise.all([getNavs(isin), getFundDrawdowns([isin])]);
+      return NextResponse.json({ isin, points, metrics: computeNavMetrics(points), drawdowns });
     }
     return NextResponse.json({ funds: await getNavSummary() });
   } catch (err) { return dbError(err); }

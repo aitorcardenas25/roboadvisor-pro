@@ -5,6 +5,7 @@ import {
 } from '@react-pdf/renderer';
 import type { ManualPortfolioInput, ManualAsset } from '@/lib/manualReport';
 import { capmReturn, CAPM_ASSUMPTIONS } from '@/lib/navMath';
+import { DRAWDOWN_DISCLAIMER, durationLabel, monthLabel, recoveryLabel, type FundDrawdowns } from '@/lib/drawdowns';
 import { allocationBreakdown, allocationNote, assetTypeLabel, classifyFund, managementLabel } from '@/lib/fundClassification';
 
 const GOAL_HORIZON: Record<string, string> = { curt: 'Curt termini', mitja: 'Mitjà termini', llarg: 'Llarg termini' };
@@ -1589,6 +1590,74 @@ function ConclusionPage({ d }: { d: ManualPortfolioInput }) {
   );
 }
 
+// ─── CAIGUDES HISTÒRIQUES (perfils conservador i moderat) ─────────────────────
+// Només amb els valors liquidatius oficials desats (lib/drawdowns.ts). Pot ocupar
+// més d'una pàgina: la capçalera i el peu es repeteixen (fixed).
+function DrawdownsPage({ d, items }: { d: ManualPortfolioInput; items: FundDrawdowns[] }) {
+  const weight = (isin: string) => d.assets.find(a => a.isin === isin)?.weight ?? 0;
+  const sorted = [...items].sort((a, b) => weight(b.isin) - weight(a.isin));
+  return (
+    <Page size="A4" style={S.page} wrap>
+      <Header section="Caigudes històriques" client={d.clientName} />
+      {/* Espai sota la capçalera a les pàgines de continuació */}
+      <View fixed style={{ height: 14 }} />
+      <Footer />
+      <View style={[S.body, { paddingTop: 6 }]}>
+        <SectionTitle
+          tag="Risc observat"
+          title="Les caigudes més grans de cada fons"
+          intro="Per a cada fons proposat: quant ha arribat a baixar des d'un màxim, quan va passar i quant va tardar a recuperar-se. És el que ha passat de veritat amb els preus oficials, no una estimació. Serveix per saber què es pot esperar en un mal moment."
+        />
+        {sorted.map(f => (
+          <View key={f.isin} wrap={false} style={{ borderWidth: 0.5, borderColor: C.line, borderLeftWidth: 2, borderLeftColor: C.gold, padding: 9, marginBottom: 8 }}>
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', gap: 8 }}>
+              <View style={{ flex: 1 }}>
+                <Text style={[S.body1, S.bold, { marginBottom: 1 }]}>{f.name}</Text>
+                <Text style={[S.body2, { fontSize: 7 }]}>
+                  {f.isin}{f.windowStart && f.windowEnd ? ` · Dades de ${monthLabel(f.windowStart)} a ${monthLabel(f.windowEnd)} (${fNum(f.years, 1)} anys, preu de final de mes)` : ''}
+                </Text>
+              </View>
+              {f.maxDrawdown !== null && (
+                <View style={{ alignItems: 'flex-end' }}>
+                  <Text style={{ fontSize: 6, color: C.muted, letterSpacing: 0.3, textTransform: 'uppercase' }}>Caiguda màxima</Text>
+                  <Text style={{ fontSize: 12, fontFamily: 'Helvetica-Bold', color: C.neg }}>{f.maxDrawdown === 0 ? 'cap' : fPct(f.maxDrawdown)}</Text>
+                </View>
+              )}
+            </View>
+            {f.episodes.length > 0 && (
+              <View style={{ marginTop: 6 }}>
+                <View style={S.tableHead}>
+                  <Text style={[S.th, { flex: 0.3 }]}>#</Text>
+                  <Text style={[S.th, { flex: 1.1 }]}>Màxim previ</Text>
+                  <Text style={[S.th, { flex: 1.1 }]}>Punt més baix</Text>
+                  <Text style={[S.th, { flex: 0.9, textAlign: 'right' }]}>Caiguda</Text>
+                  <Text style={[S.th, { flex: 1.2, paddingLeft: 8 }]}>Temps caient</Text>
+                  <Text style={[S.th, { flex: 2.4 }]}>Temps per recuperar-se</Text>
+                </View>
+                {f.episodes.map((e, i) => (
+                  <View key={e.peakDate} style={[S.tableRow, { paddingVertical: 3 }]}>
+                    <Text style={[S.tdGray, { flex: 0.3 }]}>{i + 1}</Text>
+                    <Text style={[S.td, { flex: 1.1 }]}>{monthLabel(e.peakDate)}</Text>
+                    <Text style={[S.td, { flex: 1.1 }]}>{monthLabel(e.troughDate)}</Text>
+                    <Text style={[S.td, S.bold, { flex: 0.9, textAlign: 'right', color: C.neg }]}>{fPct(e.depthPct)}</Text>
+                    <Text style={[S.td, { flex: 1.2, paddingLeft: 8 }]}>{durationLabel(e.monthsToTrough)}</Text>
+                    <Text style={[S.td, { flex: 2.4, color: e.recoveryDate ? C.ink : C.amber }]}>{recoveryLabel(e).replace(/−/g, '-')}</Text>
+                  </View>
+                ))}
+              </View>
+            )}
+            {f.warnings.map(w => <Text key={w} style={[S.body2, { fontSize: 7, color: C.amber, marginTop: 2 }]}>{w}</Text>)}
+          </View>
+        ))}
+        <View style={S.legalBox} wrap={false}>
+          <Text style={[S.legalText, S.bold, { marginBottom: 3 }]}>Com llegir aquesta pàgina</Text>
+          <Text style={S.legalText}>{DRAWDOWN_DISCLAIMER}</Text>
+        </View>
+      </View>
+    </Page>
+  );
+}
+
 // ─── PAGE 14: METODOLOGIA I AVÍS LEGAL ────────────────────────────────────────
 function MethodologyPage({ d, generatedAt }: { d: ManualPortfolioInput; generatedAt: string }) {
   return (
@@ -1644,13 +1713,15 @@ function MethodologyPage({ d, generatedAt }: { d: ManualPortfolioInput; generate
 interface Props {
   data:        ManualPortfolioInput;
   generatedAt: string;
+  /** Caigudes històriques dels fons (només per a perfils conservador i moderat). */
+  drawdowns?:  FundDrawdowns[];
 }
 
 function hasRealFinances(d: ManualPortfolioInput): boolean {
   return d.monthlyIncome != null && d.monthlyExpenses != null;
 }
 
-export function ManualReportPDF({ data, generatedAt }: Props) {
+export function ManualReportPDF({ data, generatedAt, drawdowns }: Props) {
   return (
     <Document
       title={`Factor OTC — Informe ${data.clientName}`}
@@ -1665,6 +1736,7 @@ export function ManualReportPDF({ data, generatedAt }: Props) {
       <InvestorProfilePage   d={data} />
       <PortfolioPage         d={data} />
       <AssetsPage            d={data} />
+      {!!drawdowns?.some(f => f.monthlyPoints > 1) && <DrawdownsPage d={data} items={drawdowns} />}
       <IPSPage               d={data} />
       <SuitabilityPage       d={data} />
       <CorrelationPage       d={data} />
