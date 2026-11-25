@@ -58,7 +58,7 @@ describe('parseClientWorkbook', () => {
   it('llegeix dades personals, posicions i moviments vàlids', async () => {
     const buf = await filled(wb => {
       const per = wb.getWorksheet('Dades personals')!;
-      per.getCell('B3').value = 48000;        // annualIncome
+      per.getCell('B3').value = 48000;        // annualNetIncome
       per.getCell('B4').value = '2.000';      // monthlyExpenses
       put(wb.getWorksheet('Posicions')!, ['IE00B42W4L06', '', 'MyInvestor', '', 10.5, 250, 'EUR']);
       put(wb.getWorksheet('Moviments')!, ['15/01/2024', 'Compra', 'IE00B42W4L06', '', 10.5, 250, null, 0, 'MyInvestor']);
@@ -66,7 +66,7 @@ describe('parseClientWorkbook', () => {
     });
     const r = await parseClientWorkbook(buf);
     expect(r.errors).toEqual([]);
-    expect(r.personal).toEqual({ annualIncome: 48000, monthlyExpenses: 2000 });
+    expect(r.personal).toEqual({ annualNetIncome: 48000, monthlyExpenses: 2000 });
     expect(r.holdings).toHaveLength(1);
     expect(r.holdings[0]).toMatchObject({ isin: 'IE00B42W4L06', recognized: true, quantity: 10.5, avgEntryPrice: 250 });
     expect(r.holdings[0].name).toMatch(/Vanguard Global Small-Cap/);
@@ -177,7 +177,11 @@ describe('plantilla v2: pressupost, situació laboral i objectius', () => {
   it('una plantilla v1 (sense pestanya Objectius) continua funcionant', async () => {
     const buf = await filled(wb => {
       wb.removeWorksheet(wb.getWorksheet('Objectius')!.id);
-      wb.getWorksheet('Dades personals')!.getCell('B3').value = 30000;
+      // Plantilla antiga: la fila 3 era "Ingressos bruts anuals" amb clau annualIncome
+      const per = wb.getWorksheet('Dades personals')!;
+      per.getCell('A3').value = 'Ingressos bruts anuals (€)';
+      per.getCell('C3').value = 'annualIncome';
+      per.getCell('B3').value = 30000;
     });
     const r = await parseClientWorkbook(buf);
     expect(r.errors).toEqual([]);
@@ -205,5 +209,32 @@ describe('plantilla v3: camps per detectar clients delicats', () => {
       consumerDebt: 3000, monthlyInvestable: 150, housing: 'lloguer', incomeOutlook: 'baixaran',
       investingExperience: 'mai', drawdownReaction: 'vendre-tot', currentAdvisor: 'banc',
     });
+  });
+});
+
+describe('plantilla v4: sou net anual', () => {
+  it('desa el sou net anual i avisa si no quadra amb el mensual', async () => {
+    const buf = await filled(wb => {
+      const per = wb.getWorksheet('Dades personals')!;
+      const set = (key: string, v: unknown) => per.eachRow(row => { if (row.getCell(3).value === key) row.getCell(2).value = v as ExcelJS.CellValue; });
+      set('annualNetIncome', 32000);   // sembla el brut
+      set('monthlyNetIncome', 1800);
+    });
+    const r = await parseClientWorkbook(buf);
+    expect(r.errors).toEqual([]);
+    expect(r.personal.annualNetIncome).toBe(32000);
+    expect(r.personal.annualIncome).toBeUndefined();
+    expect(r.warnings.some(w => /no quadra/.test(w.message))).toBe(true);
+  });
+
+  it('14 pagues: no avisa', async () => {
+    const buf = await filled(wb => {
+      const per = wb.getWorksheet('Dades personals')!;
+      const set = (key: string, v: unknown) => per.eachRow(row => { if (row.getCell(3).value === key) row.getCell(2).value = v as ExcelJS.CellValue; });
+      set('annualNetIncome', 25200);
+      set('monthlyNetIncome', 1800);
+    });
+    const r = await parseClientWorkbook(buf);
+    expect(r.warnings.some(w => /no quadra/.test(w.message))).toBe(false);
   });
 });

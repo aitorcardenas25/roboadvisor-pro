@@ -17,6 +17,7 @@ const SHEETS: { name: string; when: string; rows: [string, string][] }[] = [
     name: 'Dades personals',
     when: 'Tothom. És la pestanya més important.',
     rows: [
+      ['Sou net anual', 'El que cobres net en tot l\'any, sumant les pagues extres. No el brut del contracte: el net, el que t\'arriba al compte.'],
       ['Ingressos nets mensuals', 'El que et queda a la nòmina cada mes, després d\'impostos. Si cobres 14 pagues, suma-les i divideix per 12.'],
       ['Despeses fixes al mes', 'El que pagues cada mes sí o sí: lloguer, factures, menjar, transport, assegurances.'],
       ['Despeses variables al mes', 'El que canvia d\'un mes a l\'altre: oci, roba, sopars, viatges. Una aproximació ja serveix.'],
@@ -24,7 +25,7 @@ const SHEETS: { name: string; when: string; rows: [string, string][] }[] = [
       ['Deute total pendent', 'El que encara deus: préstec del cotxe, hipoteca, estudis. Si no en tens, posa 0.'],
       ['Com et veus invertint', 'Conservador si una baixada et trauria la son; Equilibrat si acceptes alts i baixos moderats; Dinàmic si pots esperar anys encara que baixi molt.'],
       ['Deute de consum', 'Només els préstecs personals, del cotxe i el que deus a les targetes. La hipoteca no hi va. Si no en tens, posa 0.'],
-      ['Quant podries invertir cada mes', 'Els diners que podries apartar cada mes sense passar-ho malament. Si no ho saps, deixa-ho en blanc.'],
+      ['Quant podries invertir cada mes', 'Els diners que podries apartar cada mes i oblidar-te\'n, sense passar-ho malament si un mes vas just. No cal que sigui tot el que et sobra. Si no ho saps, deixa-ho en blanc.'],
       ['Habitatge', 'Si vius de lloguer, en un pis propi amb hipoteca, en un pis propi ja pagat o amb la família.'],
       ['Si les teves inversions baixessin un 20 %', 'Respon el que faries de veritat, no el que creus que s\'hauria de fer. No hi ha respostes bones ni dolentes.'],
     ],
