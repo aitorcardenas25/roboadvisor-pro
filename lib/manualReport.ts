@@ -2,6 +2,8 @@
 // Generador d'informes HTML de 12 pàgines per a carteres creades manualment per l'admin.
 // Estructura i CSS exactament iguals al template informe-manual-admin-PERFECTE.html
 
+import { PRINT_PAGE_CSS, PRINT_FIT_SCRIPT } from './printPages';
+
 export interface ManualAsset {
   name:          string;
   isin:          string;
@@ -940,7 +942,7 @@ export function generateManualReport(d: ManualPortfolioInput): string {
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Factor OTC — Informe Manual Admin · ${d.clientName.toUpperCase()}</title>
-<style>${CSS}</style>
+<style>${CSS}${PRINT_PAGE_CSS}</style>
 </head>
 <body>
 ${page1}
@@ -954,6 +956,7 @@ ${page8}
 ${page9}
 ${page10}
 ${page11}
+${PRINT_FIT_SCRIPT}
 </body>
 </html>`;
 }

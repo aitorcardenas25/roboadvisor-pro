@@ -125,7 +125,7 @@ const S = StyleSheet.create({
     borderTopWidth: 0.5, borderTopColor: C.line,
     borderRightWidth: 0.5, borderRightColor: C.line,
     borderBottomWidth: 0.5, borderBottomColor: C.line,
-    padding: 13, marginBottom: 8, backgroundColor: C.offWhite,
+    padding: 13, backgroundColor: C.offWhite,
   },
 });
 
@@ -748,16 +748,16 @@ function DiagnosticsPage({ d }: { d: ManualPortfolioInput }) {
         />
         {c.isEst && <Text style={[S.body2, S.italic, { marginBottom: 8, marginTop: -4 }]}>Indicadors calculats amb ingressos i despeses estimats.</Text>}
 
-        <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 10, marginBottom: 12 }}>
+        <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 6 }}>
           {kpis.map(k => (
             <StatCard key={k.label} width="31.6%" label={k.label} value={k.value} sub={k.sub} accent={k.accent} tone={k.tone} />
           ))}
         </View>
 
-        <View style={S.divider} />
+        <View style={[S.divider, { marginVertical: 10 }]} />
 
         <Text style={S.subTag}>Interpretació</Text>
-        <View style={{ marginBottom: 10 }}>
+        <View style={{ marginBottom: 6 }}>
           <Text style={S.body1}>
             El client destina el <Text style={S.bold}>{fPct(c.expenseRatioPct)}</Text> dels ingressos a despeses habituals —una càrrega <Text style={S.bold}>{effortVerdict}</Text>— i reté una capacitat d&apos;estalvi del <Text style={S.bold}>{fPct(c.savingsRatePct)}</Text> (<Text style={S.bold}>{savingsVerdict}</Text>), de la qual {fEur(d.monthlyAmount)} mensuals ({fPct(c.investRatePct)} dels ingressos) es canalitzen a la inversió sistemàtica.
           </Text>
@@ -772,7 +772,7 @@ function DiagnosticsPage({ d }: { d: ManualPortfolioInput }) {
           </Text>
         </View>
 
-        <View style={S.divider} />
+        <View style={[S.divider, { marginVertical: 10 }]} />
 
         <Text style={S.subTag}>Recomanacions operatives</Text>
         <View style={{ flexDirection: 'row', gap: 14 }}>
@@ -804,7 +804,7 @@ function DiagnosticsPage({ d }: { d: ManualPortfolioInput }) {
           ))}
         </View>
 
-        <View style={S.cardGold}>
+        <View style={S.cardGold} wrap={false}>
           <Text style={[S.body1, S.bold, { color: C.green, marginBottom: 3 }]}>
             Diagnòstic: {c.surplus >= 0 ? 'situació financera sanejada' : 'dèficit mensual detectat'}
           </Text>
@@ -842,8 +842,9 @@ function InvestorProfilePage({ d }: { d: ManualPortfolioInput }) {
         </View>
 
         {d.adminNote ? (
+          // Text lliure de l'assessor (fins a 5.000 caràcters): ha de poder continuar a la pàgina següent
           <View style={S.legalBox}>
-            <Text style={[S.legalText, S.bold, { marginBottom: 3 }]}>Nota de l&apos;assessor</Text>
+            <Text style={[S.legalText, S.bold, { marginBottom: 3 }]} minPresenceAhead={20}>Nota de l&apos;assessor</Text>
             <Text style={S.legalText}>{d.adminNote}</Text>
           </View>
         ) : null}
@@ -976,11 +977,15 @@ function PortfolioPage({ d }: { d: ManualPortfolioInput }) {
 // ─── PAGE 7: DETALL D'ACTIUS ──────────────────────────────────────────────────
 function AssetsPage({ d }: { d: ManualPortfolioInput }) {
   const c = compute(d);
+  // Amb molts fons, files i tesis més juntes perquè tot càpiga en una pàgina
+  const compact = d.assets.length > 6;
   return (
     <Page size="A4" style={S.page}>
       <Header section="Detall d'Actius" client={d.clientName} />
+      {/* Amb molts fons les tesis continuen a la pàgina següent: espai sota la capçalera */}
+      <View fixed style={{ height: 14 }} />
       <Footer />
-      <View style={S.body}>
+      <View style={[S.body, { paddingTop: 6 }]}>
         <SectionTitle
           tag="Composició Detallada"
           title="Fitxa de cada instrument"
@@ -1003,7 +1008,7 @@ function AssetsPage({ d }: { d: ManualPortfolioInput }) {
         </View>
 
         {d.assets.map((a, i) => { const cl = classifyFund(a.isin, a.category, a.name); return (
-          <View key={a.isin} style={[S.tableRow, { paddingVertical: 7 }, i % 2 === 1 ? S.tableAlt : {}]}>
+          <View key={a.isin} wrap={false} style={[S.tableRow, { paddingVertical: compact ? 4 : 7 }, i % 2 === 1 ? S.tableAlt : {}]}>
             <View style={{ flex: 2.6, paddingRight: 8 }}>
               <Text style={S.td}>{a.name}</Text>
               <Text style={{ fontSize: 6.5, color: C.mutedLt, marginTop: 1.5 }}>{a.isin}</Text>
@@ -1039,9 +1044,9 @@ function AssetsPage({ d }: { d: ManualPortfolioInput }) {
         <View style={S.divider} />
 
         <Text style={S.subTag}>Tesi d&apos;inversió per instrument</Text>
-        <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 10 }}>
+        <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: compact ? 8 : 10 }}>
           {d.assets.filter(a => a.justification).map((a, i) => (
-            <View key={a.isin} wrap={false} style={{ width: '47.5%', marginBottom: 8 }}>
+            <View key={a.isin} wrap={false} style={{ width: '47.5%', marginBottom: compact ? 3 : 8 }}>
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5, marginBottom: 2 }}>
                 <View style={{ width: 6, height: 6, backgroundColor: ASSET_COLORS[i % ASSET_COLORS.length], flexShrink: 0 }} />
                 <Text style={{ fontSize: 8, fontFamily: 'Helvetica-Bold', color: C.ink, flex: 1 }}>
@@ -1107,7 +1112,7 @@ function IPSPage({ d }: { d: ManualPortfolioInput }) {
           </View>
         ))}
 
-        <View style={[S.legalBox, { marginTop: 6 }]}>
+        <View style={[S.legalBox, { marginTop: 6 }]} wrap={false}>
           <Text style={[S.legalText, S.bold, { marginBottom: 2 }]}>Declaració de conformitat</Text>
           <Text style={S.legalText}>
             Aquest document ha estat elaborat per l&apos;equip assessor de Factor OTC, revisat i acceptat pel client. Constitueix la base de totes les decisions d&apos;inversió posteriors mentre estigui en vigor. Qualsevol canvi substancial en la situació financera del client invalidarà el present IPS i requerirà revisió.
@@ -1200,7 +1205,7 @@ function SuitabilityPage({ d }: { d: ManualPortfolioInput }) {
 
         <View style={S.divider} />
 
-        <View style={S.cardGold}>
+        <View style={S.cardGold} wrap={false}>
           <Text style={[S.body1, S.bold, { color: C.green, marginBottom: 2 }]}>Conclusió de suitability: {profileLabel}</Text>
           <Text style={S.body2}>
             La cartera presenta un SRRI ponderat de {fNum(c.wR, 1)}/7 i és {c.wR <= (d.investorProfile === 'conservador' ? 3 : d.investorProfile === 'moderat' ? 4 : d.investorProfile === 'dinamic' ? 5.5 : 7) ? 'adequada' : 'parcialment adequada'} per al perfil {profileLabel}. Rendiment net esperat: {fPct(c.nr)} · Volatilitat: {fPct(c.wv)} · Sharpe: {fNum(c.sharpe, 2)}.
@@ -1577,7 +1582,7 @@ function ConclusionPage({ d }: { d: ManualPortfolioInput }) {
 
         <View style={S.divider} />
 
-        <View style={S.cardGold}>
+        <View style={S.cardGold} wrap={false}>
           <Text style={[S.body1, S.bold, { color: C.green, marginBottom: 4 }]}>Valoració del pla d&apos;inversió: {profileLabel}</Text>
           <Text style={[S.body1, { marginBottom: 6 }]}>
             La cartera dissenyada per a {d.clientName} és coherent amb el perfil {profileLabel} i l&apos;objectiu &quot;{d.objective}&quot;. Amb un rendiment net estimat del {fPct(c.nr)} anual, la projecció base assoleix {fEur(c.p50)} en {d.horizon} anys sobre un capital aportat de {fEur(c.totalInvested)}.
@@ -1609,6 +1614,10 @@ function DrawdownsPage({ d, items }: { d: ManualPortfolioInput; items: FundDrawd
           title="Les caigudes més grans de cada fons"
           intro="Per a cada fons proposat: quant ha arribat a baixar des d'un màxim, quan va passar i quant va tardar a recuperar-se. És el que ha passat de veritat amb els preus oficials, no una estimació. Serveix per saber què es pot esperar en un mal moment."
         />
+        <View style={[S.legalBox, { marginTop: 0, marginBottom: 10 }]} wrap={false}>
+          <Text style={[S.legalText, S.bold, { marginBottom: 3 }]}>Com llegir aquesta pàgina</Text>
+          <Text style={S.legalText}>{DRAWDOWN_DISCLAIMER}</Text>
+        </View>
         {sorted.map(f => (
           <View key={f.isin} wrap={false} style={{ borderWidth: 0.5, borderColor: C.line, borderLeftWidth: 2, borderLeftColor: C.gold, padding: 9, marginBottom: 8 }}>
             <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', gap: 8 }}>
@@ -1650,10 +1659,6 @@ function DrawdownsPage({ d, items }: { d: ManualPortfolioInput; items: FundDrawd
             {f.warnings.map(w => <Text key={w} style={[S.body2, { fontSize: 7, color: C.amber, marginTop: 2 }]}>{w}</Text>)}
           </View>
         ))}
-        <View style={S.legalBox} wrap={false}>
-          <Text style={[S.legalText, S.bold, { marginBottom: 3 }]}>Com llegir aquesta pàgina</Text>
-          <Text style={S.legalText}>{DRAWDOWN_DISCLAIMER}</Text>
-        </View>
       </View>
     </Page>
   );
@@ -1688,7 +1693,7 @@ function MethodologyPage({ d, generatedAt }: { d: ManualPortfolioInput; generate
 
         <View style={S.divider} />
 
-        <View style={S.legalBox}>
+        <View style={S.legalBox} wrap={false}>
           <Text style={[S.legalText, S.bold, { marginBottom: 3 }]}>Avís legal · Disclaimer</Text>
           <Text style={S.legalText}>
             Aquest informe ha estat elaborat per Factor OTC amb finalitat exclusivament orientativa i educativa. No constitueix assessorament financer personalitzat regulat (MiFID II) ni oferta o recomanació d&apos;inversió. Factor OTC no és una entitat financera autoritzada per la CNMV o equivalent. Els rendiments estimats es basen en models estadístics i dades històriques que no garanteixen resultats futurs. Invertir implica risc de pèrdua total o parcial del capital. Consulti un assessor financer regulat autoritzat per la CNMV abans de prendre decisions d&apos;inversió.

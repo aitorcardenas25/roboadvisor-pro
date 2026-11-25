@@ -27,7 +27,7 @@ export default function CookieBanner() {
   if (!visible) return null;
 
   return (
-    <div className="fixed bottom-0 left-0 right-0 z-50 theme-client bg-surface border-t border-line shadow-[0_-1px_8px_rgba(0,0,0,0.04)] px-4 py-4">
+    <div className="fixed bottom-0 left-0 right-0 z-50 print:hidden theme-client bg-surface border-t border-line shadow-[0_-1px_8px_rgba(0,0,0,0.04)] px-4 py-4">
       <div className="max-w-5xl mx-auto flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
         <p className="text-ink-soft text-xs leading-relaxed flex-1">
           Usem cookies tècniques essencials per al funcionament de la plataforma. No usem cookies de seguiment ni publicitàries.{' '}
