@@ -72,6 +72,14 @@ describe('computeFundDrawdowns', () => {
     expect(r.warnings.some(w => /distribució/.test(w))).toBe(true);
   });
 
+  it('amb un preu sospitós no publica cap caiguda', () => {
+    const vals = Array(40).fill(100); vals[20] = 10;   // error en teclejar
+    const r = computeFundDrawdowns(meta, monthly(vals));
+    expect(r.maxDrawdown).toBeNull();
+    expect(r.episodes).toEqual([]);
+    expect(r.warnings[0]).toMatch(/Preu sospitós/);
+  });
+
   it('sense preus no inventa res', () => {
     const r = computeFundDrawdowns(meta, []);
     expect(r.maxDrawdown).toBeNull();

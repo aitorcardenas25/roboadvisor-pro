@@ -16,7 +16,7 @@
 // quan el preu torna a arribar (o superar) aquell màxim. Els episodis no es
 // solapen: cada un és una caiguda diferent.
 
-import { monthEndSeries, fmtDate, type NavPoint } from './navMath';
+import { monthEndSeries, fmtDate, suspectMoves, MAX_MOVE_PCT, type NavPoint } from './navMath';
 
 /** Caigudes més petites que aquesta (en %) no es compten com a episodi. */
 export const MIN_EPISODE_PCT = 0.5;
@@ -117,6 +117,15 @@ export function computeFundDrawdowns(
   };
   if (monthly.length < 2) {
     base.warnings.push(monthly.length ? 'Només hi ha un preu desat: no es pot calcular cap caiguda.' : 'No hi ha preus oficials desats d\'aquest fons.');
+    return base;
+  }
+  // Validació (AGENTS.md: cap sèrie arriba als càlculs sense validar). Un salt de
+  // més del MAX_MOVE_PCT % entre dos preus seguits gairebé sempre és un error
+  // d'entrada: no es publica cap caiguda fins que es corregeix.
+  const suspect = suspectMoves(points);
+  if (suspect.length) {
+    const j = suspect[0];
+    base.warnings.push(`Preu sospitós el ${fmtDate(j.date)} (${j.change > 0 ? '+' : ''}${j.change.toLocaleString('ca-ES')} % d'un preu al següent, més del ${MAX_MOVE_PCT} %). No es mostren caigudes fins que es revisi.`);
     return base;
   }
   const first = monthIndex(monthly[0].date), last = monthIndex(monthly.at(-1)!.date);
