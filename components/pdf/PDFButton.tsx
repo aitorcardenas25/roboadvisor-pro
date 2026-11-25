@@ -1,6 +1,7 @@
 // components/pdf/PDFButton.tsx
 'use client';
 
+import { downloadBlob } from '@/utils/downloadBlob';
 import { useState } from 'react';
 import { pdf }      from '@react-pdf/renderer';
 import { FactorOTCReport } from './FactorOTCReport';
@@ -68,12 +69,7 @@ export default function PDFButton({
       ).toBlob();
 
       // 3. Descarregar
-      const url     = URL.createObjectURL(blob);
-      const link    = document.createElement('a');
-      link.href     = url;
-      link.download = `Factor_OTC_Informe_${scoring.profile}_${new Date().toISOString().split('T')[0]}.pdf`;
-      link.click();
-      URL.revokeObjectURL(url);
+      downloadBlob(blob, `Factor_OTC_Informe_${scoring.profile}_${new Date().toISOString().split('T')[0]}.pdf`);
 
       setStep('done');
       setTimeout(() => setStep('idle'), 3000);
