@@ -48,7 +48,7 @@ export async function PATCH(req: NextRequest) {
   const clientId = rep.clientId ?? (await getPortfolioById(rep.portfolioId))?.clientId;
   const client   = clientId ? await findUserById(clientId) : null;
   const mail = client?.email
-    ? await sendMonthlyReportAvailable(client.email, client.name, periodLabel(rep.periodStart))
+    ? await sendMonthlyReportAvailable(client.email, client.name, periodLabel(rep.periodStart), client.username)
     : { success: false, error: 'No s\'ha trobat el correu del client' };
   if (mail.success) await markMonthlyReportEmailed(rep.id);
   logAuditEvent('email.monthly_report', {

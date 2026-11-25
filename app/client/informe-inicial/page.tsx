@@ -1,6 +1,7 @@
 'use client';
 // Informe inicial del client: la foto del punt de partida (situació, objectius)
 // i la cartera que l'assessor va proposar i aprovar. El mateix PDF que rep de l'assessor.
+import { downloadBlob } from '@/utils/downloadBlob';
 import ClientNav from '@/components/client/ClientNav';
 import { useEffect, useMemo, useState } from 'react';
 import { useSession } from 'next-auth/react';
@@ -61,10 +62,7 @@ export default function InitialReportPage() {
       const when = new Date(p.approvedAt ?? p.updatedAt).toLocaleDateString('ca-ES', { day: '2-digit', month: 'long', year: 'numeric' });
       const dd = showDrawdownsByDefault(p.profile) ? data.drawdowns : undefined;
       const blob = await pdf(<ManualReportPDF data={input} generatedAt={when} drawdowns={dd} />).toBlob();
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url; a.download = `FACTOR_OTC_informe_inicial_${safeName(data.client.name)}_v${p.version}.pdf`;
-      a.click(); setTimeout(() => URL.revokeObjectURL(url), 2000);
+      downloadBlob(blob, `FACTOR_OTC_informe_inicial_${safeName(data.client.name)}_v${p.version}.pdf`);
     } catch { setError('No s\'ha pogut generar el PDF. Torna-ho a provar.'); }
     finally { setBusy(false); }
   };

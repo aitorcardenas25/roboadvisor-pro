@@ -1,6 +1,7 @@
 // components/admin/ReportsHistory.tsx
 'use client';
 
+import { downloadBlob } from '@/utils/downloadBlob';
 import { useState, useEffect } from 'react';
 import type { ReportRecord } from '@/lib/reportRegistry';
 
@@ -82,9 +83,7 @@ export default function ReportsHistory() {
               ),
             ].join('\n');
             const blob = new Blob([csv], { type: 'text/csv' });
-            const url  = URL.createObjectURL(blob);
-            const a    = document.createElement('a');
-            a.href = url; a.download = 'factor_otc_informes.csv'; a.click();
+            downloadBlob(blob, 'factor_otc_informes.csv');
           }}
           className="flex items-center gap-2 px-4 py-2 bg-accent-soft border border-accent/30 rounded-lg text-accent text-sm hover:bg-accent/30 transition-all">
           ⬇️ Exportar CSV

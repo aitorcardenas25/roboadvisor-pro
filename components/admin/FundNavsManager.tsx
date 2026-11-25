@@ -3,6 +3,7 @@
 // enganxar-ne molts des d'Excel, pujar un fitxer i veure les mètriques que en surten.
 'use client';
 
+import { downloadBlob } from '@/utils/downloadBlob';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { MIN_YEARS_FOR_PROPOSALS, UPDATE_LAG_DAYS, daysSince, fmtDate, navAttention, type NavMetrics, type NavPoint } from '@/lib/navMath';
 import { DRAWDOWN_DISCLAIMER, type FundDrawdowns } from '@/lib/drawdowns';
@@ -42,10 +43,7 @@ function status(m: NavMetrics): { label: string; cls: string; hint: string } {
 function downloadTemplate(funds: FundRow[]) {
   const rows = funds.filter(f => f.inList).map(f => `${f.isin};${f.name.replace(/;/g, ',')};;;${f.currency ?? 'EUR'}`);
   const csv = '﻿' + ['ISIN;Nom;Data (dd/mm/aaaa);Valor liquidatiu;Moneda', ...rows].join('\r\n');
-  const url = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8' }));
-  const a = document.createElement('a');
-  a.href = url; a.download = `FACTOR_OTC_preus_fons_${today()}.csv`; a.click();
-  setTimeout(() => URL.revokeObjectURL(url), 1000);
+  downloadBlob(new Blob([csv], { type: 'text/csv;charset=utf-8' }), `FACTOR_OTC_preus_fons_${today()}.csv`);
 }
 
 export default function FundNavsManager() {

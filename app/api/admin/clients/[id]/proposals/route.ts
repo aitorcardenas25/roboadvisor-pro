@@ -170,7 +170,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     }
     // Avís per correu. L'informe ja és visible al portal encara que el correu falli.
     const mail = ctx.user.email
-      ? await sendReportReady(ctx.user.email, ctx.user.name)
+      ? await sendReportReady(ctx.user.email, ctx.user.name, ctx.user.username)
       : { success: false, error: 'El client no té correu' };
     logAuditEvent('email.report_ready', {
       userId: session.user?.id, userEmail: session.user?.email, resource: id,

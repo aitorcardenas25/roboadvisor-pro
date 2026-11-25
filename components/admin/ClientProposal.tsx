@@ -1,5 +1,6 @@
 'use client';
 
+import { downloadBlob } from '@/utils/downloadBlob';
 import { showDrawdownsByDefault, type FundDrawdowns } from '@/lib/drawdowns';
 import { PROPOSAL_TEMPLATES, templateItems } from '@/lib/proposalTemplates';
 import { CAPM_ASSUMPTIONS } from '@/lib/navMath';
@@ -42,12 +43,7 @@ const eur = (n: number) => n.toLocaleString('ca-ES', { style: 'currency', curren
 const pct = (n: number) => `${n.toLocaleString('ca-ES', { maximumFractionDigits: 2 })} %`;
 const safeName = (s: string) => s.normalize('NFD').replace(/[^\w]+/g, '_').replace(/^_|_$/g, '') || 'client';
 
-function download(blob: Blob, name: string) {
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url; a.download = name; a.click();
-  setTimeout(() => URL.revokeObjectURL(url), 1000);
-}
+const download = downloadBlob;
 
 export default function ClientProposal({ clientId, onApplied }: { clientId: string; onApplied?: () => void }) {
   const [data, setData]       = useState<Data | null>(null);
