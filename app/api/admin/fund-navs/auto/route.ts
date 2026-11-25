@@ -14,7 +14,7 @@ const isAdmin = async () => ((await getServerSession(authOptions)) as S)?.user?.
 export async function GET() {
   if (!await isAdmin()) return NextResponse.json({ error: 'No autoritzat' }, { status: 401 });
   try {
-    return NextResponse.json({ last: await lastAutoUpdate() });
+    return NextResponse.json({ last: await lastAutoUpdate(), cronConfigured: !!process.env.CRON_SECRET });
   } catch {
     return NextResponse.json({ error: 'No s\'ha pogut llegir l\'última actualització' }, { status: 500 });
   }

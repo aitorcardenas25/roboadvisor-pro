@@ -3,7 +3,7 @@ import { describe, it, expect, beforeEach } from 'vitest';
 import ExcelJS from 'exceljs';
 import { parseFeedDate, parseFeedNumber, seriesFromSheet, fetchFeed, usdToEur, weekdaysBetween, NAV_SOURCES, MANUAL_ONLY, type FeedContext } from '@/lib/navFeeds';
 import { readSheets, readSpreadsheetMl } from '@/lib/xlsxLite';
-import { distributionFactors, runNavAutoUpdate, workdaysAfter, madridToday } from '@/lib/navAutoUpdate';
+import { distributionFactors, runNavAutoUpdate, workdaysAfter, madridToday, applyDistributionAdjustment } from '@/lib/navAutoUpdate';
 import { upsertNavs, getNavs, __resetNavsForTests } from '@/lib/fundNavs';
 
 const ctx = (over: Partial<FeedContext> = {}): FeedContext => ({ since: '2026-11-10', today: '2026-11-25', ...over });
@@ -153,5 +153,21 @@ describe('runNavAutoUpdate (sense base de dades)', () => {
     expect(s.funds.find(x => x.isin === 'LU0625737910')!.status).toBe('manual');
     // Només es miren els fons que ja tenen preus desats
     expect(s.funds).toHaveLength(2);
+  });
+});
+
+describe('ajust per dividend', () => {
+  beforeEach(() => __resetNavsForTests());
+  it('s\'aplica una sola vegada encara que dues execucions coincideixin', async () => {
+    await upsertNavs([
+      { isin: 'IE00B4WXJJ64', date: '2026-12-09', nav: 100, currency: 'EUR' },
+      { isin: 'IE00B4WXJJ64', date: '2026-12-10', nav: 101, currency: 'EUR' },
+    ]);
+    const raw = new Map([['2026-12-10', 101]]);
+    expect(await applyDistributionAdjustment('IE00B4WXJJ64', '2026-12-11', 0.99, raw)).toBe('applied');
+    expect(await applyDistributionAdjustment('IE00B4WXJJ64', '2026-12-11', 0.99, raw)).toBe('already');
+    const navs = await getNavs('IE00B4WXJJ64');
+    expect(navs[0].nav).toBeCloseTo(99);
+    expect(navs[1].nav).toBeCloseTo(99.99);
   });
 });

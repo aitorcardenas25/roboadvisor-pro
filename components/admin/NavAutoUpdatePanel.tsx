@@ -23,12 +23,13 @@ export default function NavAutoUpdatePanel({ onUpdated }: { onUpdated?: () => vo
   const [last, setLast] = useState<AutoUpdateSummary | null | undefined>(undefined);
   const [busy, setBusy] = useState(false);
   const [err, setErr]   = useState('');
+  const [cronOk, setCronOk] = useState(true);
 
   const load = useCallback(async () => {
     try {
       const res = await fetch('/api/admin/fund-navs/auto');
       const d = await res.json();
-      if (res.ok) setLast(d.last); else setErr(d.error ?? 'No s\'ha pogut carregar');
+      if (res.ok) { setLast(d.last); setCronOk(d.cronConfigured !== false); } else setErr(d.error ?? 'No s\'ha pogut carregar');
     } catch { setErr('Error de connexió'); }
   }, []);
   useEffect(() => { load(); }, [load]);
@@ -56,6 +57,12 @@ export default function NavAutoUpdatePanel({ onUpdated }: { onUpdated?: () => vo
         <button onClick={runNow} disabled={busy} className={ghost}>{busy ? 'Actualitzant… (pot trigar un minut)' : 'Actualitzar ara'}</button>
       </div>
 
+      {!cronOk && (
+        <p className="text-warning text-sm mt-3">
+          L&apos;actualització de les 13:00 encara no funciona: falta afegir la variable <b>CRON_SECRET</b> a Vercel
+          (Settings → Environment Variables, entorn Production) i tornar a publicar. El botó «Actualitzar ara» sí que funciona.
+        </p>
+      )}
       {err && <p className="text-negative text-sm mt-3">{err}</p>}
       {last === null && <p className="text-ink-muted text-sm mt-3">Encara no s&apos;ha fet cap actualització automàtica.</p>}
       {last && (

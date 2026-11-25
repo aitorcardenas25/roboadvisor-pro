@@ -2,10 +2,10 @@
 // és a dir, a les 13:00 de Madrid a l'hivern (14:00 a l'estiu), descarrega els
 // valors liquidatius oficials del dia anterior i els desa a fund_navs.
 //
-// Seguretat: si hi ha la variable CRON_SECRET, Vercel l'envia com a
-// "Authorization: Bearer …" i aquí es comprova. Sense CRON_SECRET només
-// s'accepta la crida de l'agent de Vercel i, en tots dos casos, com a màxim una
-// execució cada 30 minuts (la ruta només llegeix webs públiques de gestores).
+// Seguretat: cal la variable CRON_SECRET a Vercel. Vercel l'envia com a
+// "Authorization: Bearer …" i aquí es comprova. Sense la variable, la ruta no
+// s'executa mai (la capçalera user-agent la pot posar qualsevol). A més, com a
+// màxim una execució cada 30 minuts.
 import { NextRequest, NextResponse } from 'next/server';
 import { ranRecently, runNavAutoUpdate } from '@/lib/navAutoUpdate';
 
@@ -13,9 +13,11 @@ export const maxDuration = 300;
 
 export async function GET(req: NextRequest) {
   const secret = process.env.CRON_SECRET;
-  const auth = req.headers.get('authorization') ?? '';
-  const fromVercel = /vercel-cron/i.test(req.headers.get('user-agent') ?? '');
-  if (secret ? auth !== `Bearer ${secret}` : !fromVercel) {
+  if (!secret) {
+    console.error('[cron/fund-navs] falta la variable CRON_SECRET a Vercel: no s\'actualitzen els preus');
+    return NextResponse.json({ error: 'Falta configurar CRON_SECRET' }, { status: 503 });
+  }
+  if ((req.headers.get('authorization') ?? '') !== `Bearer ${secret}`) {
     return NextResponse.json({ error: 'No autoritzat' }, { status: 401 });
   }
   if (await ranRecently(30).catch(() => false)) {

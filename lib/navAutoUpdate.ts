@@ -84,10 +84,26 @@ export function distributionFactors(dists: FeedDistribution[], rawPoints: FeedPo
   return out.sort((a, b) => a.exDate.localeCompare(b.exDate));
 }
 
-async function applyDistributionAdjustment(isin: string, exDate: string, factor: number): Promise<void> {
+/**
+ * Aplica un factor de dividend als preus desats anteriors al dia ex-dividend.
+ * És idempotent: compara l'últim preu desat abans d'aquell dia amb el preu
+ * sense ajustar de la font. Si encara coincideixen, s'ajusta; si ja coincideix
+ * amb el preu ajustat (una altra execució ja ho ha fet), no es torna a aplicar.
+ */
+export async function applyDistributionAdjustment(
+  isin: string, exDate: string, factor: number, rawStored: Map<string, number>,
+): Promise<'applied' | 'already'> {
   const before = (await getNavs(isin)).filter(p => p.date < exDate);
-  if (!before.length) return;
+  if (!before.length) return 'already';
+  const ref = [...before].reverse().find(p => rawStored.has(p.date));
+  if (!ref) throw new Error(`no es pot comprovar l'ajust pel dividend del ${exDate}: la font no dona preus dels dies anteriors`);
+  const raw = rawStored.get(ref.date)!;
+  if (Math.abs(ref.nav / (raw * factor) - 1) <= MATCH_TOLERANCE / 5) return 'already';
+  if (Math.abs(ref.nav / raw - 1) > MATCH_TOLERANCE) {
+    throw new Error(`el preu desat del ${ref.date} no coincideix amb la font; no s'ha ajustat el dividend del ${exDate}`);
+  }
   await upsertNavs(before.map(p => ({ ...p, nav: Math.round(p.nav * factor * 1e6) / 1e6 })));
+  return 'applied';
 }
 
 async function updateOne(
@@ -139,8 +155,15 @@ async function updateOne(
     }
     // Classes de distribució: ajustar l'històric pels dividends nous
     if (src.adjustDistributions && last) {
+      // Preus sense ajustar de la font, en la moneda desada (per saber si ja s'ha ajustat)
+      const r = feed.points.some(p => p.currency === 'USD' && storedCurrency === 'EUR') ? await rates() : null;
+      const rawStored = new Map<string, number>();
+      for (const p of feed.points) {
+        const v = p.currency === storedCurrency ? p : (r && p.currency === 'USD' ? usdToEur(p, r) : null);
+        if (v) rawStored.set(p.date, v.nav);
+      }
       for (const f of distributionFactors(feed.distributions ?? [], feed.points, after)) {
-        await applyDistributionAdjustment(src.isin, f.exDate, f.factor);
+        await applyDistributionAdjustment(src.isin, f.exDate, f.factor, rawStored);
         pts = pts.map(p => p.date < f.exDate ? { ...p, nav: Math.round(p.nav * f.factor * 1e6) / 1e6 } : p);
       }
     }
@@ -173,8 +196,10 @@ export async function runNavAutoUpdate(trigger: 'cron' | 'admin', opts: { fetchF
   const today = madridToday(opts.now);
   const stored = await lastStored();
   const ctx: FeedContext = { since: addDays(today, -LOOKBACK_DAYS), today, fetchFn: opts.fetchFn };
+  // Canvis del BCE des del primer dia que pot fer falta (el fons més endarrerit), amb marge
+  const earliest = [...stored.values()].reduce((m, p) => (p.date < m ? p.date : m), ctx.since);
   let ratesP: Promise<Map<string, number>> | null = null;
-  const rates = () => (ratesP ??= ecbUsdRates(ctx, addDays(today, -LOOKBACK_DAYS - 10)));
+  const rates = () => (ratesP ??= ecbUsdRates(ctx, addDays(earliest < ctx.since ? earliest : ctx.since, -10)));
 
   // Fons a actualitzar: els que tenen font i ja tenen l'històric carregat (un fons
   // nou s'ha de carregar primer amb l'històric complet des de «Preus dels fons»).
