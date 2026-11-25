@@ -13,6 +13,7 @@ import { isValidIsin } from '@/lib/fundUniverse';
 import type { RebalanceLine } from '@/lib/portfolioValuation';
 import AllocationSummary from '@/components/AllocationSummary';
 import { assetTypeLabel, classifyFund, managementLabel } from '@/lib/fundClassification';
+import { PLATFORMS, PLATFORMS_CHECKED_AT, platformsFor } from '@/lib/fundPlatforms';
 
 type WithStats = ClientProposal & { stats: ProposalStats };
 interface Data {
@@ -636,7 +637,8 @@ function FundRow({ x, i, amount, input, noteOpen, toggleNote, setItem, removeIte
           {[1, 2, 3, 4, 5, 6, 7].map(r => <option key={r} value={r}>{r}</option>)}</select></td>
         <td className={td}><input type="number" min={0} max={10} step={0.01} value={x.ter}
           onChange={e => setItem(i, { ter: Math.min(10, Math.max(0, Number(e.target.value) || 0)) })} className={`${input} w-16`} /></td>
-        <td className={td}><input value={x.platform} onChange={e => setItem(i, { platform: e.target.value })} placeholder="MyInvestor…" className={`${input} w-28`} /></td>
+        <td className={td}><PlatformPicker isin={x.isin} name={x.name} value={x.platform} input={input}
+          onChange={platform => setItem(i, { platform })} /></td>
         <td className={`${td} whitespace-nowrap pt-2.5`}>
           <button onClick={toggleNote} className="text-ink-muted hover:text-ink text-xs mr-2" title="Justificació">✎</button>
           <button onClick={() => removeItem(i)} className="text-negative/60 hover:text-negative text-xs" title="Treure">✕</button>
@@ -651,5 +653,62 @@ function FundRow({ x, i, amount, input, noteOpen, toggleNote, setItem, removeIte
         </tr>
       )}
     </>
+  );
+}
+
+const CUSTOM = '__altra__';
+
+/**
+ * Desplegable de plataformes: primer les comprovades (✓), després les que
+ * podrien tenir-lo però no s'han pogut comprovar, i "Altra…" per escriure'n
+ * una a mà. Si el valor desat no és cap plataforma coneguda, es mostra el camp
+ * de text amb aquest valor.
+ */
+function PlatformPicker({ isin, name, value, input, onChange }: {
+  isin: string; name: string; value: string; input: string; onChange: (v: string) => void;
+}) {
+  const info = platformsFor(isin, name);
+  const known = PLATFORMS.some(p => p.name === value);
+  const [custom, setCustom] = useState(!!value && !known);
+  const chosenNotFound = info.notFound.some(p => p.name === value);
+  const checked = new Date(PLATFORMS_CHECKED_AT + 'T00:00:00').toLocaleDateString('ca-ES');
+  return (
+    <div className="w-40">
+      {custom ? (
+        <div className="flex gap-1">
+          <input value={value} autoFocus onChange={e => onChange(e.target.value)} placeholder="Nom de la plataforma"
+            className={`${input} w-full`} />
+          <button type="button" title="Tornar a la llista" className="text-ink-muted hover:text-ink text-xs px-1"
+            onClick={() => { setCustom(false); if (!known) onChange(''); }}>↺</button>
+        </div>
+      ) : (
+        <select value={known ? value : ''} className={`${input} w-full`}
+          onChange={e => { if (e.target.value === CUSTOM) { setCustom(true); onChange(''); } else onChange(e.target.value); }}>
+          <option value="">— Tria —</option>
+          {info.available.length > 0 && (
+            <optgroup label={`Disponible (comprovat ${checked})`}>
+              {info.available.map(p => <option key={p.id} value={p.name}>✓ {p.name}</option>)}
+            </optgroup>
+          )}
+          {info.unchecked.length > 0 && (
+            <optgroup label="Per confirmar">
+              {info.unchecked.map(p => <option key={p.id} value={p.name}>{p.name}</option>)}
+            </optgroup>
+          )}
+          {info.notFound.length > 0 && (
+            <optgroup label="No surt al seu cercador">
+              {info.notFound.map(p => <option key={p.id} value={p.name}>{p.name} (no surt)</option>)}
+            </optgroup>
+          )}
+          <option value={CUSTOM}>Altra…</option>
+        </select>
+      )}
+      <p className={`text-[10px] mt-0.5 leading-tight ${chosenNotFound ? 'text-warning' : 'text-ink-muted'}`}>
+        {chosenNotFound ? `No surt al cercador de ${value}: confirma-ho abans.`
+          : info.available.length ? `✓ ${info.available.map(p => p.name).join(' · ')}`
+          : info.unchecked.some(p => p.sells === 'etf') ? 'ETF: confirma-ho al bròquer'
+          : 'Cap plataforma comprovada'}
+      </p>
+    </div>
   );
 }
