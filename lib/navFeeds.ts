@@ -288,10 +288,10 @@ async function dws(src: FeedSource, ctx: FeedContext): Promise<FeedResult> {
   const pdp = await downloadText(ctx, `https://funds.deutsche-am.com/api/ProductDetailPage/ActiveEmea/es-es/${src.key}`);
   const guid = pdp.match(/"instrumentListingGuid":"([0-9a-f-]{36})"/i)?.[1];
   if (!guid) throw new Error('funds.dws.com: no s\'ha trobat el fons');
-  const currency = pdp.match(/"currency(?:Code|Iso)?":"([A-Z]{3})"/)?.[1] ?? 'EUR';
-  const url = `https://funds.deutsche-am.com/api/chart-data/ActiveEmea/es-es/GetChartData?instrumentListingGuid=${guid}&startDate=${ctx.since}&endDate=${ctx.today}&resolution=5000`;
-  const j = await downloadJson(ctx, url);
-  return { points: pointsFromJson(j, currency) };
+  // Fitxer oficial "Fecha;Valor liquidatiu" (dd/mm/aaaa; decimals amb coma)
+  const csv = await downloadText(ctx, `https://funds.deutsche-am.com/api/chart-data/ActiveEmea/es-ES/DownloadNavFile/${guid}?startDate=${ctx.since}&endDate=${ctx.today}`);
+  const rows = csv.replace(/^\uFEFF/, '').trim().split(/\r?\n/).map(l => l.split(';').map(c => c.trim()));
+  return { points: seriesFromSheet({ name: 'csv', rows }, /^valor liquidativo/i, 'EUR') };
 }
 
 async function fidelity(src: FeedSource, ctx: FeedContext): Promise<FeedResult> {
@@ -345,33 +345,27 @@ async function azvalor(src: FeedSource, ctx: FeedContext): Promise<FeedResult> {
 }
 
 async function horos(src: FeedSource, ctx: FeedContext): Promise<FeedResult> {
-  const j = await downloadJson(ctx, `https://horosam.com/api/pricesPure_${src.key}.json`);
-  return { points: pointsFromJson(j, 'EUR') };
+  // [{ price, dateAsString: "aaaammdd", date: (la mitjanit de Madrid en UTC, és a dir, el dia anterior) }]
+  const j: { price: number; dateAsString?: string; date?: string }[] = await downloadJson(ctx, `https://horosam.com/api/pricesPure_${src.key}.json`);
+  if (!Array.isArray(j)) throw new Error('horosam.com: format de preus desconegut');
+  return { points: j.map(x => ({ date: parseFeedDate(x.dateAsString ?? '') ?? '', nav: Number(x.price), currency: 'EUR' })).filter(p => p.date && p.nav > 0) };
 }
 
 async function cobas(src: FeedSource, ctx: FeedContext): Promise<FeedResult> {
-  const html = await downloadText(ctx, 'https://www.cobasam.com/valores-liquidativos/');
-  const norm = (t: string) => t.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().replace(/\s+/g, ' ').trim();
-  const want = norm(src.key);
-  let current = '';
-  const out: FeedPoint[] = [];
-  for (const row of html.split(/<tr\b/i).slice(1)) {
-    const cells = [...row.matchAll(/<t[dh]\b[^>]*>([\s\S]*?)<\/t[dh]>/gi)]
-      .map(c => c[1].replace(/<[^>]+>/g, ' ').replace(/&nbsp;/g, ' ').replace(/&#8364;|&euro;/g, '€').replace(/\s+/g, ' ').trim());
-    const filled = cells.filter(Boolean);
-    if (filled.length === 1 && /cobas/i.test(filled[0])) { current = norm(filled[0]).replace(/ fi$/, ''); continue; }
-    if (current !== want) continue;
-    const di = cells.findIndex(c => parseFeedDate(c));
-    if (di < 0) continue;
-    const cls = cells[di + 1] ?? '';
-    if (src.shareClass && cls !== src.shareClass) continue;
-    const navCell = cells.slice(di + 1).find(c => /€/.test(c));
-    const nav = parseFeedNumber(navCell);
-    if (nav && nav > 0) out.push({ date: parseFeedDate(cells[di])!, nav, currency: 'EUR' });
-    if (!src.shareClass) break;   // fons d'una sola classe: la primera fila
-  }
-  if (!out.length) throw new Error(`cobasam.com: no s'ha trobat ${src.key}${src.shareClass ? ` classe ${src.shareClass}` : ''} a la taula`);
-  return { points: out };
+  // La pàgina de valors liquidatius porta les dades de cada classe en un JSON:
+  // {"name":"Cobas Internacional FI Clase C", ..., "product_profit_info":{"liquidative_value":"190,207249 €", ..., "liquidative_date":"23-11-2026"}}
+  // Només dona l'últim valor publicat (Cobas publica amb 1-2 dies de retard).
+  const html = (await downloadText(ctx, 'https://www.cobasam.com/valores-liquidativos/')).replace(/\\"/g, '"').replace(/\\u00([0-9a-f]{2})/gi, (_, h) => String.fromCharCode(parseInt(h, 16)));
+  const norm = (t: string) => t.normalize('NFC');
+  const name = norm(`${src.key} FI${src.shareClass ? ` Clase ${src.shareClass}` : ''}`);
+  const text = norm(html);
+  const at = text.indexOf(`"name":"${name}"`);
+  if (at < 0) throw new Error(`cobasam.com: no s'ha trobat "${name}" a la pàgina`);
+  const chunk = text.slice(at, at + 1200);
+  const nav = parseFeedNumber(chunk.match(/"liquidative_value":"([^"]*)"/)?.[1]);
+  const date = parseFeedDate(chunk.match(/"liquidative_date":"([^"]*)"/)?.[1]);
+  if (!nav || !date) throw new Error(`cobasam.com: "${name}" no té valor liquidatiu publicat`);
+  return { points: [{ date, nav, currency: 'EUR' }] };
 }
 
 /**
