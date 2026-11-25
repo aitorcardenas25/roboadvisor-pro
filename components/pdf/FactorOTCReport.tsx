@@ -291,7 +291,7 @@ const ProgressBar = ({ label, value, max = 100 }: {
 const GoldCard = ({ label, value, sub }: {
   label: string; value: string; sub?: string;
 }) => (
-  <View style={S.cardGold}>
+  <View style={S.cardGold} wrap={false}>
     <Text style={S.cardLabel}>{label}</Text>
     <Text style={[S.cardValue, { color: C.dark }]}>{value}</Text>
     {sub && <Text style={S.cardSub}>{sub}</Text>}
@@ -555,7 +555,7 @@ const ExecutivePage = ({
           </View>
         </View>
 
-        <View style={[S.cardGold, { marginTop: 2 }]}>
+        <View style={[S.cardGold, { marginTop: 2 }]} wrap={false}>
           <Text style={[S.body1, { fontSize: 8, marginBottom: 0 }]}>
             <Text style={S.bold}>Nota:{' '}</Text>
             L'estructura presentada optimitza la distribució del flux de caixa per maximitzar
@@ -823,7 +823,7 @@ const DiagnosticsPage = ({
           </View>
         </View>
 
-        <View style={S.cardGold}>
+        <View style={S.cardGold} wrap={false}>
           <Text style={[S.body1, { fontSize: 8, marginBottom: 0 }]}>
             <Text style={S.bold}>Recomanació:{' '}</Text>
             Abans de procedir amb la inversió, assegura't de tenir un fons d'emergència
@@ -908,16 +908,27 @@ const PortfolioPage = ({
             <Text style={[S.tableHeadCell, { flex: 1.2, textAlign: 'center' }]}>TER</Text>
             <Text style={[S.tableHeadCell, { flex: 1.5, textAlign: 'right' }]}>IMPORT</Text>
           </View>
-          {portfolio.allocations.map((a, i) => (
-            <View key={i} style={[S.tableRow, i % 2 === 1 ? S.tableRowAlt : {}]}>
+          {portfolio.allocations.map((a, i) => {
+            const cl = classifyFund(a.product.isin, a.product.category, a.product.name);
+            // Amb molts fons, fila compacta (una sola línia de detall) perquè la taula
+            // càpiga a la pàgina; cap fila es parteix entre dues pàgines.
+            const compact = portfolio.allocations.length > 8;
+            return (
+            <View key={i} wrap={false} style={[S.tableRow, i % 2 === 1 ? S.tableRowAlt : {}, compact ? { paddingVertical: 4 } : {}]}>
               <View style={{ flex: 4 }}>
                 <Text style={[S.tableCell, S.bold]}>{a.product.name}</Text>
+                {compact ? (
+                  <Text style={[S.tableCellGray, { fontSize: 6.5 }]}>
+                    {a.product.isin} · {assetTypeLabel(cl)} · {managementLabel(cl)}
+                  </Text>
+                ) : (<>
                 <Text style={[S.tableCellGray, { fontSize: 7 }]}>
                   {a.product.manager} · ISIN: {a.product.isin}
                 </Text>
                 <Text style={[S.tableCellGray, { fontSize: 7 }]}>
-                  {(() => { const cl = classifyFund(a.product.isin, a.product.category, a.product.name); return `${assetTypeLabel(cl)} · ${managementLabel(cl)}`; })()}
+                  {`${assetTypeLabel(cl)} · ${managementLabel(cl)}`}
                 </Text>
+                </>)}
               </View>
               <Text style={[S.tableCell, S.bold, { flex: 1.2, textAlign: 'center' }]}>
                 {a.weight}%
@@ -936,10 +947,11 @@ const PortfolioPage = ({
                 {fmt(a.amount)}
               </Text>
             </View>
-          ))}
+            );
+          })}
         </View>
 
-        <View style={S.cardGold}>
+        <View style={S.cardGold} wrap={false}>
           <Text style={[S.body1, { fontSize: 8, marginBottom: 0 }]}>
             <Text style={S.bold}>Optimització de costos:{' '}</Text>
             TER total ponderat del {portfolio.totalTER.toFixed(2)}%, per sota de la mitjana
@@ -1031,7 +1043,7 @@ const SuitabilityPage = ({
 
         {/* Advertències de cartera */}
         {suitability.warnings.length > 0 && (
-          <View style={[S.cardGold, { marginBottom: 12 }]}>
+          <View style={[S.cardGold, { marginBottom: 12 }]} wrap={false}>
             <Text style={[S.sectionTag, { marginBottom: 6 }]}>ADVERTÈNCIES DE CARTERA</Text>
             {suitability.warnings.map((w, i) => (
               <View key={i} style={{ flexDirection: 'row', marginBottom: 3 }}>
@@ -1095,7 +1107,7 @@ const SuitabilityPage = ({
         ) : null}
 
         {/* Nota metodològica */}
-        <View style={[S.legalBox, { marginTop: 10 }]}>
+        <View style={[S.legalBox, { marginTop: 10 }]} wrap={false}>
           <Text style={S.legalTitle}>NOTA METODOLÒGICA MiFID II</Text>
           <Text style={S.legalText}>
             L'avaluació d'adequació s'ha realitzat conforme a l'Article 54 del Reglament Delegat
@@ -1278,7 +1290,7 @@ const BenchmarkPage = ({
 
       {/* Nota metodològica benchmark */}
       <Text style={[S.sectionTag, { marginBottom: 8 }]}>NOTA METODOLÒGICA</Text>
-      <View style={S.cardGold}>
+      <View style={S.cardGold} wrap={false}>
         <Text style={[S.body1, { fontSize: 8, marginBottom: 6 }]}>
           El benchmark compost s'ha construït per reflectir una cartera passiva equivalent
           al perfil <Text style={S.bold}>{getProfileLabel(portfolio.profile)}</Text>, amb una
@@ -1407,7 +1419,7 @@ const MonteCarloPage = ({
           sub="P5 — P95" />
       </View>
 
-      <View style={[S.cardGold, { marginTop: 4 }]}>
+      <View style={[S.cardGold, { marginTop: 4 }]} wrap={false}>
         <Text style={[S.body1, { fontSize: 7.5, marginBottom: 0 }]}>
           {monteCarlo.note}
         </Text>
@@ -1487,7 +1499,7 @@ const RisksPage = ({
       ))}
 
       {/* Fortaleses */}
-      <View style={[S.cardGold, { marginTop: 10 }]}>
+      <View style={[S.cardGold, { marginTop: 10 }]} wrap={false}>
         <Text style={[S.sectionTag, { marginBottom: 8 }]}>FORTALESES DE LA CARTERA</Text>
         {report.risksSection.mitigants.slice(0, 4).map((m, i) => (
           <View key={i} style={{ flexDirection: 'row', marginBottom: 3 }}>
@@ -1565,7 +1577,7 @@ const ConclusionPage = ({
       </View>
 
       {/* Conclusió principal */}
-      <View style={[S.cardGold, { marginBottom: 12 }]}>
+      <View style={[S.cardGold, { marginBottom: 12 }]} wrap={false}>
         <Text style={[S.sectionTag, { marginBottom: 6 }]}>CONCLUSIÓ FINAL</Text>
         <Text style={[S.body1, { marginBottom: 0 }]}>
           {report.conclusionSection.summary}
@@ -1599,7 +1611,7 @@ const ConclusionPage = ({
       </Text>
 
       {/* Avís legal */}
-      <View style={[S.legalBox, { marginTop: 12 }]}>
+      <View style={[S.legalBox, { marginTop: 12 }]} wrap={false}>
         <Text style={S.legalTitle}>⚖ AVÍS LEGAL IMPORTANT</Text>
         <Text style={S.legalText}>
           Aquest informe ha estat generat per Factor OTC, una eina digital de suport

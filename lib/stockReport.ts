@@ -1,6 +1,8 @@
 // lib/stockReport.ts
 // Genera un informe HTML autònom i professional d'anàlisi bursàtil.
 
+import { PRINT_PAGE_CSS, PRINT_FIT_SCRIPT } from './printPages';
+
 export interface StockReportData {
   ticker:        string;
   name:          string;
@@ -1265,7 +1267,7 @@ export function generateStockReport(d: StockReportData): string {
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Factor OTC — Informe ${d.ticker}</title>
-<style>${CSS_STOCK}</style>
+<style>${CSS_STOCK}${PRINT_PAGE_CSS}</style>
 </head>
 <body>
 ${page1}
@@ -1281,6 +1283,7 @@ ${page10}
 ${page11}
 ${page12}
 ${page13}
+${PRINT_FIT_SCRIPT}
 </body>
 </html>`;
 }

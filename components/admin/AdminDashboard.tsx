@@ -141,7 +141,7 @@ export default function AdminDashboard({ onLogout }: Props) {
     <div className="theme-admin min-h-screen flex text-sm">
 
       {/* ── Menú lateral ─────────────────────────────────────────────────── */}
-      <aside className={`${sidebarW} fixed left-0 top-0 h-screen bg-subtle border-r border-line flex flex-col z-20 overflow-hidden`}>
+      <aside className={`${sidebarW} print:hidden fixed left-0 top-0 h-screen bg-subtle border-r border-line flex flex-col z-20 overflow-hidden`}>
         <div className="h-14 px-4 border-b border-line flex items-center justify-between">
           {!collapsed && (
             <span className="text-ink font-semibold tracking-tight">
@@ -197,17 +197,17 @@ export default function AdminDashboard({ onLogout }: Props) {
       </aside>
 
       {/* ── Contingut principal ───────────────────────────────────────────── */}
-      <main className={`flex-1 min-w-0 ${collapsed ? 'ml-16' : 'ml-[220px]'}`}>
-        <div className="h-14 flex justify-between items-center px-8 border-b border-line bg-surface">
+      <main className={`flex-1 min-w-0 print:ml-0 ${collapsed ? 'ml-16' : 'ml-[220px]'}`}>
+        <div className="h-14 flex justify-between items-center px-8 border-b border-line bg-surface print:hidden">
           <h1 className="text-ink font-semibold">
             {NAV_ITEMS.find(i => i.id === activeSection)?.label}
           </h1>
           <NotificationBell />
         </div>
 
-        <div className="p-8 max-w-[1400px]">
+        <div className="p-8 max-w-[1400px] print:p-0">
             {tabs && !(activeSection === 'clients' && selectedClientId) && (
-              <div role="tablist" className="flex flex-wrap gap-1 mb-6 border-b border-line">
+              <div role="tablist" className="flex flex-wrap gap-1 mb-6 border-b border-line print:hidden">
                 {tabs.map(t => (
                   <button key={t.id} role="tab" aria-selected={activeSub === t.id}
                     onClick={() => setSubTabs(prev => ({ ...prev, [activeSection]: t.id }))}
