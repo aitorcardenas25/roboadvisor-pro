@@ -6,11 +6,15 @@ import { useEffect, useMemo, useState } from 'react';
 import { useSession } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
 import DiagnosisCard from '@/components/finances/DiagnosisCard';
+import AllocationSummary from '@/components/AllocationSummary';
+import FundDrawdowns from '@/components/FundDrawdowns';
+import { showDrawdownsByDefault, type FundDrawdowns as FundDD } from '@/lib/drawdowns';
+import { assetTypeLabel, classifyFund, managementLabel } from '@/lib/fundClassification';
 import { diagnose } from '@/lib/diagnosis';
 import { proposalToReportInput, type ClientProposal, type ProposalStats } from '@/lib/proposalMath';
 
 type Proposal = ClientProposal & { stats: ProposalStats };
-interface Data { client: { name: string; email: string }; personal: Record<string, unknown>; proposal: Proposal | null; versions: number }
+interface Data { client: { name: string; email: string }; personal: Record<string, unknown>; proposal: Proposal | null; versions: number; drawdowns?: FundDD[] }
 interface Goal { horizon?: string; description: string; amount?: number; targetYear?: number }
 
 const PROFILE: Record<string, string> = { conservador: 'Conservador', moderat: 'Moderat', equilibrat: 'Equilibrat', dinamic: 'Dinàmic', agressiu: 'Agressiu' };
@@ -55,7 +59,8 @@ export default function InitialReportPage() {
       const p = data.proposal;
       const input = proposalToReportInput(p, data.client, data.personal);
       const when = new Date(p.approvedAt ?? p.updatedAt).toLocaleDateString('ca-ES', { day: '2-digit', month: 'long', year: 'numeric' });
-      const blob = await pdf(<ManualReportPDF data={input} generatedAt={when} />).toBlob();
+      const dd = showDrawdownsByDefault(p.profile) ? data.drawdowns : undefined;
+      const blob = await pdf(<ManualReportPDF data={input} generatedAt={when} drawdowns={dd} />).toBlob();
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url; a.download = `FACTOR_OTC_informe_inicial_${safeName(data.client.name)}_v${p.version}.pdf`;
@@ -160,6 +165,7 @@ export default function InitialReportPage() {
                   </div>
                 ))}
               </div>
+              <AllocationSummary items={p.items} className="mt-4" />
               <div className="mt-4 overflow-x-auto">
                 <table className="w-full text-xs">
                   <thead>
@@ -171,10 +177,11 @@ export default function InitialReportPage() {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-line">
-                    {[...p.items].sort((a, b) => b.weight - a.weight).map(x => (
+                    {[...p.items].sort((a, b) => b.weight - a.weight).map(x => { const cl = classifyFund(x.isin, x.category, x.name); return (
                       <tr key={x.isin}>
                         <td className="py-2 pr-3">
                           <p className="text-ink">{x.name}</p>
+                          <p className="text-ink-soft text-[11px]">{assetTypeLabel(cl)} · {managementLabel(cl)}</p>
                           <p className="text-ink-muted text-[11px]">{x.category} · {x.isin}</p>
                           {x.justification && <p className="text-ink-soft text-[11px] mt-0.5">{x.justification}</p>}
                         </td>
@@ -182,7 +189,7 @@ export default function InitialReportPage() {
                         <td className="hidden sm:table-cell py-2 px-2 text-right text-ink-soft whitespace-nowrap">{x.historicalReturn5Y !== undefined ? pct(x.historicalReturn5Y) : '—'}</td>
                         <td className="hidden sm:table-cell py-2 pl-2 text-right text-ink-soft whitespace-nowrap">{x.ter > 0 ? `${x.ter.toLocaleString('ca-ES', { maximumFractionDigits: 2 })} %` : '—'}</td>
                       </tr>
-                    ))}
+                    ); })}
                   </tbody>
                 </table>
               </div>
@@ -199,6 +206,12 @@ export default function InitialReportPage() {
                 <span className="font-semibold">Avís legal.</span>{' '}Aquest informe l&apos;ha elaborat Factor OTC amb finalitat orientativa i educativa. No és assessorament financer regulat (MiFID II) ni una oferta o recomanació d&apos;inversió, i Factor OTC no és una entitat autoritzada per la CNMV. Les rendibilitats passades i les estimacions no garanteixen resultats futurs. Invertir implica risc de perdre part o tot el capital. Abans de decidir, pots consultar un assessor financer autoritzat per la CNMV.
               </p>
             </section>
+
+            {!!data.drawdowns?.length && (
+              <FundDrawdowns items={data.drawdowns} defaultOpen={showDrawdownsByDefault(p.profile)}
+                title="Caigudes històriques dels fons proposats"
+                intro="Quant ha arribat a baixar cada fons des d’un màxim, quan va passar i quant va tardar a recuperar-se. Serveix per saber què pots esperar en un mal moment." />
+            )}
           </>
         )}
       </div>

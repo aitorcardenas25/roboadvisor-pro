@@ -8,12 +8,15 @@ type Preview = ImportResult & {
 };
 
 const PERSONAL_LABELS: Record<string, string> = {
-  age: 'Edat', annualIncome: 'Ingressos anuals', monthlyExpenses: 'Despeses mensuals',
+  age: 'Edat', annualIncome: 'Ingressos bruts anuals (Excel antic)', annualNetIncome: 'Sou net anual', monthlyExpenses: 'Despeses mensuals',
   currentSavings: 'Estalvis', netWorth: 'Patrimoni net', totalDebt: 'Deute',
   monthlyNetIncome: 'Ingressos nets / mes', monthlyFixedExpenses: 'Despeses fixes / mes',
   monthlyVariableExpenses: 'Despeses variables / mes', monthlyDebtPayments: 'Quotes deutes / mes',
   dependents: 'Persones a càrrec', employmentType: 'Situació laboral',
   selfRiskProfile: 'Perfil (segons el client)', selfKnowledge: 'Coneixement',
+  consumerDebt: 'Deute de consum', monthlyInvestable: 'Podria invertir / mes',
+  housing: 'Habitatge', incomeOutlook: 'Ingressos pròxims 2 anys', investingExperience: 'Experiència invertint',
+  drawdownReaction: 'Si baixa un 20 %', currentAdvisor: 'Qui li porta els estalvis',
 };
 const NOT_MONEY = new Set(['age', 'dependents']);
 const HORIZON_LABELS: Record<string, string> = { curt: 'Curt termini', mitja: 'Mitjà termini', llarg: 'Llarg termini' };
@@ -22,6 +25,11 @@ const CHOICE_LABELS: Record<string, string> = {
   indefinit: 'Indefinit', temporal: 'Temporal', autonom: 'Autònom', 'sense-feina': 'Sense feina',
   conservador: 'Conservador', equilibrat: 'Equilibrat', dinamic: 'Dinàmic',
   basic: 'Bàsic', mitja: 'Mitjà', alt: 'Alt',
+  lloguer: 'De lloguer', hipoteca: 'Propi amb hipoteca', propietat: 'Propi pagat', familia: 'Amb la família',
+  pujaran: 'Pujaran', igual: 'Igual', baixaran: 'Baixaran', 'no-ho-se': 'No ho sé',
+  mai: 'Mai ha invertit', 'menys-2': 'Menys de 2 anys', '2-5': 'De 2 a 5 anys', 'mes-5': 'Més de 5 anys',
+  'vendre-tot': 'Vendria tot', 'vendre-part': 'Vendria una part', mantenir: 'No faria res', 'comprar-mes': 'Compraria més',
+  ningu: 'Ningú', jo: 'Ell mateix', banc: 'El banc', assessor: 'Un assessor',
 };
 const fmtPersonal = (k: string, v: number | string) =>
   typeof v === 'string' ? (CHOICE_LABELS[v] ?? v) : NOT_MONEY.has(k) ? String(v) : eur(v);

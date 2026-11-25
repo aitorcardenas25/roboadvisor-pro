@@ -81,4 +81,23 @@ export async function getConsentDates(version = CONSENT_VERSION): Promise<Record
   return out;
 }
 
+/** Consentiment vigent per client (data més antiga i si accepta l'enquesta), per a l'exportació. */
+export async function getConsents(version = CONSENT_VERSION): Promise<Record<string, { acceptedAt: string; surveyOptIn: boolean }>> {
+  const out: Record<string, { acceptedAt: string; surveyOptIn: boolean }> = {};
+  const db = getDb();
+  if (!db) {
+    for (const r of _mem.values()) if (r.version === version) out[r.userId] = { acceptedAt: r.acceptedAt, surveyOptIn: r.surveyOptIn };
+    return out;
+  }
+  const { data, error } = await db.from('client_consents').select('user_id,accepted_at,survey_opt_in').eq('version', version);
+  if (error || !data) return out;
+  // L'opció de l'enquesta que val és la de l'acceptació més recent.
+  const rows = [...data].sort((a, b) => String(a.accepted_at).localeCompare(String(b.accepted_at)));
+  for (const r of rows) {
+    const id = String(r.user_id);
+    out[id] = { acceptedAt: out[id]?.acceptedAt ?? String(r.accepted_at), surveyOptIn: Boolean(r.survey_opt_in) };
+  }
+  return out;
+}
+
 export function __resetConsentsForTests() { _mem.clear(); }

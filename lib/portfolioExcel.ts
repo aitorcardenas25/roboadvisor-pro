@@ -5,7 +5,7 @@
 import ExcelJS from 'exceljs';
 import type { ClientPortfolio } from './clientPortfolios';
 import { computeMetrics } from './clientPortfolios';
-import { getNavs } from './fundNavs';
+import { daysBefore, getNavs } from './fundNavs';
 import { aggregatePeriods, valuationSeries, type Period, type Valuation } from './portfolioValuation';
 
 const GREEN = 'FF14281D';
@@ -19,7 +19,10 @@ export const PERIOD_LABEL: Record<Period, string> = { month: 'Mensual', quarter:
 export async function loadValuation(portfolio: ClientPortfolio): Promise<Valuation | null> {
   if (!portfolio.holdings.length) return null;
   const isins = [...new Set(portfolio.holdings.map(h => (h.assetIsin ?? '').toUpperCase()).filter(Boolean))];
-  const navs = (await Promise.all(isins.map(i => getNavs(i)))).flat();
+  // Només des d'una mica abans del primer moviment (l'històric complet pot tenir milers de preus)
+  const first = [...portfolio.transactions.map(t => t.date), ...portfolio.holdings.map(h => h.createdAt ?? '')].filter(Boolean).sort()[0];
+  const since = first ? daysBefore(first, 60) : undefined;
+  const navs = (await Promise.all(isins.map(i => getNavs(i, since)))).flat();
   return valuationSeries(portfolio.holdings, portfolio.transactions, navs);
 }
 

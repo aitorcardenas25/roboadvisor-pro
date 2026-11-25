@@ -182,7 +182,7 @@ describe('informe i Excel', () => {
 
   it('passa les dades personals del client a l\'informe', async () => {
     const p = await saveDraft('c1', { ...params, items: [item('A', 100)] });
-    const input = proposalToReportInput(p, { name: 'Marta', email: 'm@x' }, { annualIncome: 36000, monthlyExpenses: 1500, netWorth: 90000 });
+    const input = proposalToReportInput(p, { name: 'Marta', email: 'm@x' }, { annualNetIncome: 36000, monthlyExpenses: 1500, netWorth: 90000 });
     expect(input.monthlyIncome).toBe(3000);
     expect(input.monthlyExpenses).toBe(1500);
     expect(input.patrimoni).toBe(90000);
@@ -233,7 +233,9 @@ describe('informe i Excel', () => {
     await wb.xlsx.load(buf as unknown as ArrayBuffer);
     expect(wb.worksheets.map(w => w.name)).toEqual(['Resum', 'Fons', 'Projecció']);
     const fons = wb.getWorksheet('Fons')!;
-    expect(fons.getRow(2).getCell(5).value).toBe(6000);   // 60 % de 10.000 €
+    expect(fons.getRow(2).getCell(7).value).toBe(6000);   // 60 % de 10.000 €
+    expect(fons.getRow(1).getCell(4).value).toBe('Classe d\'actiu');
+    expect(fons.getRow(1).getCell(5).value).toBe('Gestió');
     expect(wb.getWorksheet('Projecció')!.rowCount).toBe(12); // capçalera + anys 0..10
   });
 });
@@ -286,5 +288,20 @@ describe('aprovació concurrent (memòria)', () => {
     expect(p.status).toBe('approved');
     expect(p.suitability?.status).toBe('inadequate');
     expect(p.suitabilityOverride).toBe('Ho demana el client');
+  });
+});
+
+describe('v4: ingressos i capacitat declarada', () => {
+  it('l\'informe no fa servir el sou brut antic com a ingressos nets', () => {
+    const p = { profile: 'moderat', objective: '', horizon: 10, initialAmount: 0, monthlyAmount: 0, items: [] } as unknown as Parameters<typeof proposalToReportInput>[0];
+    expect(proposalToReportInput(p, { name: 'X', email: 'x@x' }, { annualIncome: 36000 }).monthlyIncome).toBeUndefined();
+    expect(proposalToReportInput(p, { name: 'X', email: 'x@x' }, { annualIncome: 36000, monthlyNetIncome: 1900 }).monthlyIncome).toBe(1900);
+    expect(proposalToReportInput(p, { name: 'X', email: 'x@x' }, { annualNetIncome: 24000 }).monthlyIncome).toBe(2000);
+  });
+  it('avisa si l\'aportació mensual supera el que el client pot invertir sense patir', () => {
+    const r = checkProposalSuitability({ profile: 'moderat', horizon: 10, monthlyAmount: 300, items: [] }, { monthlyInvestable: 150 });
+    expect(r.issues.some(i => /sense patir/.test(i.message))).toBe(true);
+    const ok = checkProposalSuitability({ profile: 'moderat', horizon: 10, monthlyAmount: 100, items: [] }, { monthlyInvestable: 150 });
+    expect(ok.issues.some(i => /sense patir/.test(i.message))).toBe(false);
   });
 });

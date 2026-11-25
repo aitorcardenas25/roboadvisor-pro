@@ -3,6 +3,8 @@
 // El fan servir l'assessor (Generador d'informe mensual) i el client (els seus informes).
 import type { MonthlyReportData } from '@/lib/portfolioReport';
 import MonthlyReportOfficialView from '@/components/admin/MonthlyReportOfficial';
+import AllocationSummary from '@/components/AllocationSummary';
+import { allocationBreakdown, assetTypeLabel, classifyFund, managementLabel } from '@/lib/fundClassification';
 
 const eur = (n: number) => n.toLocaleString('ca-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
@@ -53,6 +55,17 @@ export default function MonthlyReportView({ report }: { report: MonthlyReportDat
       {/* Resultat, evolució, pesos i operacions amb valors liquidatius oficials */}
       {report.official && <MonthlyReportOfficialView data={report.official} />}
 
+      {/* Repartiment: renda variable / fixa i gestió activa / passiva. Els informes
+          antics no el tenen desat: es calcula amb les principals posicions. */}
+      {report.topHoldings.length > 0 && (
+        <div className="mb-8">
+          <h2 className="text-ink font-semibold text-sm mb-3 print:text-ink">
+            Repartiment de la cartera{report.asOf ? ` a ${new Date(report.asOf).toLocaleDateString('ca-ES')}` : ''}
+          </h2>
+          <AllocationSummary breakdown={report.mix ?? allocationBreakdown(report.topHoldings.map(h => ({ isin: h.isin ?? '', name: h.name, category: h.category, weight: h.value })))} />
+        </div>
+      )}
+
       {/* Top holdings */}
       {report.topHoldings.length > 0 && (
         <div className="mb-8">
@@ -60,11 +73,14 @@ export default function MonthlyReportView({ report }: { report: MonthlyReportDat
             Principals posicions{report.asOf ? ` a ${new Date(report.asOf).toLocaleDateString('ca-ES')}` : ''}
           </h2>
           <div className="space-y-2">
-            {report.topHoldings.map(h => (
+            {report.topHoldings.map(h => { const cl = classifyFund(h.isin ?? '', h.category, h.name); return (
               <div key={h.name} className="flex items-center gap-3">
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center justify-between mb-1">
-                    <span className="text-ink-soft text-xs truncate print:text-ink-soft">{h.name}</span>
+                    <span className="min-w-0 truncate">
+                      <span className="text-ink-soft text-xs print:text-ink-soft">{h.name}</span>
+                      <span className="text-ink-muted text-[11px] print:text-ink-muted"> · {assetTypeLabel(cl)} · {managementLabel(cl)}</span>
+                    </span>
                     <div className="flex items-center gap-3 flex-shrink-0">
                       <span className="text-ink-muted text-xs print:text-ink-muted">{h.value.toLocaleString('ca-ES', { maximumFractionDigits: 0 })} €</span>
                       <span className={`text-xs font-mono ${h.pnlPct >= 0 ? 'text-positive' : 'text-negative'}`}>
@@ -78,7 +94,7 @@ export default function MonthlyReportView({ report }: { report: MonthlyReportDat
                   </div>
                 </div>
               </div>
-            ))}
+            ); })}
           </div>
         </div>
       )}

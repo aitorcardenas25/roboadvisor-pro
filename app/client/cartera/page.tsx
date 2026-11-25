@@ -21,6 +21,10 @@ import { DataSourceBadge } from '@/components/DataSourceBadge';
 import { DataSourcePanel } from '@/components/DataSourcePanel';
 import { CLIENT_TAX_REPORT_ENABLED } from '@/lib/featureFlags';
 import { useClientName } from '@/components/client/ClientPreview';
+import AllocationSummary from '@/components/AllocationSummary';
+import FundDrawdowns from '@/components/FundDrawdowns';
+import { showDrawdownsByDefault, type FundDrawdowns as FundDD } from '@/lib/drawdowns';
+import { allocationBreakdown, assetTypeLabel, classifyFund, managementLabel } from '@/lib/fundClassification';
 
 // ── Formatters ─────────────────────────────────────────────────────────────
 
@@ -66,10 +70,10 @@ const TT = {
 
 // ── Derived data helpers ───────────────────────────────────────────────────
 
-function isEquity(category: string): boolean {
-  const c = category.toLowerCase().trim();
-  return c.startsWith('rv') || c.includes('renda variable') || c.includes('variable') || c.includes('equity')
-    || c.includes('accions') || c.includes('acció') || c.includes('etf');
+/** Posicions obertes en el format de lib/fundClassification.ts (pes = valor de mercat). */
+function holdingMixItems(holdings: ClientHolding[]) {
+  return holdings.filter(h => h.quantity > 0)
+    .map(h => ({ isin: h.assetIsin, name: h.assetName, category: h.assetCategory, weight: Math.max(0, h.currentPrice * h.quantity) }));
 }
 
 /** Perfil orientatiu segons el pes en renda variable (ponderat pel valor de cada posició). */
@@ -77,9 +81,9 @@ function deriveRisk(portfolio: ClientPortfolio): { label: string; color: string 
   const open = portfolio.holdings.filter(h => h.quantity > 0);
   const total = open.reduce((s, h) => s + Math.max(0, h.currentPrice * h.quantity), 0);
   if (open.length === 0 || total <= 0) return { label: 'No disponible', color: '#626e69' };
+  // Mateixa classificació que l'informe (lib/fundClassification.ts): abans tot ETF comptava com a renda variable.
   // Arrodonit: 79,99 % per decimals de preu ha de comptar com el 80 % que és
-  const eqPct = Math.round(open.filter(h => isEquity(h.assetCategory ?? ''))
-    .reduce((s, h) => s + Math.max(0, h.currentPrice * h.quantity), 0) / total * 100);
+  const eqPct = Math.round(allocationBreakdown(holdingMixItems(open)).equity);
   if (eqPct >= 80) return { label: 'Dinàmic',         color: '#8a5a00' };
   if (eqPct >= 50) return { label: 'Moderat',         color: '#1e4d3f' };
   if (eqPct >= 20) return { label: 'Conservador',     color: '#1f5d8c' };
@@ -649,7 +653,8 @@ const HoldingCard = memo(function HoldingCard({
               {priceSourceId !== 'internal' && <DataSourceBadge source={priceSourceId} variant="chip" />}
             </div>
             <div className="flex items-center gap-2 text-xs text-ink-muted">
-              {h.assetCategory && <span>{h.assetCategory}</span>}
+              {(() => { const cl = classifyFund(h.assetIsin, h.assetCategory, h.assetName); return <span>{assetTypeLabel(cl)} · {managementLabel(cl)}</span>; })()}
+              {h.assetCategory && <><span className="opacity-40">·</span><span>{h.assetCategory}</span></>}
               {h.broker && <><span className="opacity-40">·</span><span>{h.broker}</span></>}
             </div>
           </div>
@@ -891,16 +896,18 @@ export default function ClientCarteraPage() {
   const [valuation, setValuation] = useState<Valuation | null>(null);
   const [period, setPeriod]       = useState<Period>('month');   // agrupació del gràfic i de l'Excel
   const [history, setHistory]     = useState<Record<string, MixHistory | null> | null>(null);
+  const [drawdowns, setDrawdowns] = useState<{ items: FundDD[]; profile: string | null }>({ items: [], profile: null });
 
   useEffect(() => {
     if (status === 'unauthenticated') { router.push('/login'); return; }
     if (status === 'authenticated') {
       fetch('/api/client/portfolio')
         .then(r => r.json())
-        .then((d: { portfolio: ClientPortfolio | null; valuation?: Valuation | null; history?: Record<string, MixHistory | null> | null }) => {
+        .then((d: { portfolio: ClientPortfolio | null; valuation?: Valuation | null; history?: Record<string, MixHistory | null> | null; drawdowns?: FundDD[]; profile?: string | null }) => {
           setPortfolio(d.portfolio ?? null);
           setValuation(d.valuation ?? null);
           setHistory(d.history ?? null);
+          setDrawdowns({ items: d.drawdowns ?? [], profile: d.profile ?? null });
           setLoading(false);
         })
         .catch(() => setLoading(false));
@@ -986,6 +993,13 @@ export default function ClientCarteraPage() {
                 <EvolutionChart portfolio={portfolio} metrics={metrics} valuation={valuation} period={period} onPeriod={setPeriod} />
                 <PortfolioExcelButton baseUrl="/api/client/portfolio/excel" className="justify-end -mt-2" period={period} />
                 <DistributionPanel portfolio={portfolio} total={metrics.currentValue} />
+                {activeHoldings.length > 0 && (
+                  <div className="bg-surface border border-line rounded-lg p-5">
+                    <h3 className="text-ink font-semibold text-sm">Repartiment de la cartera</h3>
+                    <p className="text-ink-muted text-xs mt-0.5 mb-4">Renda variable i fixa, i fons de gestió activa o passiva, segons el valor d&apos;avui</p>
+                    <AllocationSummary items={holdingMixItems(activeHoldings)} />
+                  </div>
+                )}
               </div>
               <div className="space-y-5">
                 <ExecutiveSummary portfolio={portfolio} metrics={metrics} valuation={valuation} />
@@ -993,6 +1007,9 @@ export default function ClientCarteraPage() {
             </div>
 
             <MixHistoryPanel history={history} />
+
+            <FundDrawdowns items={drawdowns.items} defaultOpen={showDrawdownsByDefault(drawdowns.profile)}
+              title="Caigudes històriques dels teus fons" />
 
             {/* Latest note preview */}
             {visibleNotes.length > 0 && (

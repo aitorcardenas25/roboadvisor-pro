@@ -28,12 +28,15 @@ export type AuditAction =
   | 'client.expense_removed'
   | 'client.wealth_updated'
   | 'client.preview_opened'
+  | 'clients.exported'
   | 'newsletter.sent'
   | 'fund.created'
   | 'fund.updated'
   | 'fund.deleted'
   | 'fund.navs_saved'
-  | 'fund.navs_deleted';
+  | 'fund.navs_deleted'
+  | 'fund.navs_auto_update'
+  | 'fund.navs_backfill';
 
 export interface AuditEntry {
   id:        string;
@@ -90,6 +93,38 @@ export function logAuditEvent(
     });
   }
 
+  return entry;
+}
+
+/**
+ * Com logAuditEvent, però espera que la fila quedi desada a Supabase. Per a
+ * les tasques programades: en una funció serverless, una escriptura que no
+ * s'espera es pot perdre quan la resposta ja ha sortit.
+ */
+export async function logAuditEventAndWait(
+  action: AuditAction,
+  opts: Parameters<typeof logAuditEvent>[1] = {},
+): Promise<AuditEntry> {
+  const entry: AuditEntry = {
+    id:        `aud-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+    timestamp: new Date().toISOString(),
+    action,
+    userId:    opts.userId    ?? null,
+    userEmail: opts.userEmail ?? null,
+    resource:  opts.resource  ?? null,
+    metadata:  opts.metadata  ?? {},
+    ip:        opts.ip        ?? null,
+  };
+  _log.unshift(entry);
+  if (_log.length > MAX_ENTRIES) _log.pop();
+  const db = getDb();
+  if (db) {
+    const { error } = await db.from('audit_log').insert({
+      id: entry.id, timestamp: entry.timestamp, action: entry.action, user_id: entry.userId,
+      user_email: entry.userEmail, resource: entry.resource, metadata: entry.metadata, ip: entry.ip,
+    });
+    if (error) console.error('[auditLog] no s\'ha pogut desar:', error.message);
+  }
   return entry;
 }
 

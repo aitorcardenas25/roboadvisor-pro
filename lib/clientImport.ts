@@ -10,13 +10,16 @@ import ExcelJS from 'exceljs';
 import { isValidIsin, lookupIsin } from './fundUniverse';
 import type { OperationType } from './clientPortfolios';
 
-export const TEMPLATE_VERSION = '2';
+export const TEMPLATE_VERSION = '4';
 
 // ─── Definició de la plantilla ───────────────────────────────────────────────
 
 export const PERSONAL_FIELDS = [
   { key: 'age',             label: 'Edat (anys)' },
-  { key: 'annualIncome',    label: 'Ingressos bruts anuals (€)' },
+  // v4: abans "Ingressos bruts anuals" (clau annualIncome). Es confonia amb el sou brut
+  // i l'informe el dividia per 12 com si fos net. Ara es demana el net, amb clau pròpia;
+  // les plantilles antigues continuen desant-lo a annualIncome (brut).
+  { key: 'annualNetIncome', label: 'Sou net anual, amb pagues extres (€)' },
   { key: 'monthlyExpenses', label: 'Despeses mensuals (€)' },
   { key: 'currentSavings',  label: 'Estalvis en efectiu (€)' },
   { key: 'netWorth',        label: 'Patrimoni net total (€)' },
@@ -27,8 +30,15 @@ export const PERSONAL_FIELDS = [
   { key: 'monthlyVariableExpenses', label: 'Despeses variables al mes: oci, roba, imprevistos (€)' },
   { key: 'monthlyDebtPayments',     label: 'Quotes de deutes al mes (€)' },
   { key: 'dependents',              label: 'Persones a càrrec (fills, familiars)' },
+  // v3 — per detectar els clients en situació més delicada (exportació de clients, 2026-11-25)
+  { key: 'consumerDebt',            label: 'Deute de consum: préstecs personals, cotxe, targetes (€)' },
+  { key: 'monthlyInvestable',       label: 'Quant podries invertir cada mes sense patir (€)' },
 ] as const;
-export type PersonalKey = typeof PERSONAL_FIELDS[number]['key'];
+/** Camps de plantilles antigues: ja no surten a la plantilla, però es continuen llegint. */
+const LEGACY_FIELDS = [
+  { key: 'annualIncome', label: 'Ingressos bruts anuals (€)' },
+] as const;
+export type PersonalKey = typeof PERSONAL_FIELDS[number]['key'] | typeof LEGACY_FIELDS[number]['key'];
 
 /** Camps de resposta tancada (desplegable a l'Excel). Valor desat = codi intern. */
 export const CHOICE_FIELDS = [
@@ -38,6 +48,17 @@ export const CHOICE_FIELDS = [
     options: { 'Conservador': 'conservador', 'Equilibrat': 'equilibrat', 'Dinàmic': 'dinamic' } },
   { key: 'selfKnowledge', label: 'Coneixement financer',
     options: { 'Bàsic': 'basic', 'Mitjà': 'mitja', 'Alt': 'alt' } },
+  // v3
+  { key: 'housing', label: 'Habitatge',
+    options: { 'De lloguer': 'lloguer', 'Propi amb hipoteca': 'hipoteca', 'Propi pagat': 'propietat', 'Amb la família': 'familia' } },
+  { key: 'incomeOutlook', label: 'Com creus que seran els teus ingressos els pròxims 2 anys',
+    options: { 'Pujaran': 'pujaran', 'Igual': 'igual', 'Baixaran': 'baixaran', 'No ho sé': 'no-ho-se' } },
+  { key: 'investingExperience', label: 'Quant temps fa que inverteixes',
+    options: { 'Mai he invertit': 'mai', 'Menys de 2 anys': 'menys-2', 'De 2 a 5 anys': '2-5', 'Més de 5 anys': 'mes-5' } },
+  { key: 'drawdownReaction', label: 'Si les teves inversions baixessin un 20 % en un any, què faries',
+    options: { 'Vendria tot': 'vendre-tot', 'Vendria una part': 'vendre-part', 'No faria res': 'mantenir', 'Compraria més': 'comprar-mes' } },
+  { key: 'currentAdvisor', label: 'Qui et porta els estalvis avui',
+    options: { 'Ningú': 'ningu', 'Jo mateix': 'jo', 'El banc': 'banc', 'Un assessor': 'assessor' } },
 ] as const;
 export type ChoiceKey = typeof CHOICE_FIELDS[number]['key'];
 
@@ -263,14 +284,24 @@ export async function parseClientWorkbook(data: ArrayBuffer | Buffer): Promise<I
         else res.personal[choice.key] = code;
         return;
       }
-      const field = PERSONAL_FIELDS.find(f => f.key === key)
-        ?? PERSONAL_FIELDS.find(f => f.label === label);
+      const fields = [...PERSONAL_FIELDS, ...LEGACY_FIELDS];
+      const field = fields.find(f => f.key === key) ?? fields.find(f => f.label === label);
       if (!field) return;
       if (str(raw) === '') return;
       const n = parseNumber(raw);
       if (n === null || n < 0) res.errors.push({ sheet: SHEET.personal, row: r, message: `"${field.label}" ha de ser un número positiu.` });
       else res.personal[field.key] = n;
     });
+  }
+
+  // Sou net anual vs ingressos nets mensuals: amb 12 o 14 pagues, l'anual ha de ser
+  // entre 12 i 14 vegades el mensual. Si no quadra, segurament ha posat el brut.
+  const yNet = res.personal.annualNetIncome, mNet = res.personal.monthlyNetIncome;
+  if (typeof yNet === 'number' && typeof mNet === 'number' && mNet > 0) {
+    const ratio = yNet / mNet;
+    if (ratio < 11 || ratio > 15) {
+      res.warnings.push({ sheet: SHEET.personal, row: 0, message: `El sou net anual (${Math.round(yNet)} €) no quadra amb els ingressos nets mensuals (${Math.round(mNet)} €): hauria de ser entre 12 i 14 vegades. Potser ha posat el sou brut; confirma-ho amb el client.` });
+    }
   }
 
   // Objectius (opcional; les plantilles v1 no la tenen)

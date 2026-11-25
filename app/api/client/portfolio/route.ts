@@ -3,17 +3,21 @@ import { getPortfolioByClientId } from '@/lib/clientPortfolios';
 import { recordActivity } from '@/lib/betaActivity';
 import { loadValuation } from '@/lib/portfolioExcel';
 import type { Valuation } from '@/lib/portfolioValuation';
-import { getNavs } from '@/lib/fundNavs';
+import { daysBefore, getFundDrawdowns, getNavs } from '@/lib/fundNavs';
+import type { FundDrawdowns } from '@/lib/drawdowns';
 import { simulateMix, type MixHistory } from '@/lib/mixHistory';
 import type { ClientPortfolio } from '@/lib/clientPortfolios';
 import { getClientTarget } from '@/lib/clientTarget';
+import { getProposals } from '@/lib/proposals';
 
 /** Composició d'avui (pes per valor amb l'últim VL oficial) simulada a 1, 3 i 5 anys. */
 async function loadMixHistory(portfolio: ClientPortfolio): Promise<Record<string, MixHistory | null> | null> {
   const open = portfolio.holdings.filter(h => h.quantity > 0 && h.assetIsin);
   if (!open.length) return null;
   const isins = [...new Set(open.map(h => h.assetIsin!.toUpperCase()))];
-  const navs = (await Promise.all(isins.map(i => getNavs(i)))).flat();
+  // La simulació arriba a 5 anys enrere: no cal llegir tot l'històric diari
+  const since = daysBefore(new Date().toISOString().slice(0, 10), 5 * 366 + 60);
+  const navs = (await Promise.all(isins.map(i => getNavs(i, since)))).flat();
   const lastNav = (isin: string) => navs.filter(n => n.isin === isin).at(-1)?.nav ?? 0;
   const values = isins.map(isin => ({
     isin,
@@ -57,6 +61,19 @@ export async function GET() {
       console.error('[client/portfolio] simulació històrica:', err instanceof Error ? err.message : err);
     }
   }
+  // Caigudes històriques dels fons que té ara (valors liquidatius oficials)
+  let drawdowns: FundDrawdowns[] = [];
+  const isins = portfolio?.holdings.filter(h => h.quantity > 0 && h.assetIsin).map(h => h.assetIsin!) ?? [];
+  if (isins.length) {
+    try { drawdowns = (await getFundDrawdowns(isins)).filter(d => d.monthlyPoints > 0); }
+    catch (err) { console.error('[client/portfolio] caigudes:', err instanceof Error ? err.message : err); }
+  }
+  // Perfil de l'última proposta enviada: als conservadors la secció surt oberta
+  let profile: string | null = null;
+  if (drawdowns.length) {
+    try { profile = (await getProposals(userId)).find(p => p.status === 'approved' && !!p.sharedAt)?.profile ?? null; }
+    catch { profile = null; }
+  }
   // Never expose other clients' data: server ensures we always query by session userId
-  return NextResponse.json({ portfolio: portfolio ?? null, valuation, history });
+  return NextResponse.json({ portfolio: portfolio ?? null, valuation, history, drawdowns, profile });
 }

@@ -7,6 +7,7 @@ import {
   InvestorQuestionnaire,
 } from '@/lib/scoring';
 import { Portfolio }        from '@/lib/portfolio';
+import { allocationBreakdown, assetTypeLabel, classifyFund, managementLabel } from '@/lib/fundClassification';
 import { PortfolioMetrics } from '@/lib/metrics';
 import { MonteCarloResult, formatMonteCarloValue } from '@/lib/monteCarlo';
 import { FinancialReport, InvestmentPolicyStatement, SuitabilityReport } from '@/lib/report';
@@ -914,6 +915,9 @@ const PortfolioPage = ({
                 <Text style={[S.tableCellGray, { fontSize: 7 }]}>
                   {a.product.manager} · ISIN: {a.product.isin}
                 </Text>
+                <Text style={[S.tableCellGray, { fontSize: 7 }]}>
+                  {(() => { const cl = classifyFund(a.product.isin, a.product.category, a.product.name); return `${assetTypeLabel(cl)} · ${managementLabel(cl)}`; })()}
+                </Text>
               </View>
               <Text style={[S.tableCell, S.bold, { flex: 1.2, textAlign: 'center' }]}>
                 {a.weight}%
@@ -940,7 +944,10 @@ const PortfolioPage = ({
             <Text style={S.bold}>Optimització de costos:{' '}</Text>
             TER total ponderat del {portfolio.totalTER.toFixed(2)}%, per sota de la mitjana
             del mercat per a carteres diversificades similars (0,75-1,50%).
-            Estil de gestió: {portfolio.characteristics.managementStyle.toLowerCase()}.
+            Estil de gestió: {(() => {
+              const b = allocationBreakdown(portfolio.allocations.map(a => ({ isin: a.product.isin, name: a.product.name, category: a.product.category, weight: a.weight })));
+              return `gestió passiva ${Math.round(b.passive)} % i activa ${Math.round(b.active)} % de la cartera`;
+            })()}.
           </Text>
         </View>
       </View>
