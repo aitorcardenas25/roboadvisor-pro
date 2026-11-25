@@ -842,8 +842,9 @@ function InvestorProfilePage({ d }: { d: ManualPortfolioInput }) {
         </View>
 
         {d.adminNote ? (
-          <View style={S.legalBox} wrap={false}>
-            <Text style={[S.legalText, S.bold, { marginBottom: 3 }]}>Nota de l&apos;assessor</Text>
+          // Text lliure de l'assessor (fins a 5.000 caràcters): ha de poder continuar a la pàgina següent
+          <View style={S.legalBox}>
+            <Text style={[S.legalText, S.bold, { marginBottom: 3 }]} minPresenceAhead={20}>Nota de l&apos;assessor</Text>
             <Text style={S.legalText}>{d.adminNote}</Text>
           </View>
         ) : null}

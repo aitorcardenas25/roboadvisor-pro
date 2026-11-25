@@ -44,8 +44,8 @@ function navSeries(seed: number) {
   return pts;
 }
 
-async function pagesAndSections(profile: string, withDrawdowns: boolean) {
-  const data = proposalToReportInput({ ...proposal, profile } as ClientProposal, { name: 'Clienta de Prova Exemple', email: 'prova@example.com' }, personal);
+async function pagesAndSections(profile: string, withDrawdowns: boolean, adminNote = proposal.adminNote) {
+  const data = proposalToReportInput({ ...proposal, profile, adminNote } as ClientProposal, { name: 'Clienta de Prova Exemple', email: 'prova@example.com' }, personal);
   const drawdowns = withDrawdowns ? items.map((x, i) => computeFundDrawdowns({ isin: x.isin, name: x.name }, navSeries(i + 3))) : undefined;
   const props = { data, generatedAt: '25 de novembre de 2026', drawdowns };
   // Seccions = fills no buits del <Document> (cadascun és una <Page>)
@@ -66,6 +66,12 @@ describe('Informe inicial (PDF) sense pàgines en blanc', () => {
   it('perfil conservador amb caigudes històriques: una pàgina per secció', async () => {
     const { pages, sections } = await pagesAndSections('conservador', true);
     expect(pages).toBe(sections);
+  }, 60_000);
+
+  it('una nota de l\'assessor molt llarga continua a la pàgina següent (no es talla)', async () => {
+    const note = Array.from({ length: 100 }, (_, i) => `Línia ${i + 1} de la nota`).join('\n');
+    const { pages, sections } = await pagesAndSections('dinamic', false, note);
+    expect(pages).toBeGreaterThan(sections);
   }, 60_000);
 });
 
