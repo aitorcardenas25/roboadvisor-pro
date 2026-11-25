@@ -345,7 +345,15 @@ export async function updateUserName(id: string, name: string): Promise<boolean>
   if (error || !data?.length) return false;
   const { data: ports } = await db.from('client_portfolios').update({ client_name: name, updated_at: now }).eq('client_id', id).select('id');
   const ids = (ports ?? []).map(p => p.id as string);
-  if (ids.length) await db.from('monthly_reports').update({ client_name: name }).in('portfolio_id', ids);
+  if (ids.length) {
+    // L'informe mensual es mostra des de data.clientName (còpia desada en generar-lo).
+    const { data: reps } = await db.from('monthly_reports').select('id, data').in('portfolio_id', ids);
+    for (const r of reps ?? []) {
+      const d = typeof r.data === 'string' ? JSON.parse(r.data) : r.data;
+      const next = d && typeof d === 'object' ? { ...d, clientName: name } : d;
+      await db.from('monthly_reports').update({ client_name: name, data: next }).eq('id', r.id);
+    }
+  }
   return true;
 }
 
