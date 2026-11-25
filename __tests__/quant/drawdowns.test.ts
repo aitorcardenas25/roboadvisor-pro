@@ -1,6 +1,6 @@
 // Caigudes històriques dels fons i ordre de «Preus dels fons».
 import { describe, it, expect } from 'vitest';
-import { computeFundDrawdowns, drawdownEpisodes, looksLikeDistributionClass, recoveryLabel, durationLabel, showDrawdownsByDefault } from '@/lib/drawdowns';
+import { computeFundDrawdowns, dateLabel, drawdownEpisodes, isDailySeries, spanLabel, looksLikeDistributionClass, recoveryLabel, durationLabel, showDrawdownsByDefault } from '@/lib/drawdowns';
 import { navAttention, sortByAttention, UPDATE_LAG_DAYS } from '@/lib/navMath';
 
 /** Sèrie de final de mes a partir d'una llista de valors, començant a `start` (aaaa-mm). */
@@ -139,5 +139,43 @@ describe('ordre de «Preus dels fons»', () => {
       row('E endarrerit antic', 50, '2026-10-01', true),
     ], asOf);
     expect(sorted.map(r => r.name)).toEqual(['E endarrerit antic', 'C endarrerit recent', 'B sense preus', 'D incomplet', 'A correcte']);
+  });
+});
+
+describe('caigudes amb preus diaris', () => {
+  /** Dies laborables des de `start` amb els valors donats. */
+  function daily(values: number[], start = '2020-01-01'): { date: string; nav: number }[] {
+    const out: { date: string; nav: number }[] = [];
+    let t = Date.parse(`${start}T00:00:00Z`);
+    for (const nav of values) {
+      while ([0, 6].includes(new Date(t).getUTCDay())) t += 86_400_000;
+      out.push({ date: new Date(t).toISOString().slice(0, 10), nav });
+      t += 86_400_000;
+    }
+    return out;
+  }
+  const meta = { isin: 'IE00B03HD191', name: 'Vanguard Global Stock Index Fund EUR Acc', currency: 'EUR' };
+
+  it('amb historial diari fa servir cada dia: veu la caiguda dins el mes', () => {
+    // Puja, cau un 30 % en 3 setmanes i recupera dins el mateix mes següent
+    const vals = [...Array(30).fill(0).map((_, i) => 100 + i * 0.1), ...Array(15).fill(0).map((_, i) => 102.9 - i * 2.06), ...Array(30).fill(0).map((_, i) => 72 + i * 1.1)];
+    const r = computeFundDrawdowns(meta, daily(vals));
+    expect(r.frequency).toBe('daily');
+    expect(r.maxDrawdown!).toBeLessThan(-29);
+    expect(r.episodes[0].daysToTrough).toBeGreaterThan(14);
+    expect(r.episodes[0].daysToTrough).toBeLessThan(30);
+  });
+
+  it('un historial mensual amb unes setmanes diàries al final es tracta com a mensual', () => {
+    const s = [...monthly(Array.from({ length: 60 }, (_, i) => 100 + i), '2020-11'), ...daily(Array(20).fill(170), '2025-11-03')];
+    expect(isDailySeries(s.sort((a, b) => a.date.localeCompare(b.date)))).toBe(false);
+  });
+
+  it('textos amb dia exacte i durada en dies', () => {
+    expect(dateLabel('2020-03-23', 'daily')).toBe('23/03/2020');
+    expect(dateLabel('2020-03-31', 'monthly')).toBe('març 2020');
+    expect(spanLabel(33, 1, 'daily')).toBe('33 dies');
+    expect(spanLabel(400, 13, 'daily')).toBe('1 any i 1 mes');
+    expect(spanLabel(31, 1, 'monthly')).toBe('1 mes');
   });
 });

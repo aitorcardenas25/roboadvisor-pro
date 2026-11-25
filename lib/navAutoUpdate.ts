@@ -7,7 +7,7 @@
 import { getDb } from './supabase';
 import { logAuditEventAndWait, getAuditLog } from './auditLog';
 import { lookupIsin } from './fundUniverse';
-import { getNavs, upsertNavs } from './fundNavs';
+import { getMonthEndNavs, getNavs, upsertNavs } from './fundNavs';
 import { syncHoldingsToNavs } from './clientPortfolios';
 import type { NavPoint } from './navMath';
 import {
@@ -64,7 +64,7 @@ export function workdaysAfter(from: string, to: string): number {
 /** Últim preu desat de cada ISIN (amb la data, el valor i la moneda). */
 async function lastStored(): Promise<Map<string, NavPoint>> {
   const out = new Map<string, NavPoint>();
-  for (const p of await getNavs()) out.set(p.isin, p);   // getNavs ve ordenat per ISIN i data
+  for (const p of await getMonthEndNavs()) out.set(p.isin, p);   // ordenat per ISIN i data: l'últim és el més recent
   return out;
 }
 

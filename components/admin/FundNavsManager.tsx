@@ -8,6 +8,7 @@ import { MIN_YEARS_FOR_PROPOSALS, UPDATE_LAG_DAYS, daysSince, fmtDate, navAttent
 import { DRAWDOWN_DISCLAIMER, type FundDrawdowns } from '@/lib/drawdowns';
 import { FundDrawdownCard } from '@/components/FundDrawdowns';
 import NavAutoUpdatePanel from './NavAutoUpdatePanel';
+import NavBackfillPanel from './NavBackfillPanel';
 
 interface FundRow { isin: string; name: string; category: string; inList: boolean; currency: string | null; metrics: NavMetrics }
 interface Preview {
@@ -63,7 +64,7 @@ export default function FundNavsManager() {
   const [file, setFile] = useState<File | null>(null);
   // Detall
   const [open, setOpen]     = useState<string | null>(null);
-  const [detail, setDetail] = useState<{ points: NavPoint[]; metrics: NavMetrics; drawdowns?: FundDrawdowns } | null>(null);
+  const [detail, setDetail] = useState<{ points: NavPoint[]; totalPoints?: number; metrics: NavMetrics; drawdowns?: FundDrawdowns } | null>(null);
 
   const load = useCallback(async () => {
     setLoadErr('');
@@ -179,6 +180,8 @@ export default function FundNavsManager() {
       </div>
 
       <NavAutoUpdatePanel onUpdated={load} />
+
+      <NavBackfillPanel onDone={load} />
 
       {msg && <div className={`rounded-lg px-4 py-3 text-sm ${msg.ok ? 'bg-positive/10 text-positive border border-positive/30' : 'bg-negative/10 text-negative border border-negative/30'}`}>{msg.text}</div>}
 
@@ -342,6 +345,9 @@ export default function FundNavsManager() {
                   <FundDrawdownCard d={detail.drawdowns} />
                   <p className="text-ink-muted text-[11px] mt-3">{DRAWDOWN_DISCLAIMER}</p>
                 </div>
+              )}
+              {(detail.totalPoints ?? 0) > detail.points.length && (
+                <p className="text-ink-muted text-xs">Es mostren els últims {detail.points.length} preus de {detail.totalPoints!.toLocaleString('ca-ES')}.</p>
               )}
               <div className="max-h-80 overflow-y-auto">
                 <table className="w-full text-sm">

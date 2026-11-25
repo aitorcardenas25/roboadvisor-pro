@@ -5,7 +5,7 @@ import {
 } from '@react-pdf/renderer';
 import type { ManualPortfolioInput, ManualAsset } from '@/lib/manualReport';
 import { capmReturn, CAPM_ASSUMPTIONS } from '@/lib/navMath';
-import { DRAWDOWN_DISCLAIMER, durationLabel, monthLabel, recoveryLabel, type FundDrawdowns } from '@/lib/drawdowns';
+import { DRAWDOWN_DISCLAIMER, dateLabel, fallLabel, frequencyLabel, recoveryLabel, type FundDrawdowns } from '@/lib/drawdowns';
 import { allocationBreakdown, allocationNote, assetTypeLabel, classifyFund, managementLabel } from '@/lib/fundClassification';
 
 const GOAL_HORIZON: Record<string, string> = { curt: 'Curt termini', mitja: 'Mitjà termini', llarg: 'Llarg termini' };
@@ -1614,7 +1614,7 @@ function DrawdownsPage({ d, items }: { d: ManualPortfolioInput; items: FundDrawd
               <View style={{ flex: 1 }}>
                 <Text style={[S.body1, S.bold, { marginBottom: 1 }]}>{f.name}</Text>
                 <Text style={[S.body2, { fontSize: 7 }]}>
-                  {f.isin}{f.windowStart && f.windowEnd ? ` · Dades de ${monthLabel(f.windowStart)} a ${monthLabel(f.windowEnd)} (${fNum(f.years, 1)} anys, preu de final de mes)` : ''}
+                  {f.isin}{f.windowStart && f.windowEnd ? ` · Dades de ${dateLabel(f.windowStart, f.frequency)} a ${dateLabel(f.windowEnd, f.frequency)} (${fNum(f.years, 1)} anys, ${frequencyLabel(f.frequency)})` : ''}
                 </Text>
               </View>
               {f.maxDrawdown !== null && (
@@ -1637,11 +1637,11 @@ function DrawdownsPage({ d, items }: { d: ManualPortfolioInput; items: FundDrawd
                 {f.episodes.map((e, i) => (
                   <View key={e.peakDate} style={[S.tableRow, { paddingVertical: 3 }]}>
                     <Text style={[S.tdGray, { flex: 0.3 }]}>{i + 1}</Text>
-                    <Text style={[S.td, { flex: 1.1 }]}>{monthLabel(e.peakDate)}</Text>
-                    <Text style={[S.td, { flex: 1.1 }]}>{monthLabel(e.troughDate)}</Text>
+                    <Text style={[S.td, { flex: 1.1 }]}>{dateLabel(e.peakDate, f.frequency)}</Text>
+                    <Text style={[S.td, { flex: 1.1 }]}>{dateLabel(e.troughDate, f.frequency)}</Text>
                     <Text style={[S.td, S.bold, { flex: 0.9, textAlign: 'right', color: C.neg }]}>{fPct(e.depthPct)}</Text>
-                    <Text style={[S.td, { flex: 1.2, paddingLeft: 8 }]}>{durationLabel(e.monthsToTrough)}</Text>
-                    <Text style={[S.td, { flex: 2.4, color: e.recoveryDate ? C.ink : C.amber }]}>{recoveryLabel(e).replace(/−/g, '-')}</Text>
+                    <Text style={[S.td, { flex: 1.2, paddingLeft: 8 }]}>{fallLabel(e, f.frequency)}</Text>
+                    <Text style={[S.td, { flex: 2.4, color: e.recoveryDate ? C.ink : C.amber }]}>{recoveryLabel(e, f.frequency).replace(/−/g, '-')}</Text>
                   </View>
                 ))}
               </View>

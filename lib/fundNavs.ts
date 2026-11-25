@@ -20,11 +20,15 @@ function rowToPoint(r: Record<string, unknown>): NavPoint {
   };
 }
 
-/** Tots els preus (d'un fons o de tots), ordenats per ISIN i data. */
-export async function getNavs(isin?: string): Promise<NavPoint[]> {
+/**
+ * Tots els preus (d'un fons o de tots), ordenats per ISIN i data.
+ * `since` (aaaa-mm-dd): només des d'aquesta data; amb l'històric diari complet
+ * un fons pot tenir més de 10.000 preus i moltes pantalles només en necessiten uns anys.
+ */
+export async function getNavs(isin?: string, since?: string): Promise<NavPoint[]> {
   const db = getDb();
   if (!db) {
-    return [..._mem.values()].filter(p => !isin || p.isin === isin)
+    return [..._mem.values()].filter(p => (!isin || p.isin === isin) && (!since || p.date >= since))
       .sort((a, b) => a.isin.localeCompare(b.isin) || a.date.localeCompare(b.date));
   }
   const out: NavPoint[] = [];
@@ -32,11 +36,53 @@ export async function getNavs(isin?: string): Promise<NavPoint[]> {
     let q = db.from('fund_navs').select('isin,nav_date,nav,currency,fund_name')
       .order('isin').order('nav_date').range(from, from + PAGE - 1);
     if (isin) q = q.eq('isin', isin);
+    if (since) q = q.gte('nav_date', since);
     const { data, error } = await q;
     if (error) throw new Error(error.message);
     out.push(...(data ?? []).map(r => rowToPoint(r as Record<string, unknown>)));
     if (!data || data.length < PAGE) break;
   }
+  return out;
+}
+
+/**
+ * Últim preu de cada mes de tots els fons (vista fund_nav_month_ends). Amb
+ * l'històric diari complet, llegir tota la taula serien centenars de consultes;
+ * les mètriques (rendibilitat, volatilitat, beta) ja fan servir preus de final
+ * de mes, i l'últim preu de l'últim mes és l'últim preu desat.
+ * Si la vista encara no existeix (migració pendent), llegeix la taula sencera.
+ */
+export async function getMonthEndNavs(): Promise<NavPoint[]> {
+  const db = getDb();
+  if (!db) return monthEndsOf(await getNavs());
+  const out: NavPoint[] = [];
+  for (let from = 0; ; from += PAGE) {
+    const { data, error } = await db.from('fund_nav_month_ends').select('isin,nav_date,nav,currency,fund_name')
+      .order('isin').order('nav_date').range(from, from + PAGE - 1);
+    if (error) {
+      console.warn('[fundNavs] sense la vista fund_nav_month_ends; es llegeix tota la taula:', error.message);
+      return monthEndsOf(await getNavs());
+    }
+    out.push(...(data ?? []).map(r => rowToPoint(r as Record<string, unknown>)));
+    if (!data || data.length < PAGE) break;
+  }
+  return out;
+}
+
+function monthEndsOf(points: NavPoint[]): NavPoint[] {
+  const by = new Map<string, NavPoint>();
+  for (const p of points) by.set(`${p.isin}|${p.date.slice(0, 7)}`, p);   // ordenats per data: es queda l'últim
+  return [...by.values()].sort((a, b) => a.isin.localeCompare(b.isin) || a.date.localeCompare(b.date));
+}
+
+/** Nombre de preus desats per ISIN (vista fund_nav_stats). Buit si la vista no hi és. */
+export async function getNavCounts(): Promise<Map<string, number>> {
+  const db = getDb();
+  const out = new Map<string, number>();
+  if (!db) { for (const p of _mem.values()) out.set(p.isin, (out.get(p.isin) ?? 0) + 1); return out; }
+  const { data, error } = await db.from('fund_nav_stats').select('isin,points');
+  if (error) return out;
+  for (const r of data ?? []) out.set(String(r.isin), Number(r.points));
   return out;
 }
 
@@ -131,17 +177,35 @@ function groupByIsin(points: NavPoint[]): Map<string, NavPoint[]> {
 export async function latestNavs(isins: string[]): Promise<NavPoint[]> {
   const uniq = [...new Set(isins.map(i => i.trim().toUpperCase()).filter(Boolean))];
   const out: NavPoint[] = [];
-  for (const isin of uniq) { const last = (await getNavs(isin)).at(-1); if (last) out.push(last); }
+  for (const isin of uniq) { const last = await getLatestNav(isin); if (last) out.push(last); }
   return out;
+}
+
+/** Últim preu desat d'un fons (una sola fila). */
+export async function getLatestNav(isin: string): Promise<NavPoint | null> {
+  const db = getDb();
+  if (!db) return (await getNavs(isin)).at(-1) ?? null;
+  const { data, error } = await db.from('fund_navs').select('isin,nav_date,nav,currency,fund_name')
+    .eq('isin', isin).order('nav_date', { ascending: false }).limit(1);
+  if (error) throw new Error(error.message);
+  return data?.[0] ? rowToPoint(data[0] as Record<string, unknown>) : null;
+}
+
+/** aaaa-mm-dd, `days` dies abans de `iso`. */
+export function daysBefore(iso: string, days: number): string {
+  return new Date(Date.parse(`${iso.slice(0, 10)}T00:00:00Z`) - days * 86_400_000).toISOString().slice(0, 10);
 }
 
 /** Un fons per fila: els de la llista de l'assessor (encara que no tinguin preus) i qualsevol altre amb preus. */
 export async function getNavSummary(asOf = new Date()): Promise<FundNavSummary[]> {
-  const by = groupByIsin(await getNavs());
+  const [monthly, counts] = await Promise.all([getMonthEndNavs(), getNavCounts()]);
+  const by = groupByIsin(monthly);
   const isins = [...new Set([...ADVISOR_FUNDS.map(f => f.isin), ...by.keys()])];
   const rows = isins.map(isin => {
     const pts = by.get(isin) ?? [];
-    return { isin, ...nameFor(isin, pts), currency: pts.at(-1)?.currency ?? null, metrics: computeNavMetrics(pts, asOf) };
+    const metrics = computeNavMetrics(pts, asOf);
+    // Les mètriques surten de l'últim preu de cada mes; el recompte, de tots els preus desats
+    return { isin, ...nameFor(isin, pts), currency: pts.at(-1)?.currency ?? null, metrics: { ...metrics, points: counts.get(isin) ?? metrics.points } };
   });
   return sortByAttention(rows, asOf);
 }
@@ -150,7 +214,7 @@ export async function getNavSummary(asOf = new Date()): Promise<FundNavSummary[]
 export async function getNavPerformanceMap(): Promise<Record<string, NavPerformance>> {
   try {
     const out: Record<string, NavPerformance> = {};
-    const by = groupByIsin(await getNavs());
+    const by = groupByIsin(await getMonthEndNavs());
     // El proxy de mercat ha de passar la mateixa validació que els fons; si no, no hi ha beta (ni CAPM).
     const rawMarket = by.get(MARKET_PROXY_ISIN) ?? [];
     const market = validMarketSeries(rawMarket);

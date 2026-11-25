@@ -33,7 +33,8 @@ export type AuditAction =
   | 'fund.deleted'
   | 'fund.navs_saved'
   | 'fund.navs_deleted'
-  | 'fund.navs_auto_update';
+  | 'fund.navs_auto_update'
+  | 'fund.navs_backfill';
 
 export interface AuditEntry {
   id:        string;
