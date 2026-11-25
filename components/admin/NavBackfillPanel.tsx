@@ -84,7 +84,7 @@ export default function NavBackfillPanel({ onDone }: { onDone?: () => void }) {
                     <td className="py-1.5 pr-2"><span className="text-ink">{r.name}</span> <span className="text-ink-muted font-mono">{r.isin}</span></td>
                     <td className={`py-1.5 px-2 whitespace-nowrap ${STATUS[r.status].cls}`}>{STATUS[r.status].label}</td>
                     <td className="py-1.5 px-2 whitespace-nowrap">{r.firstDate ? `des del ${fmtDate(r.firstDate)}` : ''}</td>
-                    <td className="py-1.5 pl-2">{r.status === 'loaded' ? `+${r.added.toLocaleString('ca-ES')} preus${r.replaced ? ' (sèrie ajustada pels dividends, reescrita)' : ''}` : r.message ?? ''}</td>
+                    <td className="py-1.5 pl-2">{r.status === 'loaded' ? `+${r.added.toLocaleString('ca-ES')} preus${r.replaced ? ' (sèrie ajustada pels dividends, reescrita)' : ''}${r.holdingsUpdated ? ` · ${r.holdingsUpdated} posicions de clients al preu nou` : ''}` : r.message ?? ''}</td>
                   </tr>
                 ))}
               </tbody>

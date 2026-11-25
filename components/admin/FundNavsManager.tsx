@@ -285,7 +285,7 @@ export default function FundNavsManager() {
               <th className="py-1 px-2 font-normal text-right" title="Rendibilitat anualitzada del període">Rend. anual</th>
               <th className="py-1 px-2 font-normal text-right">12 mesos</th>
               <th className="py-1 px-2 font-normal text-right" title="Quant oscil·la el fons: com més alta, més risc">Volatilitat</th>
-              <th className="py-1 px-2 font-normal text-right" title="Pitjor caiguda des d'un màxim">Caiguda màx.</th>
+              <th className="py-1 px-2 font-normal text-right" title="Pitjor caiguda des d'un màxim en els últims 5 anys, amb l'últim preu de cada mes. La caiguda exacta amb preus diaris és al detall del fons.">Caiguda màx. (fi de mes)</th>
             </tr>
           </thead>
           <tbody>
@@ -326,7 +326,7 @@ export default function FundNavsManager() {
                   ['Rendibilitat anual', pct(detail.metrics.annualReturn), detail.metrics.years ? `${detail.metrics.years.toLocaleString('ca-ES')} anys` : ''],
                   ['Últims 12 mesos', pct(detail.metrics.return1Y), ''],
                   ['Volatilitat', pct(detail.metrics.volatility), 'anual'],
-                  ['Caiguda màxima', pct(detail.metrics.maxDrawdown), 'des d\'un màxim'],
+                  ['Caiguda màxima', pct(detail.metrics.maxDrawdown), '5 anys, preus de fi de mes (la diària, a sota)'],
                   ['Pitjor any', pct(detail.metrics.worst12M), '12 mesos seguits'],
                 ].map(([l, v, s]) => (
                   <div key={l}><p className="text-ink-muted text-xs">{l}</p><p className="text-ink font-bold">{v}</p>{s && <p className="text-ink-muted text-[11px]">{s}</p>}</div>

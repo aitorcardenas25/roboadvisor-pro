@@ -10,7 +10,7 @@ import { z } from 'zod';
 import { authOptions } from '@/lib/authOptions';
 import { logAuditEvent } from '@/lib/auditLog';
 import { computeNavMetrics, isIsin, parseNavText, type NavPoint } from '@/lib/navMath';
-import { currencyConflicts, deleteNavs, getFundDrawdowns, getLatestNav, getNavs, getNavSummary, upsertNavs, workbookToText } from '@/lib/fundNavs';
+import { currencyConflicts, deleteNavs, getFundDrawdowns, getLatestNav, getNavs, getNavSummary, monthEndsOf, upsertNavs, workbookToText } from '@/lib/fundNavs';
 import { reconcileHoldingsAfterNavDelete, syncHoldingsToNavs } from '@/lib/clientPortfolios';
 
 type S = { user?: { id?: string; email?: string; role?: string } } | null;
@@ -54,8 +54,9 @@ export async function GET(req: NextRequest) {
     if (isin) {
       if (!isIsin(isin)) return NextResponse.json({ error: 'ISIN no vàlid' }, { status: 400 });
       const [points, [drawdowns]] = await Promise.all([getNavs(isin), getFundDrawdowns([isin])]);
-      // Amb l'històric diari complet poden ser més de 10.000 preus: a la taula, els últims 500
-      return NextResponse.json({ isin, points: points.slice(-500), totalPoints: points.length, metrics: computeNavMetrics(points), drawdowns });
+      // Amb l'històric diari complet poden ser més de 10.000 preus: a la taula, els últims 500.
+      // Mètriques amb l'últim preu de cada mes, igual que el resum (la caiguda exacta amb preus diaris és a `drawdowns`).
+      return NextResponse.json({ isin, points: points.slice(-500), totalPoints: points.length, metrics: { ...computeNavMetrics(monthEndsOf(points)), points: points.length }, drawdowns });
     }
     return NextResponse.json({ funds: await getNavSummary() });
   } catch (err) { return dbError(err); }

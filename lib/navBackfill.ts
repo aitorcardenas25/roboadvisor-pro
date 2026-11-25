@@ -18,6 +18,7 @@ import { deleteNavs, getMonthEndNavs, getNavs, upsertNavs } from './fundNavs';
 import { lookupIsin } from './fundUniverse';
 import { MAX_MOVE_PCT, suspectMoves, type NavPoint } from './navMath';
 import { madridToday } from './navAutoUpdate';
+import { syncHoldingsToNavs } from './clientPortfolios';
 
 /** Diferència màxima admesa entre la font i un preu desat el mateix dia. */
 export const MATCH_TOLERANCE = 0.005;
@@ -35,6 +36,7 @@ export interface BackfillResult {
   firstDate: string | null;   // primer preu després de la càrrega
   checked:   number;          // dies comuns comparats amb els desats
   skipped:   number;          // dies sense canvi del BCE (no desats)
+  holdingsUpdated?: number;   // posicions de clients amb el nou últim preu
   message?:  string;
 }
 
@@ -131,8 +133,16 @@ export async function backfillFund(isin: string, opts: { fetchFn?: typeof fetch;
     } else {
       await upsertNavs(rows);
     }
+    // Si la font porta preus més nous que els desats, les posicions dels clients passen a l'últim
+    const last = [...rows].sort((a, b) => a.date.localeCompare(b.date)).at(-1)!;
+    const holdingsUpdated = last.date > stored.at(-1)!.date
+      ? await syncHoldingsToNavs([{ isin, date: last.date, nav: last.nav, currency: last.currency }]).catch(err => {
+          console.error('[navBackfill] no s\'han pogut actualitzar les posicions:', err instanceof Error ? err.message : err);
+          return 0;
+        })
+      : 0;
     const first = [rows[0].date, stored[0].date].sort()[0];
-    return { ...base, status: 'loaded', added: src.adjustDistributions ? rows.length - stored.length : rows.length, replaced: !!src.adjustDistributions, firstDate: first, checked: plan.checked, skipped };
+    return { ...base, holdingsUpdated, status: 'loaded', added: src.adjustDistributions ? rows.length - stored.length : rows.length, replaced: !!src.adjustDistributions, firstDate: first, checked: plan.checked, skipped };
   } catch (err) {
     return { ...base, message: err instanceof Error ? err.message : String(err) };
   }

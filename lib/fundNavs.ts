@@ -69,7 +69,7 @@ export async function getMonthEndNavs(): Promise<NavPoint[]> {
   return out;
 }
 
-function monthEndsOf(points: NavPoint[]): NavPoint[] {
+export function monthEndsOf(points: NavPoint[]): NavPoint[] {
   const by = new Map<string, NavPoint>();
   for (const p of points) by.set(`${p.isin}|${p.date.slice(0, 7)}`, p);   // ordenats per data: es queda l'últim
   return [...by.values()].sort((a, b) => a.isin.localeCompare(b.isin) || a.date.localeCompare(b.date));
