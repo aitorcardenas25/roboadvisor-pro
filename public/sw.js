@@ -1,53 +1,29 @@
-const CACHE_NAME = 'factorotc-v2';
+// Service worker de Factor OTC — només perquè l'app es pugui instal·lar (PWA).
+//
+// Abans interceptava totes les navegacions (fetch(event.request)) i desava l'HTML.
+// A l'iPhone (WebKit, també dins del Gmail), quan la pàgina responia amb una
+// redirecció (p. ex. /client/informe-inicial → inici de sessió), Safari rebutjava
+// la resposta del service worker («Response served by service worker has
+// redirections») i la pàgina quedava totalment en blanc. Ara no intercepta res:
+// totes les peticions van directes a la xarxa, i en activar-se esborra la memòria
+// cau antiga.
+const CACHE_VERSION = 'factorotc-v3-sense-cache';
 
-// On install: skip waiting so the new SW activates immediately
 self.addEventListener('install', () => {
   self.skipWaiting();
 });
 
-// On activate: take control of all open tabs immediately
 self.addEventListener('activate', event => {
   event.waitUntil(
-    caches.keys().then(keys =>
-      Promise.all(keys.filter(k => k !== CACHE_NAME).map(k => caches.delete(k)))
-    ).then(() => self.clients.claim())
+    caches.keys()
+      .then(keys => Promise.all(keys.map(k => caches.delete(k))))
+      .then(() => self.clients.claim())
   );
 });
 
-// Network-first strategy: always try network, fall back to cache
-self.addEventListener('fetch', event => {
-  // Only handle GET requests for same-origin navigation
-  if (event.request.method !== 'GET') return;
-  const url = new URL(event.request.url);
-  if (url.origin !== self.location.origin) return;
-
-  // API routes: network only, no cache
-  if (url.pathname.startsWith('/api/')) return;
-
-  event.respondWith(
-    fetch(event.request)
-      .then(res => {
-        // Cache successful HTML responses only
-        if (res.ok && (res.headers.get('content-type') ?? '').includes('text/html')) {
-          const clone = res.clone();
-          caches.open(CACHE_NAME).then(c => c.put(event.request, clone));
-        }
-        return res;
-      })
-      .catch(() =>
-        // Try cache first; if not cached return a proper offline response
-        // (never return undefined — that causes a TypeError in Safari)
-        caches.match(event.request).then(cached =>
-          cached ?? new Response('Sense connexió. Torna-ho a intentar.', {
-            status: 503,
-            headers: { 'Content-Type': 'text/plain; charset=utf-8' },
-          })
-        )
-      )
-  );
-});
-
-// Listen for skipWaiting message from the client
 self.addEventListener('message', event => {
   if (event.data?.type === 'SKIP_WAITING') self.skipWaiting();
 });
+
+// Sense controlador de 'fetch': el navegador fa totes les peticions ell mateix.
+void CACHE_VERSION;
