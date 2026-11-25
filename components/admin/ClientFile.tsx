@@ -16,7 +16,7 @@ import BudgetOverview from '@/components/finances/BudgetOverview';
 import OneOffExpenses from '@/components/finances/OneOffExpenses';
 import WealthView from '@/components/wealth/WealthView';
 import type { AdvisorStage } from '@/lib/onboarding';
-import { StageBar, PreviewButton, ManualFinances, InternalNotes } from './ClientFileExtras';
+import { StageBar, PreviewButton, ManualFinances, InternalNotes, ClientNameEditor } from './ClientFileExtras';
 
 // r.date es desa com a text "dd/mm/aaaa" i new Date() el llegeix com a Invalid Date
 const PROFILE_NAMES: Record<string, string> = { conservador: 'conservador', moderat: 'moderat', dinamic: 'dinàmic', agressiu: 'agressiu' };
@@ -197,8 +197,11 @@ export default function ClientFile({
             <div className="bg-surface border border-line rounded-lg p-5">
               <h3 className="text-ink-soft text-xs font-medium mb-4">Usuari d&apos;accés</h3>
               <dl className="space-y-2.5">
+                <div className="flex items-start justify-between gap-4">
+                  <dt className="text-ink-muted text-xs w-28 flex-shrink-0">Nom complet</dt>
+                  <dd><ClientNameEditor key={user.name} clientId={clientId} initial={user.name} onSaved={() => load(true)} /></dd>
+                </div>
                 {[
-                  ['Nom complet', user.name],
                   ['Email', user.email],
                   ['Usuari', `@${user.username}`],
                   ['Rol', user.role],

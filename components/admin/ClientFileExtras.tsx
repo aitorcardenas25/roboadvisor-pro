@@ -122,3 +122,44 @@ export function InternalNotes({ clientId, initial }: { clientId: string; initial
     </div>
   );
 }
+
+// Nom complet editable (nom + cognoms): és el que surt a la portada i a les capçaleres dels informes.
+export function ClientNameEditor({ clientId, initial, onSaved }: { clientId: string; initial: string; onSaved: () => void }) {
+  const [editing, setEditing] = useState(false);
+  const [text, setText] = useState(initial);
+  const [state, setState] = useState<'idle' | 'saving' | 'error'>('idle');
+  const [msg, setMsg] = useState('');
+  async function save() {
+    setState('saving'); setMsg('');
+    const r = await fetch(`/api/admin/clients/${clientId}`, {
+      method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name: text }),
+    }).catch(() => null);
+    if (r?.ok) { setState('idle'); setEditing(false); onSaved(); return; }
+    const j = await r?.json().catch(() => null);
+    setMsg(j?.error ?? 'No s\'ha pogut desar.'); setState('error');
+  }
+  const oneWord = initial.trim().split(/\s+/).length < 2;
+  if (!editing) return (
+    <div className="text-right">
+      <span className="text-ink text-sm">{initial}</span>
+      <button type="button" onClick={() => { setText(initial); setEditing(true); }}
+        className="ml-2 text-accent text-xs hover:underline">Editar</button>
+      {oneWord && <p className="text-warning text-xs mt-0.5">Falten els cognoms: als informes surt només «{initial}».</p>}
+    </div>
+  );
+  return (
+    <div className="flex flex-col items-end gap-1.5">
+      <input value={text} onChange={e => { setText(e.target.value); setState('idle'); }} maxLength={100} autoFocus
+        placeholder="Nom i cognoms"
+        className="w-56 bg-subtle border border-line rounded-md px-2 py-1 text-sm text-ink focus:outline-none focus:border-accent/50" />
+      <div className="flex items-center gap-2">
+        <button type="button" onClick={() => setEditing(false)} className="text-ink-muted text-xs">Cancel·lar</button>
+        <button type="button" onClick={save} disabled={state === 'saving' || text.trim().length < 2 || text.trim() === initial}
+          className="px-2.5 py-1 rounded-md bg-accent text-accent-ink text-xs font-semibold disabled:opacity-40">
+          {state === 'saving' ? 'Desant…' : 'Desar'}
+        </button>
+      </div>
+      {state === 'error' && <span className="text-negative text-xs">{msg}</span>}
+    </div>
+  );
+}

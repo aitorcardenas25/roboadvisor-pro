@@ -326,6 +326,29 @@ export async function updateUserSubscription(
   return !error;
 }
 
+// ── updateUserName ────────────────────────────────────────────────────────
+
+/**
+ * Canvia el nom complet (nom + cognoms) del client. També el copia a la cartera
+ * i als informes mensuals ja generats, que el desen com a text.
+ */
+export async function updateUserName(id: string, name: string): Promise<boolean> {
+  const db = getDb();
+  if (!db) {
+    const u = getDevDB().find(u => u.id === id);
+    if (!u) return false;
+    u.name = name;
+    return true;
+  }
+  const now = new Date().toISOString();
+  const { data, error } = await db.from('users').update({ name, updated_at: now }).eq('id', id).select('id');
+  if (error || !data?.length) return false;
+  const { data: ports } = await db.from('client_portfolios').update({ client_name: name, updated_at: now }).eq('client_id', id).select('id');
+  const ids = (ports ?? []).map(p => p.id as string);
+  if (ids.length) await db.from('monthly_reports').update({ client_name: name }).in('portfolio_id', ids);
+  return true;
+}
+
 // ── updateUserRole ────────────────────────────────────────────────────────
 
 export async function updateUserRole(id: string, role: UserRole): Promise<boolean> {
