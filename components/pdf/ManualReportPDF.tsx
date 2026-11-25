@@ -5,6 +5,7 @@ import {
 } from '@react-pdf/renderer';
 import type { ManualPortfolioInput, ManualAsset } from '@/lib/manualReport';
 import { capmReturn, CAPM_ASSUMPTIONS } from '@/lib/navMath';
+import { allocationBreakdown, allocationNote, assetTypeLabel, classifyFund, managementLabel } from '@/lib/fundClassification';
 
 const GOAL_HORIZON: Record<string, string> = { curt: 'Curt termini', mitja: 'Mitjà termini', llarg: 'Llarg termini' };
 
@@ -219,11 +220,12 @@ function corrColor(r: number): string {
 function corrText(r: number): string { return r >= 0.55 ? '#ffffff' : '#1c1c1c'; }
 function corrBetween(a: ManualAsset, b: ManualAsset): number {
   if (a.isin === b.isin) return 1.0;
-  // Classe amb prioritat RV > RF > altres (mateix criteri ordenat que compute()).
-  const klass = (cat: string): 'rv' | 'rf' | 'x' =>
-    /variable|equity|accions|rv\b/i.test(cat) ? 'rv'
-      : /fixa|bond|rf\b|renda fixa|oblig/i.test(cat) ? 'rf' : 'x';
-  const k1 = klass(a.category), k2 = klass(b.category);
+  // Mateixa classificació que compute() (lib/fundClassification.ts).
+  const klass = (x: ManualAsset): 'rv' | 'rf' | 'x' => {
+    const t = classifyFund(x.isin, x.category, x.name).assetType;
+    return t === 'renda_variable' ? 'rv' : t === 'renda_fixa' || t === 'monetari' ? 'rf' : 'x';
+  };
+  const k1 = klass(a), k2 = klass(b);
   if (k1 === 'rv' && k2 === 'rv') return 0.72;
   if (k1 === 'rf' && k2 === 'rf') return 0.65;
   if ((k1 === 'rv' && k2 === 'rf') || (k1 === 'rf' && k2 === 'rv')) return -0.15;
@@ -295,12 +297,10 @@ function compute(d: ManualPortfolioInput) {
   const capmCount = marks.filter(m => m === '‡').length;
   const basisLabel = capmCount === 0 ? 'històric / estimació per SRRI' : capmCount === marks.length ? 'CAPM' : 'CAPM i històric, segons l\'actiu';
 
-  let rvPct = 0, rfPct = 0, cashPct = 0;
-  for (const a of d.assets) {
-    if (/variable|equity|accions|rv\b/i.test(a.category)) rvPct += a.weight;
-    else if (/fixa|bond|rf\b|renda|oblig/i.test(a.category)) rfPct += a.weight;
-    else cashPct += a.weight;
-  }
+  // Repartiment per classe d'actiu i estil de gestió (lib/fundClassification.ts).
+  // El monetari compta dins la renda fixa; els mixtos es reparteixen pel seu % d'accions.
+  const alloc = allocationBreakdown(d.assets);
+  const rvPct = alloc.equity, rfPct = alloc.fixedIncome, cashPct = alloc.other + alloc.unknownAsset;
 
 
   const goalRef = objectiuAmount > 0 ? objectiuAmount : p50;
@@ -315,7 +315,7 @@ function compute(d: ManualPortfolioInput) {
     objectiuAmount, goalRef, invertibleWealthPct, mesosAutonomia,
     totalInvested, r10, r90, p10, p50, p90, wealthMult,
     sharpe, var95, maxDD, benchR, alpha, basisLabel, allCapm: marks.length > 0 && capmCount === marks.length,
-    rvPct, rfPct, cashPct,
+    rvPct, rfPct, cashPct, alloc,
   };
 }
 
@@ -864,15 +864,21 @@ function InvestorProfilePage({ d }: { d: ManualPortfolioInput }) {
 function PortfolioPage({ d }: { d: ManualPortfolioInput }) {
   const c = compute(d);
 
-  const catMap: Record<string, { pct: number; color: string }> = {};
-  const catColors: Record<string, string> = { rv: C.gold, rf: C.greenMid, cash: '#8a8577', alt: '#4f6b5c' };
-  for (const a of d.assets) {
-    const key = /variable|equity|accions|rv\b/i.test(a.category) ? 'rv'
-      : /fixa|bond|rf\b|renda|oblig/i.test(a.category) ? 'rf'
-      : /monetari|money|cash|liqui/i.test(a.category) ? 'cash' : 'alt';
-    catMap[key] = { pct: (catMap[key]?.pct ?? 0) + a.weight, color: catColors[key] };
-  }
-  const segs = Object.entries(catMap).filter(([, v]) => v.pct > 0);
+  const al = c.alloc;
+  const catColors: Record<string, string> = { rv: C.gold, rf: C.greenMid, cash: '#8a8577', alt: '#4f6b5c', nc: C.mutedLt };
+  const catMap: Record<string, { pct: number; color: string }> = {
+    rv:   { pct: al.equity, color: catColors.rv },
+    rf:   { pct: al.fixedIncome - al.moneyMarket, color: catColors.rf },
+    cash: { pct: al.moneyMarket, color: catColors.cash },
+    alt:  { pct: al.other, color: catColors.alt },
+    nc:   { pct: al.unknownAsset, color: catColors.nc },
+  };
+  const segs = Object.entries(catMap).filter(([, v]) => v.pct > 0.05);
+  const styleSegs = [
+    { key: 'activa',  label: 'Gestió activa',     pct: al.active,       color: C.greenMid },
+    { key: 'passiva', label: 'Gestió passiva',    pct: al.passive,      color: C.gold },
+    { key: 'nc',      label: 'Sense classificar', pct: al.unknownStyle, color: C.mutedLt },
+  ].filter(x => x.pct > 0.05);
 
   const cx = 95, cy = 95, R = 80, ri = 54;
   let cumPct = 0;
@@ -884,9 +890,7 @@ function PortfolioPage({ d }: { d: ManualPortfolioInput }) {
     cumPct += pct / 100;
   }
 
-  const catLabels: Record<string, string> = { rv: 'Renda Variable', rf: 'Renda Fixa', cash: 'Monetari / Liquiditat', alt: 'Alternatiu' };
-  const catShort: Record<string, string> = { rv: 'RV', rf: 'RF', cash: 'Liq.', alt: 'Alt.' };
-  const donutCaption = segs.map(([k, v]) => `${catShort[k] ?? k} ${fW(v.pct)}`).join('   ');
+  const catLabels: Record<string, string> = { rv: 'Renda variable', rf: 'Renda fixa', cash: 'Monetari (dins la renda fixa)', alt: 'Altres (or, matèries primeres)', nc: 'Sense classificar' };
 
   return (
     <Page size="A4" style={S.page}>
@@ -896,8 +900,15 @@ function PortfolioPage({ d }: { d: ManualPortfolioInput }) {
         <SectionTitle
           tag="Composició de Cartera"
           title="Assignació estratègica d'actius"
-          intro="Distribució de la cartera proposada per classe d'actiu i per instrument individual."
+          intro="Distribució de la cartera proposada per classe d'actiu, per estil de gestió i per instrument individual."
         />
+
+        <View style={{ flexDirection: 'row', gap: 10, marginBottom: 14 }}>
+          <StatCard width="23.5%" label="Renda variable" value={fW(al.equity)} sub="accions" accent />
+          <StatCard width="23.5%" label="Renda fixa" value={fW(al.fixedIncome)} sub={al.moneyMarket > 0.05 ? `inclou ${fW(al.moneyMarket)} monetari` : 'bons i deute'} />
+          <StatCard width="23.5%" label="Gestió passiva" value={fW(al.passive)} sub="fons indexats i ETF" accent />
+          <StatCard width="23.5%" label="Gestió activa" value={fW(al.active)} sub="el gestor tria els valors" />
+        </View>
 
         <View style={{ flexDirection: 'row', gap: 20, marginBottom: 14 }}>
           <View style={{ width: 195, alignItems: 'center' }}>
@@ -906,24 +917,27 @@ function PortfolioPage({ d }: { d: ManualPortfolioInput }) {
               {arcs.map(a => (<Path key={a.key} d={a.path} fill={a.color} />))}
               <Circle cx={cx} cy={cy} r={ri - 1} fill={C.white} />
             </Svg>
-            <Text style={{ fontSize: 7.5, color: C.muted, textAlign: 'center', marginTop: 2 }}>{donutCaption}</Text>
+            <View style={{ alignSelf: 'stretch', marginTop: 4 }}>
+              {segs.map(([key, { pct, color }]) => (
+                <View key={key} style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 4 }}>
+                  <View style={{ width: 8, height: 8, backgroundColor: color, flexShrink: 0 }} />
+                  <Text style={[S.body2, { marginLeft: 6, flex: 1 }]}>{catLabels[key] ?? key}</Text>
+                  <Text style={[S.body2, S.bold, { color: C.ink }]}>{fW(pct)}</Text>
+                </View>
+              ))}
+              <View style={{ borderTopWidth: 0.5, borderTopColor: C.line, marginTop: 2, paddingTop: 5 }}>
+                {styleSegs.map(x => (
+                  <View key={x.key} style={{ flexDirection: 'row', marginBottom: 3 }}>
+                    <Text style={[S.body2, { flex: 1 }]}>{x.label}</Text>
+                    <Text style={[S.body2, S.bold, { color: C.ink }]}>{fW(x.pct)}</Text>
+                  </View>
+                ))}
+              </View>
+            </View>
+            <Text style={{ fontSize: 6.5, color: C.mutedLt, marginTop: 10, lineHeight: 1.5 }}>{allocationNote(al)}</Text>
           </View>
 
           <View style={{ flex: 1 }}>
-            <Text style={S.subTag}>Per categoria</Text>
-            {segs.map(([key, { pct, color }]) => (
-              <View key={key} style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 6 }}>
-                <View style={{ width: 9, height: 9, backgroundColor: color, flexShrink: 0 }} />
-                <Text style={[S.body1, { marginLeft: 6, flex: 1 }]}>{catLabels[key] ?? key}</Text>
-                <View style={{ width: 80, height: 4, backgroundColor: C.lineSoft, marginRight: 8 }}>
-                  <View style={{ width: `${pct}%`, height: 4, backgroundColor: color }} />
-                </View>
-                <Text style={[S.body1, S.bold, { width: 38, textAlign: 'right' }]}>{fW(pct)}</Text>
-              </View>
-            ))}
-
-            <View style={S.divider} />
-
             <Text style={S.subTag}>Distribució per actiu</Text>
             {d.assets.map((a, i) => (
               <View key={a.isin} style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 4 }}>
@@ -978,36 +992,45 @@ function AssetsPage({ d }: { d: ManualPortfolioInput }) {
         <View style={[S.tableHead, { paddingBottom: 7, marginBottom: 4 }]}>
           <View style={{ flex: 2.6, paddingRight: 8 }}><Text style={S.th}>Nom / ISIN</Text></View>
           <View style={{ flex: 0.75, paddingRight: 8 }}><Text style={[S.th, { textAlign: 'right' }]}>Pes</Text></View>
-          <View style={{ flex: 2.35, paddingRight: 8 }}><Text style={S.th}>Categoria</Text></View>
+          <View style={{ flex: 1.9, paddingRight: 8 }}><Text style={S.th}>Categoria</Text></View>
+          <View style={{ flex: 1.55, paddingRight: 8 }}><Text style={S.th}>Classe · Gestió</Text></View>
           <View style={{ flex: 0.8, paddingRight: 8 }}><Text style={[S.th, { textAlign: 'center' }]}>SRRI</Text></View>
           <View style={{ flex: 0.9, paddingRight: 8 }}><Text style={[S.th, { textAlign: 'right' }]}>TER</Text></View>
           <View style={{ flex: 1.15, paddingRight: 8 }}><Text style={[S.th, { textAlign: 'right' }]}>Ret. 5A</Text></View>
-          <View style={{ flex: 2.05 }}><Text style={S.th}>Plataforma</Text></View>
+          <View style={{ flex: 1.5 }}><Text style={S.th}>Plataforma</Text></View>
         </View>
 
-        {d.assets.map((a, i) => (
+        {d.assets.map((a, i) => { const cl = classifyFund(a.isin, a.category, a.name); return (
           <View key={a.isin} style={[S.tableRow, { paddingVertical: 7 }, i % 2 === 1 ? S.tableAlt : {}]}>
             <View style={{ flex: 2.6, paddingRight: 8 }}>
               <Text style={S.td}>{a.name}</Text>
               <Text style={{ fontSize: 6.5, color: C.mutedLt, marginTop: 1.5 }}>{a.isin}</Text>
             </View>
             <View style={{ flex: 0.75, paddingRight: 8 }}><Text style={[S.td, S.bold, { textAlign: 'right' }]}>{fW(a.weight)}</Text></View>
-            <View style={{ flex: 2.35, paddingRight: 8 }}><Text style={S.tdGray}>{a.category}</Text></View>
+            <View style={{ flex: 1.9, paddingRight: 8 }}><Text style={S.tdGray}>{a.category}</Text></View>
+            <View style={{ flex: 1.55, paddingRight: 8 }}>
+              <Text style={S.td}>{assetTypeLabel(cl)}</Text>
+              <Text style={{ fontSize: 6.5, color: C.muted, marginTop: 1.5 }}>{managementLabel(cl)}</Text>
+            </View>
             <View style={{ flex: 0.8, paddingRight: 8 }}><Text style={[S.td, { textAlign: 'center' }]}>{a.risk}/7</Text></View>
             <View style={{ flex: 0.9, paddingRight: 8 }}><Text style={[S.td, { textAlign: 'right' }]}>{fTer(a.ter)}</Text></View>
             <View style={{ flex: 1.15, paddingRight: 8 }}><Text style={[S.td, { textAlign: 'right' }]}>{fPct(assetReturn(a))}{assetReturnSource(a)}</Text></View>
-            <View style={{ flex: 2.05 }}><Text style={S.tdGray}>{a.platform}</Text></View>
+            <View style={{ flex: 1.5 }}><Text style={S.tdGray}>{a.platform}</Text></View>
           </View>
-        ))}
+        ); })}
 
         <View style={{ flexDirection: 'row', paddingTop: 8, borderTopWidth: 1, borderTopColor: C.ink, marginTop: 3, marginBottom: 10 }}>
           <View style={{ flex: 2.6, paddingRight: 8 }}><Text style={[S.body2, S.bold]}>Totals ponderats</Text></View>
           <View style={{ flex: 0.75, paddingRight: 8 }}><Text style={[S.td, S.bold, { textAlign: 'right' }]}>100 %</Text></View>
-          <View style={{ flex: 2.35, paddingRight: 8 }} />
+          <View style={{ flex: 1.9, paddingRight: 8 }} />
+          <View style={{ flex: 1.55, paddingRight: 8 }}>
+            <Text style={[S.body2, S.bold, { fontSize: 7 }]}>RV {fW(c.alloc.equity)} · RF {fW(c.alloc.fixedIncome)}</Text>
+            <Text style={{ fontSize: 6.5, color: C.muted, marginTop: 1.5 }}>Passiva {fW(c.alloc.passive)} · Activa {fW(c.alloc.active)}</Text>
+          </View>
           <View style={{ flex: 0.8, paddingRight: 8 }}><Text style={[S.tdGray, S.bold, { textAlign: 'center' }]}>{fNum(c.wR, 1)}/7</Text></View>
           <View style={{ flex: 0.9, paddingRight: 8 }}><Text style={[S.td, S.bold, { textAlign: 'right' }]}>{fTer(c.terKnown ? c.wt : 0)}</Text></View>
           <View style={{ flex: 1.15, paddingRight: 8 }}><Text style={[S.td, S.bold, { textAlign: 'right' }]}>{fPct(c.nr)}</Text></View>
-          <View style={{ flex: 2.05 }} />
+          <View style={{ flex: 1.5 }} />
         </View>
         <Text style={[S.body2, { fontSize: 6.5, marginBottom: 10 }]}>‡ Rendiment esperat CAPM (beta dels valors liquidatius)  ·  † Dades històriques reals a 5 anys  ·  * Estimació per categoria SRRI</Text>
 
@@ -1045,7 +1068,7 @@ function IPSPage({ d }: { d: ManualPortfolioInput }) {
     { num: '2', title: 'Restriccions i limitacions',
       body: `Perfil: ${profileLabel}. Restriccions d'assignació: RV ${cn.rvMin}–${cn.rvMax} %, RF ${cn.rfMin}–${cn.rfMax} %. Cap actiu supera el 50 % de la cartera. TER màxim ponderat: 1,50 % anual. Sense exposició a derivats d'alt palanquejament.` },
     { num: '3', title: "Estratègia d'assignació d'actius",
-      body: `Estratègia de compra i manteniment (Buy & Hold) amb rebalanceig anual. Assignació actual: RV ${fW(c.rvPct)}, RF ${fW(c.rfPct)}, altres actius ${fW(c.cashPct)}. Diversificació geogràfica global amb exposició principal a mercats desenvolupats.` },
+      body: `Estratègia de compra i manteniment (Buy & Hold) amb rebalanceig anual. Assignació actual: renda variable ${fW(c.rvPct)}, renda fixa ${fW(c.rfPct)}${c.cashPct > 0.05 ? `, altres actius ${fW(c.cashPct)}` : ''}; gestió passiva ${fW(c.alloc.passive)} i activa ${fW(c.alloc.active)}. Diversificació geogràfica global amb exposició principal a mercats desenvolupats.` },
     { num: '4', title: 'Criteris de selecció de productes',
       body: `Prioritat a fons indexats de baix cost (ETF / UCITS). TER < 0,50 % preferible. SRRI adequat al perfil. ISIN registrat a la CNMV o entitat reguladora equivalent. Disponibilitat a la plataforma declarada per l'inversor.` },
     { num: '5', title: 'Política de rebalanceig',

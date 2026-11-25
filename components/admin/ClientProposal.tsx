@@ -10,6 +10,8 @@ import {
 } from '@/lib/proposalMath';
 import { isValidIsin } from '@/lib/fundUniverse';
 import type { RebalanceLine } from '@/lib/portfolioValuation';
+import AllocationSummary from '@/components/AllocationSummary';
+import { assetTypeLabel, classifyFund, managementLabel } from '@/lib/fundClassification';
 
 type WithStats = ClientProposal & { stats: ProposalStats };
 interface Data {
@@ -378,6 +380,7 @@ export default function ClientProposal({ clientId, onApplied }: { clientId: stri
           <Metric label="Escenari favorable" value={stats.complete ? eur(stats.p90) : '—'} />
           <Metric label="Fons" value={String(items.length)} sub={!stats.complete ? `${stats.missing.length} sense dades` : stats.terMissing.length ? `Falta el TER de ${stats.terMissing.length}` : 'Tots amb dades reals'} tone={stats.complete && !stats.terMissing.length ? undefined : 'bad'} />
         </div>
+        <AllocationSummary items={items} className="mt-4 pt-4 border-t border-line" />
 {stats.complete ? (
           <p className="text-ink-muted text-[11px] mt-4">
             {stats.returnBasis === 'historic'
@@ -597,6 +600,7 @@ function FundRow({ x, i, amount, input, noteOpen, toggleNote, setItem, removeIte
         <td className={td}>
           <input value={x.name} onChange={e => setItem(i, { name: e.target.value })} placeholder="Nom del fons" className={`${input} w-full min-w-[220px]`} />
           <p className="text-ink-muted text-[11px] mt-0.5">{x.category || 'Sense categoria'}
+            {(() => { const cl = classifyFund(x.isin, x.category, x.name); return <span className={cl.assetType && cl.management ? '' : 'text-warning'}> · {assetTypeLabel(cl)} · {managementLabel(cl)}</span>; })()}
             {hasPerformanceData(x)
               ? <span title={x.performanceSource}> · {pct(x.historicalReturn5Y!)} anual, volatilitat {pct(x.historicalVolatility!)}</span>
               : <span className="text-negative/80"> · sense dades de rendiment</span>}</p>

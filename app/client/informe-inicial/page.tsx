@@ -6,6 +6,8 @@ import { useSession } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import DiagnosisCard from '@/components/finances/DiagnosisCard';
+import AllocationSummary from '@/components/AllocationSummary';
+import { assetTypeLabel, classifyFund, managementLabel } from '@/lib/fundClassification';
 import { diagnose } from '@/lib/diagnosis';
 import { proposalToReportInput, type ClientProposal, type ProposalStats } from '@/lib/proposalMath';
 
@@ -176,6 +178,7 @@ export default function InitialReportPage() {
                   </div>
                 ))}
               </div>
+              <AllocationSummary items={p.items} className="mt-4" />
               <div className="mt-4 overflow-x-auto">
                 <table className="w-full text-xs">
                   <thead>
@@ -187,10 +190,11 @@ export default function InitialReportPage() {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-line">
-                    {[...p.items].sort((a, b) => b.weight - a.weight).map(x => (
+                    {[...p.items].sort((a, b) => b.weight - a.weight).map(x => { const cl = classifyFund(x.isin, x.category, x.name); return (
                       <tr key={x.isin}>
                         <td className="py-2 pr-3">
                           <p className="text-ink">{x.name}</p>
+                          <p className="text-ink-soft text-[11px]">{assetTypeLabel(cl)} · {managementLabel(cl)}</p>
                           <p className="text-ink-muted text-[11px]">{x.category} · {x.isin}</p>
                           {x.justification && <p className="text-ink-soft text-[11px] mt-0.5">{x.justification}</p>}
                         </td>
@@ -198,7 +202,7 @@ export default function InitialReportPage() {
                         <td className="hidden sm:table-cell py-2 px-2 text-right text-ink-soft whitespace-nowrap">{x.historicalReturn5Y !== undefined ? pct(x.historicalReturn5Y) : '—'}</td>
                         <td className="hidden sm:table-cell py-2 pl-2 text-right text-ink-soft whitespace-nowrap">{x.ter > 0 ? `${x.ter.toLocaleString('ca-ES', { maximumFractionDigits: 2 })} %` : '—'}</td>
                       </tr>
-                    ))}
+                    ); })}
                   </tbody>
                 </table>
               </div>

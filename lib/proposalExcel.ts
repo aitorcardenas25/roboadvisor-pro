@@ -2,6 +2,7 @@
 // Excel de la proposta de cartera: resum, fons amb imports i projecció any a any.
 import ExcelJS from 'exceljs';
 import { proposalStats, type ClientProposal } from './proposalMath';
+import { allocationBreakdown, allocationNote, assetTypeLabel, classifyFund, managementLabel } from './fundClassification';
 
 const GREEN = 'FF14281D';
 const GOLD  = 'FFC9A84C';
@@ -15,6 +16,8 @@ function header(row: ExcelJS.Row) {
 
 export async function buildProposalWorkbook(p: ClientProposal, clientName: string): Promise<Buffer> {
   const s = proposalStats(p);
+  const al = allocationBreakdown(p.items);
+  const share = (n: number) => Math.round(n * 10) / 10;
   const wb = new ExcelJS.Workbook();
   wb.creator = 'FACTOR OTC';
   wb.created = new Date();
@@ -42,6 +45,13 @@ export async function buildProposalWorkbook(p: ClientProposal, clientName: strin
     ...perf(['Rendiment net (anual)', s.netReturn, PCT]),
     ...perf(['Volatilitat (anual)', s.volatility, PCT]),
     ['Risc SRRI ponderat (1–7)', Number(s.risk.toFixed(1))],
+    ['Renda variable (% cartera)', share(al.equity), PCT],
+    [al.moneyMarket > 0.05 ? `Renda fixa (% cartera, inclou ${share(al.moneyMarket)} % monetari)` : 'Renda fixa (% cartera)', share(al.fixedIncome), PCT],
+    ...(al.other > 0.05 ? [['Altres actius (% cartera)', share(al.other), PCT] as Row] : []),
+    ...(al.unknownAsset > 0.05 ? [['Sense classificar (classe d\'actiu)', share(al.unknownAsset), PCT] as Row] : []),
+    ['Gestió passiva (% cartera)', share(al.passive), PCT],
+    ['Gestió activa (% cartera)', share(al.active), PCT],
+    ...(al.unknownStyle > 0.05 ? [['Sense classificar (estil de gestió)', share(al.unknownStyle), PCT] as Row] : []),
     [`Total aportat en ${p.horizon} anys`, s.totalInvested, EUR],
     ...perf(['Escenari desfavorable (P10)', s.p10, EUR]),
     ...perf(['Escenari central (P50)', s.p50, EUR]),
@@ -54,6 +64,7 @@ export async function buildProposalWorkbook(p: ClientProposal, clientName: strin
   }
   if (p.adminNote) { r.addRow([]); r.addRow(['Nota de l\'assessor']).font = { bold: true }; r.addRow([p.adminNote]); }
   r.addRow([]);
+  r.addRow([allocationNote(al)]).font = { italic: true, size: 9, color: { argb: 'FF6C6C6C' } };
   r.addRow([
     'Rendibilitats i volatilitats històriques anualitzades de cada fons (catàleg o fitxa del fons). ' +
     'Rendiments passats no garanteixen rendiments futurs.',
@@ -66,22 +77,27 @@ export async function buildProposalWorkbook(p: ClientProposal, clientName: strin
   const f = wb.addWorksheet('Fons');
   f.columns = [
     { header: 'ISIN', width: 15 }, { header: 'Fons', width: 48 }, { header: 'Categoria', width: 24 },
+    { header: 'Classe d\'actiu', width: 18 }, { header: 'Gestió', width: 15 },
     { header: 'Pes (%)', width: 9 }, { header: 'Import inicial (€)', width: 17 }, { header: 'Aportació mensual (€)', width: 19 },
     { header: 'SRRI', width: 6 }, { header: 'TER (%)', width: 9 }, { header: 'Plataforma', width: 18 }, { header: 'Justificació', width: 60 },
   ];
   header(f.getRow(1));
   for (const x of p.items) {
+    const cl = classifyFund(x.isin, x.category, x.name);
     const row = f.addRow([
-      x.isin, x.name, x.category, x.weight,
+      x.isin, x.name, x.category, assetTypeLabel(cl), managementLabel(cl), x.weight,
       p.initialAmount * x.weight / 100, p.monthlyAmount * x.weight / 100,
       x.risk, x.ter, x.platform, x.justification,
     ]);
-    row.getCell(5).numFmt = EUR; row.getCell(6).numFmt = EUR; row.getCell(8).numFmt = '0.00';
-    row.getCell(10).alignment = { wrapText: true, vertical: 'top' };
+    row.getCell(7).numFmt = EUR; row.getCell(8).numFmt = EUR; row.getCell(10).numFmt = '0.00';
+    row.getCell(12).alignment = { wrapText: true, vertical: 'top' };
   }
-  const tot = f.addRow(['', 'Total', '', s.totalWeight, p.initialAmount, p.monthlyAmount, '', s.ter]);
+  const tot = f.addRow([
+    '', 'Total', '', `RV ${share(al.equity)} % · RF ${share(al.fixedIncome)} %`, `Passiva ${share(al.passive)} % · Activa ${share(al.active)} %`,
+    s.totalWeight, p.initialAmount, p.monthlyAmount, '', s.ter,
+  ]);
   tot.font = { bold: true };
-  tot.getCell(5).numFmt = EUR; tot.getCell(6).numFmt = EUR; tot.getCell(8).numFmt = '0.00';
+  tot.getCell(7).numFmt = EUR; tot.getCell(8).numFmt = EUR; tot.getCell(10).numFmt = '0.00';
 
   // ── Projecció ──
   const y = wb.addWorksheet('Projecció');
