@@ -189,7 +189,7 @@ export function clientAlerts(q: Record<string, unknown> | null | undefined, prop
   const consumer = num(qq.consumerDebt);
   if (consumer !== null && consumer > 0) out.push(`Té deute de consum (${Math.round(consumer).toLocaleString('ca-ES')} €)`);
   const dependents = num(qq.dependents);
-  if (dependents && dependents > 0 && b && (b.emergency.progressPct ?? 0) < 100) out.push('Té persones a càrrec i el fons d\'emergència no és complet');
+  if (dependents && dependents > 0 && b && b.emergency.progressPct !== null && b.emergency.progressPct < 100) out.push('Té persones a càrrec i el fons d\'emergència no és complet');
   if (qq.incomeOutlook === 'baixaran') out.push('Creu que els seus ingressos baixaran');
   const reaction = str(qq.drawdownReaction);
   const wantsRisk = qq.selfRiskProfile === 'dinamic' || proposalProfile === 'dinamic' || proposalProfile === 'agressiu';

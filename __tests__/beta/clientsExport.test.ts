@@ -120,6 +120,9 @@ describe('clientAlerts', () => {
     expect(a).toContain('Mai ha invertit i la proposta és dinàmica o agressiva');
     expect(a.length).toBeGreaterThanOrEqual(7);
   });
+  it('persones a càrrec sense saber l\'estalvi: no és alerta', () => {
+    expect(clientAlerts({ monthlyNetIncome: 2000, monthlyFixedExpenses: 900, monthlyVariableExpenses: 300, dependents: 2 })).toEqual([]);
+  });
   it('sense dades: cap alerta inventada', () => {
     expect(clientAlerts(null)).toEqual([]);
   });
