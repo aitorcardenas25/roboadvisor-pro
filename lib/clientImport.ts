@@ -10,7 +10,7 @@ import ExcelJS from 'exceljs';
 import { isValidIsin, lookupIsin } from './fundUniverse';
 import type { OperationType } from './clientPortfolios';
 
-export const TEMPLATE_VERSION = '2';
+export const TEMPLATE_VERSION = '3';
 
 // ─── Definició de la plantilla ───────────────────────────────────────────────
 
@@ -27,6 +27,9 @@ export const PERSONAL_FIELDS = [
   { key: 'monthlyVariableExpenses', label: 'Despeses variables al mes: oci, roba, imprevistos (€)' },
   { key: 'monthlyDebtPayments',     label: 'Quotes de deutes al mes (€)' },
   { key: 'dependents',              label: 'Persones a càrrec (fills, familiars)' },
+  // v3 — per detectar els clients en situació més delicada (exportació de clients, 2026-11-25)
+  { key: 'consumerDebt',            label: 'Deute de consum: préstecs personals, cotxe, targetes (€)' },
+  { key: 'monthlyInvestable',       label: 'Quant podries invertir cada mes sense patir (€)' },
 ] as const;
 export type PersonalKey = typeof PERSONAL_FIELDS[number]['key'];
 
@@ -38,6 +41,17 @@ export const CHOICE_FIELDS = [
     options: { 'Conservador': 'conservador', 'Equilibrat': 'equilibrat', 'Dinàmic': 'dinamic' } },
   { key: 'selfKnowledge', label: 'Coneixement financer',
     options: { 'Bàsic': 'basic', 'Mitjà': 'mitja', 'Alt': 'alt' } },
+  // v3
+  { key: 'housing', label: 'Habitatge',
+    options: { 'De lloguer': 'lloguer', 'Propi amb hipoteca': 'hipoteca', 'Propi pagat': 'propietat', 'Amb la família': 'familia' } },
+  { key: 'incomeOutlook', label: 'Com creus que seran els teus ingressos els pròxims 2 anys',
+    options: { 'Pujaran': 'pujaran', 'Igual': 'igual', 'Baixaran': 'baixaran', 'No ho sé': 'no-ho-se' } },
+  { key: 'investingExperience', label: 'Quant temps fa que inverteixes',
+    options: { 'Mai he invertit': 'mai', 'Menys de 2 anys': 'menys-2', 'De 2 a 5 anys': '2-5', 'Més de 5 anys': 'mes-5' } },
+  { key: 'drawdownReaction', label: 'Si les teves inversions baixessin un 20 % en un any, què faries',
+    options: { 'Vendria tot': 'vendre-tot', 'Vendria una part': 'vendre-part', 'No faria res': 'mantenir', 'Compraria més': 'comprar-mes' } },
+  { key: 'currentAdvisor', label: 'Qui et porta els estalvis avui',
+    options: { 'Ningú': 'ningu', 'Jo mateix': 'jo', 'El banc': 'banc', 'Un assessor': 'assessor' } },
 ] as const;
 export type ChoiceKey = typeof CHOICE_FIELDS[number]['key'];
 

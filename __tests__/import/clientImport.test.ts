@@ -185,3 +185,25 @@ describe('plantilla v2: pressupost, situació laboral i objectius', () => {
     expect(r.personal).toEqual({ annualIncome: 30000 });
   });
 });
+
+describe('plantilla v3: camps per detectar clients delicats', () => {
+  it('llegeix deute de consum, inversió mensual i els nous desplegables', async () => {
+    const buf = await filled(wb => {
+      const per = wb.getWorksheet('Dades personals')!;
+      const set = (key: string, v: unknown) => per.eachRow(row => { if (row.getCell(3).value === key) row.getCell(2).value = v as ExcelJS.CellValue; });
+      set('consumerDebt', 3000);
+      set('monthlyInvestable', '150');
+      set('housing', 'De lloguer');
+      set('incomeOutlook', 'Baixaran');
+      set('investingExperience', 'Mai he invertit');
+      set('drawdownReaction', 'Vendria tot');
+      set('currentAdvisor', 'El banc');
+    });
+    const r = await parseClientWorkbook(buf);
+    expect(r.errors).toEqual([]);
+    expect(r.personal).toMatchObject({
+      consumerDebt: 3000, monthlyInvestable: 150, housing: 'lloguer', incomeOutlook: 'baixaran',
+      investingExperience: 'mai', drawdownReaction: 'vendre-tot', currentAdvisor: 'banc',
+    });
+  });
+});

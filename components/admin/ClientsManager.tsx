@@ -154,14 +154,33 @@ export default function ClientsManager({ onViewClient }: { onViewClient?: (id: s
             {activeCount} usuaris actius · {clientCount} clients amb accés
           </p>
         </div>
-        <button
-          onClick={() => { setShowForm(!showForm); setError(''); }}
-          className="flex items-center gap-2 px-4 py-2 bg-accent hover:bg-accent-hover text-accent-ink font-semibold text-sm rounded-lg transition-all">
-          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-          </svg>
-          Nou client
-        </button>
+        <div className="flex flex-wrap items-center justify-end gap-2">
+          <a
+            href="/api/admin/clients/export"
+            download
+            title="Excel amb totes les dades de cada client (conté dades personals)"
+            className="flex items-center gap-2 px-3 py-2 border border-line hover:border-accent/50 text-ink text-sm rounded-lg transition-all">
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v2a2 2 0 002 2h12a2 2 0 002-2v-2M7 10l5 5 5-5M12 15V3" />
+            </svg>
+            Exportar Excel
+          </a>
+          <a
+            href="/api/admin/clients/export?anon=1"
+            download
+            title="Sense nom, usuari, correu ni telèfon: per al TFG o per analitzar"
+            className="px-3 py-2 border border-line hover:border-accent/50 text-ink-soft text-sm rounded-lg transition-all">
+            Excel anonimitzat
+          </a>
+          <button
+            onClick={() => { setShowForm(!showForm); setError(''); }}
+            className="flex items-center gap-2 px-4 py-2 bg-accent hover:bg-accent-hover text-accent-ink font-semibold text-sm rounded-lg transition-all">
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+            </svg>
+            Nou client
+          </button>
+        </div>
       </div>
 
       {/* Feedback */}
@@ -358,6 +377,10 @@ export default function ClientsManager({ onViewClient }: { onViewClient?: (id: s
       <p className="mt-4 text-ink-muted text-xs">
         Els usuaris autoritzats poden accedir al dashboard de cartera i al robo-advisor.
         Els canvis de rol s&apos;apliquen immediatament. Les contrasenyes no es mostren per seguretat.
+      </p>
+      <p className="mt-1 text-ink-muted text-xs">
+        L&apos;Excel exportat conté dades financeres personals: no el comparteixis ni el pengis a carpetes compartides.
+        Els correus no es poden fer servir per a una newsletter sense un consentiment separat. Cada exportació queda registrada.
       </p>
     </div>
   );

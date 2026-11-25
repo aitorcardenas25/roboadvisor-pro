@@ -23,6 +23,10 @@ const SHEETS: { name: string; when: string; rows: [string, string][] }[] = [
       ['Estalvis en efectiu', 'Els diners que tens al compte corrent o en comptes d\'estalvi, sense comptar inversions.'],
       ['Deute total pendent', 'El que encara deus: préstec del cotxe, hipoteca, estudis. Si no en tens, posa 0.'],
       ['Com et veus invertint', 'Conservador si una baixada et trauria la son; Equilibrat si acceptes alts i baixos moderats; Dinàmic si pots esperar anys encara que baixi molt.'],
+      ['Deute de consum', 'Només els préstecs personals, del cotxe i el que deus a les targetes. La hipoteca no hi va. Si no en tens, posa 0.'],
+      ['Quant podries invertir cada mes', 'Els diners que podries apartar cada mes sense passar-ho malament. Si no ho saps, deixa-ho en blanc.'],
+      ['Habitatge', 'Si vius de lloguer, en un pis propi amb hipoteca, en un pis propi ja pagat o amb la família.'],
+      ['Si les teves inversions baixessin un 20 %', 'Respon el que faries de veritat, no el que creus que s\'hauria de fer. No hi ha respostes bones ni dolentes.'],
     ],
   },
   {
