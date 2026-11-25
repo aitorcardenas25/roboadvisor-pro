@@ -233,7 +233,9 @@ describe('informe i Excel', () => {
     await wb.xlsx.load(buf as unknown as ArrayBuffer);
     expect(wb.worksheets.map(w => w.name)).toEqual(['Resum', 'Fons', 'Projecció']);
     const fons = wb.getWorksheet('Fons')!;
-    expect(fons.getRow(2).getCell(5).value).toBe(6000);   // 60 % de 10.000 €
+    expect(fons.getRow(2).getCell(7).value).toBe(6000);   // 60 % de 10.000 €
+    expect(fons.getRow(1).getCell(4).value).toBe('Classe d\'actiu');
+    expect(fons.getRow(1).getCell(5).value).toBe('Gestió');
     expect(wb.getWorksheet('Projecció')!.rowCount).toBe(12); // capçalera + anys 0..10
   });
 });
