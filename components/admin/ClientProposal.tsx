@@ -1,5 +1,6 @@
 'use client';
 
+import { showDrawdownsByDefault, type FundDrawdowns } from '@/lib/drawdowns';
 import { PROPOSAL_TEMPLATES, templateItems } from '@/lib/proposalTemplates';
 import { CAPM_ASSUMPTIONS } from '@/lib/navMath';
 import { useCallback, useEffect, useMemo, useState } from 'react';
@@ -181,7 +182,13 @@ export default function ClientProposal({ clientId, onApplied }: { clientId: stri
     ]);
     const input = proposalToReportInput(p, data.client, data.personal);
     const when = new Date(p.approvedAt ?? p.updatedAt).toLocaleDateString('ca-ES', { day: '2-digit', month: 'long', year: 'numeric' });
-    const blob = await pdf(<ManualReportPDF data={input} generatedAt={when} />).toBlob();
+    // Perfils conservador i moderat: pàgina de caigudes històriques (preus oficials)
+    let drawdowns: FundDrawdowns[] | undefined;
+    if (showDrawdownsByDefault(p.profile) && p.items.length) {
+      const r = await fetch(`/api/admin/fund-navs?drawdowns=${p.items.map(i => i.isin).join(',')}`).catch(() => null);
+      if (r?.ok) drawdowns = (await r.json()).drawdowns;
+    }
+    const blob = await pdf(<ManualReportPDF data={input} generatedAt={when} drawdowns={drawdowns} />).toBlob();
     download(blob, `FACTOR_OTC_informe_${safeName(data.client.name)}_v${p.version}.pdf`);
   };
 

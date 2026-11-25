@@ -6,6 +6,8 @@ import { findLeadForUser } from '@/lib/leads';
 import { getProposals, proposalStats, type ClientProposal } from '@/lib/proposals';
 import { recordActivity } from '@/lib/betaActivity';
 import { getClientTarget } from '@/lib/clientTarget';
+import { getFundDrawdowns } from '@/lib/fundNavs';
+import type { FundDrawdowns } from '@/lib/drawdowns';
 
 /** Sense els camps interns de l'assessor (qui l'ha aprovat, revisió d'idoneïtat). */
 function clientView(p: ClientProposal) {
@@ -25,11 +27,18 @@ export async function GET() {
     // El client només veu les versions aprovades que l'assessor li ha enviat
     const approved = proposals.filter(p => p.status === 'approved' && !!p.sharedAt);
     if (u.role === 'client') recordActivity(u.id, 'reports.view');
+    // Caigudes històriques dels fons proposats (només valors liquidatius oficials desats)
+    let drawdowns: FundDrawdowns[] = [];
+    if (approved[0]?.items.length) {
+      try { drawdowns = await getFundDrawdowns(approved[0].items.map(i => i.isin)); }
+      catch (err) { console.error('[client/initial-report] caigudes:', err instanceof Error ? err.message : err); }
+    }
     return NextResponse.json({
       client:   { name: u.name ?? lead?.name ?? 'Client', email: u.email ?? '' },
       personal: (lead?.questionnaireData ?? {}) as Record<string, unknown>,
       proposal: approved[0] ? clientView(approved[0]) : null,
       versions: approved.length,
+      drawdowns,
     }, { headers: { 'Cache-Control': 'no-store' } });
   } catch (err) {
     console.error('[client/initial-report]', err instanceof Error ? err.message : err);

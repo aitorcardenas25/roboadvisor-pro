@@ -21,6 +21,8 @@ import { DataSourcePanel } from '@/components/DataSourcePanel';
 import { CLIENT_TAX_REPORT_ENABLED } from '@/lib/featureFlags';
 import { useClientName } from '@/components/client/ClientPreview';
 import AllocationSummary from '@/components/AllocationSummary';
+import FundDrawdowns from '@/components/FundDrawdowns';
+import { showDrawdownsByDefault, type FundDrawdowns as FundDD } from '@/lib/drawdowns';
 import { allocationBreakdown, assetTypeLabel, classifyFund, managementLabel } from '@/lib/fundClassification';
 
 // ── Formatters ─────────────────────────────────────────────────────────────
@@ -903,16 +905,18 @@ export default function ClientCarteraPage() {
   const [valuation, setValuation] = useState<Valuation | null>(null);
   const [period, setPeriod]       = useState<Period>('month');   // agrupació del gràfic i de l'Excel
   const [history, setHistory]     = useState<Record<string, MixHistory | null> | null>(null);
+  const [drawdowns, setDrawdowns] = useState<{ items: FundDD[]; profile: string | null }>({ items: [], profile: null });
 
   useEffect(() => {
     if (status === 'unauthenticated') { router.push('/login'); return; }
     if (status === 'authenticated') {
       fetch('/api/client/portfolio')
         .then(r => r.json())
-        .then((d: { portfolio: ClientPortfolio | null; valuation?: Valuation | null; history?: Record<string, MixHistory | null> | null }) => {
+        .then((d: { portfolio: ClientPortfolio | null; valuation?: Valuation | null; history?: Record<string, MixHistory | null> | null; drawdowns?: FundDD[]; profile?: string | null }) => {
           setPortfolio(d.portfolio ?? null);
           setValuation(d.valuation ?? null);
           setHistory(d.history ?? null);
+          setDrawdowns({ items: d.drawdowns ?? [], profile: d.profile ?? null });
           setLoading(false);
         })
         .catch(() => setLoading(false));
@@ -1028,6 +1032,9 @@ export default function ClientCarteraPage() {
             </div>
 
             <MixHistoryPanel history={history} />
+
+            <FundDrawdowns items={drawdowns.items} defaultOpen={showDrawdownsByDefault(drawdowns.profile)}
+              title="Caigudes històriques dels teus fons" />
 
             {/* Latest note preview */}
             {visibleNotes.length > 0 && (

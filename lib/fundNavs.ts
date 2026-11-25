@@ -5,7 +5,9 @@
 import ExcelJS from 'exceljs';
 import { getDb } from './supabase';
 import { ADVISOR_FUNDS, lookupIsin } from './fundUniverse';
-import { computeNavMetrics, estimateNavBeta, navPerformance, validMarketSeries, MARKET_PROXY_ISIN, type NavMetrics, type NavPerformance, type NavPoint } from './navMath';
+import { computeFundDrawdowns, looksLikeDistributionClass, type FundDrawdowns } from './drawdowns';
+import { NAV_SOURCES } from './navFeeds';
+import { computeNavMetrics, estimateNavBeta, sortByAttention, navPerformance, validMarketSeries, MARKET_PROXY_ISIN, type NavMetrics, type NavPerformance, type NavPoint } from './navMath';
 
 const _mem = new Map<string, NavPoint>();   // clau: isin|date
 const key = (isin: string, date: string) => `${isin}|${date}`;
@@ -137,10 +139,11 @@ export async function latestNavs(isins: string[]): Promise<NavPoint[]> {
 export async function getNavSummary(asOf = new Date()): Promise<FundNavSummary[]> {
   const by = groupByIsin(await getNavs());
   const isins = [...new Set([...ADVISOR_FUNDS.map(f => f.isin), ...by.keys()])];
-  return isins.map(isin => {
+  const rows = isins.map(isin => {
     const pts = by.get(isin) ?? [];
     return { isin, ...nameFor(isin, pts), currency: pts.at(-1)?.currency ?? null, metrics: computeNavMetrics(pts, asOf) };
-  }).sort((a, b) => Number(b.inList) - Number(a.inList) || a.name.localeCompare(b.name));
+  });
+  return sortByAttention(rows, asOf);
 }
 
 /** Rendibilitat i volatilitat per ISIN, només dels fons amb prou historial (per a les propostes). */
@@ -163,6 +166,26 @@ export async function getNavPerformanceMap(): Promise<Record<string, NavPerforma
     console.error('[fundNavs] no s\'han pogut llegir els preus:', err instanceof Error ? err.message : err);
     return {};
   }
+}
+
+// ─── Caigudes històriques ─────────────────────────────────────────────────────
+
+/** Classes de distribució on el preu desat ja inclou el dividend (ajust a lib/navFeeds.ts). */
+const TOTAL_RETURN_ISINS = new Set(NAV_SOURCES.filter(s => s.adjustDistributions).map(s => s.isin));
+
+/**
+ * Caiguda màxima i 3 caigudes més grans de cada ISIN, només amb els valors
+ * liquidatius oficials desats (lib/drawdowns.ts). L'ordre és el de l'entrada.
+ */
+export async function getFundDrawdowns(isins: string[]): Promise<FundDrawdowns[]> {
+  const uniq = [...new Set(isins.map(i => i.trim().toUpperCase()).filter(Boolean))].slice(0, 40);
+  return Promise.all(uniq.map(async isin => {
+    const pts = await getNavs(isin);
+    const { name } = nameFor(isin, pts);
+    return computeFundDrawdowns({ isin, name, currency: pts.at(-1)?.currency ?? null }, pts, {
+      distribution: looksLikeDistributionClass(name) && !TOTAL_RETURN_ISINS.has(isin),
+    });
+  }));
 }
 
 // ─── Fitxer Excel / CSV → text ───────────────────────────────────────────────
