@@ -445,7 +445,8 @@ function CoverPage({ d, generatedAt }: { d: ManualPortfolioInput; generatedAt: s
           Informe de Cartera Personalitzada
         </Text>
         <Text style={{ fontSize: 34, fontFamily: 'Helvetica-Bold', color: C.white, lineHeight: 1.15, marginBottom: 10, letterSpacing: -0.5 }}>{d.clientName}</Text>
-        <Text style={{ fontSize: 12, color: 'rgba(255,255,255,0.5)', marginBottom: 46 }}>{profileLabel} · {d.objective}</Text>
+        {/* Sense subtítol (perfil · objectiu): el perfil ja surt a sota, a «Perfil inversor». */}
+        <View style={{ marginBottom: 46 }} />
 
         <View style={{ flexDirection: 'row', gap: 12, marginBottom: 14 }}>
           {primary.map(s => (

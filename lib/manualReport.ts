@@ -386,7 +386,7 @@ export function generateManualReport(d: ManualPortfolioInput): string {
 
   const generatedAt = new Date().toLocaleDateString('ca-ES', { day: '2-digit', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' });
   const reportId    = `JNS-${new Date().toISOString().slice(0, 10).replace(/-/g, '')}`;
-  const clientFirst = d.clientName.split(' ')[0];
+  const clientFirst = d.clientName; // nom complet (nom + cognoms) a capçaleres i peus
 
   // Asset pages: split into two pages of max 4 each
   const page6Assets = assets.slice(0, 4);

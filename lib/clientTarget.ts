@@ -37,7 +37,12 @@ export async function getClientTarget(): Promise<ClientTarget | null> {
   const session = await getServerSession(authOptions) as S;
   const u = session?.user;
   if (!u?.id) return null;
-  if (u.role === 'client') return { id: u.id, email: u.email ?? null, name: u.name ?? null, role: 'client', preview: false };
+  if (u.role === 'client') {
+    // El nom es llegeix de la BD: si l'admin el corregeix (p. ex. hi afegeix els
+    // cognoms), la sessió oberta encara porta l'antic fins que torni a entrar.
+    const fresh = await findUserById(u.id).catch(() => null);
+    return { id: u.id, email: u.email ?? null, name: fresh?.name ?? u.name ?? null, role: 'client', preview: false };
+  }
   if (u.role !== 'admin') return null;
 
   const asId = await previewClientId();
