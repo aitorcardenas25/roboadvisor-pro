@@ -200,13 +200,29 @@ export async function sendDeletionRequestToAdmin(req: { userId: string; email: s
   return deliver(ADMIN_EMAIL, subject, base(subject, body));
 }
 
-export async function sendBetaWelcome(to: string, name: string, username: string): Promise<EmailResult> {
+/** Benvinguda amb l'enllaç per crear la contrasenya (el client la tria; ningú més la sap). */
+export async function sendBetaWelcome(to: string, name: string, username: string, activationUrl?: string): Promise<EmailResult> {
   const subject = 'Benvingut/da a la beta de Factor OTC';
   const first = esc(name.split(' ')[0] || name);
   const body = `${h2(`Hola, ${first}!`)}
     ${p_('Ja tens el compte a la beta privada de Factor OTC. Primer explica\'ns la teva situació a «Les meves finances» (o envia\'ns l\'Excel): amb això et preparem l\'informe inicial.')}
-    ${p_(`El teu usuari és <strong>${esc(username)}</strong>. La contrasenya te la passo per un altre canal. Quan entris, canvia-la des de «Les meves finances».`)}
-    ${button(`${appUrl()}/login`, 'Entrar a l\'app')}
+    ${p_(`El teu usuari és <strong>${esc(username)}</strong>.`)}
+    ${activationUrl
+      ? `${p_('Per entrar, primer tria la teva contrasenya amb aquest botó. L\'enllaç és personal, val 7 dies i només es pot fer servir una vegada.')}
+         ${button(activationUrl, 'Crear la meva contrasenya')}`
+      : button(`${appUrl()}/login`, 'Entrar a l\'app')}
+    ${small('Pots entrar des de l\'ordinador o el mòbil. Comprova sempre que l\'adreça del navegador és la de Factor OTC i que hi surt el cadenat. Nosaltres mai et demanarem la contrasenya.')}
     ${small('El primer cop et demanarem que acceptis com tractem les teves dades. Si tens dubtes, respon a aquest correu.')}`;
+  return deliver(to, subject, base(subject, body));
+}
+
+/** Enllaç per canviar la contrasenya oblidada (val 1 hora). */
+export async function sendPasswordReset(to: string, name: string, resetUrl: string): Promise<EmailResult> {
+  const subject = 'Canvia la teva contrasenya de Factor OTC';
+  const first = esc(name.split(' ')[0] || name);
+  const body = `${h2(`Hola, ${first}`)}
+    ${p_('Hem rebut una petició per canviar la contrasenya del teu compte. Si l\'has feta tu, prem el botó. L\'enllaç val 1 hora i només es pot fer servir una vegada.')}
+    ${button(resetUrl, 'Triar una contrasenya nova')}
+    ${small('Si no has demanat res, ignora aquest correu: la teva contrasenya no canviarà.')}`;
   return deliver(to, subject, base(subject, body));
 }

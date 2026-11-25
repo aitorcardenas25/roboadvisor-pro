@@ -370,3 +370,29 @@ export async function updatePassword(id: string, password: string): Promise<bool
   const { error } = await db.from('users').update({ password_hash: hash, updated_at: new Date().toISOString() }).eq('id', id);
   return !error;
 }
+
+// ── Enllaços de contrasenya (lib/passwordLink.ts) ──────────────────────────
+
+/**
+ * Valor secret que canvia cada cop que canvia la contrasenya (el hash bcrypt).
+ * Serveix perquè un enllaç per crear o canviar la contrasenya només es pugui
+ * fer servir una vegada. Mai surt del servidor.
+ */
+export async function getPasswordStamp(id: string): Promise<string | null> {
+  const db = getDb();
+  if (!db) {
+    const u = getDevDB().find(u => u.id === id && u.active);
+    return u ? `dev:${u.password}` : null;
+  }
+  const { data, error } = await db.from('users').select('password_hash,active').eq('id', id).maybeSingle();
+  if (error || !data || !data.active) return null;
+  return String(data.password_hash);
+}
+
+/** Usuari actiu per nom d'usuari o correu (per a "He oblidat la contrasenya"). */
+export async function findActiveUserByLogin(login: string): Promise<AppUser | null> {
+  const q = login.trim().toLowerCase();
+  if (!q) return null;
+  const all = await getAllUsers();
+  return all.find(u => u.active && (u.username.toLowerCase() === q || (!!u.email && u.email.toLowerCase() === q))) ?? null;
+}

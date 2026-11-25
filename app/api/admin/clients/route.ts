@@ -9,6 +9,8 @@ import { logAuditEvent } from '@/lib/auditLog';
 import { rateLimit, LIMITS, rateLimitResponse } from '@/lib/rateLimiter';
 import { sendBetaWelcome } from '@/lib/emails';
 import { z } from 'zod';
+import { randomBytes } from 'crypto';
+import { passwordLinkFor } from '@/lib/passwordLinkUrl';
 import { getAllLeads } from '@/lib/leads';
 import { getAllProposals } from '@/lib/proposals';
 import { getAllClientPortfolios } from '@/lib/clientPortfolios';
@@ -16,7 +18,8 @@ import { advisorStage } from '@/lib/onboarding';
 
 const CreateSchema = z.object({
   username:    z.string().trim().min(3, 'Usuari massa curt').max(60).regex(/^[\w.@-]+$/, 'Usuari: només lletres, números, punt, guió i @'),
-  password:    z.string().min(10, 'La contrasenya ha de tenir com a mínim 10 caràcters').max(200),
+  // Opcional: si no n'hi ha, el client tria la seva amb l'enllaç d'activació (recomanat)
+  password:    z.string().min(10, 'La contrasenya ha de tenir com a mínim 10 caràcters').max(200).optional(),
   name:        z.string().trim().min(1, 'Falta el nom').max(120),
   email:       z.string().trim().email('Correu no vàlid'),
   role:        z.enum(['client', 'admin']).default('client'),
@@ -70,8 +73,9 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Aquest usuari ja existeix' }, { status: 409 });
   }
 
+  // Sense contrasenya: se'n posa una d'aleatòria que ningú coneix fins que el client tria la seva
   const user = await createUser({
-    username, password, name, email,
+    username, password: password ?? randomBytes(32).toString('base64url'), name, email,
     role: role as UserRole,
     active: true,
     subscriptionPlan:   'free',
@@ -86,15 +90,17 @@ export async function POST(req: NextRequest) {
     ip,
   });
 
-  // El correu porta l'usuari i l'enllaç, mai la contrasenya.
+  // Enllaç perquè triï la contrasenya (si l'admin no n'ha posat cap). Mai s'envia cap contrasenya.
+  const link = password ? null : await passwordLinkFor(user.id, 'activar');
+  if (link) logAuditEvent('auth.password_link_created', { userId: session?.user?.id, userEmail: session?.user?.email, resource: user.id, metadata: { purpose: 'activar' }, ip });
   let welcome: { sent: boolean; error?: string } | undefined;
-  if (sendWelcome && user.role === 'client') {
-    const r = await sendBetaWelcome(user.email, user.name, user.username);
+  if (sendWelcome) {
+    const r = await sendBetaWelcome(user.email, user.name, user.username, link ?? undefined);
     welcome = { sent: r.success, error: r.error };
     logAuditEvent('client.welcome_sent', { userId: session?.user?.id, userEmail: session?.user?.email, resource: user.id, metadata: { ok: r.success, error: r.error }, ip });
   }
 
-  return NextResponse.json({ user, welcome }, { status: 201 });
+  return NextResponse.json({ user, welcome, link }, { status: 201, headers: { 'Cache-Control': 'no-store' } });
 }
 
 export async function PATCH(req: NextRequest) {

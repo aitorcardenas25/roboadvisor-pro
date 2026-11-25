@@ -3,6 +3,7 @@ import CredentialsProvider from 'next-auth/providers/credentials';
 import { findUserByCredentials } from './users';
 import { logAuditEvent } from './auditLog';
 import { recordActivity } from './betaActivity';
+import { rateLimit } from './rateLimiter';
 
 export const authOptions: NextAuthOptions = {
   providers: [
@@ -12,9 +13,17 @@ export const authOptions: NextAuthOptions = {
         username: { label: 'Usuari', type: 'text' },
         password: { label: 'Contrasenya', type: 'password' },
       },
-      async authorize(credentials) {
+      async authorize(credentials, req) {
         if (!credentials?.username || !credentials?.password) return null;
-        const user = await findUserByCredentials(credentials.username, credentials.password);
+        // Frena els intents d'endevinar contrasenyes: 10 per usuari i 30 per adreça IP cada 15 minuts.
+        // (Comptador en memòria de cada instància: limita, però no substitueix una contrasenya forta.)
+        const fwd = (req?.headers as Record<string, string | undefined> | undefined)?.['x-forwarded-for'];
+        const ip = fwd?.split(',')[0]?.trim() || 'unknown';
+        const login = credentials.username.trim().toLowerCase();
+        const byUser = rateLimit(`login-user:${login}`, 10, 15 * 60_000);
+        const byIp   = rateLimit(`login-ip:${ip}`, 30, 15 * 60_000);
+        if (!byUser.ok || !byIp.ok) throw new Error('Massa intents. Espera 15 minuts i torna-ho a provar.');
+        const user = await findUserByCredentials(credentials.username.trim(), credentials.password);
         if (!user) return null;
         logAuditEvent('auth.login', { userId: user.id, userEmail: user.email });
         if (user.role === 'client') recordActivity(user.id, 'login');

@@ -12,7 +12,7 @@ function LoginForm() {
   const searchParams = useSearchParams();
   const callbackUrl  = searchParams.get('callbackUrl') ?? '/client/patrimoni';
 
-  const [username, setUsername] = useState('');
+  const [username, setUsername] = useState(searchParams.get('usuari') ?? '');
   const [password, setPassword] = useState('');
   const [error, setError]       = useState('');
   const [loading, setLoading]   = useState(false);
@@ -34,7 +34,7 @@ function LoginForm() {
     setLoading(true); setError('');
     const result = await signIn('credentials', { username, password, redirect: false });
     if (result?.error) {
-      setError('Credencials incorrectes. Torna-ho a intentar.');
+      setError(result.error.startsWith('Massa intents') ? result.error : 'Usuari o contrasenya incorrectes. Torna-ho a intentar.');
       setLoading(false);
     }
   };
@@ -94,6 +94,9 @@ function LoginForm() {
               {loading ? 'Verificant...' : 'Entrar'}
             </button>
           </form>
+          <p className="text-center text-xs mt-4">
+            <Link href="/recuperar" className="text-accent hover:underline">He oblidat la contrasenya</Link>
+          </p>
         </div>
 
         <p className="text-center text-ink-muted text-xs mt-4">
