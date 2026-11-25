@@ -5,6 +5,7 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { MIN_YEARS_FOR_PROPOSALS, fmtDate, type NavMetrics, type NavPoint } from '@/lib/navMath';
+import NavAutoUpdatePanel from './NavAutoUpdatePanel';
 
 interface FundRow { isin: string; name: string; category: string; inList: boolean; currency: string | null; metrics: NavMetrics }
 interface Preview {
@@ -158,8 +159,8 @@ export default function FundNavsManager() {
       <div>
         <h2 className="text-ink text-2xl font-bold">Preus dels fons</h2>
         <p className="text-ink-soft text-sm mt-1 max-w-3xl">
-          Un cop al mes, entra el <b className="text-ink">valor liquidatiu</b>{' '}(el preu d&apos;una participació) de cada fons,
-          tal com surt a la web de la gestora o a Morningstar. Amb {MIN_YEARS_FOR_PROPOSALS}{' '}anys de preus mensuals seguits,
+          La majoria de fons s&apos;actualitzen sols cada dia (vegeu «Actualització automàtica»). Per als altres, entra el{' '}
+          <b className="text-ink">valor liquidatiu</b>{' '}(el preu d&apos;una participació) tal com surt a la web de la gestora. Amb {MIN_YEARS_FOR_PROPOSALS}{' '}anys de preus mensuals seguits,
           l&apos;app calcula la rendibilitat, la volatilitat i la caiguda màxima i les fa servir a les propostes.
           L&apos;últim preu també actualitza el valor de les carteres dels clients que tenen aquell fons.
         </p>
@@ -170,6 +171,8 @@ export default function FundNavsManager() {
         <div className={card}><p className="text-ink-muted text-xs">Fons de la teva llista</p><p className="text-ink text-lg font-bold mt-1">{listed}</p></div>
         <div className={card}><p className="text-ink-muted text-xs">Desactualitzats (més de 45 dies)</p><p className="text-ink text-lg font-bold mt-1">{funds.filter(f => f.metrics.stale).length}</p></div>
       </div>
+
+      <NavAutoUpdatePanel onUpdated={load} />
 
       {msg && <div className={`rounded-lg px-4 py-3 text-sm ${msg.ok ? 'bg-positive/10 text-positive border border-positive/30' : 'bg-negative/10 text-negative border border-negative/30'}`}>{msg.text}</div>}
 
