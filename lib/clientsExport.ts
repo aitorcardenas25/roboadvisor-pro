@@ -85,6 +85,7 @@ export const CLIENT_COLUMNS: Col[] = [
   { key: 'outlook',    header: 'Ingressos pròxims 2 anys',  width: 12, group: 'Perfil', help: 'Si creu que pujaran, igual o baixaran (Excel v3).' },
   { key: 'advisor',    header: 'Qui li porta els estalvis', width: 13, group: 'Perfil', help: 'Ningú, ell mateix, el banc o un assessor (Excel v3). Útil comercialment.' },
 
+  { key: 'annualNet',  header: 'Sou net anual',             width: 13, fmt: EUR, group: 'Pressupost', help: 'Sou net de l\'any amb pagues extres (Excel v4). Hauria de ser entre 12 i 14 vegades els ingressos nets/mes.' },
   { key: 'income',     header: 'Ingressos nets/mes',        width: 13, fmt: EUR, group: 'Pressupost', help: 'Ingressos nets mensuals.' },
   { key: 'fixed',      header: 'Despeses fixes/mes',        width: 13, fmt: EUR, group: 'Pressupost', help: 'Lloguer, factures, menjar.' },
   { key: 'variable',   header: 'Despeses variables/mes',    width: 13, fmt: EUR, group: 'Pressupost', help: 'Oci, roba, imprevistos.' },
@@ -118,7 +119,7 @@ export const CLIENT_COLUMNS: Col[] = [
   { key: 'goalNextAmt',header: 'Import objectiu proper',    width: 13, fmt: EUR, group: 'Objectius', help: 'Import d\'aquest objectiu.' },
   { key: 'goalNextYr', header: 'Any objectiu proper',       width: 9,  group: 'Objectius', help: 'Any d\'aquest objectiu.' },
 
-  { key: 'oldIncome',  header: 'Ingressos bruts anuals (Excel antic)', width: 14, fmt: EUR, group: 'Poc útil', help: 'Repeteix els ingressos nets, menys precís. Serveix poc.' },
+  { key: 'oldIncome',  header: 'Ingressos bruts anuals (Excel antic)', width: 14, fmt: EUR, group: 'Poc útil', help: 'Plantilles fins a la v3. Era el sou brut i es confonia amb el net: substituït per "Sou net anual". Serveix poc.' },
   { key: 'oldExpenses',header: 'Despeses mensuals totals (Excel antic)', width: 14, fmt: EUR, group: 'Poc útil', help: 'Substituït per fixes + variables. Serveix poc.' },
   { key: 'declaredNW', header: 'Patrimoni net declarat',    width: 14, fmt: EUR, group: 'Poc útil', help: 'Estimació a ull del client. El calculat per l\'app és més fiable.' },
 ];
@@ -265,6 +266,7 @@ export function buildExportTables(inputs: ExportClientInput[], opts: ExportOptio
       outlook: OUTLOOK[str(q.incomeOutlook) ?? ''] ?? str(q.incomeOutlook),
       advisor: ADVISOR[str(q.currentAdvisor) ?? ''] ?? str(q.currentAdvisor),
 
+      annualNet: num(q.annualNetIncome),
       income: num(q.monthlyNetIncome),
       fixed: num(q.monthlyFixedExpenses),
       variable: num(q.monthlyVariableExpenses),

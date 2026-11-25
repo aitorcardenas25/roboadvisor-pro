@@ -27,6 +27,7 @@ export interface OnboardingInput {
 
 const DATA_KEYS: string[] = [
   ...PERSONAL_FIELDS.map(f => f.key), ...CHOICE_FIELDS.map(f => f.key),
+  'annualIncome', // plantilles fins a la v3
 ];
 
 /** El client ja ha donat alguna dada útil (Excel o formulari de "Les meves finances"). */

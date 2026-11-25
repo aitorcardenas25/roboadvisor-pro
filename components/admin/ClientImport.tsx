@@ -8,7 +8,7 @@ type Preview = ImportResult & {
 };
 
 const PERSONAL_LABELS: Record<string, string> = {
-  age: 'Edat', annualIncome: 'Ingressos anuals', monthlyExpenses: 'Despeses mensuals',
+  age: 'Edat', annualIncome: 'Ingressos bruts anuals (Excel antic)', annualNetIncome: 'Sou net anual', monthlyExpenses: 'Despeses mensuals',
   currentSavings: 'Estalvis', netWorth: 'Patrimoni net', totalDebt: 'Deute',
   monthlyNetIncome: 'Ingressos nets / mes', monthlyFixedExpenses: 'Despeses fixes / mes',
   monthlyVariableExpenses: 'Despeses variables / mes', monthlyDebtPayments: 'Quotes deutes / mes',
