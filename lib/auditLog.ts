@@ -25,6 +25,8 @@ export type AuditAction =
   | 'auth.password_link_created'
   | 'auth.password_set'
   | 'auth.password_reset_requested'
+  | 'auth.2fa_enabled'
+  | 'auth.2fa_disabled'
   | 'email.report_ready'
   | 'email.monthly_report'
   | 'client.expense_added'
