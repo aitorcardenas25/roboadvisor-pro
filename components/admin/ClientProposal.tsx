@@ -1,15 +1,19 @@
 'use client';
 
+import { showDrawdownsByDefault, type FundDrawdowns } from '@/lib/drawdowns';
 import { PROPOSAL_TEMPLATES, templateItems } from '@/lib/proposalTemplates';
 import { CAPM_ASSUMPTIONS } from '@/lib/navMath';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
-  proposalStats, fundToItem, hasPerformanceData, validateForApproval, proposalToReportInput, checkProposalSuitability, PROFILES,
+  proposalStats, fundToItem, hasPerformanceData, SAME_FUND_CLASS, sameFundClass, validateForApproval, proposalToReportInput, checkProposalSuitability, PROFILES,
   verifiedPerformance,
-  type ClientProposal, type ProposalItem, type ProposalParams, type ProposalStats, type NavPerformanceMap,
+  type ClientProposal, type ProposalItem, type ProposalParams, type ProposalStats, type NavPerformanceMap, type FundOption,
 } from '@/lib/proposalMath';
 import { isValidIsin } from '@/lib/fundUniverse';
 import type { RebalanceLine } from '@/lib/portfolioValuation';
+import AllocationSummary from '@/components/AllocationSummary';
+import { assetTypeLabel, classifyFund, managementLabel } from '@/lib/fundClassification';
+import { PLATFORMS, PLATFORMS_CHECKED_AT, platformsFor } from '@/lib/fundPlatforms';
 
 type WithStats = ClientProposal & { stats: ProposalStats };
 interface Data {
@@ -17,7 +21,7 @@ interface Data {
   leadProfile: string | null;
   personal:  Record<string, unknown>;
   proposals: WithStats[];
-  funds:     { isin: string; name: string; category: string; source: 'advisor' | 'catalog' }[];
+  funds:     FundOption[];
   holdings:  number;
   defaults:  ProposalParams;
   navPerformance?: NavPerformanceMap;
@@ -74,14 +78,23 @@ export default function ClientProposal({ clientId, onApplied }: { clientId: stri
           const { profile, objective, horizon, initialAmount, monthlyAmount, adminNote } = latest;
           setParams({ profile, objective, horizon, initialAmount, monthlyAmount, adminNote });
           // Un esborrany agafa els preus entrats a mà des de l'últim desament
+          // i, si porta una classe sense preus d'un fons que tenim (SAME_FUND_CLASS), passa a la classe amb preus.
+          let swapped = 0;
           setItems(latest.status === 'draft'
-            ? latest.items.map(x => ({ ...x, ...verifiedPerformance(x.isin, d.navPerformance ?? {}) }))
+            ? latest.items.map(x => {
+                const alt = SAME_FUND_CLASS[x.isin] && !latest.items.some(y => y.isin === SAME_FUND_CLASS[x.isin])
+                  ? fundToItem(SAME_FUND_CLASS[x.isin], x.weight, d.navPerformance ?? {}) : null;
+                if (alt) { swapped++; return { ...alt, weight: x.weight, platform: x.platform, justification: x.justification || alt.justification }; }
+                return { ...x, ...verifiedPerformance(x.isin, d.navPerformance ?? {}) };
+              })
             : latest.items);
+          setDirty(swapped > 0);
+          if (swapped) setMsg({ ok: true, text: `${swapped === 1 ? 'Un fons s\'ha canviat' : `${swapped} fons s'han canviat`} a la classe amb preus oficials (mateix fons). Desa per guardar-ho.` });
         } else {
           setParams(d.defaults);
           setItems([]);
+          setDirty(false);
         }
-        setDirty(false);
       }
     } catch { setError('Error de connexió'); }
   }, [api]);
@@ -109,7 +122,8 @@ export default function ClientProposal({ clientId, onApplied }: { clientId: stri
 
   const addFund = () => {
     const raw = fundQuery.trim();
-    const isin = (raw.match(/[A-Z]{2}[A-Z0-9]{9}\d/i)?.[0] ?? raw).toUpperCase();
+    // Una classe sense preus d'un fons que tenim es resol abans de mirar si està repetit.
+    const isin = sameFundClass(raw.match(/[A-Z]{2}[A-Z0-9]{9}\d/i)?.[0] ?? raw);
     if (items.some(x => x.isin === isin)) { setMsg({ ok: false, text: 'Aquest fons ja és a la proposta' }); return; }
     const known = fundToItem(isin, 0, data.navPerformance ?? {});
     if (known) { setItems([...items, known]); }
@@ -179,7 +193,13 @@ export default function ClientProposal({ clientId, onApplied }: { clientId: stri
     ]);
     const input = proposalToReportInput(p, data.client, data.personal);
     const when = new Date(p.approvedAt ?? p.updatedAt).toLocaleDateString('ca-ES', { day: '2-digit', month: 'long', year: 'numeric' });
-    const blob = await pdf(<ManualReportPDF data={input} generatedAt={when} />).toBlob();
+    // Perfils conservador i moderat: pàgina de caigudes històriques (preus oficials)
+    let drawdowns: FundDrawdowns[] | undefined;
+    if (showDrawdownsByDefault(p.profile) && p.items.length) {
+      const r = await fetch(`/api/admin/fund-navs?drawdowns=${p.items.map(i => i.isin).join(',')}`).catch(() => null);
+      if (r?.ok) drawdowns = (await r.json()).drawdowns;
+    }
+    const blob = await pdf(<ManualReportPDF data={input} generatedAt={when} drawdowns={drawdowns} />).toBlob();
     download(blob, `FACTOR_OTC_informe_${safeName(data.client.name)}_v${p.version}.pdf`);
   };
 
@@ -197,9 +217,23 @@ export default function ClientProposal({ clientId, onApplied }: { clientId: stri
       const res = await fetch(api, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'share', id: p.id }) });
       const d = await res.json().catch(() => ({}));
       if (!res.ok) { setMsg({ ok: false, text: d.error ?? 'No s\'ha pogut enviar' }); return; }
-      setMsg({ ok: true, text: `Informe v${p.version} enviat: ${data.client.name} ja el pot veure al portal.` });
+      const mailNote = d.email?.sent ? ' Li hem enviat un correu d\'avís.'
+        : ` El correu d'avís no s'ha pogut enviar (${d.email?.error ?? 'error desconegut'}).`;
+      setMsg({ ok: true, text: `Informe v${p.version} enviat: ${data.client.name} ja el pot veure al portal.${mailNote}` });
       await load(false);   // no esborra els canvis sense desar de l'editor
       onApplied?.();
+    } finally { setBusy(null); }
+  };
+
+  // Torna a enviar el correu d'avís d'un informe que el client ja veu (p. ex. si abans fallava el correu)
+  const onNotify = async (p: ClientProposal) => {
+    setBusy(`notify-${p.id}`); setMsg(null);
+    try {
+      const res = await fetch(api, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'notify', id: p.id }) });
+      const d = await res.json().catch(() => ({}));
+      if (!res.ok) { setMsg({ ok: false, text: d.error ?? 'No s\'ha pogut enviar' }); return; }
+      setMsg(d.email?.sent ? { ok: true, text: `Correu d'avís enviat a ${data.client.name}.` }
+        : { ok: false, text: `El correu no s'ha pogut enviar (${d.email?.error ?? 'error desconegut'}).` });
     } finally { setBusy(null); }
   };
 
@@ -342,7 +376,9 @@ export default function ClientProposal({ clientId, onApplied }: { clientId: stri
             onKeyDown={e => { if (e.key === 'Enter') addFund(); }}
             placeholder="Cerca un fons pel nom o l'ISIN…" className={`${input} flex-1 min-w-[240px]`} />
           <datalist id="proposal-funds">
-            {data.funds.map(f => <option key={f.isin} value={`${f.isin} · ${f.name}`}>{f.source === 'advisor' ? '★ Llista de l\'assessor' : f.category}</option>)}
+            {data.funds.map(f => <option key={f.isin} value={`${f.isin} · ${f.name}`}>
+              {(f.source === 'advisor' ? '★ Llista de l\'assessor' : f.category) + (f.hasData ? '' : ' · sense dades de rendiment (menys de 3 anys de preus)')}
+            </option>)}
           </datalist>
           <button onClick={addFund} disabled={!fundQuery.trim()}
             className="px-3 py-1.5 rounded-lg bg-accent-soft text-accent text-xs font-medium hover:bg-accent/30 disabled:opacity-40">Afegir</button>
@@ -378,6 +414,7 @@ export default function ClientProposal({ clientId, onApplied }: { clientId: stri
           <Metric label="Escenari favorable" value={stats.complete ? eur(stats.p90) : '—'} />
           <Metric label="Fons" value={String(items.length)} sub={!stats.complete ? `${stats.missing.length} sense dades` : stats.terMissing.length ? `Falta el TER de ${stats.terMissing.length}` : 'Tots amb dades reals'} tone={stats.complete && !stats.terMissing.length ? undefined : 'bad'} />
         </div>
+        <AllocationSummary items={items} className="mt-4 pt-4 border-t border-line" />
 {stats.complete ? (
           <p className="text-ink-muted text-[11px] mt-4">
             {stats.returnBasis === 'historic'
@@ -452,7 +489,10 @@ export default function ClientProposal({ clientId, onApplied }: { clientId: stri
                 {p.suitabilityOverride && <span className="text-negative" title={p.suitabilityOverride}>No idònia (justificada)</span>}
                 <span className="text-ink-soft">{p.items.length} fons · {PROFILE_LABEL[p.profile]} · {p.stats.complete ? `${pct(p.stats.netReturn)} net` : 'dades incompletes'}</span>
                 {p.status === 'approved' && (p.sharedAt
-                  ? <span className="text-positive/80">Enviat al client el {new Date(p.sharedAt).toLocaleDateString('ca-ES')}</span>
+                  ? <span className="text-positive/80">Enviat al client el {new Date(p.sharedAt).toLocaleDateString('ca-ES')}{' '}
+                      <button disabled={!!busy} onClick={() => onNotify(p)} className="text-accent hover:underline disabled:opacity-40">
+                        {busy === `notify-${p.id}` ? 'Enviant…' : 'Tornar a enviar el correu'}
+                      </button></span>
                   : <span className="text-warning">Encara no l&apos;ha vist el client</span>)}
                 {p.status === 'approved' && (
                   <span className="ml-auto flex gap-2">
@@ -597,6 +637,7 @@ function FundRow({ x, i, amount, input, noteOpen, toggleNote, setItem, removeIte
         <td className={td}>
           <input value={x.name} onChange={e => setItem(i, { name: e.target.value })} placeholder="Nom del fons" className={`${input} w-full min-w-[220px]`} />
           <p className="text-ink-muted text-[11px] mt-0.5">{x.category || 'Sense categoria'}
+            {(() => { const cl = classifyFund(x.isin, x.category, x.name); return <span className={cl.assetType && cl.management ? '' : 'text-warning'}> · {assetTypeLabel(cl)} · {managementLabel(cl)}</span>; })()}
             {hasPerformanceData(x)
               ? <span title={x.performanceSource}> · {pct(x.historicalReturn5Y!)} anual, volatilitat {pct(x.historicalVolatility!)}</span>
               : <span className="text-negative/80"> · sense dades de rendiment</span>}</p>
@@ -608,7 +649,8 @@ function FundRow({ x, i, amount, input, noteOpen, toggleNote, setItem, removeIte
           {[1, 2, 3, 4, 5, 6, 7].map(r => <option key={r} value={r}>{r}</option>)}</select></td>
         <td className={td}><input type="number" min={0} max={10} step={0.01} value={x.ter}
           onChange={e => setItem(i, { ter: Math.min(10, Math.max(0, Number(e.target.value) || 0)) })} className={`${input} w-16`} /></td>
-        <td className={td}><input value={x.platform} onChange={e => setItem(i, { platform: e.target.value })} placeholder="MyInvestor…" className={`${input} w-28`} /></td>
+        <td className={td}><PlatformPicker isin={x.isin} name={x.name} value={x.platform} input={input}
+          onChange={platform => setItem(i, { platform })} /></td>
         <td className={`${td} whitespace-nowrap pt-2.5`}>
           <button onClick={toggleNote} className="text-ink-muted hover:text-ink text-xs mr-2" title="Justificació">✎</button>
           <button onClick={() => removeItem(i)} className="text-negative/60 hover:text-negative text-xs" title="Treure">✕</button>
@@ -623,5 +665,65 @@ function FundRow({ x, i, amount, input, noteOpen, toggleNote, setItem, removeIte
         </tr>
       )}
     </>
+  );
+}
+
+const CUSTOM = '__altra__';
+
+/**
+ * Desplegable de plataformes: primer les comprovades (✓), després les que
+ * podrien tenir-lo però no s'han pogut comprovar, i "Altra…" per escriure'n
+ * una a mà. Si el valor desat no és cap plataforma coneguda, es mostra el camp
+ * de text amb aquest valor.
+ */
+function PlatformPicker({ isin, name, value, input, onChange }: {
+  isin: string; name: string; value: string; input: string; onChange: (v: string) => void;
+}) {
+  const info = platformsFor(isin, name);
+  const known = PLATFORMS.some(p => p.name === value);
+  const [customMode, setCustom] = useState(false);
+  // Un valor que no és a la llista (desat abans o posat per "Partir de la
+  // cartera actual") sempre es mostra com a text, encara que la fila ja existís.
+  const custom = customMode || (!!value && !known);
+  const chosenNotFound = info.notFound.some(p => p.name === value);
+  const checked = new Date(PLATFORMS_CHECKED_AT + 'T00:00:00').toLocaleDateString('ca-ES');
+  return (
+    <div className="w-40">
+      {custom ? (
+        <div className="flex gap-1">
+          <input value={value} autoFocus onChange={e => onChange(e.target.value)} placeholder="Nom de la plataforma"
+            className={`${input} w-full`} />
+          <button type="button" title="Tornar a la llista" className="text-ink-muted hover:text-ink text-xs px-1"
+            onClick={() => { setCustom(false); if (!known) onChange(''); }}>↺</button>
+        </div>
+      ) : (
+        <select value={known ? value : ''} className={`${input} w-full`}
+          onChange={e => { if (e.target.value === CUSTOM) { setCustom(true); onChange(''); } else onChange(e.target.value); }}>
+          <option value="">— Tria —</option>
+          {info.available.length > 0 && (
+            <optgroup label={`Disponible (comprovat ${checked})`}>
+              {info.available.map(p => <option key={p.id} value={p.name}>✓ {p.name}</option>)}
+            </optgroup>
+          )}
+          {info.unchecked.length > 0 && (
+            <optgroup label="Per confirmar">
+              {info.unchecked.map(p => <option key={p.id} value={p.name}>{p.name}</option>)}
+            </optgroup>
+          )}
+          {info.notFound.length > 0 && (
+            <optgroup label="No surt al seu cercador">
+              {info.notFound.map(p => <option key={p.id} value={p.name}>{p.name} (no surt)</option>)}
+            </optgroup>
+          )}
+          <option value={CUSTOM}>Altra…</option>
+        </select>
+      )}
+      <p className={`text-[10px] mt-0.5 leading-tight ${chosenNotFound ? 'text-warning' : 'text-ink-muted'}`}>
+        {chosenNotFound ? `No surt al cercador de ${value}: confirma-ho abans.`
+          : info.available.length ? `✓ ${info.available.map(p => p.name).join(' · ')}`
+          : info.unchecked.some(p => p.sells === 'etf') ? 'ETF: confirma-ho al bròquer'
+          : 'Cap plataforma comprovada'}
+      </p>
+    </div>
   );
 }

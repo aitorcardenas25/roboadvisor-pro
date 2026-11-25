@@ -5,6 +5,7 @@ import { signIn, useSession } from 'next-auth/react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import LeadForm from '@/components/LeadForm';
+import { TWO_FACTOR_REQUIRED, loginErrorText } from '@/lib/authMessages';
 
 function LoginForm() {
   const { data: session, status } = useSession();
@@ -12,10 +13,12 @@ function LoginForm() {
   const searchParams = useSearchParams();
   const callbackUrl  = searchParams.get('callbackUrl') ?? '/client/patrimoni';
 
-  const [username, setUsername] = useState('');
+  const [username, setUsername] = useState(searchParams.get('usuari') ?? '');
   const [password, setPassword] = useState('');
   const [error, setError]       = useState('');
   const [loading, setLoading]   = useState(false);
+  const [needCode, setNeedCode] = useState(false);
+  const [code, setCode]         = useState('');
   const [showLead, setShowLead] = useState(false);
 
   useEffect(() => {
@@ -32,9 +35,10 @@ function LoginForm() {
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true); setError('');
-    const result = await signIn('credentials', { username, password, redirect: false });
+    const result = await signIn('credentials', { username, password, code, redirect: false });
     if (result?.error) {
-      setError('Credencials incorrectes. Torna-ho a intentar.');
+      if (result.error === TWO_FACTOR_REQUIRED) setNeedCode(true);
+      else setError(loginErrorText(result.error));
       setLoading(false);
     }
   };
@@ -85,6 +89,14 @@ function LoginForm() {
                 className="w-full bg-surface border border-line-strong rounded-xl px-4 py-3 text-ink text-sm focus:outline-none focus:border-accent/70 transition-colors" />
             </div>
 
+            {needCode && (
+              <div>
+                <label htmlFor="code" className="block text-ink-soft text-xs mb-2">Codi de l&apos;app d&apos;autenticació (6 xifres)</label>
+                <input id="code" inputMode="numeric" autoComplete="one-time-code" pattern="[0-9 ]{6,7}" maxLength={7} autoFocus
+                  value={code} onChange={e => setCode(e.target.value)} required
+                  className="w-full bg-surface border border-line-strong rounded-xl px-4 py-3 text-ink text-lg tracking-[0.3em] text-center focus:outline-none focus:border-accent/70" />
+              </div>
+            )}
             {error && (
               <p className="text-negative text-xs bg-negative/10 border border-negative/20 rounded-lg px-3 py-2">{error}</p>
             )}
@@ -94,6 +106,9 @@ function LoginForm() {
               {loading ? 'Verificant...' : 'Entrar'}
             </button>
           </form>
+          <p className="text-center text-xs mt-4">
+            <Link href="/recuperar" className="text-accent hover:underline">He oblidat la contrasenya</Link>
+          </p>
         </div>
 
         <p className="text-center text-ink-muted text-xs mt-4">

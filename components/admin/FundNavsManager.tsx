@@ -4,7 +4,11 @@
 'use client';
 
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { MIN_YEARS_FOR_PROPOSALS, fmtDate, type NavMetrics, type NavPoint } from '@/lib/navMath';
+import { MIN_YEARS_FOR_PROPOSALS, UPDATE_LAG_DAYS, daysSince, fmtDate, navAttention, type NavMetrics, type NavPoint } from '@/lib/navMath';
+import { DRAWDOWN_DISCLAIMER, type FundDrawdowns } from '@/lib/drawdowns';
+import { FundDrawdownCard } from '@/components/FundDrawdowns';
+import NavAutoUpdatePanel from './NavAutoUpdatePanel';
+import NavBackfillPanel from './NavBackfillPanel';
 
 interface FundRow { isin: string; name: string; category: string; inList: boolean; currency: string | null; metrics: NavMetrics }
 interface Preview {
@@ -25,10 +29,14 @@ const ymLabel = (m: string) => `${m.slice(5, 7)}/${m.slice(0, 4)}`;
 const today = () => new Date().toISOString().slice(0, 10);
 
 function status(m: NavMetrics): { label: string; cls: string; hint: string } {
-  if (!m.points) return { label: 'Sense preus', cls: 'text-ink-muted', hint: 'Encara no s\'hi ha entrat cap preu' };
-  if (m.usable && m.stale) return { label: 'Desactualitzat', cls: 'text-warning', hint: `Es fa servir a les propostes, però l'últim preu és del ${fmtDate(m.lastDate!)}` };
-  if (m.usable) return { label: 'A punt', cls: 'text-positive', hint: 'Es fa servir a les propostes' };
-  return { label: 'Falten preus', cls: 'text-warning/80', hint: m.reason ?? '' };
+  const a = navAttention(m);
+  if (a === 'empty') return { label: 'Sense preus', cls: 'text-negative/90', hint: 'Encara no s\'hi ha entrat cap preu' };
+  if (a === 'behind') {
+    const d = daysSince(m.lastDate);
+    return { label: `No està al dia (${d} dies)`, cls: 'text-negative/90', hint: `L'últim preu és del ${fmtDate(m.lastDate!)}. Els preus s'actualitzen cada dia: si fa més de ${UPDATE_LAG_DAYS} dies, cal revisar-lo o entrar-lo a mà.` };
+  }
+  if (a === 'incomplete') return { label: 'Falten preus', cls: 'text-warning', hint: m.reason ?? '' };
+  return { label: 'A punt', cls: 'text-positive', hint: 'Es fa servir a les propostes' };
 }
 
 function downloadTemplate(funds: FundRow[]) {
@@ -56,7 +64,7 @@ export default function FundNavsManager() {
   const [file, setFile] = useState<File | null>(null);
   // Detall
   const [open, setOpen]     = useState<string | null>(null);
-  const [detail, setDetail] = useState<{ points: NavPoint[]; metrics: NavMetrics } | null>(null);
+  const [detail, setDetail] = useState<{ points: NavPoint[]; totalPoints?: number; metrics: NavMetrics; drawdowns?: FundDrawdowns } | null>(null);
 
   const load = useCallback(async () => {
     setLoadErr('');
@@ -158,8 +166,8 @@ export default function FundNavsManager() {
       <div>
         <h2 className="text-ink text-2xl font-bold">Preus dels fons</h2>
         <p className="text-ink-soft text-sm mt-1 max-w-3xl">
-          Un cop al mes, entra el <b className="text-ink">valor liquidatiu</b>{' '}(el preu d&apos;una participació) de cada fons,
-          tal com surt a la web de la gestora o a Morningstar. Amb {MIN_YEARS_FOR_PROPOSALS}{' '}anys de preus mensuals seguits,
+          La majoria de fons s&apos;actualitzen sols cada dia (vegeu «Actualització automàtica»). Per als altres, entra el{' '}
+          <b className="text-ink">valor liquidatiu</b>{' '}(el preu d&apos;una participació) tal com surt a la web de la gestora. Amb {MIN_YEARS_FOR_PROPOSALS}{' '}anys de preus mensuals seguits,
           l&apos;app calcula la rendibilitat, la volatilitat i la caiguda màxima i les fa servir a les propostes.
           L&apos;últim preu també actualitza el valor de les carteres dels clients que tenen aquell fons.
         </p>
@@ -168,8 +176,12 @@ export default function FundNavsManager() {
       <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
         <div className={card}><p className="text-ink-muted text-xs">Fons a punt per a propostes</p><p className="text-ink text-lg font-bold mt-1">{ready} de {funds.length}</p></div>
         <div className={card}><p className="text-ink-muted text-xs">Fons de la teva llista</p><p className="text-ink text-lg font-bold mt-1">{listed}</p></div>
-        <div className={card}><p className="text-ink-muted text-xs">Desactualitzats (més de 45 dies)</p><p className="text-ink text-lg font-bold mt-1">{funds.filter(f => f.metrics.stale).length}</p></div>
+        <div className={card}><p className="text-ink-muted text-xs">No estan al dia (més de {UPDATE_LAG_DAYS} dies) o sense preus</p><p className="text-ink text-lg font-bold mt-1">{funds.filter(f => ['behind', 'empty'].includes(navAttention(f.metrics))).length}</p></div>
       </div>
+
+      <NavAutoUpdatePanel onUpdated={load} />
+
+      <NavBackfillPanel onDone={load} />
 
       {msg && <div className={`rounded-lg px-4 py-3 text-sm ${msg.ok ? 'bg-positive/10 text-positive border border-positive/30' : 'bg-negative/10 text-negative border border-negative/30'}`}>{msg.text}</div>}
 
@@ -261,7 +273,8 @@ export default function FundNavsManager() {
 
       {/* ── Fons ── */}
       <div className={`${card} overflow-x-auto`}>
-        <h3 className="text-ink-soft text-xs font-medium mb-3">Fons i mètriques calculades (últims 5 anys com a màxim)</h3>
+        <h3 className="text-ink-soft text-xs font-medium mb-1">Fons i mètriques calculades (últims 5 anys com a màxim)</h3>
+        <p className="text-ink-muted text-xs mb-3">A dalt de tot, els que necessiten feina: primer els que no estan al dia, després els que no tenen cap preu i els que en tenen pocs. Al final, els que estan a punt.</p>
         <table className="w-full text-sm">
           <thead>
             <tr className="text-ink-muted text-xs text-left">
@@ -272,7 +285,7 @@ export default function FundNavsManager() {
               <th className="py-1 px-2 font-normal text-right" title="Rendibilitat anualitzada del període">Rend. anual</th>
               <th className="py-1 px-2 font-normal text-right">12 mesos</th>
               <th className="py-1 px-2 font-normal text-right" title="Quant oscil·la el fons: com més alta, més risc">Volatilitat</th>
-              <th className="py-1 px-2 font-normal text-right" title="Pitjor caiguda des d'un màxim">Caiguda màx.</th>
+              <th className="py-1 px-2 font-normal text-right" title="Pitjor caiguda des d'un màxim en els últims 5 anys, amb l'últim preu de cada mes. La caiguda exacta amb preus diaris és al detall del fons.">Caiguda màx. (fi de mes)</th>
             </tr>
           </thead>
           <tbody>
@@ -313,7 +326,7 @@ export default function FundNavsManager() {
                   ['Rendibilitat anual', pct(detail.metrics.annualReturn), detail.metrics.years ? `${detail.metrics.years.toLocaleString('ca-ES')} anys` : ''],
                   ['Últims 12 mesos', pct(detail.metrics.return1Y), ''],
                   ['Volatilitat', pct(detail.metrics.volatility), 'anual'],
-                  ['Caiguda màxima', pct(detail.metrics.maxDrawdown), 'des d\'un màxim'],
+                  ['Caiguda màxima', pct(detail.metrics.maxDrawdown), '5 anys, preus de fi de mes (la diària, a sota)'],
                   ['Pitjor any', pct(detail.metrics.worst12M), '12 mesos seguits'],
                 ].map(([l, v, s]) => (
                   <div key={l}><p className="text-ink-muted text-xs">{l}</p><p className="text-ink font-bold">{v}</p>{s && <p className="text-ink-muted text-[11px]">{s}</p>}</div>
@@ -326,6 +339,16 @@ export default function FundNavsManager() {
                 <p className="text-negative/90 text-xs">Salts sospitosos (més del 40 % d&apos;un preu al següent): {detail.metrics.suspect.map(j => `${fmtDate(j.date)} (${j.change > 0 ? '+' : ''}${j.change} %)`).join(', ')}. Corregeix el preu o esborra&apos;l.</p>
               )}
               {!detail.metrics.usable && detail.metrics.reason && <p className="text-ink-muted text-xs">No es fa servir a les propostes: {detail.metrics.reason}.</p>}
+              {detail.drawdowns && detail.drawdowns.monthlyPoints > 1 && (
+                <div className="rounded-lg border border-line p-4">
+                  <p className="text-ink-soft text-xs font-medium mb-3">Caigudes històriques (el que veurà el client conservador o moderat)</p>
+                  <FundDrawdownCard d={detail.drawdowns} />
+                  <p className="text-ink-muted text-[11px] mt-3">{DRAWDOWN_DISCLAIMER}</p>
+                </div>
+              )}
+              {(detail.totalPoints ?? 0) > detail.points.length && (
+                <p className="text-ink-muted text-xs">Es mostren els últims {detail.points.length} preus de {detail.totalPoints!.toLocaleString('ca-ES')}.</p>
+              )}
               <div className="max-h-80 overflow-y-auto">
                 <table className="w-full text-sm">
                   <thead><tr className="text-ink-muted text-xs text-left"><th className="font-normal py-1">Data</th><th className="font-normal text-right">Valor liquidatiu</th><th className="font-normal text-right">Variació</th><th /></tr></thead>

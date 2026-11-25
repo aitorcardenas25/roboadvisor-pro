@@ -19,6 +19,7 @@ import NotificationBell          from './NotificationBell';
 import IntegrationsManager        from './IntegrationsManager';
 import BetaPanel                  from './BetaPanel';
 import FundNavsManager            from './FundNavsManager';
+import TwoFactorSetup             from './TwoFactorSetup';
 import { SHOW_NON_BETA_FEATURES } from '@/lib/featureFlags';
 
 interface Props {
@@ -40,7 +41,7 @@ type SubTab =
   | 'fons-preus' | 'fons-cataleg'
   | 'informes-mensual' | 'informes-historial'
   | 'beta-us' | 'beta-contactes'
-  | 'sistema-connexions' | 'sistema-registre'
+  | 'sistema-connexions' | 'sistema-registre' | 'sistema-seguretat'
   | 'fora-noticies' | 'fora-newsletter' | 'fora-accions' | 'fora-informes-borsaris' | 'fora-carteres-model';
 
 const SUBTABS: Partial<Record<Section, { id: SubTab; label: string }[]>> = {
@@ -53,7 +54,8 @@ const SUBTABS: Partial<Record<Section, { id: SubTab; label: string }[]>> = {
   beta:     [{ id: 'beta-us',            label: 'Ús i consentiments' },
              { id: 'beta-contactes',     label: 'Contactes' }],
   sistema:  [{ id: 'sistema-connexions', label: 'Connexions' },
-             { id: 'sistema-registre',   label: "Registre d'activitat" }],
+             { id: 'sistema-registre',   label: "Registre d'activitat" },
+             { id: 'sistema-seguretat',  label: 'Seguretat' }],
   'fora-beta': [{ id: 'fora-noticies',          label: 'Notícies' },
                 { id: 'fora-newsletter',        label: 'Newsletter' },
                 { id: 'fora-accions',           label: 'Accions' },
@@ -240,6 +242,7 @@ export default function AdminDashboard({ onLogout }: Props) {
 
             {activeSub === 'sistema-connexions' && <IntegrationsManager />}
             {activeSub === 'sistema-registre'   && <AuditLogViewer />}
+            {activeSub === 'sistema-seguretat'  && <TwoFactorSetup />}
 
             {SHOW_NON_BETA_FEATURES && activeSection === 'fora-beta' && (<>
               {activeSub === 'fora-noticies'          && <NewsManager />}

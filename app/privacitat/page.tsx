@@ -72,7 +72,7 @@ export default function PrivacitatPage() {
           <p>Treballem amb els següents proveïdors que actuen com a processadors de dades sota contractes adequats:</p>
           <ul className="list-disc pl-5 space-y-1">
             <li><strong className="text-white/80">Supabase</strong> — emmagatzematge de dades</li>
-            <li><strong className="text-white/80">Resend</strong> — enviament de correus electrònics</li>
+            <li><strong className="text-white/80">Google (Gmail)</strong> — enviament de correus electrònics</li>
             <li><strong className="text-white/80">Stripe</strong> — processament de pagaments (certificació PCI DSS)</li>
             <li><strong className="text-white/80">Vercel</strong> — allotjament de l&apos;aplicació</li>
           </ul>

@@ -20,6 +20,7 @@ export default function MonthlyReportGenerator() {
   const [savedReportId, setSavedReportId] = useState<string | null>(null);
   const [history, setHistory]           = useState<MonthlyReportRecord[]>([]);
   const [markingSent, setMarkingSent]   = useState<string | null>(null);
+  const [sentMsg, setSentMsg]           = useState<{ ok: boolean; text: string } | null>(null);
 
   // Per defecte, l'últim mes tancat (el mes en curs encara no té tots els preus).
   const today   = new Date();
@@ -84,12 +85,19 @@ export default function MonthlyReportGenerator() {
   async function handleMarkSent(id: string) {
     setMarkingSent(id);
     try {
-      await fetch('/api/admin/monthly-reports', {
+      setSentMsg(null);
+      const res = await fetch('/api/admin/monthly-reports', {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ id }),
       });
-      setHistory(prev => prev.map(r => r.id === id ? { ...r, sentAt: new Date().toISOString() } : r));
+      const d = await res.json().catch(() => ({}));
+      if (!res.ok) { setSentMsg({ ok: false, text: d.error ?? 'No s\'ha pogut enviar' }); return; }
+      setSentMsg(d.email?.sent
+        ? { ok: true, text: 'Informe enviat: el client ja el veu al portal i li hem enviat un correu d\'avís.' }
+        : { ok: false, text: `El client ja el veu al portal, però el correu d'avís no s'ha pogut enviar (${d.email?.error ?? 'error desconegut'}).` });
+      const now = new Date().toISOString();
+      setHistory(prev => prev.map(r => r.id === id ? { ...r, sentAt: r.sentAt ?? now, emailedAt: d.email?.sent ? now : r.emailedAt } : r));
       if (savedReportId === id) setSavedReportId(null);
     } finally { setMarkingSent(null); }
   }
@@ -215,6 +223,9 @@ export default function MonthlyReportGenerator() {
         {history.length > 0 && (
           <div className="mt-10">
             <h3 className="text-ink-soft text-xs font-medium mb-3">Historial d&apos;informes</h3>
+            {sentMsg && (
+              <p className={`mb-3 text-xs rounded-lg px-3 py-2 border ${sentMsg.ok ? 'text-positive border-positive/20 bg-positive/5' : 'text-warning border-warning/30 bg-warning/5'}`}>{sentMsg.text}</p>
+            )}
             <div className="space-y-2">
               {history.map(r => (
                 <div key={r.id} className="flex items-center justify-between bg-subtle border border-line rounded-lg px-4 py-3">
@@ -226,11 +237,19 @@ export default function MonthlyReportGenerator() {
                   </div>
                   <div className="flex items-center gap-3">
                     {r.sentAt ? (
-                      <span className="text-xs text-positive/70">✓ Enviat al client el {new Date(r.sentAt).toLocaleDateString('ca-ES')}</span>
+                      <>
+                        <span className="text-xs text-positive/70">✓ Enviat al client el {new Date(r.sentAt).toLocaleDateString('ca-ES')}{r.emailedAt ? ' · correu enviat' : ' · sense correu'}</span>
+                        {!r.emailedAt && (
+                          <button onClick={() => handleMarkSent(r.id)} disabled={markingSent === r.id}
+                            className="text-xs text-accent hover:underline disabled:opacity-50">
+                            {markingSent === r.id ? 'Enviant…' : 'Tornar a enviar el correu'}
+                          </button>
+                        )}
+                      </>
                     ) : (
                       <button
                         onClick={() => handleMarkSent(r.id)}
-                        title="El client el veurà al seu portal a partir d'ara (encara no s'envia cap correu)"
+                        title="El client el veurà al seu portal a partir d'ara i rebrà un correu d'avís"
                         disabled={markingSent === r.id}
                         className="px-3 py-1 bg-positive/10 border border-positive/20 text-positive text-xs rounded-lg hover:bg-positive/20 transition-all disabled:opacity-50">
                         {markingSent === r.id ? '...' : 'Enviar al client'}

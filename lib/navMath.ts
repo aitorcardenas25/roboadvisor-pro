@@ -28,6 +28,12 @@ export const MAX_WINDOW_MONTHS = 60;
 export const MAX_MOVE_PCT = 40;
 /** Dies sense preu nou a partir dels quals es considera desactualitzat. */
 export const STALE_DAYS = 45;
+/**
+ * Des del 2026-11-25 els preus s'actualitzen sols cada dia (lib/navAutoUpdate.ts).
+ * Un fons amb l'últim preu de fa més d'aquests dies naturals (cap de setmana i
+ * festius inclosos) no està al dia i surt a dalt de tot a «Preus dels fons».
+ */
+export const UPDATE_LAG_DAYS = 6;
 
 // ─── Lectura del text enganxat (Excel, CSV, a mà) ─────────────────────────────
 
@@ -204,6 +210,38 @@ export function parseNavText(text: string, opts: { defaultIsin?: string; default
 export function fmtDate(iso: string): string {
   const [y, m, d] = iso.split('-');
   return `${d}/${m}/${y}`;
+}
+
+// ─── Estat per a l'admin ──────────────────────────────────────────────────────
+
+/**
+ * Què li passa a un fons, de més urgent a menys, per ordenar «Preus dels fons»
+ * (petició de l'Aitor 2026-11-25): primer els que no estan al dia, després els
+ * que no tenen cap preu, després els que no en tenen prou i, al final, els correctes.
+ */
+export type NavAttention = 'behind' | 'empty' | 'incomplete' | 'ok';
+export const NAV_ATTENTION_ORDER: NavAttention[] = ['behind', 'empty', 'incomplete', 'ok'];
+
+export function daysSince(iso: string | null, asOf: Date = new Date()): number | null {
+  if (!iso) return null;
+  return Math.floor((asOf.getTime() - new Date(`${iso}T00:00:00Z`).getTime()) / 86_400_000);
+}
+
+export function navAttention(m: Pick<NavMetrics, 'points' | 'lastDate' | 'usable'>, asOf: Date = new Date()): NavAttention {
+  if (!m.points) return 'empty';
+  const d = daysSince(m.lastDate, asOf);
+  if (d !== null && d > UPDATE_LAG_DAYS) return 'behind';
+  return m.usable ? 'ok' : 'incomplete';
+}
+
+/** Ordena: per estat; dins «no al dia», el preu més antic primer; després, llista de l'assessor i nom. */
+export function sortByAttention<T extends { name: string; inList: boolean; metrics: Pick<NavMetrics, 'points' | 'lastDate' | 'usable'> }>(rows: T[], asOf: Date = new Date()): T[] {
+  const rank = (r: T) => NAV_ATTENTION_ORDER.indexOf(navAttention(r.metrics, asOf));
+  return [...rows].sort((a, b) =>
+    rank(a) - rank(b)
+    || (rank(a) === 0 ? (a.metrics.lastDate ?? '').localeCompare(b.metrics.lastDate ?? '') : 0)
+    || Number(b.inList) - Number(a.inList)
+    || a.name.localeCompare(b.name));
 }
 
 // ─── Mètriques ────────────────────────────────────────────────────────────────

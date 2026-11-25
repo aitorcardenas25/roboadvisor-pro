@@ -105,7 +105,7 @@ function guessSrri(category: string): number {
 
 /** Converteix un ISIN conegut en una línia de proposta amb les dades del catàleg. */
 export function fundToItem(rawIsin: string, weight = 0, navs: NavPerformanceMap = {}): ProposalItem | null {
-  const isin = rawIsin.trim().toUpperCase();
+  const isin = sameFundClass(rawIsin);
   const p = FINANCIAL_PRODUCTS.find(f => f.isin?.toUpperCase() === isin);
   if (p) {
     return {
@@ -134,17 +134,44 @@ export function fundToItem(rawIsin: string, weight = 0, navs: NavPerformanceMap 
   return null;
 }
 
-/** Llista de fons que l'assessor pot triar: primer els seus, després el catàleg. */
-export function fundOptions(): { isin: string; name: string; category: string; source: 'advisor' | 'catalog' }[] {
-  const seen = new Set<string>();
-  const out: { isin: string; name: string; category: string; source: 'advisor' | 'catalog' }[] = [];
+/**
+ * Classes del catàleg antic sense preus que són el MATEIX fons que una classe
+ * de la llista de l'assessor amb valors liquidatius oficials. Es fa servir la
+ * classe amb preus (si no, la proposta surt "sense dades de rendiment").
+ */
+export const SAME_FUND_CLASS: Record<string, string> = {
+  IE00B04GQQ17: 'IE0007472115', // Vanguard Euro Government Bond Index Fund: institucional → EUR Acc (Investor)
+};
+
+/** ISIN normalitzat; si és una classe sense preus d'un fons que ja tenim, la classe amb preus. */
+export function sameFundClass(rawIsin: string): string {
+  const isin = rawIsin.trim().toUpperCase();
+  return SAME_FUND_CLASS[isin] ?? isin;
+}
+
+export interface FundOption { isin: string; name: string; category: string; source: 'advisor' | 'catalog'; hasData: boolean }
+
+/**
+ * Llista de fons que l'assessor pot triar: primer els seus (tots tenen preus
+ * oficials; els que encara no arriben a 3 anys surten marcats sense dades) i,
+ * del catàleg antic, NOMÉS els que tenen dades de rendiment verificades. La
+ * resta del catàleg no té preus i omplia la proposta de "Falten dades".
+ * Un ISIN fora de la llista es pot continuar escrivint a mà.
+ */
+export function fundOptions(navs: NavPerformanceMap = {}): FundOption[] {
+  const seen = new Set<string>(Object.keys(SAME_FUND_CLASS));
+  const out: FundOption[] = [];
+  const hasData = (isin: string) => Number.isFinite(verifiedPerformance(isin, navs).historicalReturn5Y);
   for (const f of ALTERNATE_CLASSES) seen.add(f.isin); // es tria la classe principal del fons
-  for (const f of ADVISOR_FUNDS) { seen.add(f.isin); out.push({ ...f, source: 'advisor' }); }
+  for (const f of ADVISOR_FUNDS) {
+    seen.add(f.isin);
+    out.push({ isin: f.isin, name: f.name, category: f.category, source: 'advisor', hasData: hasData(f.isin) });
+  }
   for (const p of FINANCIAL_PRODUCTS) {
     const isin = p.isin?.toUpperCase();
     if (!isin || seen.has(isin)) continue;
     seen.add(isin);
-    out.push({ isin, name: p.name, category: p.category, source: 'catalog' });
+    if (hasData(isin)) out.push({ isin, name: p.name, category: p.category, source: 'catalog', hasData: true });
   }
   return out;
 }
@@ -262,7 +289,11 @@ export function proposalToReportInput(
   personal: Record<string, unknown> = {},
 ): ManualPortfolioInput {
   const num = (k: string) => (typeof personal[k] === 'number' ? personal[k] as number : undefined);
-  const annualIncome = num('annualIncome');
+  // Ingressos nets al mes: el que diu el client, o el sou net anual / 12 (amb les pagues
+  // extres prorratejades). Mai el camp antic annualIncome: era el sou BRUT i dividir-lo
+  // per 12 mostrava uns "ingressos nets" inflats a l'informe.
+  const annualNet = num('annualNetIncome');
+  const monthlyNet = num('monthlyNetIncome') ?? (annualNet != null ? Math.round(annualNet / 12) : undefined);
   // Des de «Les meves finances» es desen ingressos nets mensuals i despeses fixes + variables
   // (sense annualIncome ni monthlyExpenses): sense això el PDF amagava tot el perfil financer.
   const fixed = num('monthlyFixedExpenses'), variable = num('monthlyVariableExpenses');
@@ -278,7 +309,7 @@ export function proposalToReportInput(
       historicalReturn5Y: x.historicalReturn5Y, historicalVolatility: x.historicalVolatility,
       expectedReturn: expectedReturn(x), beta: x.beta,
     })),
-    monthlyIncome:   annualIncome != null ? Math.round(annualIncome / 12) : num('monthlyNetIncome'),
+    monthlyIncome:   monthlyNet,
     monthlyExpenses: expenses,
     deutes:          num('totalDebt'),
     patrimoni:       num('netWorth'),
@@ -328,7 +359,7 @@ const KNOWLEDGE: Record<string, number> = { cap: 0, basic: 1, intermedi: 2, 'ava
 const PROFILE_LABEL: Record<string, string> = { conservador: 'conservador', moderat: 'moderat', dinamic: 'dinàmic', agressiu: 'agressiu' };
 
 export function checkProposalSuitability(
-  p: Pick<ClientProposal, 'items' | 'profile' | 'horizon'>,
+  p: Pick<ClientProposal, 'items' | 'profile' | 'horizon'> & { monthlyAmount?: number },
   questionnaire: Record<string, unknown> = {},
   leadProfile?: string,
 ): ProposalSuitability {
@@ -361,6 +392,15 @@ export function checkProposalSuitability(
     if ((liq === 'necessito-ja' || liq === 'potser-6-mesos') && weighted >= 4) {
       issues.push({ level: 'inadequate', message: 'El client necessita liquiditat a curt termini i la cartera té risc mitjà o alt' });
     }
+  }
+  // Capacitat i tolerància que el client declara a l'Excel (v3). Són avisos, no bloquegen:
+  // l'assessor decideix, però queda escrit que se n'ha adonat.
+  const comfy = typeof questionnaire.monthlyInvestable === 'number' ? questionnaire.monthlyInvestable : undefined;
+  if (comfy !== undefined && (p.monthlyAmount ?? 0) > comfy) {
+    issues.push({ level: 'borderline', message: `L'aportació mensual (${Math.round(p.monthlyAmount!)} €) supera el que el client diu que pot invertir sense patir (${Math.round(comfy)} €)` });
+  }
+  if (questionnaire.drawdownReaction === 'vendre-tot' && weighted >= 4) {
+    issues.push({ level: 'borderline', message: 'El client diu que ho vendria tot si la cartera baixés un 20 %, i la cartera té risc mitjà o alt' });
   }
   if (leadProfile && (PROFILES as readonly string[]).includes(leadProfile) && leadProfile !== p.profile) {
     issues.push({ level: 'borderline', message: `El perfil del qüestionari és ${PROFILE_LABEL[leadProfile]}, però la proposta és per a ${label}` });

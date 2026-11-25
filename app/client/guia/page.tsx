@@ -2,6 +2,7 @@
 
 // Guia del client: els 3 passos, com s'omple la plantilla Excel i les paraules
 // que veurà al portal, explicades sense tecnicismes.
+import ClientNav from '@/components/client/ClientNav';
 import { useEffect, useState } from 'react';
 import { useSession } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
@@ -17,12 +18,17 @@ const SHEETS: { name: string; when: string; rows: [string, string][] }[] = [
     name: 'Dades personals',
     when: 'Tothom. És la pestanya més important.',
     rows: [
+      ['Sou net anual', 'El que cobres net en tot l\'any, sumant les pagues extres. No el brut del contracte: el net, el que t\'arriba al compte.'],
       ['Ingressos nets mensuals', 'El que et queda a la nòmina cada mes, després d\'impostos. Si cobres 14 pagues, suma-les i divideix per 12.'],
       ['Despeses fixes al mes', 'El que pagues cada mes sí o sí: lloguer, factures, menjar, transport, assegurances.'],
       ['Despeses variables al mes', 'El que canvia d\'un mes a l\'altre: oci, roba, sopars, viatges. Una aproximació ja serveix.'],
       ['Estalvis en efectiu', 'Els diners que tens al compte corrent o en comptes d\'estalvi, sense comptar inversions.'],
       ['Deute total pendent', 'El que encara deus: préstec del cotxe, hipoteca, estudis. Si no en tens, posa 0.'],
       ['Com et veus invertint', 'Conservador si una baixada et trauria la son; Equilibrat si acceptes alts i baixos moderats; Dinàmic si pots esperar anys encara que baixi molt.'],
+      ['Deute de consum', 'Només els préstecs personals, del cotxe i el que deus a les targetes. La hipoteca no hi va. Si no en tens, posa 0.'],
+      ['Quant podries invertir cada mes', 'Els diners que podries apartar cada mes i oblidar-te\'n, sense passar-ho malament si un mes vas just. No cal que sigui tot el que et sobra. Si no ho saps, deixa-ho en blanc.'],
+      ['Habitatge', 'Si vius de lloguer, en un pis propi amb hipoteca, en un pis propi ja pagat o amb la família.'],
+      ['Si les teves inversions baixessin un 20 %', 'Respon el que faries de veritat, no el que creus que s\'hauria de fer. No hi ha respostes bones ni dolentes.'],
     ],
   },
   {
@@ -80,24 +86,7 @@ export default function ClientGuidePage() {
 
   return (
     <div className="theme-client min-h-screen bg-canvas">
-      <nav className="border-b border-line bg-surface sticky top-0 z-30">
-        <div className="max-w-5xl mx-auto px-4 h-14 flex items-center justify-between gap-3">
-          <div className="flex items-center gap-2 min-w-0">
-            <div className="w-5 h-5 bg-subtle-strong border border-accent/50 rounded flex items-center justify-center flex-shrink-0">
-              <span className="text-accent font-semibold text-[9px] leading-none">F</span>
-            </div>
-            <span className="text-ink-muted text-sm hidden sm:inline">Factor OTC</span>
-            <span className="text-ink-muted text-sm hidden sm:inline">/</span>
-            <span className="text-ink-soft text-sm truncate">Guia</span>
-          </div>
-          <div className="flex items-center gap-4 flex-shrink-0 text-xs">
-            <Link href="/client/patrimoni" className="text-ink-muted hover:text-accent transition-colors">El meu patrimoni</Link>
-            <Link href="/client/cartera" className="text-ink-muted hover:text-accent transition-colors">La meva cartera</Link>
-            <Link href="/client/finances" className="text-ink-muted hover:text-accent transition-colors hidden sm:inline">Les meves finances</Link>
-            {name && <span className="text-ink-muted hidden md:inline">{name}</span>}
-          </div>
-        </div>
-      </nav>
+      <ClientNav name={name} />
 
       <main className="max-w-3xl mx-auto px-4 py-6 sm:py-8 space-y-6">
         <header>

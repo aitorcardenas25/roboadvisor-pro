@@ -2,6 +2,7 @@ import type { ClientPortfolio, PortfolioMetrics } from './clientPortfolios';
 import { computeMetrics } from './clientPortfolios';
 import type { NavPoint } from './navMath';
 import { holdingAt, navOnOrBefore, navsByIsin, valuationAt, valuationSeries, type ValuationPoint } from './portfolioValuation';
+import { allocationBreakdown, type AllocationBreakdown } from './fundClassification';
 import { computeDrift, reviewStatus, DRIFT_THRESHOLD_PP, type DriftRow, type ReviewStatus } from './portfolioAlerts';
 
 /** Resultat del període calculat amb els valors liquidatius oficials (fund_navs). */
@@ -28,9 +29,10 @@ export interface MonthlyReportOfficial {
   operations:  ReportOperation[];
   review:      ReviewStatus;
   positions?:  ReportPosition[];          // posicions a la data final, amb el VL oficial d'aquell dia
+  mix?:        AllocationBreakdown;       // RV/RF i gestió activa/passiva a la data final (totes les posicions)
 }
 
-export interface ReportPosition { name: string; value: number; weight: number; pnlPct: number }
+export interface ReportPosition { name: string; isin?: string; category?: string; value: number; weight: number; pnlPct: number }
 
 export interface MonthlyReportData {
   reportId:        string;
@@ -41,7 +43,8 @@ export interface MonthlyReportData {
   periodStart:     string;
   periodEnd:       string;
   metrics:         PortfolioMetrics;
-  topHoldings:     { name: string; value: number; weight: number; pnlPct: number }[];
+  topHoldings:     ReportPosition[];
+  mix?:            AllocationBreakdown;     // RV/RF i gestió activa/passiva (informes antics no en tenen)
   advisorComments: string;
   recommendations: string;
   nextFollowup?:   string;
@@ -62,6 +65,8 @@ export function generateMonthlyReportData(
     .filter(h => h.quantity > 0)   // les venudes del tot no
     .map(h => ({
       name:   h.assetName,
+      isin:   h.assetIsin,
+      category: h.assetCategory,
       value:  h.currentPrice * h.quantity,
       weight: totalValue > 0
         ? Math.round((h.currentPrice * h.quantity / totalValue) * 10000) / 100
@@ -83,6 +88,8 @@ export function generateMonthlyReportData(
     periodEnd,
     metrics,
     topHoldings,
+    mix: allocationBreakdown(portfolio.holdings.filter(h => h.quantity > 0)
+      .map(h => ({ isin: h.assetIsin, name: h.assetName, category: h.assetCategory, weight: Math.max(0, h.currentPrice * h.quantity) }))),
     advisorComments,
     recommendations: portfolio.recommendations,
     nextFollowup:    portfolio.nextFollowup,
@@ -138,13 +145,15 @@ export function buildOfficialSection(
   const by = navsByIsin(navs);
   const priceAt = (isin: string) => navOnOrBefore(by.get(isin.toUpperCase()), end)?.nav;
   let positions: ReportPosition[] | undefined;
+  let mix: AllocationBreakdown | undefined;
   if (performance) {
     const rows = open.map(h => {
       const price = priceAt(h.assetIsin) ?? h.currentPrice;
       const cost = atEnd.get(h.id)!.avgCost;
-      return { name: h.assetName, value: r2(price * h.quantity), pnlPct: cost > 0 ? r2((price - cost) / cost * 100) || 0 : 0 };   // || 0: sense "-0,00 %"
+      return { name: h.assetName, isin: h.assetIsin, category: h.assetCategory, value: r2(price * h.quantity), pnlPct: cost > 0 ? r2((price - cost) / cost * 100) || 0 : 0 };   // || 0: sense "-0,00 %"
     });
     const total = rows.reduce((s, r) => s + r.value, 0);
+    mix = allocationBreakdown(rows.map(r => ({ ...r, weight: Math.max(0, r.value) })));
     positions = rows.map(r => ({ ...r, weight: total > 0 ? r2(r.value / total * 100) : 0 }))
       .sort((a, b) => b.value - a.value).slice(0, 10);
   }
@@ -163,7 +172,7 @@ export function buildOfficialSection(
   return {
     source: 'navs', performance, note, evolution, allocation, operations,
     review: reviewStatus({ nextFollowup: portfolio.nextFollowup, lastApprovedAt }, end),
-    positions,
+    positions, mix,
   };
 }
 
@@ -186,5 +195,6 @@ export function withPeriodEndFigures(report: MonthlyReportData): MonthlyReportDa
       holdingCount: report.official!.positions?.length ?? report.metrics.holdingCount,
     },
     topHoldings: report.official!.positions ?? report.topHoldings,
+    mix: report.official!.mix ?? report.mix,
   };
 }

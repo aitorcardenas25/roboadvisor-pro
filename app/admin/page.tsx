@@ -5,6 +5,7 @@ import { useState, useEffect } from 'react';
 import { signIn, signOut, useSession } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
 import AdminDashboard from '@/components/admin/AdminDashboard';
+import { TWO_FACTOR_REQUIRED, loginErrorText } from '@/lib/authMessages';
 
 export default function AdminPage() {
   const { data: session, status } = useSession();
@@ -13,6 +14,8 @@ export default function AdminPage() {
   const [password, setPassword]   = useState('');
   const [error, setError]         = useState('');
   const [loading, setLoading]     = useState(false);
+  const [needCode, setNeedCode]   = useState(false);
+  const [code, setCode]           = useState('');
 
   // Authorized (non-admin) users logged in here by mistake → redirect to client area
   useEffect(() => {
@@ -29,11 +32,13 @@ export default function AdminPage() {
     const result = await signIn('credentials', {
       username,
       password,
+      code,
       redirect: false,
     });
 
     if (result?.error) {
-      setError('Credencials incorrectes. Torna-ho a intentar.');
+      if (result.error === TWO_FACTOR_REQUIRED) setNeedCode(true);
+      else setError(loginErrorText(result.error));
     }
     setLoading(false);
   };
@@ -60,14 +65,14 @@ export default function AdminPage() {
             Factor <span className="text-ink-muted font-normal">OTC</span>
           </p>
           <p className="text-ink-muted text-xs font-medium">
-            Panell d'administració
+            Panell d&apos;administració
           </p>
         </div>
 
         <div className="bg-surface border border-line rounded-lg p-8 shadow-sm">
           <h2 className="text-ink font-bold text-xl mb-2">Accés restringit</h2>
           <p className="text-ink-muted text-sm mb-8">
-            Introdueix les teves credencials per accedir al panell.
+            {needCode ? 'Escriu el codi que et mostra l\'app d\'autenticació del mòbil.' : 'Introdueix les teves credencials per accedir al panell.'}
           </p>
 
           <form onSubmit={handleLogin} className="space-y-5">
@@ -98,6 +103,17 @@ export default function AdminPage() {
                 required
               />
             </div>
+
+            {needCode && (
+              <div>
+                <label htmlFor="code" className="block text-ink-soft text-xs font-medium mb-2">
+                  Codi de l&apos;app d&apos;autenticació (6 xifres)
+                </label>
+                <input id="code" inputMode="numeric" autoComplete="one-time-code" pattern="[0-9 ]{6,7}" maxLength={7} autoFocus
+                  value={code} onChange={e => setCode(e.target.value)} required
+                  className="w-full bg-subtle-strong border border-line-strong rounded-lg px-4 py-3 text-ink text-lg tracking-[0.3em] text-center focus:outline-none focus:border-accent/60" />
+              </div>
+            )}
 
             {error && (
               <div className="bg-negative/10 border border-negative/30 rounded-lg px-4 py-3">
