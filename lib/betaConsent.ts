@@ -6,7 +6,7 @@
 import { getDb } from './supabase';
 
 /** Canviar la versió obliga tots els clients a tornar a acceptar. */
-export const CONSENT_VERSION = 'beta-2026-11-v1';
+export const CONSENT_VERSION = 'beta-2026-11-v2';   // v2: correu via Gmail (abans Resend)
 
 export interface ConsentSection { title: string; body: string }
 
@@ -25,7 +25,7 @@ export function consentText(env: Record<string, string | undefined> = process.en
       { title: 'Per a què farem servir les teves dades', body: 'Per mostrar-te una anàlisi del teu pressupost, del fons d\'emergència i dels teus objectius dins l\'app, i per demanar-te la teva opinió sobre l\'eina durant la beta. També registrem quan entres a l\'app per saber si l\'eina és útil.' },
       { title: 'Quines dades', body: 'Identificació i contacte; les dades econòmiques que tu ens facilitis (ingressos, despeses, estalvis, deutes, objectius, inversions); quan entres a l\'app; les teves respostes a l\'enquesta mensual.' },
       { title: 'Base legal', body: 'El teu consentiment, que pots retirar quan vulguis sense cap conseqüència.' },
-      { title: 'Qui més hi té accés', body: 'Proveïdors tecnològics que guarden o envien les dades per encàrrec nostre: Supabase (base de dades), Vercel (allotjament) i Resend (correu). Alguns poden tractar dades fora de la UE, amb les garanties previstes al RGPD. No venem ni cedim les teves dades a ningú.' },
+      { title: 'Qui més hi té accés', body: 'Proveïdors tecnològics que guarden o envien les dades per encàrrec nostre: Supabase (base de dades), Vercel (allotjament) i Google (Gmail, per enviar-te correus). Alguns poden tractar dades fora de la UE, amb les garanties previstes al RGPD. No venem ni cedim les teves dades a ningú.' },
       { title: 'Quant de temps', body: retention },
       { title: 'Els teus drets', body: `Accés, rectificació, supressió, oposició, limitació i portabilitat, escrivint a ${contact} o des de "Les meves finances". També pots reclamar a l'Agència Espanyola de Protecció de Dades (aepd.es).` },
       { title: 'Important', body: 'L\'app mostra informació descriptiva i càlculs amb les dades que tu ens dones. No és assessorament financer.' },

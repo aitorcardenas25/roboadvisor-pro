@@ -95,12 +95,15 @@ async function checkAlphaVantage(): Promise<IntegrationCheck> {
 }
 
 async function checkResend(): Promise<IntegrationCheck> {
-  const id = 'resend'; const name = 'Resend (Email)';
+  const id = 'resend'; const name = 'Correu (Gmail o Resend)';
+  if (process.env.GMAIL_USER && process.env.GMAIL_APP_PASSWORD) return { id, name, status: 'ok',
+    message: `Enviament actiu des de ${process.env.GMAIL_USER} (Gmail).`,
+    checkedAt: new Date().toISOString() };
   const key = process.env.RESEND_API_KEY;
 
   if (!key) return { id, name, status: 'missing_key',
     message: 'Sense clau API. Emails no s\'enviaran (es registren per consola).',
-    action:  'Configura RESEND_API_KEY. Pla gratuït a resend.com',
+    action:  'Configura GMAIL_USER i GMAIL_APP_PASSWORD a Vercel (o RESEND_API_KEY).',
     checkedAt: new Date().toISOString() };
 
   const looksValid = key.startsWith('re_') && key.length > 10;

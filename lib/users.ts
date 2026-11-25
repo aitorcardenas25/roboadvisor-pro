@@ -32,6 +32,7 @@ interface DevUser {
   subscriptionPlan:   AppUser['subscriptionPlan'];
   subscriptionStatus: AppUser['subscriptionStatus'];
   subscriptionSince?: string;
+  totpSecret?:        string | null;
 }
 
 let devDB: DevUser[] = [];
@@ -368,5 +369,57 @@ export async function updatePassword(id: string, password: string): Promise<bool
   }
   const hash = await bcrypt.hash(password, 12);
   const { error } = await db.from('users').update({ password_hash: hash, updated_at: new Date().toISOString() }).eq('id', id);
+  return !error;
+}
+
+// ── Enllaços de contrasenya (lib/passwordLink.ts) ──────────────────────────
+
+/**
+ * Valor secret que canvia cada cop que canvia la contrasenya (el hash bcrypt).
+ * Serveix perquè un enllaç per crear o canviar la contrasenya només es pugui
+ * fer servir una vegada. Mai surt del servidor.
+ */
+export async function getPasswordStamp(id: string): Promise<string | null> {
+  const db = getDb();
+  if (!db) {
+    const u = getDevDB().find(u => u.id === id && u.active);
+    return u ? `dev:${u.password}` : null;
+  }
+  const { data, error } = await db.from('users').select('password_hash,active').eq('id', id).maybeSingle();
+  if (error || !data || !data.active) return null;
+  return String(data.password_hash);
+}
+
+/** Usuari actiu per nom d'usuari o correu (per a "He oblidat la contrasenya"). */
+export async function findActiveUserByLogin(login: string): Promise<AppUser | null> {
+  const q = login.trim().toLowerCase();
+  if (!q) return null;
+  const all = await getAllUsers();
+  return all.find(u => u.active && (u.username.toLowerCase() === q || (!!u.email && u.email.toLowerCase() === q))) ?? null;
+}
+
+// ── Verificació en dos passos (lib/totp.ts) ────────────────────────────────
+
+/** Secret TOTP xifrat de l'usuari (null si no té la verificació en dos passos activada). */
+export async function getTotpSecret(id: string): Promise<string | null> {
+  const db = getDb();
+  if (!db) return getDevDB().find(u => u.id === id)?.totpSecret ?? null;
+  const { data, error } = await db.from('users').select('totp_secret').eq('id', id).maybeSingle();
+  if (error || !data) return null;
+  return (data.totp_secret as string | null) ?? null;
+}
+
+/** Desa (o esborra amb null) el secret TOTP xifrat. */
+export async function setTotpSecret(id: string, encrypted: string | null): Promise<boolean> {
+  const db = getDb();
+  if (!db) {
+    const u = getDevDB().find(u => u.id === id);
+    if (!u) return false;
+    u.totpSecret = encrypted;
+    return true;
+  }
+  const { error } = await db.from('users').update({
+    totp_secret: encrypted, totp_enabled_at: encrypted ? new Date().toISOString() : null, updated_at: new Date().toISOString(),
+  }).eq('id', id);
   return !error;
 }

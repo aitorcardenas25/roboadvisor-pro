@@ -18,7 +18,7 @@ interface Stats {
   byRisk: { risk: number; count: number }[];
 }
 
-type Section = 'dashboard' | 'funds' | 'reports' | 'news' | 'newsletter' | 'stocks' | 'portfolios' | 'config' | 'clients' | 'client-portfolios' | 'leads' | 'stock-reports' | 'monthly-report' | 'audit' | 'manual-report';
+type Section = 'dashboard' | 'funds' | 'reports' | 'news' | 'newsletter' | 'stocks' | 'portfolios' | 'config' | 'clients' | 'client-portfolios' | 'leads' | 'stock-reports' | 'monthly-report' | 'audit' | 'manual-report' | 'integrations';
 
 interface Props {
   stats:      Stats | null;
@@ -57,7 +57,7 @@ export default function AdminStats({ onNavigate }: Props) {
   const [alertsLoading, setAlertsLoading] = useState(true);
   const [portfolioCount, setPortfolioCount] = useState<number | null>(null);
   const [clientCount, setClientCount]       = useState<number | null>(null);
-  const [dash, setDash]                     = useState<DashboardStats | null>(null);
+  const [dash, setDash]                     = useState<(DashboardStats & { email?: 'gmail' | 'resend' | null }) | null>(null);
   const [dashError, setDashError]           = useState(false);
   const [fundsReady, setFundsReady]         = useState<{ ready: number; total: number } | null>(null);
 
@@ -71,7 +71,7 @@ export default function AdminStats({ onNavigate }: Props) {
 
   useEffect(() => {
     fetch('/api/admin/dashboard-stats')
-      .then(r => r.ok ? r.json() as Promise<DashboardStats> : Promise.reject(new Error(String(r.status))))
+      .then(r => r.ok ? r.json() as Promise<DashboardStats & { email?: 'gmail' | 'resend' | null }> : Promise.reject(new Error(String(r.status))))
       .then(setDash)
       .catch(() => setDashError(true));
   }, []);
@@ -84,6 +84,7 @@ export default function AdminStats({ onNavigate }: Props) {
           fetch('/api/admin/clients'),
           fetch('/api/admin/portfolio-alerts'),
         ]);
+        const monthlyRes = await fetch('/api/admin/monthly-reports').catch(() => null);
 
         const newAlerts: Alert[] = [];
 
@@ -166,9 +167,35 @@ export default function AdminStats({ onNavigate }: Props) {
         }
 
         if (clientsRes.ok) {
-          const { users } = await clientsRes.json() as { users: { role: string }[] };
-          const count = users.filter(u => u.role === 'client').length;
-          setClientCount(count);
+          const { users } = await clientsRes.json() as { users: { role: string; name: string; stage?: string }[] };
+          const clients = users.filter(u => u.role === 'client');
+          setClientCount(clients.length);
+          // Coses que només pot fer l'assessor perquè el client avanci
+          const unsent = clients.filter(u => u.stage === 'aprovat');
+          if (unsent.length > 0) newAlerts.unshift({
+            type: 'error',
+            title: `${unsent.length} informe${unsent.length > 1 ? 's' : ''} inicial${unsent.length > 1 ? 's' : ''} aprovat${unsent.length > 1 ? 's' : ''} sense enviar`,
+            desc: `El client encara no el veu ni té accés al portal: ${unsent.map(u => u.name).join(', ')}. Obre la fitxa → Proposta → "Enviar al client".`,
+            action: 'Veure clients', section: 'clients',
+          });
+          const toPrepare = clients.filter(u => u.stage === 'dades' || u.stage === 'esborrany');
+          if (toPrepare.length > 0) newAlerts.push({
+            type: 'info',
+            title: `${toPrepare.length} client${toPrepare.length > 1 ? 's' : ''} esperant la proposta`,
+            desc: `Ja tenen les dades i els falta l'informe inicial: ${toPrepare.map(u => u.name).join(', ')}.`,
+            action: 'Veure clients', section: 'clients',
+          });
+        }
+
+        if (monthlyRes?.ok) {
+          const { reports } = await monthlyRes.json() as { reports: { clientName: string; sentAt?: string; periodStart: string }[] };
+          const pending = reports.filter(r => !r.sentAt);
+          if (pending.length > 0) newAlerts.push({
+            type: 'warning',
+            title: `${pending.length} informe${pending.length > 1 ? 's' : ''} mensual${pending.length > 1 ? 's' : ''} sense enviar`,
+            desc: pending.slice(0, 6).map(r => `${r.clientName} (${new Date(r.periodStart).toLocaleDateString('ca-ES', { month: 'long', year: 'numeric' })})`).join(' · '),
+            action: 'Informes mensuals', section: 'monthly-report',
+          });
         }
 
         setAlerts(newAlerts);
@@ -181,6 +208,17 @@ export default function AdminStats({ onNavigate }: Props) {
 
     load();
   }, []);
+
+  // Sense correu configurat, els clients no reben cap avís (ni benvinguda ni informes)
+  const shownAlerts: Alert[] = [
+    ...(dash && dash.email === null ? [{
+      type: 'error' as const,
+      title: 'Els correus no s\'envien',
+      desc: 'Falta configurar el correu a Vercel (GMAIL_USER i GMAIL_APP_PASSWORD). Els informes es veuen al portal, però el client no rep cap avís.',
+      action: 'Veure connexions', section: 'integrations' as const,
+    }] : []),
+    ...alerts,
+  ];
 
   const kpis = [
     { label: 'Clients actius',  value: clientCount   ?? '—', sub: 'amb accés al portal' },
@@ -201,7 +239,7 @@ export default function AdminStats({ onNavigate }: Props) {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-semibold text-ink mb-0.5">
-            Resum d'avui
+            Resum d&apos;avui
           </h1>
           <p className="text-ink-muted text-sm">
             Avisos pendents, clients i accions habituals.
@@ -210,10 +248,10 @@ export default function AdminStats({ onNavigate }: Props) {
       </div>
 
       {/* Alertes reals */}
-      {!alertsLoading && alerts.length > 0 && (
+      {!alertsLoading && shownAlerts.length > 0 && (
         <div className="space-y-2">
           <p className="text-ink-muted text-xs font-medium mb-2">Alertes actives</p>
-          {alerts.map((alert, i) => {
+          {shownAlerts.map((alert, i) => {
             const s = ALERT_STYLES[alert.type];
             return (
               <div key={i} className={`flex items-start gap-3 p-3.5 border ${s.border} ${s.bg} rounded-lg`}>

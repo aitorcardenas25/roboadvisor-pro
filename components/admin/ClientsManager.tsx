@@ -46,7 +46,7 @@ function Badge({ role, active }: { role: UserRole; active: boolean }) {
 }
 
 interface NewClientForm {
-  name: string; email: string; username: string; password: string; role: UserRole; sendWelcome: boolean;
+  name: string; email: string; username: string; role: UserRole; sendWelcome: boolean;
 }
 
 function fmtDate(iso: string): string {
@@ -54,10 +54,12 @@ function fmtDate(iso: string): string {
   return Number.isNaN(d.getTime()) ? iso : `Alta: ${d.toLocaleDateString('ca-ES', { day: '2-digit', month: '2-digit', year: 'numeric' })}`;
 }
 
-const EMPTY_FORM: NewClientForm = { name: '', email: '', username: '', password: '', role: 'client', sendWelcome: true };
+const EMPTY_FORM: NewClientForm = { name: '', email: '', username: '', role: 'client', sendWelcome: true };
 
 export default function ClientsManager({ onViewClient }: { onViewClient?: (id: string) => void }) {
   const [users, setUsers]       = useState<ClientUser[]>([]);
+  const [accessLink, setAccessLink] = useState<{ name: string; url: string } | null>(null);
+  const [copied, setCopied]     = useState(false);
   const [loading, setLoading]   = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [form, setForm]         = useState<NewClientForm>(EMPTY_FORM);
@@ -95,13 +97,13 @@ export default function ClientsManager({ onViewClient }: { onViewClient?: (id: s
         return;
       }
       const d = await res.json().catch(() => ({}));
-      setSuccess(d.welcome
-        ? (d.welcome.sent ? 'Client creat i correu de benvinguda enviat. Passa-li la contrasenya per WhatsApp.' : `Client creat, però el correu no s'ha enviat (${d.welcome.error ?? 'error'}).`)
-        : 'Client creat correctament');
+      setSuccess(d.welcome?.sent
+        ? `Client creat. Li hem enviat el correu amb l'enllaç per crear la contrasenya (val 7 dies).`
+        : `Client creat.${d.welcome ? ` El correu no s'ha enviat (${d.welcome.error ?? 'error'}).` : ''} Envia-li l'enllaç d'accés per WhatsApp.`);
+      if (d.link) setAccessLink({ name: d.user?.name ?? form.name, url: d.link });
       setForm(EMPTY_FORM);
       setShowForm(false);
       await load();
-      setTimeout(() => setSuccess(''), 6000);
     } catch {
       setError('Error de connexió');
     } finally {
@@ -109,13 +111,24 @@ export default function ClientsManager({ onViewClient }: { onViewClient?: (id: s
     }
   }
 
+  // Enllaç perquè el client creï o torni a crear la seva contrasenya (7 dies, un sol ús)
   async function handleWelcome(u: ClientUser) {
-    if (!confirm(`Enviar el correu de benvinguda a ${u.email}? Porta l'usuari i l'enllaç, no la contrasenya.`)) return;
-    setError(''); setSuccess('');
-    const res = await fetch(`/api/admin/clients/${u.id}/welcome`, { method: 'POST' });
+    setError(''); setSuccess(''); setAccessLink(null);
+    const res = await fetch(`/api/admin/clients/${u.id}/welcome`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ sendEmail: true }),
+    });
     const d = await res.json().catch(() => ({}));
-    if (res.ok) { setSuccess(`Correu de benvinguda enviat a ${u.email}.`); setTimeout(() => setSuccess(''), 6000); }
-    else setError(d.error ?? 'No s\'ha pogut enviar el correu');
+    if (!res.ok) { setError(d.error ?? 'No s\'ha pogut generar l\'enllaç'); return; }
+    setAccessLink({ name: u.name, url: d.link });
+    setSuccess(d.email?.sent
+      ? `Enllaç d'accés enviat per correu a ${u.email}. També el tens aquí sota per si el vols enviar per WhatsApp.`
+      : `El correu no s'ha enviat (${d.email?.error ?? 'error'}). Copia l'enllaç d'aquí sota i envia-li per WhatsApp.`);
+  }
+
+  async function copyLink() {
+    if (!accessLink) return;
+    try { await navigator.clipboard.writeText(accessLink.url); setCopied(true); setTimeout(() => setCopied(false), 2000); }
+    catch { /* el text es pot seleccionar a mà */ }
   }
 
   async function handleRoleChange(id: string, role: UserRole) {
@@ -187,6 +200,22 @@ export default function ClientsManager({ onViewClient }: { onViewClient?: (id: s
       {success && (
         <div className="mb-4 p-3 bg-positive/10 border border-positive/30 rounded-lg text-positive text-sm">{success}</div>
       )}
+      {accessLink && (
+        <div className="mb-4 p-4 bg-surface border border-accent/30 rounded-lg">
+          <div className="flex items-start justify-between gap-3 mb-2">
+            <p className="text-ink text-sm font-medium">Enllaç d&apos;accés de {accessLink.name}</p>
+            <button onClick={() => setAccessLink(null)} className="text-ink-muted text-xs hover:text-ink">Tancar</button>
+          </div>
+          <p className="text-ink-muted text-xs mb-3">Personal i d&apos;un sol ús: hi tria la seva contrasenya. Val 7 dies. Envia&apos;l només a aquesta persona.</p>
+          <div className="flex gap-2">
+            <input readOnly value={accessLink.url} onFocus={e => e.currentTarget.select()}
+              className="flex-1 min-w-0 bg-subtle border border-line rounded-lg px-3 py-2 text-ink text-xs font-mono" />
+            <button onClick={copyLink} className="px-3 py-2 bg-accent text-accent-ink text-xs font-semibold rounded-lg whitespace-nowrap">
+              {copied ? 'Copiat' : 'Copiar'}
+            </button>
+          </div>
+        </div>
+      )}
       {error && (
         <div className="mb-4 p-3 bg-negative/10 border border-negative/30 rounded-lg text-negative text-sm">{error}</div>
       )}
@@ -206,7 +235,6 @@ export default function ClientsManager({ onViewClient }: { onViewClient?: (id: s
                   ['name',     'Nom complet',   'text',     'Joan Garcia'],
                   ['email',    'Email',          'email',    'joan@exemple.com'],
                   ['username', 'Usuari (login)', 'text',     'joan.garcia'],
-                  ['password', 'Contrasenya (mín. 10)', 'password', '·····'],
                 ] as const).map(([field, label, type, ph]) => (
                   <div key={field}>
                     <label className="block text-ink-muted text-xs mb-1">{label}</label>
@@ -217,7 +245,7 @@ export default function ClientsManager({ onViewClient }: { onViewClient?: (id: s
                       placeholder={ph}
                       required
                       // Evita que el navegador hi posi l'usuari i la contrasenya de l'admin
-                      autoComplete={field === 'password' ? 'new-password' : 'off'}
+                      autoComplete="off"
                       name={`new-client-${field}`}
                       className="w-full bg-subtle border border-line rounded-lg px-3 py-2 text-ink text-sm placeholder-ink-muted focus:outline-none focus:border-accent/50"
                     />
@@ -240,7 +268,7 @@ export default function ClientsManager({ onViewClient }: { onViewClient?: (id: s
               <label className="flex items-center gap-2 mb-4 text-ink-soft text-sm">
                 <input type="checkbox" checked={form.sendWelcome}
                   onChange={e => setForm(prev => ({ ...prev, sendWelcome: e.target.checked }))} />
-                Enviar correu de benvinguda (usuari i enllaç, sense contrasenya)
+                Enviar-li per correu l&apos;enllaç per crear la contrasenya (la tria ell; tu no la saps mai)
               </label>
               <div className="flex gap-3">
                 <button
@@ -345,8 +373,8 @@ export default function ClientsManager({ onViewClient }: { onViewClient?: (id: s
                   {u.active && u.role === 'client' && (
                     <button
                       onClick={() => handleWelcome(u)}
-                      title="Enviar correu de benvinguda"
-                      aria-label={`Enviar correu de benvinguda a ${u.name}`}
+                      title="Enllaç d'accés: el client crea o canvia la seva contrasenya"
+                      aria-label={`Enllaç d'accés per a ${u.name}`}
                       className="p-1.5 text-ink-muted hover:text-info hover:bg-info/10 rounded-md transition-all">
                       <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />

@@ -2,6 +2,7 @@
 
 // Guia del client: els 3 passos, com s'omple la plantilla Excel i les paraules
 // que veurà al portal, explicades sense tecnicismes.
+import ClientNav from '@/components/client/ClientNav';
 import { useEffect, useState } from 'react';
 import { useSession } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
@@ -85,24 +86,7 @@ export default function ClientGuidePage() {
 
   return (
     <div className="theme-client min-h-screen bg-canvas">
-      <nav className="border-b border-line bg-surface sticky top-0 z-30">
-        <div className="max-w-5xl mx-auto px-4 h-14 flex items-center justify-between gap-3">
-          <div className="flex items-center gap-2 min-w-0">
-            <div className="w-5 h-5 bg-subtle-strong border border-accent/50 rounded flex items-center justify-center flex-shrink-0">
-              <span className="text-accent font-semibold text-[9px] leading-none">F</span>
-            </div>
-            <span className="text-ink-muted text-sm hidden sm:inline">Factor OTC</span>
-            <span className="text-ink-muted text-sm hidden sm:inline">/</span>
-            <span className="text-ink-soft text-sm truncate">Guia</span>
-          </div>
-          <div className="flex items-center gap-4 flex-shrink-0 text-xs">
-            <Link href="/client/patrimoni" className="text-ink-muted hover:text-accent transition-colors">El meu patrimoni</Link>
-            <Link href="/client/cartera" className="text-ink-muted hover:text-accent transition-colors">La meva cartera</Link>
-            <Link href="/client/finances" className="text-ink-muted hover:text-accent transition-colors hidden sm:inline">Les meves finances</Link>
-            {name && <span className="text-ink-muted hidden md:inline">{name}</span>}
-          </div>
-        </div>
-      </nav>
+      <ClientNav name={name} />
 
       <main className="max-w-3xl mx-auto px-4 py-6 sm:py-8 space-y-6">
         <header>
