@@ -21,11 +21,14 @@ describe('enviament de correus', () => {
     sendMail.mockResolvedValue({});
     const m = await import('@/lib/emails');
     expect(m.emailTransport()).toBe('gmail');
-    expect(await m.sendReportReady('a@example.test', 'Pau')).toEqual({ success: true });
+    expect(await m.sendReportReady('a@example.test', 'Pau', 'pau')).toEqual({ success: true });
     const arg = sendMail.mock.calls[0][0];
     expect(arg.from).toBe('Factor OTC <remitent@example.test>');
     expect(arg.to).toBe('a@example.test');
-    expect(arg.html).toContain('https://app.example.test/client/informe-inicial');
+    // Passa per l'inici de sessió amb l'usuari ja escrit, i explica com recuperar la contrasenya
+    expect(arg.html).toContain('https://app.example.test/login?callbackUrl=%2Fclient%2Finforme-inicial&usuari=pau');
+    expect(arg.html).toContain('<strong>pau</strong>');
+    expect(arg.html).toContain('https://app.example.test/recuperar');
   });
 
   it('contrasenya d\'aplicació rebutjada → missatge entenedor', async () => {

@@ -6,7 +6,7 @@ vi.mock('next-auth', () => ({ getServerSession: async () => ({ user: { id: 'adm'
 vi.mock('@/lib/authOptions', () => ({ authOptions: {} }));
 vi.mock('@/lib/auditLog', () => ({ logAuditEvent: () => {} }));
 vi.mock('@/lib/clientPortfolios', () => ({ getPortfolioById: async () => ({ id: 'p1', clientId: 'u1' }) }));
-vi.mock('@/lib/users', () => ({ findUserById: async () => ({ id: 'u1', email: 'pau@example.test', name: 'Pau Prova' }) }));
+vi.mock('@/lib/users', () => ({ findUserById: async () => ({ id: 'u1', email: 'pau@example.test', name: 'Pau Prova', username: 'pau' }) }));
 const m = vi.hoisted(() => ({
   rep: null as Record<string, unknown> | null,
   markSent: vi.fn(async () => true), markEmailed: vi.fn(async () => {}), send: vi.fn(),
@@ -32,7 +32,7 @@ describe('PATCH /api/admin/monthly-reports', () => {
     expect(d.email).toEqual({ sent: true, error: undefined });
     expect(m.markSent).toHaveBeenCalledOnce();
     expect(m.markEmailed).toHaveBeenCalledOnce();
-    expect(m.send).toHaveBeenCalledWith('pau@example.test', 'Pau Prova', 'octubre del 2026');
+    expect(m.send).toHaveBeenCalledWith('pau@example.test', 'Pau Prova', 'octubre del 2026', 'pau');
   });
 
   it('si el correu falla, l\'informe queda visible però sense emailedAt', async () => {

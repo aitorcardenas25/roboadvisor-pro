@@ -106,14 +106,30 @@ export async function sendPaymentConfirmation(to: string, name: string, product:
   return deliver(to, subject, base(subject, body));
 }
 
+/**
+ * Enllaç a una pàgina del portal passant per l'inici de sessió, amb l'usuari ja escrit.
+ * Si el client ja té la sessió oberta, /login el porta directament a la pàgina.
+ */
+export function portalLink(path: string, username?: string): string {
+  const q = new URLSearchParams({ callbackUrl: path });
+  if (username) q.set('usuari', username);
+  return `${appUrl()}/login?${q.toString()}`;
+}
+
+/** Recordatori d'accés al peu dels avisos: amb quin usuari s'entra i què fer si no recorda la contrasenya. */
+function accessHint(username?: string): string {
+  return small(`${username ? `Per entrar, el teu usuari és <strong>${esc(username)}</strong>. ` : ''}Si no recordes la contrasenya, <a href="${appUrl()}/recuperar" style="color:#1e4d3f;">tria'n una de nova aquí</a>.`);
+}
+
 /** L'assessor ha enviat l'informe inicial: ja el pot veure al portal. */
-export async function sendReportReady(to: string, name: string, reportUrl = `${appUrl()}/client/informe-inicial`): Promise<EmailResult> {
+export async function sendReportReady(to: string, name: string, username?: string): Promise<EmailResult> {
   const subject = 'El teu informe inicial ja està llest';
   const first = esc(name.split(' ')[0] || name);
   const body = `${h2(`Hola, ${first}`)}
     ${p_('El teu assessor t\'ha preparat l\'informe inicial: la foto de la teva situació, els teus objectius i la proposta de cartera.')}
     ${p_('A partir d\'ara també tens accés a tot el teu portal.')}
-    ${button(reportUrl, 'Veure l\'informe')}
+    ${button(portalLink('/client/informe-inicial', username), 'Veure l\'informe')}
+    ${accessHint(username)}
     ${small('Si tens cap dubte, respon a aquest correu i en parlem abans que decideixis res.')}`;
   return deliver(to, subject, base(subject, body));
 }
@@ -150,12 +166,13 @@ export async function sendQuestionnaireReceivedToAdmin(lead: {
   return deliver(ADMIN_EMAIL, subject, base(subject, body));
 }
 
-export async function sendMonthlyReportAvailable(to: string, name: string, period: string): Promise<EmailResult> {
+export async function sendMonthlyReportAvailable(to: string, name: string, period: string, username?: string): Promise<EmailResult> {
   const subject = `El teu informe mensual ja és disponible (${period})`;
   const first = esc(name.split(' ')[0] || name);
   const body = `${h2(`Hola, ${first}`)}
     ${p_(`Ja tens l'informe mensual (<strong>${esc(period)}</strong>): quant val la teva cartera, com ha anat el mes i el comentari del teu assessor.`)}
-    ${button(`${appUrl()}/client/cartera`, 'Veure l\'informe')}
+    ${button(portalLink('/client/cartera', username), 'Veure l\'informe')}
+    ${accessHint(username)}
     ${small('Si tens cap pregunta sobre l\'informe, respon a aquest correu.')}`;
   return deliver(to, subject, base(subject, body));
 }
