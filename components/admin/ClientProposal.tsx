@@ -5,7 +5,7 @@ import { PROPOSAL_TEMPLATES, templateItems } from '@/lib/proposalTemplates';
 import { CAPM_ASSUMPTIONS } from '@/lib/navMath';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
-  proposalStats, fundToItem, hasPerformanceData, SAME_FUND_CLASS, validateForApproval, proposalToReportInput, checkProposalSuitability, PROFILES,
+  proposalStats, fundToItem, hasPerformanceData, SAME_FUND_CLASS, sameFundClass, validateForApproval, proposalToReportInput, checkProposalSuitability, PROFILES,
   verifiedPerformance,
   type ClientProposal, type ProposalItem, type ProposalParams, type ProposalStats, type NavPerformanceMap, type FundOption,
 } from '@/lib/proposalMath';
@@ -122,7 +122,8 @@ export default function ClientProposal({ clientId, onApplied }: { clientId: stri
 
   const addFund = () => {
     const raw = fundQuery.trim();
-    const isin = (raw.match(/[A-Z]{2}[A-Z0-9]{9}\d/i)?.[0] ?? raw).toUpperCase();
+    // Una classe sense preus d'un fons que tenim es resol abans de mirar si està repetit.
+    const isin = sameFundClass(raw.match(/[A-Z]{2}[A-Z0-9]{9}\d/i)?.[0] ?? raw);
     if (items.some(x => x.isin === isin)) { setMsg({ ok: false, text: 'Aquest fons ja és a la proposta' }); return; }
     const known = fundToItem(isin, 0, data.navPerformance ?? {});
     if (known) { setItems([...items, known]); }
