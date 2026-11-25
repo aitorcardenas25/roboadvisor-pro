@@ -28,8 +28,9 @@ export const SHORT_HISTORY_YEARS = 3;
 export const Y2022_START = '2022-01';
 
 export const DRAWDOWN_DISCLAIMER =
-  'Caigudes calculades amb els valors liquidatius oficials del fons desats a Factor OTC, amb el preu de final de cada mes: ' +
-  'la caiguda real dins un mes pot haver estat més gran. Només inclouen el període amb dades indicat per a cada fons; ' +
+  'Caigudes calculades amb els valors liquidatius oficials del fons desats a Factor OTC: amb el preu de cada dia quan el tenim ' +
+  'i, si no, amb el de final de mes (s\'indica a cada fons; amb preus mensuals la caiguda real dins un mes pot haver estat més gran). ' +
+  'Només inclouen el període amb dades indicat per a cada fons; ' +
   'crisis anteriors (per exemple 2008 o març de 2020) no hi són si el període comença després. ' +
   'Rendibilitats i caigudes passades no garanteixen resultats futurs: un fons pot caure més del que ha caigut fins ara.';
 
@@ -42,6 +43,8 @@ export interface DrawdownEpisode {
   monthsToTrough:  number;          // mesos del màxim al mínim
   recoveryDate:    string | null;   // primer mes que torna al màxim (null = encara no)
   monthsToRecover: number | null;   // mesos del mínim a la recuperació
+  daysToTrough:    number;          // dies naturals del màxim al mínim
+  daysToRecover:   number | null;   // dies naturals del mínim a la recuperació
   currentPct:      number | null;   // si no s'ha recuperat: on és ara respecte del màxim, %
 }
 
@@ -53,6 +56,7 @@ export interface FundDrawdowns {
   windowEnd:     string | null;   // últim preu fet servir
   years:         number;
   monthlyPoints: number;
+  frequency:     'daily' | 'monthly';   // preus fets servir per calcular les caigudes
   missingMonths: string[];        // aaaa-mm sense preu dins el període
   maxDrawdown:   number | null;   // = episodes[0].depthPct, o 0 si no ha caigut mai
   episodes:      DrawdownEpisode[];
@@ -61,6 +65,19 @@ export interface FundDrawdowns {
 
 const r2 = (x: number) => Math.round(x * 100) / 100;
 function monthIndex(iso: string): number { const [y, m] = iso.slice(0, 7).split('-').map(Number); return y * 12 + (m - 1); }
+function dayDiff(a: string, b: string): number { return Math.round((Date.parse(`${b}T00:00:00Z`) - Date.parse(`${a}T00:00:00Z`)) / 86_400_000); }
+
+/**
+ * Sèrie diària? Sí si gairebé tots els salts entre preus són de menys d'una
+ * setmana (caps de setmana i festius). Un historial mensual amb unes setmanes
+ * diàries al final compta com a mensual, i llavors es fa servir el final de mes.
+ */
+export function isDailySeries(points: { date: string }[]): boolean {
+  if (points.length < 40) return false;
+  let long = 0;
+  for (let i = 1; i < points.length; i++) if (dayDiff(points[i - 1].date, points[i].date) > 7) long++;
+  return long / (points.length - 1) < 0.01;
+}
 function ymOf(t: number): string { return `${Math.floor(t / 12)}-${String((t % 12) + 1).padStart(2, '0')}`; }
 
 /**
@@ -82,6 +99,8 @@ export function drawdownEpisodes(series: { date: string; nav: number }[], minPct
         monthsToTrough: monthIndex(cur.trough.date) - monthIndex(peak.date),
         recoveryDate: recovery?.date ?? null,
         monthsToRecover: recovery ? monthIndex(recovery.date) - monthIndex(cur.trough.date) : null,
+        daysToTrough: dayDiff(peak.date, cur.trough.date),
+        daysToRecover: recovery ? dayDiff(cur.trough.date, recovery.date) : null,
         currentPct: recovery ? null : r2((last.nav / peak.nav - 1) * 100),
       });
     }
@@ -109,11 +128,14 @@ export function computeFundDrawdowns(
   points: Pick<NavPoint, 'date' | 'nav'>[],
   opts: { distribution?: boolean } = {},
 ): FundDrawdowns {
-  const monthly = monthEndSeries(points.filter(p => p.nav > 0));
+  const clean = points.filter(p => p.nav > 0).sort((a, b) => a.date.localeCompare(b.date));
+  const monthly = monthEndSeries(clean);
+  const daily = isDailySeries(clean);
+  const series = daily ? clean.map(p => ({ date: p.date, nav: p.nav })) : monthly;
   const base: FundDrawdowns = {
     isin: meta.isin, name: meta.name, currency: meta.currency ?? null,
-    windowStart: monthly[0]?.date ?? null, windowEnd: monthly.at(-1)?.date ?? null,
-    years: 0, monthlyPoints: monthly.length, missingMonths: [], maxDrawdown: null, episodes: [], warnings: [],
+    windowStart: series[0]?.date ?? null, windowEnd: series.at(-1)?.date ?? null,
+    years: 0, monthlyPoints: monthly.length, frequency: daily ? 'daily' : 'monthly', missingMonths: [], maxDrawdown: null, episodes: [], warnings: [],
   };
   if (monthly.length < 2) {
     base.warnings.push(monthly.length ? 'Només hi ha un preu desat: no es pot calcular cap caiguda.' : 'No hi ha preus oficials desats d\'aquest fons.');
@@ -131,15 +153,15 @@ export function computeFundDrawdowns(
   const first = monthIndex(monthly[0].date), last = monthIndex(monthly.at(-1)!.date);
   const have = new Set(monthly.map(p => monthIndex(p.date)));
   for (let t = first + 1; t < last; t++) if (!have.has(t)) base.missingMonths.push(ymOf(t));
-  const years = r2((last - first) / 12);
+  const years = r2(dayDiff(series[0].date, series.at(-1)!.date) / 365.25);
 
-  const all = drawdownEpisodes(monthly);
+  const all = drawdownEpisodes(series);
   const warnings: string[] = [];
   if (years < SHORT_HISTORY_YEARS) {
     warnings.push(`Historial curt: només ${years.toLocaleString('ca-ES', { maximumFractionDigits: 1 })} anys de preus. Aquestes caigudes diuen poc del risc real del fons.`);
   }
-  if (monthly[0].date.slice(0, 7) > Y2022_START) {
-    warnings.push(`Les dades comencen el ${fmtDate(monthly[0].date)}: no inclouen la caiguda general de borsa i bons del 2022.`);
+  if (series[0].date.slice(0, 7) > Y2022_START) {
+    warnings.push(`Les dades comencen el ${fmtDate(series[0].date)}: no inclouen la caiguda general de borsa i bons del 2022.`);
   }
   if (base.missingMonths.length) {
     warnings.push(`Falten preus de ${base.missingMonths.length} ${base.missingMonths.length === 1 ? 'mes' : 'mesos'} dins el període: no s'han omplert i alguna caiguda pot quedar curta.`);
@@ -170,12 +192,28 @@ export function durationLabel(months: number): string {
   return m ? `${ys} i ${m} ${m === 1 ? 'mes' : 'mesos'}` : ys;
 }
 
+type Freq = FundDrawdowns['frequency'];
+/** Durada: en mesos amb preus mensuals; amb preus diaris, en dies si és menys de dos mesos. */
+export function spanLabel(days: number, months: number, freq: Freq = 'monthly'): string {
+  if (freq === 'monthly') return durationLabel(months);
+  if (days < 60) return `${days} ${days === 1 ? 'dia' : 'dies'}`;
+  return durationLabel(Math.round(days / 30.44));
+}
+/** Data d'un punt: dia exacte amb preus diaris; mes amb preus mensuals. */
+export function dateLabel(iso: string, freq: Freq = 'monthly'): string {
+  return freq === 'daily' ? fmtDate(iso) : monthLabel(iso);
+}
+export const fallLabel = (e: DrawdownEpisode, freq: Freq = 'monthly') => spanLabel(e.daysToTrough, e.monthsToTrough, freq);
+
 /** "Va tardar 7 mesos" / "Encara no (ara està un -3,2 % per sota)". */
-export function recoveryLabel(e: DrawdownEpisode): string {
-  if (e.recoveryDate && e.monthsToRecover !== null) return `${durationLabel(e.monthsToRecover)} (${monthLabel(e.recoveryDate)})`;
+export function recoveryLabel(e: DrawdownEpisode, freq: Freq = 'monthly'): string {
+  if (e.recoveryDate && e.monthsToRecover !== null && e.daysToRecover !== null) return `${spanLabel(e.daysToRecover, e.monthsToRecover, freq)} (${dateLabel(e.recoveryDate, freq)})`;
   const now = e.currentPct === null ? '' : ` (ara un ${e.currentPct.toLocaleString('ca-ES', { maximumFractionDigits: 1 })} % per sota del màxim)`;
   return `Encara no s'ha recuperat${now}`;
 }
+
+/** "preus diaris" / "preu de final de mes" per al període de dades. */
+export const frequencyLabel = (freq: Freq) => freq === 'daily' ? 'preus diaris' : 'preu de final de mes';
 
 /** Perfils per als quals l'informe inicial porta la pàgina de caigudes. */
 export const DRAWDOWN_PROFILES = ['conservador', 'moderat'] as const;

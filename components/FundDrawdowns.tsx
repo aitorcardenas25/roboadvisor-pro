@@ -4,7 +4,7 @@
 // Es fa servir a l'informe inicial, a «La meva cartera» i a l'admin.
 import { useState } from 'react';
 import {
-  DRAWDOWN_DISCLAIMER, durationLabel, monthLabel, recoveryLabel, type FundDrawdowns as FundDD,
+  DRAWDOWN_DISCLAIMER, dateLabel, fallLabel, frequencyLabel, recoveryLabel, type FundDrawdowns as FundDD,
 } from '@/lib/drawdowns';
 
 const pct = (n: number) => `${n.toLocaleString('ca-ES', { minimumFractionDigits: 1, maximumFractionDigits: 1 })} %`;
@@ -17,7 +17,7 @@ export function FundDrawdownCard({ d }: { d: FundDD }) {
           <p className="text-ink text-sm font-medium">{d.name}</p>
           <p className="text-ink-muted text-[11px]">
             {d.isin}
-            {d.windowStart && d.windowEnd && <> · Dades de {monthLabel(d.windowStart)} a {monthLabel(d.windowEnd)} ({d.years.toLocaleString('ca-ES', { maximumFractionDigits: 1 })} anys, preu de final de mes)</>}
+            {d.windowStart && d.windowEnd && <> · Dades de {dateLabel(d.windowStart, d.frequency)} a {dateLabel(d.windowEnd, d.frequency)} ({d.years.toLocaleString('ca-ES', { maximumFractionDigits: 1 })} anys, {frequencyLabel(d.frequency)})</>}
           </p>
         </div>
         {d.maxDrawdown !== null && (
@@ -45,11 +45,11 @@ export function FundDrawdownCard({ d }: { d: FundDD }) {
               {d.episodes.map((e, i) => (
                 <tr key={e.peakDate} className="text-ink-soft">
                   <td className="py-1.5 pr-2 text-ink-muted">{i + 1}</td>
-                  <td className="py-1.5 px-2 whitespace-nowrap">{monthLabel(e.peakDate)}</td>
-                  <td className="py-1.5 px-2 whitespace-nowrap">{monthLabel(e.troughDate)}</td>
+                  <td className="py-1.5 px-2 whitespace-nowrap">{dateLabel(e.peakDate, d.frequency)}</td>
+                  <td className="py-1.5 px-2 whitespace-nowrap">{dateLabel(e.troughDate, d.frequency)}</td>
                   <td className="py-1.5 px-2 text-right text-negative font-medium whitespace-nowrap">{pct(e.depthPct)}</td>
-                  <td className="py-1.5 px-2 whitespace-nowrap">{durationLabel(e.monthsToTrough)}</td>
-                  <td className={`py-1.5 pl-2 ${e.recoveryDate ? '' : 'text-warning'}`}>{recoveryLabel(e)}</td>
+                  <td className="py-1.5 px-2 whitespace-nowrap">{fallLabel(e, d.frequency)}</td>
+                  <td className={`py-1.5 pl-2 ${e.recoveryDate ? '' : 'text-warning'}`}>{recoveryLabel(e, d.frequency)}</td>
                 </tr>
               ))}
             </tbody>
@@ -59,7 +59,7 @@ export function FundDrawdownCard({ d }: { d: FundDD }) {
           )}
         </div>
       )}
-      {d.maxDrawdown === 0 && <p className="text-ink-muted text-[11px] mt-1">En aquest període el fons no ha baixat mai més d&apos;un 0,5 % des d&apos;un màxim (amb preus de final de mes).</p>}
+      {d.maxDrawdown === 0 && <p className="text-ink-muted text-[11px] mt-1">En aquest període el fons no ha baixat mai més d&apos;un 0,5 % des d&apos;un màxim.</p>}
 
       {d.warnings.length > 0 && (
         <ul className="mt-2 space-y-0.5">

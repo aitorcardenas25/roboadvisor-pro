@@ -3,7 +3,7 @@ import { getPortfolioByClientId } from '@/lib/clientPortfolios';
 import { recordActivity } from '@/lib/betaActivity';
 import { loadValuation } from '@/lib/portfolioExcel';
 import type { Valuation } from '@/lib/portfolioValuation';
-import { getFundDrawdowns, getNavs } from '@/lib/fundNavs';
+import { daysBefore, getFundDrawdowns, getNavs } from '@/lib/fundNavs';
 import type { FundDrawdowns } from '@/lib/drawdowns';
 import { simulateMix, type MixHistory } from '@/lib/mixHistory';
 import type { ClientPortfolio } from '@/lib/clientPortfolios';
@@ -15,7 +15,9 @@ async function loadMixHistory(portfolio: ClientPortfolio): Promise<Record<string
   const open = portfolio.holdings.filter(h => h.quantity > 0 && h.assetIsin);
   if (!open.length) return null;
   const isins = [...new Set(open.map(h => h.assetIsin!.toUpperCase()))];
-  const navs = (await Promise.all(isins.map(i => getNavs(i)))).flat();
+  // La simulació arriba a 5 anys enrere: no cal llegir tot l'històric diari
+  const since = daysBefore(new Date().toISOString().slice(0, 10), 5 * 366 + 60);
+  const navs = (await Promise.all(isins.map(i => getNavs(i, since)))).flat();
   const lastNav = (isin: string) => navs.filter(n => n.isin === isin).at(-1)?.nav ?? 0;
   const values = isins.map(isin => ({
     isin,

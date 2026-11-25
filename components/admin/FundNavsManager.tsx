@@ -8,6 +8,7 @@ import { MIN_YEARS_FOR_PROPOSALS, UPDATE_LAG_DAYS, daysSince, fmtDate, navAttent
 import { DRAWDOWN_DISCLAIMER, type FundDrawdowns } from '@/lib/drawdowns';
 import { FundDrawdownCard } from '@/components/FundDrawdowns';
 import NavAutoUpdatePanel from './NavAutoUpdatePanel';
+import NavBackfillPanel from './NavBackfillPanel';
 
 interface FundRow { isin: string; name: string; category: string; inList: boolean; currency: string | null; metrics: NavMetrics }
 interface Preview {
@@ -63,7 +64,7 @@ export default function FundNavsManager() {
   const [file, setFile] = useState<File | null>(null);
   // Detall
   const [open, setOpen]     = useState<string | null>(null);
-  const [detail, setDetail] = useState<{ points: NavPoint[]; metrics: NavMetrics; drawdowns?: FundDrawdowns } | null>(null);
+  const [detail, setDetail] = useState<{ points: NavPoint[]; totalPoints?: number; metrics: NavMetrics; drawdowns?: FundDrawdowns } | null>(null);
 
   const load = useCallback(async () => {
     setLoadErr('');
@@ -180,6 +181,8 @@ export default function FundNavsManager() {
 
       <NavAutoUpdatePanel onUpdated={load} />
 
+      <NavBackfillPanel onDone={load} />
+
       {msg && <div className={`rounded-lg px-4 py-3 text-sm ${msg.ok ? 'bg-positive/10 text-positive border border-positive/30' : 'bg-negative/10 text-negative border border-negative/30'}`}>{msg.text}</div>}
 
       <div className="grid lg:grid-cols-2 gap-6">
@@ -282,7 +285,7 @@ export default function FundNavsManager() {
               <th className="py-1 px-2 font-normal text-right" title="Rendibilitat anualitzada del període">Rend. anual</th>
               <th className="py-1 px-2 font-normal text-right">12 mesos</th>
               <th className="py-1 px-2 font-normal text-right" title="Quant oscil·la el fons: com més alta, més risc">Volatilitat</th>
-              <th className="py-1 px-2 font-normal text-right" title="Pitjor caiguda des d'un màxim">Caiguda màx.</th>
+              <th className="py-1 px-2 font-normal text-right" title="Pitjor caiguda des d'un màxim en els últims 5 anys, amb l'últim preu de cada mes. La caiguda exacta amb preus diaris és al detall del fons.">Caiguda màx. (fi de mes)</th>
             </tr>
           </thead>
           <tbody>
@@ -323,7 +326,7 @@ export default function FundNavsManager() {
                   ['Rendibilitat anual', pct(detail.metrics.annualReturn), detail.metrics.years ? `${detail.metrics.years.toLocaleString('ca-ES')} anys` : ''],
                   ['Últims 12 mesos', pct(detail.metrics.return1Y), ''],
                   ['Volatilitat', pct(detail.metrics.volatility), 'anual'],
-                  ['Caiguda màxima', pct(detail.metrics.maxDrawdown), 'des d\'un màxim'],
+                  ['Caiguda màxima', pct(detail.metrics.maxDrawdown), '5 anys, preus de fi de mes (la diària, a sota)'],
                   ['Pitjor any', pct(detail.metrics.worst12M), '12 mesos seguits'],
                 ].map(([l, v, s]) => (
                   <div key={l}><p className="text-ink-muted text-xs">{l}</p><p className="text-ink font-bold">{v}</p>{s && <p className="text-ink-muted text-[11px]">{s}</p>}</div>
@@ -342,6 +345,9 @@ export default function FundNavsManager() {
                   <FundDrawdownCard d={detail.drawdowns} />
                   <p className="text-ink-muted text-[11px] mt-3">{DRAWDOWN_DISCLAIMER}</p>
                 </div>
+              )}
+              {(detail.totalPoints ?? 0) > detail.points.length && (
+                <p className="text-ink-muted text-xs">Es mostren els últims {detail.points.length} preus de {detail.totalPoints!.toLocaleString('ca-ES')}.</p>
               )}
               <div className="max-h-80 overflow-y-auto">
                 <table className="w-full text-sm">
