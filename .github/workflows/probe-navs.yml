@@ -2,7 +2,7 @@ name: Probe NAV sources (temporary)
 on:
   push:
     branches: [claude/project-thread-t9bvv1]
-    paths: ['scripts/probe/**', '.github/workflows/probe-navs.yml']
+    paths: ["scripts/probe/**", "lib/navFeeds.ts", "lib/xlsxLite.ts", ".github/workflows/probe-navs.yml"]
 jobs:
   probe:
     runs-on: ubuntu-latest
@@ -10,4 +10,4 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with: { node-version: 20 }
-      - run: node scripts/probe/probe.mjs
+      - run: npx -y tsx scripts/probe/run.ts
