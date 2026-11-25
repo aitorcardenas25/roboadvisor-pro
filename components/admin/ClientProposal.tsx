@@ -669,7 +669,10 @@ function PlatformPicker({ isin, name, value, input, onChange }: {
 }) {
   const info = platformsFor(isin, name);
   const known = PLATFORMS.some(p => p.name === value);
-  const [custom, setCustom] = useState(!!value && !known);
+  const [customMode, setCustom] = useState(false);
+  // Un valor que no és a la llista (desat abans o posat per "Partir de la
+  // cartera actual") sempre es mostra com a text, encara que la fila ja existís.
+  const custom = customMode || (!!value && !known);
   const chosenNotFound = info.notFound.some(p => p.name === value);
   const checked = new Date(PLATFORMS_CHECKED_AT + 'T00:00:00').toLocaleDateString('ca-ES');
   return (
