@@ -1,7 +1,19 @@
 // Temporal: caigudes amb l'històric diari complet de cada font (es treu abans de fusionar).
 import { NAV_SOURCES, fetchFeed, ecbUsdRates, usdToEur } from '../../lib/navFeeds';
-import { adjustForDistributions } from '../../lib/navBackfill';
 import { computeFundDrawdowns, dateLabel, fallLabel, recoveryLabel } from '../../lib/drawdowns';
+import type { FeedDistribution, FeedPoint } from '../../lib/navFeeds';
+function adjustForDistributions(points: FeedPoint[], dists: FeedDistribution[]): FeedPoint[] {
+  const factors = dists.map(d => {
+    const pEx = points.find(p => p.date === d.exDate && p.currency === d.currency);
+    return pEx ? { exDate: d.exDate, factor: pEx.nav / (pEx.nav + d.amount) } : null;
+  }).filter((f): f is { exDate: string; factor: number } => !!f).sort((a, b) => b.exDate.localeCompare(a.exDate));
+  let k = 1, j = 0;
+  return [...points].sort((a, b) => b.date.localeCompare(a.date)).map(p => {
+    while (j < factors.length && factors[j].exDate > p.date) k *= factors[j++].factor;
+    return { ...p, nav: Math.round(p.nav * k * 1e6) / 1e6 };
+  }).reverse();
+}
+
 const today = new Date().toISOString().slice(0, 10);
 (async () => {
   const rates = await ecbUsdRates({ since: '1999-01-04', today }, '1999-01-04');
