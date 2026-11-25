@@ -160,8 +160,8 @@ export function computeFundDrawdowns(
   if (years < SHORT_HISTORY_YEARS) {
     warnings.push(`Historial curt: només ${years.toLocaleString('ca-ES', { maximumFractionDigits: 1 })} anys de preus. Aquestes caigudes diuen poc del risc real del fons.`);
   }
-  if (monthly[0].date.slice(0, 7) > Y2022_START) {
-    warnings.push(`Les dades comencen el ${fmtDate(monthly[0].date)}: no inclouen la caiguda general de borsa i bons del 2022.`);
+  if (series[0].date.slice(0, 7) > Y2022_START) {
+    warnings.push(`Les dades comencen el ${fmtDate(series[0].date)}: no inclouen la caiguda general de borsa i bons del 2022.`);
   }
   if (base.missingMonths.length) {
     warnings.push(`Falten preus de ${base.missingMonths.length} ${base.missingMonths.length === 1 ? 'mes' : 'mesos'} dins el període: no s'han omplert i alguna caiguda pot quedar curta.`);

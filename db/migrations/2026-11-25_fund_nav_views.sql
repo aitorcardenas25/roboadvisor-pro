@@ -15,3 +15,6 @@ CREATE OR REPLACE VIEW fund_nav_stats WITH (security_invoker = true) AS
 SELECT isin, COUNT(*)::int AS points, MIN(nav_date) AS first_date, MAX(nav_date) AS last_date
 FROM fund_navs
 GROUP BY isin;
+
+-- Només el servidor (service_role) les llegeix
+REVOKE ALL ON fund_nav_month_ends, fund_nav_stats FROM anon, authenticated;
