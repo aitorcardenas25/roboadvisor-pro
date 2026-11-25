@@ -23,6 +23,10 @@ describe('Classificació dels fons (gestió activa/passiva, renda fixa/variable)
     expect(assetTypeLabel(unknown)).toBe('Sense classificar');
   });
 
+  it('informes antics sense ISIN: troba el fons pel nom exacte', () => {
+    expect(classifyFund('', '', 'Cobas Internacional FI Clase C')).toMatchObject({ management: 'activa', assetType: 'renda_variable', source: 'llista' });
+  });
+
   it('reparteix la cartera i compta el monetari dins la renda fixa', () => {
     const b = allocationBreakdown([
       { isin: 'IE00B03HD191', weight: 60 },  // RV passiva

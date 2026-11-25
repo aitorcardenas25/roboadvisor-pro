@@ -97,7 +97,13 @@ function guessManagement(text: string): ManagementStyle | undefined {
 
 /** Classificació d'un fons per ISIN; si no és a la llista ni al catàleg, es dedueix del nom i la categoria. */
 export function classifyFund(rawIsin: string, category = '', name = ''): FundClassification {
-  const isin = (rawIsin ?? '').trim().toUpperCase();
+  let isin = (rawIsin ?? '').trim().toUpperCase();
+  // Informes antics només guarden el nom del fons: es busca l'ISIN pel nom exacte.
+  if (!isin && name.trim()) {
+    const n = name.trim().toLowerCase();
+    isin = ([...ADVISOR_FUNDS, ...ALTERNATE_CLASSES].find(f => f.name.toLowerCase() === n)?.isin
+      ?? FINANCIAL_PRODUCTS.find(f => f.name.toLowerCase() === n)?.isin ?? '').toUpperCase();
+  }
   const e = ADVISOR_CLASSIFICATION[isin];
   if (e) {
     const [management, assetType, eq, approx] = e;

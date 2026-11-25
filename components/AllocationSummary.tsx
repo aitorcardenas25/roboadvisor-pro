@@ -1,7 +1,7 @@
 'use client';
 // Repartiment d'una cartera: renda variable / renda fixa i gestió activa / passiva.
 // La classificació i els càlculs són a lib/fundClassification.ts.
-import { allocationBreakdown, allocationNote } from '@/lib/fundClassification';
+import { allocationBreakdown, allocationNote, type AllocationBreakdown } from '@/lib/fundClassification';
 
 const pct = (n: number) => `${n.toLocaleString('ca-ES', { maximumFractionDigits: 0 })} %`;
 
@@ -28,12 +28,13 @@ function Bar({ title, segs }: { title: string; segs: Seg[] }) {
   );
 }
 
-export default function AllocationSummary({ items, className = '' }: {
-  items: { isin: string; weight: number; category?: string; name?: string }[];
+export default function AllocationSummary({ items, breakdown, className = '' }: {
+  items?: { isin: string; weight: number; category?: string; name?: string }[];
+  breakdown?: AllocationBreakdown;   // ja calculat (p. ex. desat a l'informe mensual)
   className?: string;
 }) {
-  const b = allocationBreakdown(items);
-  if (!items.some(x => x.weight > 0)) return null;
+  const b = breakdown ?? allocationBreakdown(items ?? []);
+  if (b.equity + b.fixedIncome + b.other + b.unknownAsset <= 0) return null;
   return (
     <div className={className}>
       <div className="grid sm:grid-cols-2 gap-4">

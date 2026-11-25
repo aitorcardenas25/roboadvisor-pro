@@ -50,6 +50,9 @@ describe('informe mensual amb valors liquidatius oficials', () => {
     expect(o.operations.map(x => [x.type, x.amount])).toEqual([['Venda', 4631.58], ['Compra', 5631.58]]);
     expect(o.allocation).toMatchObject({ targetVersion: 2, rows: [{ isin: A, target: 100, current: 100, diff: 0 }] });
     expect(o.evolution.map(p => p.date)).toEqual(['2026-09-30', '2026-10-30']);   // fins a l'últim VL oficial
+    // 31/10 tot és el Vanguard Global Stock Index: 100 % renda variable i gestió passiva
+    expect(o.mix).toMatchObject({ equity: 100, fixedIncome: 0, passive: 100, active: 0 });
+    expect(o.positions?.[0]).toMatchObject({ isin: A });
   });
 
   it('setembre, abans de la reestructuració: pesos amb les participacions d\'aquell dia', async () => {
