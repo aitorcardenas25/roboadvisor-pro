@@ -310,12 +310,12 @@ export function monthEndSeries(points: Pick<NavPoint, 'date' | 'nav'>[]): { mont
  *   (Magdon-Ismail & Atiya 2004), amb tots els preus de la finestra.
  * - Pitjor any: pitjor rendiment de 12 mesos seguits dins la finestra.
  *
- * Finestra: els últims 60 mesos com a màxim. Només es fa servir a les
+ * Finestra: els últims 60 mesos com a màxim (`maxMonths`; la simulació de carteres a 10 anys en fa servir més). Només es fa servir a les
  * propostes si cobreix com a mínim MIN_YEARS_FOR_PROPOSALS anys sense cap mes buit.
  * Atenció: en classes de distribució (Inc / Dis) el VL baixa quan es paga el
  * dividend; les xifres no l'inclouen.
  */
-export function computeNavMetrics(points: Pick<NavPoint, 'date' | 'nav'>[], asOf: Date = new Date()): NavMetrics {
+export function computeNavMetrics(points: Pick<NavPoint, 'date' | 'nav'>[], asOf: Date = new Date(), maxMonths = MAX_WINDOW_MONTHS): NavMetrics {
   const sorted = [...points].filter(p => p.nav > 0).sort((a, b) => a.date.localeCompare(b.date));
   const empty: NavMetrics = {
     points: sorted.length, firstDate: sorted[0]?.date ?? null, lastDate: sorted.at(-1)?.date ?? null,
@@ -330,7 +330,7 @@ export function computeNavMetrics(points: Pick<NavPoint, 'date' | 'nav'>[], asOf
 
   const monthly = monthEndSeries(sorted);
   const lastMonth = monthly.at(-1)!.month;
-  const startMonth = monthly.find(p => monthDiff(p.month, lastMonth) <= MAX_WINDOW_MONTHS)!.month;
+  const startMonth = monthly.find(p => monthDiff(p.month, lastMonth) <= maxMonths)!.month;
   const win = monthly.filter(p => p.month >= startMonth);
   const months = monthDiff(win[0].month, lastMonth);
 

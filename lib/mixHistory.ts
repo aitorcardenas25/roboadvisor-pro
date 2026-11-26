@@ -37,7 +37,8 @@ const monthIndex = (ym: string) => { const [y, m] = ym.split('-').map(Number); r
 
 function stats(series: { date: string; nav: number }[]): MixStats {
   if (series.length < 2) return { totalReturn: null, annualReturn: null, volatility: null, maxDrawdown: null, worst12M: null };
-  const m = computeNavMetrics(series, new Date(series.at(-1)!.date + 'T00:00:00Z'));
+  // Tota la finestra simulada (fins a 10 anys), no només els últims 60 mesos
+  const m = computeNavMetrics(series, new Date(series.at(-1)!.date + 'T00:00:00Z'), 12 * 11);
   return {
     totalReturn: r2((series.at(-1)!.nav / series[0].nav - 1) * 100),
     annualReturn: m.annualReturn, volatility: m.volatility, maxDrawdown: m.maxDrawdown, worst12M: m.worst12M,
@@ -47,12 +48,16 @@ function stats(series: { date: string; nav: number }[]): MixStats {
 /**
  * Simula `weights` comprats fa `years` anys amb `initial` €, a final de mes.
  * Retorna null si algun fons no té cap preu o si no hi ha almenys dos mesos en comú.
+ * `alignWith`: fons d'una altra cartera que es vol comparar. Només es fan servir
+ * els mesos en què TOTS (els d'aquesta i els d'aquella) tenen preu, perquè les
+ * dues simulacions cobreixin exactament el mateix període.
  */
-export function simulateMix(weights: MixWeight[], navs: NavPoint[], years: number, initial = 10_000): MixHistory | null {
+export function simulateMix(weights: MixWeight[], navs: NavPoint[], years: number, initial = 10_000, alignWith: MixWeight[] = []): MixHistory | null {
   const ws = weights.filter(w => w.weight > 0);
   if (!ws.length) return null;
+  const all = [...ws, ...alignWith.filter(a => a.weight > 0 && !ws.some(w => w.isin === a.isin))];
   const series = new Map<string, Map<string, { date: string; nav: number }>>();
-  for (const w of ws) {
+  for (const w of all) {
     const s = monthEndSeries(navs.filter(n => n.isin === w.isin && n.nav > 0));
     if (s.length < 2) return null;
     series.set(w.isin, new Map(s.map(p => [p.month, { date: p.date, nav: p.nav }])));
@@ -60,11 +65,11 @@ export function simulateMix(weights: MixWeight[], navs: NavPoint[], years: numbe
 
   // Últim mes en què tots tenen preu, i inici = aquest mes − anys (o el primer mes comú)
   const months = (isin: string) => [...series.get(isin)!.keys()].sort();
-  const common = months(ws[0].isin).filter(m => ws.every(w => series.get(w.isin)!.has(m)));
+  const common = months(ws[0].isin).filter(m => all.every(w => series.get(w.isin)!.has(m)));
   if (common.length < 2) return null;
   const lastM = common.at(-1)!;
   const wanted = monthIndex(lastM) - years * 12;
-  const firsts = ws.map(w => ({ w, first: months(w.isin)[0] }));
+  const firsts = all.map(w => ({ w, first: months(w.isin)[0] }));
   const latestFirst = firsts.reduce((a, b) => (b.first > a.first ? b : a));
   const startM = common.find(m => monthIndex(m) >= wanted)!;
   const limitedBy = monthIndex(latestFirst.first) > wanted ? latestFirst.w.name : null;
@@ -99,4 +104,27 @@ export function simulateMix(weights: MixWeight[], navs: NavPoint[], years: numbe
     portfolio: stats(points.map(p => ({ date: p.date, nav: p.value }))),
     funds: ws.map(w => ({ ...w, ...stats(points.map(p => ({ date: p.date, nav: p.funds[w.isin] }))) })),
   };
+}
+
+/** Dues composicions iguals (cada pes a ±`tolerance` punts)? Llavors no cal comparar-les. */
+export function sameMix(a: MixWeight[], b: MixWeight[], tolerance = 2): boolean {
+  const isins = new Set([...a, ...b].filter(w => w.weight > 0).map(w => w.isin));
+  const w = (list: MixWeight[], isin: string) => list.filter(x => x.isin === isin).reduce((s, x) => s + x.weight, 0);
+  return [...isins].every(i => Math.abs(w(a, i) - w(b, i)) <= tolerance);
+}
+
+/** Finestres que es mostren: 10 anys només si tots els fons hi arriben. */
+export const MIX_WINDOWS = [1, 3, 5, 10] as const;
+
+/**
+ * Les dues simulacions per a cada finestra, sobre els mateixos mesos.
+ * La de 10 anys només surt si no queda escurçada per cap fons.
+ */
+export function simulateWindows(weights: MixWeight[], navs: NavPoint[], alignWith: MixWeight[] = []): Record<string, MixHistory | null> {
+  const out: Record<string, MixHistory | null> = {};
+  for (const y of MIX_WINDOWS) {
+    const h = simulateMix(weights, navs, y, 10_000, alignWith);
+    out[String(y)] = y > 5 && (!h || h.limitedBy) ? null : h;
+  }
+  return out;
 }

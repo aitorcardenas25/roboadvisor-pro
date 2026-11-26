@@ -59,7 +59,6 @@ export default function InitialReportPage() {
   const latest = history[0];
   const p = history.find(h => h.version === selVersion) ?? latest;
   const isLatest = !!p && p.version === latest?.version;
-  const appliedVersion = history.find(h => h.appliedAt);
   const drawdowns = useMemo(() => {
     const isins = new Set(p?.items.map(i => i.isin) ?? []);
     return (data?.drawdowns ?? []).filter(d => isins.has(d.isin));
@@ -189,10 +188,10 @@ export default function InitialReportPage() {
               )}
               {p.appliedAt ? (
                 <p className="text-ink-muted text-xs mt-2">Aplicada a la teva cartera el {fDate(p.appliedAt)}.</p>
-              ) : isLatest && appliedVersion ? (
+              ) : isLatest && history.length > 1 ? (
                 <p className="mt-2 rounded-lg border border-line px-3 py-2 text-ink-soft text-xs">
                   Encara no s&apos;ha aplicat a la teva cartera. A <a href="/client/cartera" className="text-accent hover:underline">La meva cartera</a> continues
-                  veient els fons que tens ara (versió {appliedVersion.version}) fins que es facin les compres i vendes d&apos;aquest canvi.
+                  veient els fons que tens ara fins que es facin les compres i vendes d&apos;aquest canvi.
                 </p>
               ) : null}
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mt-3">

@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { simulateMix } from '@/lib/mixHistory';
+import { sameMix, simulateMix, simulateWindows } from '@/lib/mixHistory';
 import type { NavPoint } from '@/lib/navMath';
 
 function series(isin: string, start: string, navs: number[]): NavPoint[] {
@@ -50,5 +50,38 @@ describe('simulateMix (composició d\'avui comprada fa N anys)', () => {
 
   it('sense preus d\'algun fons → null', () => {
     expect(simulateMix([{ isin: 'A', name: 'A', weight: 50 }, { isin: 'Z', name: 'Z', weight: 50 }], a, 5)).toBeNull();
+  });
+});
+
+describe('comparar la cartera amb la proposta', () => {
+  const long = series('L', '2014-01', Array.from({ length: 12 * 12 + 1 }, (_, i) => 100 * 1.005 ** i));   // 12 anys
+  const short = series('S', '2020-01', Array.from({ length: 6 * 12 + 1 }, (_, i) => 50 + i));            // 6 anys
+
+  it('alignWith: les dues simulacions cobreixen exactament els mateixos mesos', () => {
+    const own = [{ isin: 'L', name: 'L', weight: 100 }];
+    const prop = [{ isin: 'S', name: 'Fons S', weight: 100 }];
+    const a = simulateMix(own, [...long, ...short], 10, 10_000, prop)!;
+    const b = simulateMix(prop, [...long, ...short], 10, 10_000, own)!;
+    expect(a.start).toBe(b.start);
+    expect(a.end).toBe(b.end);
+    expect(a.points.length).toBe(b.points.length);
+    expect(a.limitedBy).toBe('Fons S');   // la proposta escurça també la cartera
+    // sense alinear, la cartera sola arriba als 10 anys
+    expect(simulateMix(own, long, 10)!.years).toBe(10);
+  });
+
+  it('10 anys només si cap fons l\'escurça; 1, 3 i 5 sempre que hi hagi preus', () => {
+    const solo = simulateWindows([{ isin: 'L', name: 'L', weight: 100 }], long);
+    expect(solo['10']!.years).toBe(10);
+    // les mètriques fan servir els 10 anys sencers, no només els últims 5
+    expect(solo['10']!.portfolio.annualReturn).toBeCloseTo((1.005 ** 12 - 1) * 100, 1);
+    const mixed = simulateWindows([{ isin: 'L', name: 'L', weight: 50 }, { isin: 'S', name: 'S', weight: 50 }], [...long, ...short]);
+    expect(mixed['10']).toBeNull();
+    expect(mixed['5']!.years).toBe(5);
+  });
+
+  it('sameMix: mateixos fons i pesos (±2 punts) → no cal comparar', () => {
+    expect(sameMix([{ isin: 'A', name: '', weight: 60 }, { isin: 'B', name: '', weight: 40 }], [{ isin: 'A', name: '', weight: 61 }, { isin: 'B', name: '', weight: 39 }])).toBe(true);
+    expect(sameMix([{ isin: 'A', name: '', weight: 100 }], [{ isin: 'A', name: '', weight: 95 }, { isin: 'B', name: '', weight: 5 }])).toBe(false);
   });
 });
