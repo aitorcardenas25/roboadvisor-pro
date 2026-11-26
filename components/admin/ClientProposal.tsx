@@ -2,7 +2,7 @@
 
 import { downloadBlob } from '@/utils/downloadBlob';
 import { showDrawdownsByDefault, type FundDrawdowns } from '@/lib/drawdowns';
-import { PROPOSAL_TEMPLATES, templateItems } from '@/lib/proposalTemplates';
+import { PROPOSAL_TEMPLATES, STARTER_PORTFOLIOS, emergencyCheck, templateItems, type StarterPortfolio } from '@/lib/proposalTemplates';
 import { CAPM_ASSUMPTIONS } from '@/lib/navMath';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
@@ -140,6 +140,17 @@ export default function ClientProposal({ clientId, onApplied }: { clientId: stri
     if (items.length && !confirm('Això substituirà els fons de l\'editor. Continuar?')) return;
     setItems(next); setDirty(true);
     setMsg({ ok: true, text: `Plantilla "${t.label}" (perfil ${PROFILE_LABEL[t.profile]}). És un punt de partida: revisa-la i ajusta-la.` });
+  };
+
+  const emergency = emergencyCheck(data.personal);
+  const loadStarter = (t: StarterPortfolio) => {
+    const next = templateItems(t.id, data.navPerformance ?? {});
+    if (!next) { setMsg({ ok: false, text: 'No s\'ha pogut carregar la cartera d\'inici.' }); return; }
+    if (emergency.level === 'none' && !confirm(`${emergency.message}\n\nVols carregar igualment la cartera ${t.label}?`)) return;
+    if (items.length && !confirm('Això substituirà els fons de l\'editor. Continuar?')) return;
+    setItems(next); setDirty(true);
+    const profileNote = t.profile === params.profile ? '' : ` Pensada per a perfil ${PROFILE_LABEL[t.profile]}; el client és ${PROFILE_LABEL[params.profile]}: mira el control d'adequació.`;
+    setMsg({ ok: true, text: `Cartera d'inici ${t.label} carregada. Pots canviar fons i pesos.${profileNote}` });
   };
 
   const start = async (action: 'suggest' | 'fromHoldings') => {
@@ -347,6 +358,10 @@ export default function ClientProposal({ clientId, onApplied }: { clientId: stri
           </label>
         </div>
       </div>
+
+      {/* Carteres d'inici */}
+      <StarterPicker starters={STARTER_PORTFOLIOS} emergency={emergency} hasHoldings={data.holdings > 0}
+        clientProfile={params.profile} disabled={!!busy} onPick={loadStarter} card={card} />
 
       {/* Fons */}
       <div className={card}>
@@ -724,6 +739,55 @@ function PlatformPicker({ isin, name, value, input, onChange }: {
           : info.unchecked.some(p => p.sells === 'etf') ? 'ETF: confirma-ho al bròquer'
           : 'Cap plataforma comprovada'}
       </p>
+    </div>
+  );
+}
+
+/** Botons de les 3 carteres d'inici, amb l'avís del fons d'emergència a dalt. */
+function StarterPicker({ starters, emergency, hasHoldings, clientProfile, disabled, onPick, card }: {
+  starters: StarterPortfolio[]; emergency: ReturnType<typeof emergencyCheck>; hasHoldings: boolean;
+  clientProfile: string; disabled: boolean; onPick: (t: StarterPortfolio) => void; card: string;
+}) {
+  const tone = emergency.level === 'none' ? 'bg-negative/8 border-negative/20 text-negative'
+    : emergency.level === 'ok' ? 'bg-subtle border-line text-ink-soft'
+    : 'bg-warning/10 border-warning/20 text-warning';
+  return (
+    <div className={card}>
+      <div className="flex flex-wrap items-baseline gap-2 mb-1">
+        <h3 className="text-ink-soft text-xs font-medium mr-auto">Cartera d&apos;inici</h3>
+        <span className="text-ink-muted text-[11px]">Plantilla de l&apos;assessor · es pot editar després</span>
+      </div>
+      <p className="text-ink-muted text-xs mb-3">
+        {hasHoldings
+          ? 'El client ja té inversions: carrega una cartera d\'inici per comparar-la amb la cartera actual (diversificació i rendiment) i decidir què canviar.'
+          : 'Per a qui comença: dos o tres fons indexats i prou. Quan la cartera creix es mantenen els mateixos fons; cada any només es revisa el % de renda fixa.'}
+      </p>
+      <p role={emergency.level === 'none' ? 'alert' : undefined} className={`text-xs border rounded-lg px-3 py-2 mb-3 ${tone}`}>
+        {emergency.message}
+      </p>
+      <div className="grid md:grid-cols-3 gap-3">
+        {starters.map(t => {
+          const fit = t.profile === clientProfile;
+          return (
+            <div key={t.id} className={`border rounded-lg p-3 flex flex-col gap-2 ${fit ? 'border-accent/40' : 'border-line'}`}>
+              <div className="flex items-baseline gap-2">
+                <b className="text-ink text-sm">{t.label}</b>
+                <span className="text-ink-muted text-[11px] ml-auto">{t.equity} % RV · {t.bonds} % RF</span>
+              </div>
+              <p className="text-ink-soft text-xs">{t.description}</p>
+              <p className="text-ink-muted text-[11px]"><b className="font-medium">Per a qui:</b> {t.forWhom}</p>
+              <p className="text-ink-muted text-[11px]"><b className="font-medium">Per què:</b> {t.why}</p>
+              <p className="text-ink-muted text-[11px]">
+                Perfil {PROFILE_LABEL[t.profile]}{fit ? ' · coincideix amb el client' : ''}
+              </p>
+              <button type="button" disabled={disabled} onClick={() => onPick(t)}
+                className="mt-auto px-3 py-1.5 rounded-lg bg-accent-soft text-accent text-xs font-medium hover:bg-accent/30 disabled:opacity-40">
+                Fer servir aquesta cartera
+              </button>
+            </div>
+          );
+        })}
+      </div>
     </div>
   );
 }
