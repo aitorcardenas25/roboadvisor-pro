@@ -745,6 +745,37 @@ interface ReportItem {
   id: string; periodStart: string; periodEnd: string; createdAt: string; sentAt?: string;
 }
 
+interface ProposalVersion { version: number; sharedAt?: string; appliedAt?: string }
+interface PendingProposal { version: number; sharedAt?: string; appliedVersion: number }
+
+/**
+ * La cartera mostra el que el client té comprat (la versió aplicada). Si
+ * l'assessor ha enviat una versió més nova que encara no s'ha aplicat, cal
+ * dir-ho: si no, sembla que el canvi no s'ha fet.
+ */
+function pendingProposal(versions: ProposalVersion[]): PendingProposal | null {
+  const latest = versions[0];
+  const applied = versions.find(v => v.appliedAt);
+  if (!latest || latest.appliedAt || !applied || applied.version >= latest.version) return null;
+  return { version: latest.version, sharedAt: latest.sharedAt, appliedVersion: applied.version };
+}
+
+function NewProposalNotice({ p }: { p: PendingProposal }) {
+  const when = p.sharedAt ? new Date(p.sharedAt).toLocaleDateString('ca-ES', { day: 'numeric', month: 'long' }) : '';
+  return (
+    <a href="/client/informe-inicial"
+      className="mb-5 flex flex-wrap items-center justify-between gap-3 rounded-lg border border-accent/40 bg-accent/5 px-4 py-3 hover:border-accent transition-colors">
+      <div>
+        <p className="text-ink text-sm font-medium">L&apos;assessor t&apos;ha enviat una proposta nova (versió {p.version}{when ? `, ${when}` : ''})</p>
+        <p className="text-ink-muted text-xs mt-0.5">
+          Aquí continues veient els fons que tens ara (versió {p.appliedVersion}). Quan es facin les compres i vendes, la cartera s&apos;actualitzarà.
+        </p>
+      </div>
+      <span className="text-accent text-xs font-semibold whitespace-nowrap">Veure la proposta nova</span>
+    </a>
+  );
+}
+
 /** L'informe inicial (proposta aprovada: punt de partida, objectius i cartera) sempre a dalt de tot. */
 function InitialReportCard() {
   return (
@@ -897,6 +928,7 @@ export default function ClientCarteraPage() {
   const [period, setPeriod]       = useState<Period>('month');   // agrupació del gràfic i de l'Excel
   const [history, setHistory]     = useState<Record<string, MixHistory | null> | null>(null);
   const [drawdowns, setDrawdowns] = useState<{ items: FundDD[]; profile: string | null }>({ items: [], profile: null });
+  const [newProposal, setNewProposal] = useState<PendingProposal | null>(null);
 
   useEffect(() => {
     if (status === 'unauthenticated') { router.push('/login'); return; }
@@ -911,6 +943,11 @@ export default function ClientCarteraPage() {
           setLoading(false);
         })
         .catch(() => setLoading(false));
+      // Hi ha una proposta enviada més nova que la que segueix la cartera? (avís a dalt)
+      fetch('/api/client/initial-report?summary=1', { cache: 'no-store' })
+        .then(r => (r.ok ? r.json() : null))
+        .then((d: { versions?: ProposalVersion[] } | null) => setNewProposal(pendingProposal(d?.versions ?? [])))
+        .catch(() => {});
     }
   }, [status, router]);
 
@@ -962,6 +999,8 @@ export default function ClientCarteraPage() {
           </>} />
 
       <div className="max-w-5xl mx-auto px-4 py-6 sm:py-8">
+
+        {newProposal && <NewProposalNotice p={newProposal} />}
 
         {/* ── Hero ── */}
         <HeroSection portfolio={portfolio} metrics={metrics} name={name} valuation={valuation} />

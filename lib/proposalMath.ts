@@ -103,6 +103,21 @@ function guessSrri(category: string): number {
   return 6; // renda variable per defecte (tots els fons de la llista de l'assessor)
 }
 
+/** TER oficial (KID / fitxa amb font) de la llista de l'assessor, si el tenim. */
+export function officialTer(rawIsin: string): number | undefined {
+  const a = ADVISOR_FUNDS.find(f => f.isin === sameFundClass(rawIsin));
+  return a && a.ter !== undefined && a.ter > 0 && a.terSource?.trim() ? a.ter : undefined;
+}
+
+/**
+ * Omple el TER de les línies que no en tenen (0 = no se sabia quan es va fer la
+ * proposta) amb el TER oficial d'avui. No toca cap TER que ja tingui valor:
+ * pot ser un valor escrit a mà per l'assessor.
+ */
+export function withKnownTer<T extends Pick<ProposalItem, 'isin' | 'ter'>>(items: T[]): T[] {
+  return items.map(x => (x.ter > 0 ? x : { ...x, ter: officialTer(x.isin) ?? x.ter ?? 0 }));
+}
+
 /** Converteix un ISIN conegut en una línia de proposta amb les dades del catàleg. */
 export function fundToItem(rawIsin: string, weight = 0, navs: NavPerformanceMap = {}): ProposalItem | null {
   const isin = sameFundClass(rawIsin);
@@ -111,7 +126,7 @@ export function fundToItem(rawIsin: string, weight = 0, navs: NavPerformanceMap 
     return {
       isin, name: p.name, category: p.category, weight,
       risk: p.mifidRiskIndicator ?? Math.min(7, Math.round(p.risk * 1.2)),
-      ter: p.ter, platform: '', justification: p.justification,
+      ter: officialTer(isin) ?? p.ter, platform: '', justification: p.justification, // el TER amb font mana sobre el del catàleg
       ...verifiedPerformance(isin, navs), // les estimacions del catàleg no es fan servir
     };
   }

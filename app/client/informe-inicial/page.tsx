@@ -1,6 +1,7 @@
 'use client';
-// Informe inicial del client: la foto del punt de partida (situació, objectius)
-// i la cartera que l'assessor va proposar i aprovar. El mateix PDF que rep de l'assessor.
+// Informe del client: la foto del punt de partida (situació, objectius) i la
+// cartera que l'assessor ha proposat i enviat. Per defecte, l'última versió
+// enviada (la vigent); el client pot obrir les anteriors. El mateix PDF que rep de l'assessor.
 import { downloadBlob } from '@/utils/downloadBlob';
 import ClientNav from '@/components/client/ClientNav';
 import { useEffect, useMemo, useState } from 'react';
@@ -15,7 +16,7 @@ import { diagnose } from '@/lib/diagnosis';
 import { proposalToReportInput, type ClientProposal, type ProposalStats } from '@/lib/proposalMath';
 
 type Proposal = ClientProposal & { stats: ProposalStats };
-interface Data { client: { name: string; email: string }; personal: Record<string, unknown>; proposal: Proposal | null; versions: number; drawdowns?: FundDD[] }
+interface Data { client: { name: string; email: string }; personal: Record<string, unknown>; proposal: Proposal | null; versions: number; history?: Proposal[]; drawdowns?: FundDD[] }
 interface Goal { horizon?: string; description: string; amount?: number; targetYear?: number }
 
 const PROFILE: Record<string, string> = { conservador: 'Conservador', moderat: 'Moderat', equilibrat: 'Equilibrat', dinamic: 'Dinàmic', agressiu: 'Agressiu' };
@@ -33,6 +34,7 @@ export default function InitialReportPage() {
   const [data, setData] = useState<Data | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [selVersion, setSelVersion] = useState<number | null>(null);
 
   useEffect(() => {
     if (status === 'unauthenticated') { router.push('/login'); return; }
@@ -52,22 +54,31 @@ export default function InitialReportPage() {
     employmentType: typeof q.employmentType === 'string' ? q.employmentType : undefined, goals,
   }) : null, [data, q, goals]);
 
+  // Versions enviades, de la més nova a la més antiga. Per defecte, la més recent (la vigent).
+  const history = useMemo(() => data?.history?.length ? data.history : (data?.proposal ? [data.proposal] : []), [data]);
+  const latest = history[0];
+  const p = history.find(h => h.version === selVersion) ?? latest;
+  const isLatest = !!p && p.version === latest?.version;
+  const appliedVersion = history.find(h => h.appliedAt);
+  const drawdowns = useMemo(() => {
+    const isins = new Set(p?.items.map(i => i.isin) ?? []);
+    return (data?.drawdowns ?? []).filter(d => isins.has(d.isin));
+  }, [data, p]);
+
   const downloadPdf = async () => {
-    if (!data?.proposal) return;
+    if (!data || !p) return;
     setBusy(true);
     try {
       const [{ pdf }, { ManualReportPDF }] = await Promise.all([import('@react-pdf/renderer'), import('@/components/pdf/ManualReportPDF')]);
-      const p = data.proposal;
       const input = proposalToReportInput(p, data.client, data.personal);
       const when = new Date(p.approvedAt ?? p.updatedAt).toLocaleDateString('ca-ES', { day: '2-digit', month: 'long', year: 'numeric' });
-      const dd = showDrawdownsByDefault(p.profile) ? data.drawdowns : undefined;
+      const dd = showDrawdownsByDefault(p.profile) ? drawdowns : undefined;
       const blob = await pdf(<ManualReportPDF data={input} generatedAt={when} drawdowns={dd} />).toBlob();
       downloadBlob(blob, `FACTOR_OTC_informe_inicial_${safeName(data.client.name)}_v${p.version}.pdf`);
     } catch { setError('No s\'ha pogut generar el PDF. Torna-ho a provar.'); }
     finally { setBusy(false); }
   };
 
-  const p = data?.proposal;
   const figures: [string, number | undefined][] = [
     ['Ingressos nets al mes', num(q.monthlyNetIncome)],
     ['Altres ingressos al mes', num(q.monthlyOtherIncome)],
@@ -95,14 +106,30 @@ export default function InitialReportPage() {
           <>
             <div className={`${card} flex flex-wrap items-start justify-between gap-4`}>
               <div>
-                <h1 className="text-ink font-semibold text-lg">El teu informe inicial</h1>
+                <h1 className="text-ink font-semibold text-lg">El teu informe</h1>
                 <p className="text-ink-soft text-sm mt-1">
-                  La foto del punt de partida: la teva situació, els teus objectius i la cartera que et vam proposar.
+                  {history.length > 1
+                    ? 'La teva situació, els teus objectius i la cartera que et proposa l’assessor. Quan l’assessor canvia la proposta, en fa una versió nova i aquí veus sempre la més recent.'
+                    : 'La foto del punt de partida: la teva situació, els teus objectius i la cartera que et vam proposar.'}
                 </p>
                 <p className="text-ink-muted text-xs mt-2">
-                  Proposta versió {p.version} · enviada el {fDate(p.sharedAt ?? p.approvedAt)}
-                  {data.versions > 1 ? ` · n'hi ha ${data.versions} versions; aquesta és la més recent` : ''}
+                  Versió {p.version} · enviada el {fDate(p.sharedAt ?? p.approvedAt)}
+                  {isLatest ? (history.length > 1 ? ' · la proposta vigent' : '') : ` · versió anterior (la vigent és la ${latest.version})`}
                 </p>
+                {history.length > 1 && (
+                  <div className="flex flex-wrap gap-2 mt-3" role="group" aria-label="Versions de la proposta">
+                    {history.map((h, i) => {
+                      const on = h.version === p.version;
+                      const tag = i === 0 ? 'vigent' : i === history.length - 1 ? 'proposta inicial' : 'anterior';
+                      return (
+                        <button key={h.id} type="button" aria-pressed={on} onClick={() => setSelVersion(h.version)}
+                          className={`px-3 py-1.5 rounded-lg border text-xs ${on ? 'border-accent bg-accent/10 text-ink font-semibold' : 'border-line text-ink-soft hover:border-line-strong'}`}>
+                          Versió {h.version} · {fDate(h.sharedAt ?? h.approvedAt)} · {tag}
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
               </div>
               <button type="button" onClick={downloadPdf} disabled={busy}
                 className="px-4 py-2 bg-accent hover:bg-accent-hover text-accent-ink font-semibold text-sm rounded-lg disabled:opacity-60">
@@ -150,7 +177,24 @@ export default function InitialReportPage() {
             {diagnosis && <DiagnosisCard d={diagnosis} audience="client" />}
 
             <section className={card}>
-              <h2 className="text-ink font-semibold text-sm">La cartera proposada</h2>
+              <h2 className="text-ink font-semibold text-sm">
+                {history.length > 1 ? `La cartera proposada · versió ${p.version}` : 'La cartera proposada'}
+                <span className="text-ink-muted font-normal"> · enviada el {fDate(p.sharedAt ?? p.approvedAt)}</span>
+              </h2>
+              {!isLatest && (
+                <p className="mt-2 rounded-lg bg-subtle px-3 py-2 text-ink-soft text-xs">
+                  Aquesta és una versió anterior. La proposta vigent és la versió {latest.version}.{' '}
+                  <button type="button" className="text-accent hover:underline" onClick={() => setSelVersion(latest.version)}>Veure la vigent</button>
+                </p>
+              )}
+              {p.appliedAt ? (
+                <p className="text-ink-muted text-xs mt-2">Aplicada a la teva cartera el {fDate(p.appliedAt)}.</p>
+              ) : isLatest && appliedVersion ? (
+                <p className="mt-2 rounded-lg border border-line px-3 py-2 text-ink-soft text-xs">
+                  Encara no s&apos;ha aplicat a la teva cartera. A <a href="/client/cartera" className="text-accent hover:underline">La meva cartera</a> continues
+                  veient els fons que tens ara (versió {appliedVersion.version}) fins que es facin les compres i vendes d&apos;aquest canvi.
+                </p>
+              ) : null}
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mt-3">
                 {([
                   ['Perfil', PROFILE[p.profile] ?? p.profile],
@@ -206,8 +250,8 @@ export default function InitialReportPage() {
               </p>
             </section>
 
-            {!!data.drawdowns?.length && (
-              <FundDrawdowns items={data.drawdowns} defaultOpen={showDrawdownsByDefault(p.profile)}
+            {!!drawdowns.length && (
+              <FundDrawdowns items={drawdowns} defaultOpen={showDrawdownsByDefault(p.profile)}
                 title="Caigudes històriques dels fons proposats"
                 intro="Quant ha arribat a baixar cada fons des d’un màxim, quan va passar i quant va tardar a recuperar-se. Serveix per saber què pots esperar en un mal moment." />
             )}
