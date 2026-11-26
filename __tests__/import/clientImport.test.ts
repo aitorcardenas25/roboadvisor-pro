@@ -275,3 +275,41 @@ describe('plantilla v5: altres ingressos mensuals', () => {
     expect(r.personal.monthlyOtherIncome).toBeUndefined();
   });
 });
+
+describe('bitcoin a la pestanya Posicions', () => {
+  const row = (wb: ExcelJS.Workbook, r: number, values: unknown[]) => {
+    const ws = wb.getWorksheet('Posicions')!;
+    values.forEach((v, i) => { ws.getRow(r).getCell(i + 1).value = v as ExcelJS.CellValue; });
+  };
+
+  it('ISIN "BTC" amb quantitat: va al patrimoni, no a la cartera de fons', async () => {
+    const r = await parseClientWorkbook(await filled(wb => {
+      row(wb, 2, ['IE00B03HD191', 'Vanguard Global Stock', 'MyInvestor', '', 25.41, 57.08, 'EUR']);
+      row(wb, 3, ['BTC', 'BITCOIN', 'KRAKEN PRO', 'CRIPTOMONEDES', 0.01264648, 75955.44, 'EUR', 'cost 960,57 €']);
+    }));
+    expect(r.errors).toEqual([]);
+    expect(r.holdings.map(h => h.isin)).toEqual(['IE00B03HD191']);
+    expect(r.crypto).toEqual([expect.objectContaining({ symbol: 'BTC', broker: 'KRAKEN PRO', units: 0.01264648, avgEntryPrice: 75955.44 })]);
+  });
+
+  it('ISIN buit però "Bitcoin" al nom també es reconeix; sense quantitat, error clar', async () => {
+    const r = await parseClientWorkbook(await filled(wb => {
+      row(wb, 2, ['', 'BITCOIN', 'KRAKEN PRO', 'CRIPTOMONEDES', null, 75955.44, 'EUR']);
+    }));
+    expect(r.crypto).toEqual([]);
+    expect(r.errors[0]).toMatchObject({ sheet: 'Posicions', row: 2 });
+    expect(r.errors[0].message).toMatch(/quants bitcoins/);
+    expect(r.errors[0].message).not.toMatch(/ISIN/);
+  });
+
+  it('un moviment de bitcoin no s\'importa com a moviment de fons', async () => {
+    const r = await parseClientWorkbook(await filled(wb => {
+      row(wb, 2, ['BTC', 'Bitcoin', 'Kraken', '', 0.5, 60000]);
+      const tx = wb.getWorksheet('Moviments')!;
+      ['05/03/2025', 'Compra', 'BTC', 'Bitcoin', 0.5, 60000, 30000].forEach((v, i) => { tx.getRow(2).getCell(i + 1).value = v; });
+    }));
+    expect(r.errors).toEqual([]);
+    expect(r.transactions).toEqual([]);
+    expect(r.warnings.some(w => w.sheet === 'Moviments' && /bitcoin/i.test(w.message))).toBe(true);
+  });
+});

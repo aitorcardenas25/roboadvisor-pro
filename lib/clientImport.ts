@@ -10,7 +10,7 @@ import ExcelJS from 'exceljs';
 import { isValidIsin, lookupIsin } from './fundUniverse';
 import type { OperationType } from './clientPortfolios';
 
-export const TEMPLATE_VERSION = '5';
+export const TEMPLATE_VERSION = '6';
 
 // ─── Definició de la plantilla ───────────────────────────────────────────────
 
@@ -112,6 +112,9 @@ export async function buildTemplate(clientName?: string): Promise<Buffer> {
     '2. "Objectius": què vols aconseguir a curt, mitjà i llarg termini (p. ex. "fons d\'emergència", "entrada d\'un pis").',
     '3. "Posicions": una fila per cada fons o ETF que tens avui, a cada entitat (MyInvestor, Renta 4, banc...).',
     '   L\'ISIN és el codi de 12 caràcters que surt a l\'extracte (p. ex. IE00B42W4L06).',
+    '   Bitcoin: no té ISIN. Escriu BTC a la columna ISIN i, a Participacions, quants bitcoins tens (p. ex. 0,0126).',
+    '   Si només saps quant t\'ha costat, divideix el cost pel preu mitjà (960 € / 75.955 € = 0,0126 BTC).',
+    '   El bitcoin es valora cada dia amb el preu de mercat i surt al teu patrimoni, no a la cartera de fons.',
     '4. "Moviments": cada compra, venda, aportació o retirada amb la seva data. Com més historial, més exacta serà la rendibilitat.',
     '   Format de data: dd/mm/aaaa. Tipus: Compra, Venda, Aportació, Retirada o Rebalanceig.',
     '5. No canviïs el nom de les pestanyes ni l\'ordre de les columnes.',
@@ -174,6 +177,18 @@ export interface ImportedHolding {
   recognized: boolean;
 }
 
+/** Bitcoin de la pestanya Posicions (ISIN "BTC"): va al patrimoni declarat, no a la cartera de fons. */
+export interface ImportedCrypto {
+  row: number; symbol: 'BTC'; name: string; broker: string; units: number;
+  avgEntryPrice?: number; notes?: string;
+}
+
+/** Fila de bitcoin: ISIN BTC/XBT, o ISIN buit amb "bitcoin" al nom o a la categoria. */
+export function isBitcoinRow(isin: string, name: string, category: string): boolean {
+  if (isin === 'BTC' || isin === 'XBT' || isin === 'BITCOIN') return true;
+  return !isin && /\bbitcoin\b|\bbtc\b/i.test(`${name} ${category}`);
+}
+
 export interface ImportedTransaction {
   row: number; date: string; operationType: OperationType; isin?: string; name?: string;
   quantity: number; priceEur: number; totalEur: number; commission: number;
@@ -184,6 +199,7 @@ export interface ImportResult {
   personal:     PersonalData;
   goals:        ImportedGoal[];
   holdings:     ImportedHolding[];
+  crypto:       ImportedCrypto[];
   transactions: ImportedTransaction[];
   errors:       ImportIssue[];
   warnings:     ImportIssue[];
@@ -258,7 +274,7 @@ function rowEmpty(row: ExcelJS.Row, cols: number): boolean {
 }
 
 export async function parseClientWorkbook(data: ArrayBuffer | Buffer): Promise<ImportResult> {
-  const res: ImportResult = { personal: {}, goals: [], holdings: [], transactions: [], errors: [], warnings: [] };
+  const res: ImportResult = { personal: {}, goals: [], holdings: [], crypto: [], transactions: [], errors: [], warnings: [] };
   const wb = new ExcelJS.Workbook();
   try {
     await wb.xlsx.load(data as ArrayBuffer);
@@ -345,6 +361,23 @@ export async function parseClientWorkbook(data: ArrayBuffer | Buffer): Promise<I
       if (r === 1 || rowEmpty(row, HOLDING_COLS.length)) return;
       const errs: string[] = [];
       const isin = str(row.getCell(1).value).toUpperCase().replace(/\s/g, '');
+      if (isBitcoinRow(isin, str(row.getCell(2).value), str(row.getCell(4).value))) {
+        const units = parseNumber(row.getCell(5).value);
+        const avg = parseNumber(row.getCell(6).value);
+        if (units === null || units <= 0) {
+          const hint = avg && avg > 0 ? ' Si només saps el cost, divideix-lo pel preu mitjà de compra.' : '';
+          res.errors.push({ sheet: SHEET.holdings, row: r, message: `bitcoin: a Participacions posa quants bitcoins tens (p. ex. 0,0126).${hint}` });
+          return;
+        }
+        if (units > 21_000_000) { res.errors.push({ sheet: SHEET.holdings, row: r, message: 'bitcoin: quantitat massa gran' }); return; }
+        res.crypto.push({
+          row: r, symbol: 'BTC', name: str(row.getCell(2).value) || 'Bitcoin', broker: str(row.getCell(3).value),
+          units: Math.round(units * 1e8) / 1e8, ...(avg && avg > 0 ? { avgEntryPrice: avg } : {}),
+          notes: str(row.getCell(8).value) || undefined,
+        });
+        res.warnings.push({ sheet: SHEET.holdings, row: r, message: 'Bitcoin: s\'afegeix al patrimoni declarat (valor diari de mercat), no a la cartera de fons.' });
+        return;
+      }
       if (!isValidIsin(isin)) errs.push(`ISIN "${isin || '(buit)'}" no vàlid`);
       const qty = parseNumber(row.getCell(5).value);
       if (qty === null || qty <= 0) errs.push('participacions han de ser > 0');
@@ -388,6 +421,10 @@ export async function parseClientWorkbook(data: ArrayBuffer | Buffer): Promise<I
       const op = TX_TYPES[typeRaw];
       if (!op) errs.push(`tipus "${typeRaw || '(buit)'}" desconegut`);
       const isinRaw = str(row.getCell(3).value).toUpperCase().replace(/\s/g, '');
+      if (isBitcoinRow(isinRaw, str(row.getCell(4).value), '')) {
+        res.warnings.push({ sheet: SHEET.tx, row: r, message: 'Moviment de bitcoin: no s\'importa (el bitcoin es declara a Posicions i es valora al patrimoni).' });
+        return;
+      }
       const needsAsset = op === 'buy' || op === 'sell';
       if (needsAsset && !isValidIsin(isinRaw)) errs.push(`ISIN "${isinRaw || '(buit)'}" no vàlid`);
       if (!needsAsset && isinRaw && !isValidIsin(isinRaw)) errs.push(`ISIN "${isinRaw}" no vàlid`);
@@ -419,7 +456,7 @@ export async function parseClientWorkbook(data: ArrayBuffer | Buffer): Promise<I
     });
   }
 
-  if (!res.holdings.length && !res.transactions.length && !res.goals.length && !Object.keys(res.personal).length && !res.errors.length)
+  if (!res.holdings.length && !res.crypto.length && !res.transactions.length && !res.goals.length && !Object.keys(res.personal).length && !res.errors.length)
     res.errors.push({ sheet: '—', row: 0, message: 'El fitxer no té cap dada omplerta.' });
 
   return res;

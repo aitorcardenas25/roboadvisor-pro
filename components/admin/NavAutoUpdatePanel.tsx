@@ -74,6 +74,14 @@ export default function NavAutoUpdatePanel({ onUpdated }: { onUpdated?: () => vo
             <span className={last.counts.failed ? 'text-negative font-semibold' : ''}>{last.counts.failed} amb errors</span>
             {last.holdingsUpdated ? ` · ${last.holdingsUpdated} posicions de clients actualitzades` : ''}
           </p>
+          {last.crypto?.map(c => (
+            <p key={c.symbol} className="text-sm">
+              <span className={c.status === 'failed' ? 'text-negative font-semibold' : 'text-ink-soft'}>
+                Bitcoin (BTC/EUR, tancament diari): {c.status === 'failed' ? 'error' : c.status === 'updated' ? `+${c.added} dies` : 'al dia'}
+              </span>
+              <span className="text-ink-muted text-xs"> · Últim preu: {day(c.lastDate)} · {c.source}{c.message ? ` · ${c.message}` : ''}</span>
+            </p>
+          ))}
           {GROUPS.map(g => {
             const list = last.funds.filter(f => f.status === g.status);
             if (!list.length) return null;

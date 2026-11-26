@@ -58,7 +58,7 @@ export default function ClientImport({ clientId, onImported }: { clientId: strin
         if (!res.ok) setMsg({ ok: false, text: data.error ?? 'Error llegint el fitxer' });
         else setPreview(data);
       } else if (res.ok) {
-        setMsg({ ok: true, text: `Importat: ${data.imported.holdings} posicions i ${data.imported.transactions} moviments${data.personalSaved ? ' + dades personals' : ''}.${data.pricesUpdated ? ' Els fons amb preus desats ja es valoren amb l\'últim VL oficial.' : ''}` });
+        setMsg({ ok: true, text: `Importat: ${data.imported.holdings} posicions i ${data.imported.transactions} moviments${data.imported.bitcoin ? ` + ${data.imported.bitcoin} bitcoin al patrimoni` : ''}${data.personalSaved ? ' + dades personals' : ''}.${data.pricesUpdated ? ' Els fons amb preus desats ja es valoren amb l\'últim VL oficial.' : ''}` });
         setPreview(null); setFile(null);
         onImported();
       } else {
@@ -120,6 +120,7 @@ export default function ClientImport({ clientId, onImported }: { clientId: strin
           <div className={card}>
             <div className="flex flex-wrap gap-6 mb-4 text-sm">
               <span className="text-ink-soft"><b className="text-ink">{preview.holdings.length}</b> posicions</span>
+              {preview.crypto?.length > 0 && <span className="text-ink-soft"><b className="text-ink">{preview.crypto.length}</b> bitcoin (al patrimoni)</span>}
               <span className="text-ink-soft"><b className="text-ink">{preview.transactions.length}</b> moviments</span>
               <span className="text-ink-soft"><b className="text-ink">{Object.keys(preview.personal).length}</b> dades personals</span>
               <span className="text-ink-soft"><b className="text-ink">{preview.goals.length}</b> objectius</span>
@@ -182,6 +183,23 @@ export default function ClientImport({ clientId, onImported }: { clientId: strin
                     <td className={td}>{h.quantity.toLocaleString('ca-ES')}</td>
                     <td className={td}>{eur(h.avgEntryPrice)}</td>
                     <td className={td}>{eur(h.quantity * h.avgEntryPrice)}</td>
+                  </tr>))}</tbody>
+              </table>
+            </div>
+          )}
+
+          {preview.crypto?.length > 0 && (
+            <div className={`${card} overflow-x-auto`}>
+              <h4 className="text-ink-soft text-xs font-medium mb-1">Bitcoin (patrimoni declarat)</h4>
+              <p className="text-ink-muted text-xs mb-3">No entra a la cartera de fons: es valora cada dia amb el preu de mercat a «Patrimoni consolidat».</p>
+              <table className="w-full">
+                <thead><tr>{['Nom', 'Entitat', 'Quantitat (BTC)', 'Preu mitjà', 'Cost'].map(h => <th key={h} className={th}>{h}</th>)}</tr></thead>
+                <tbody>{preview.crypto.map(c => (
+                  <tr key={c.row}>
+                    <td className={td}>{c.name}</td><td className={td}>{c.broker || '—'}</td>
+                    <td className={td}>{c.units.toLocaleString('ca-ES', { maximumFractionDigits: 8 })}</td>
+                    <td className={td}>{c.avgEntryPrice ? eur(c.avgEntryPrice) : '—'}</td>
+                    <td className={td}>{c.avgEntryPrice ? eur(c.units * c.avgEntryPrice) : '—'}</td>
                   </tr>))}</tbody>
               </table>
             </div>

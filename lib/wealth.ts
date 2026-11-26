@@ -8,6 +8,7 @@
 // declarats (pel client o per l'assessor) i sempre porten la data del valor.
 import { z } from 'zod';
 import { aggregatePeriods, type Valuation } from './portfolioValuation';
+import type { BtcContext } from './cryptoPrices';
 
 // ─── Tipus d'actius i deutes ─────────────────────────────────────────────────
 
@@ -18,7 +19,8 @@ export const ASSET_KINDS = {
   diposit:  { label: 'Dipòsit a termini',                     group: 'liquiditat' },
   fons:     { label: 'Fons, ETF o accions en una altra entitat', group: 'inversions' },
   pensions: { label: 'Pla de pensions o EPSV',                group: 'inversions' },
-  cripto:   { label: 'Criptomonedes',                         group: 'inversions' },
+  bitcoin:  { label: 'Bitcoin (BTC)',                         group: 'inversions' },
+  cripto:   { label: 'Altres criptomonedes (valor en €)',     group: 'inversions' },
   immoble:  { label: 'Habitatge o immoble',                   group: 'immobles' },
   altres:   { label: 'Altres (cotxe, or, préstec a un familiar...)', group: 'altres' },
 } as const satisfies Record<string, { label: string; group: WealthGroup }>;
@@ -44,8 +46,10 @@ export interface WealthItem {
   kind:      AssetKind | DebtKind;
   name:      string;
   entity:    string;          // banc, broker... ('' si no n'hi ha)
-  value:     number;          // € (positiu; els deutes també, en positiu)
+  value:     number;          // € (positiu; els deutes també, en positiu). Bitcoin: últim valor calculat
   asOf:      string;          // AAAA-MM-DD: data del valor
+  /** Bitcoin: quantitat en BTC. El valor en € surt del preu diari (lib/cryptoPrices.ts). */
+  units?:    number;
   addedBy:   'client' | 'admin';
   updatedAt: string;
 }
@@ -53,14 +57,21 @@ export interface WealthItem {
 const ALL_KINDS = [...Object.keys(ASSET_KINDS), ...Object.keys(DEBT_KINDS)] as [string, ...string[]];
 const MAX_EUR = 100_000_000;
 const MAX_ITEMS = 100;
+/** Mai hi haurà més de 21 milions de bitcoins. */
+const MAX_BTC = 21_000_000;
+
+export const isUnitKind = (k: string) => k === 'bitcoin';
 
 export const WealthItemInputSchema = z.object({
   kind:   z.enum(ALL_KINDS),
   name:   z.string().trim().min(1, 'Posa-hi un nom').max(80),
   entity: z.string().trim().max(60).default(''),
-  value:  z.number().finite().min(0, 'Ha de ser 0 o més').max(MAX_EUR, 'Import massa gran'),
+  value:  z.number().finite().min(0, 'Ha de ser 0 o més').max(MAX_EUR, 'Import massa gran').default(0),
   asOf:   z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Data no vàlida'),
-}).strict();
+  units:  z.number().finite().positive('Ha de ser més gran que 0').max(MAX_BTC, 'Quantitat massa gran').optional(),
+}).strict().superRefine((v, ctx) => {
+  if (isUnitKind(v.kind) && v.units === undefined) ctx.addIssue({ code: 'custom', path: ['units'], message: 'Indica quants bitcoins tens' });
+});
 export type WealthItemInput = z.infer<typeof WealthItemInputSchema>;
 
 export const isDebtKind = (k: string): k is DebtKind => k in DEBT_KINDS;
@@ -74,27 +85,56 @@ export function listItems(q: Record<string, unknown> | null | undefined): Wealth
 
 // ─── Altes, canvis i baixes (sobre lead.questionnaireData) ───────────────────
 
-export function addItem(q: Record<string, unknown> | null | undefined, input: WealthItemInput, by: 'client' | 'admin', now = new Date()):
+/** Bitcoin: quantitat (8 decimals, com un satoshi) i valor = quantitat × preu, si n'hi ha. */
+function unitFields(input: WealthItemInput, btcPrice: number | null | undefined): { units?: number; value: number } {
+  if (!isUnitKind(input.kind) || input.units === undefined) return { value: round2(input.value) };
+  const units = Math.round(input.units * 1e8) / 1e8;
+  return { units, value: btcPrice ? round2(units * btcPrice) : round2(input.value) };
+}
+
+export function addItem(q: Record<string, unknown> | null | undefined, input: WealthItemInput, by: 'client' | 'admin', now = new Date(), btcPrice?: number | null):
   { next: Record<string, unknown>; item: WealthItem } | { error: string } {
   const items = listItems(q);
   if (items.length >= MAX_ITEMS) return { error: `Màxim ${MAX_ITEMS} elements` };
   const item: WealthItem = {
     id: globalThis.crypto.randomUUID(), kind: input.kind as AssetKind | DebtKind,
-    name: input.name, entity: input.entity ?? '', value: round2(input.value),
+    name: input.name, entity: input.entity ?? '', ...unitFields(input, btcPrice),
     asOf: input.asOf, addedBy: by, updatedAt: now.toISOString(),
   };
   return { next: { ...(q ?? {}), wealthItems: [...items, item] }, item };
 }
 
-export function updateItem(q: Record<string, unknown> | null | undefined, id: string, input: WealthItemInput, now = new Date()):
+export function updateItem(q: Record<string, unknown> | null | undefined, id: string, input: WealthItemInput, now = new Date(), btcPrice?: number | null):
   Record<string, unknown> | null {
   const items = listItems(q);
   const i = items.findIndex(x => x.id === id);
   if (i < 0) return null;
   const next = [...items];
-  next[i] = { ...items[i], kind: input.kind as AssetKind | DebtKind, name: input.name, entity: input.entity ?? '',
-    value: round2(input.value), asOf: input.asOf, updatedAt: now.toISOString() };
+  const { units: oldUnits, ...prev } = items[i];
+  // Sense preu nou, el bitcoin es revalora amb l'últim preu implícit (valor / quantitat)
+  // en lloc de quedar a 0 € (el formulari no envia import per al bitcoin).
+  const implied = isUnitKind(prev.kind) && oldUnits && prev.value > 0 ? prev.value / oldUnits : null;
+  next[i] = { ...prev, kind: input.kind as AssetKind | DebtKind, name: input.name, entity: input.entity ?? '',
+    ...unitFields(input, btcPrice ?? implied), asOf: input.asOf, updatedAt: now.toISOString() };
   return { ...(q ?? {}), wealthItems: next };
+}
+
+/**
+ * Bitcoin importat de l'Excel (pestanya Posicions, ISIN "BTC"): si ja hi ha un
+ * bitcoin declarat a la mateixa entitat, se n'actualitza la quantitat; si no, se n'afegeix un.
+ */
+export function upsertBitcoinItems(q: Record<string, unknown> | null | undefined,
+  rows: { name: string; broker: string; units: number }[], by: 'client' | 'admin', btcPrice: number | null | undefined,
+  now = new Date()): Record<string, unknown> {
+  let next: Record<string, unknown> = { ...(q ?? {}) };
+  const today = now.toISOString().slice(0, 10);
+  for (const r of rows) {
+    const input = WealthItemInputSchema.parse({ kind: 'bitcoin', name: r.name.slice(0, 80) || 'Bitcoin', entity: r.broker.slice(0, 60), asOf: today, units: r.units });
+    const same = listItems(next).find(x => isUnitKind(x.kind) && x.entity.trim().toLowerCase() === r.broker.trim().toLowerCase());
+    if (same) next = updateItem(next, same.id, input, now, btcPrice) ?? next;
+    else { const res = addItem(next, input, by, now, btcPrice); if (!('error' in res)) next = res.next; }
+  }
+  return next;
 }
 
 export function removeItem(q: Record<string, unknown> | null | undefined, id: string): Record<string, unknown> | null {
@@ -116,7 +156,7 @@ export interface TrackedHolding {
   priceSource?:     string;
 }
 
-export type LineSource = 'preus-oficials' | 'declarat-client' | 'declarat-assessor' | 'questionari';
+export type LineSource = 'preus-oficials' | 'preu-mercat' | 'declarat-client' | 'declarat-assessor' | 'questionari';
 
 export interface WealthLine {
   id?:     string;          // només els elements editables
@@ -128,6 +168,9 @@ export interface WealthLine {
   asOf:    string | null;
   source:  LineSource;
   stale:   boolean;         // valor de fa més de STALE_DAYS
+  /** Bitcoin: quantitat i preu amb què s'ha valorat */
+  units?:  number;
+  unitPrice?: number | null;
 }
 
 export interface WealthGroupSummary { group: WealthGroup; label: string; value: number; pct: number; lines: WealthLine[] }
@@ -167,6 +210,8 @@ export interface ConsolidatedWealth {
   warnings:       string[];
   /** Patrimoni net que el client va declarar a l'Excel (per comparar), si n'hi ha */
   declaredNetWorth: number | null;
+  /** Només si el client ha declarat bitcoin: preu, data, font i dades de risc */
+  bitcoin: (BtcContext & { units: number; value: number; pctOfAssets: number }) | null;
 }
 
 export const STALE_DAYS = 120;
@@ -228,6 +273,8 @@ export function consolidateWealth(input: {
   valuation?:    Valuation | null;
   questionnaire?: Record<string, unknown> | null;
   today?:        string;
+  /** Preu diari del bitcoin (lib/cryptoPrices.ts). Sense preu, es fa servir l'últim valor calculat. */
+  btc?:          BtcContext | null;
 }): ConsolidatedWealth {
   const today = input.today ?? new Date().toISOString().slice(0, 10);
   const q = input.questionnaire ?? {};
@@ -251,7 +298,20 @@ export function consolidateWealth(input: {
     value: round2(x.value), asOf: x.asOf, source: x.addedBy === 'admin' ? 'declarat-assessor' : 'declarat-client',
     stale: days(x.asOf, today) > STALE_DAYS,
   });
-  for (const x of assetItems) lines.push({ ...toLine(x), group: ASSET_KINDS[x.kind as AssetKind]?.group ?? 'altres' });
+  const btc = input.btc ?? null;
+  for (const x of assetItems) {
+    const line = toLine(x);
+    if (isUnitKind(x.kind) && typeof x.units === 'number') {
+      if (btc) {
+        // Quantitat × últim tancament diari: el valor és d'avui, no el del dia que es va entrar
+        Object.assign(line, { value: round2(x.units * btc.price), asOf: btc.date, source: 'preu-mercat', stale: days(btc.date, today) > 7 });
+      }
+      Object.assign(line, { units: x.units, unitPrice: btc?.price ?? null });
+    }
+    lines.push({ ...line, group: ASSET_KINDS[x.kind as AssetKind]?.group ?? 'altres' });
+  }
+  const btcLines = lines.filter(l => l.units !== undefined);
+  if (btcLines.length && !btc) warnings.push('Encara no hi ha preu diari del bitcoin: es mostra l\'últim valor calculat.');
 
   const savings = num(q.currentSavings);
   if (!assetItems.some(x => x.kind === 'compte') && savings !== undefined && savings > 0) {
@@ -305,5 +365,9 @@ export function consolidateWealth(input: {
     asOf: today, grossAssets, totalDebt, netWorth: round2(grossAssets - totalDebt),
     groups, byEntity, debts, investments, pendingHoldings, warnings,
     declaredNetWorth: num(q.netWorth) ?? null,
+    bitcoin: btcLines.length && btc ? (() => {
+      const value = round2(btcLines.reduce((s, l) => s + l.value, 0));
+      return { ...btc, units: Math.round(btcLines.reduce((s, l) => s + (l.units ?? 0), 0) * 1e8) / 1e8, value, pctOfAssets: pct(value) };
+    })() : null,
   };
 }

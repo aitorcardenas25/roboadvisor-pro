@@ -363,6 +363,19 @@ CREATE TABLE IF NOT EXISTS fund_navs (
   PRIMARY KEY (isin, nav_date)
 );
 
+-- ── Preu diari del bitcoin (BTC/EUR) ───────────────────────────────────────
+-- Tancament diari (00:00 UTC) de Kraken / Bitstamp / CoinGecko. Només per
+-- valorar el bitcoin que declaren els clients (lib/cryptoPrices.ts).
+CREATE TABLE IF NOT EXISTS crypto_prices (
+  symbol      TEXT          NOT NULL CHECK (symbol IN ('BTC')),
+  price_date  DATE          NOT NULL,
+  close_eur   NUMERIC(18,2) NOT NULL CHECK (close_eur > 0),
+  source      TEXT          NOT NULL CHECK (source IN ('kraken','bitstamp','coingecko')),
+  created_at  TIMESTAMPTZ   NOT NULL DEFAULT NOW(),
+  updated_at  TIMESTAMPTZ   NOT NULL DEFAULT NOW(),
+  PRIMARY KEY (symbol, price_date)
+);
+
 -- ── Seguretat: Row Level Security ──────────────────────────────────────────
 -- L'app només accedeix amb la service_role key (servidor), que no està afectada
 -- per RLS. Activar RLS sense polítiques impedeix llegir res amb la clau pública
@@ -374,7 +387,7 @@ BEGIN
     'portfolios','reports','newsletter_subscribers','newsletters','users','audit_log',
     'notifications','client_portfolios','client_holdings','client_transactions',
     'portfolio_snapshots','advisor_notes','leads','monthly_reports','stock_reports',
-    'client_proposals','client_consents','client_activity','fund_navs'
+    'client_proposals','client_consents','client_activity','fund_navs','crypto_prices'
   ] LOOP
     EXECUTE format('ALTER TABLE %I ENABLE ROW LEVEL SECURITY', t);
   END LOOP;
