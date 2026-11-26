@@ -39,7 +39,11 @@ export async function GET(req: Request) {
     // (de tots els fons de totes les versions enviades: el client pot canviar de versió)
     const isins = [...new Set(approved.flatMap(p => p.items.map(i => i.isin)))];
     if (isins.length) {
-      try { drawdowns = await getFundDrawdowns(isins); }
+      try {
+        // getFundDrawdowns n'accepta 40 com a màxim: per blocs
+        const chunks = Array.from({ length: Math.ceil(isins.length / 40) }, (_, i) => isins.slice(i * 40, i * 40 + 40));
+        drawdowns = (await Promise.all(chunks.map(c => getFundDrawdowns(c)))).flat();
+      }
       catch (err) { console.error('[client/initial-report] caigudes:', err instanceof Error ? err.message : err); }
     }
     return NextResponse.json({
