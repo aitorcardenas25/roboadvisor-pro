@@ -139,3 +139,19 @@ describe('helpers', () => {
     expect(clientsExportFilename(NOW, true)).toBe('FACTOR_OTC_clients_2026-11-25_anonimitzat.xlsx');
   });
 });
+
+describe('v5: altres ingressos mensuals a l\'exportació', () => {
+  it('columna pròpia i marge calculat amb sou + altres', () => {
+    const c = client();
+    c.questionnaire = { ...c.questionnaire, monthlyOtherIncome: 300 };
+    const t = buildExportTables([c], { now: NOW });
+    expect(t.columns.some(col => col.key === 'otherIncome')).toBe(true);
+    expect(t.clients[0].otherIncome).toBe(300);
+    expect(t.clients[0].income).toBe(2000);
+    expect(t.clients[0].margin).toBe(800);   // 2000 + 300 − 1000 − 400 − 100
+  });
+  it('la ràtio de deute fa servir els ingressos totals', () => {
+    const q = { monthlyNetIncome: 1000, monthlyOtherIncome: 500, monthlyFixedExpenses: 300, monthlyVariableExpenses: 100, monthlyDebtPayments: 400, currentSavings: 50000, employmentType: 'indefinit' };
+    expect(clientAlerts(q).some(a => /35 %/.test(a))).toBe(false);   // 400/1500 = 27 %
+  });
+});

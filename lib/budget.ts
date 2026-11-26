@@ -10,7 +10,8 @@
 //   per a autònoms (criteri usat a les sessions presencials de FACTOR OTC, 2026).
 //   Supòsit nostre: contracte temporal o sense feina = ingressos poc estables → 12.
 //
-// No inventa dades: si falten els ingressos nets mensuals retorna null.
+// No inventa dades: si falten els ingressos (sou net i altres) retorna null.
+// Ingressos = sou net mensual + altres ingressos mensuals (Excel v5).
 
 export type EmploymentType = 'indefinit' | 'temporal' | 'autonom' | 'sense-feina';
 export type BudgetStatus = 'verd' | 'ambre' | 'vermell';
@@ -18,6 +19,8 @@ export type NextStep = 'reduir-despeses' | 'fons-emergencia' | 'llest-per-invert
 
 export interface BudgetInput {
   monthlyNetIncome?:        number;
+  /** Altres ingressos nets al mes que no són el sou (Excel v5): extres, lloguers… */
+  monthlyOtherIncome?:      number;
   monthlyFixedExpenses?:    number;
   monthlyVariableExpenses?: number;
   monthlyDebtPayments?:     number;
@@ -30,7 +33,9 @@ export interface BudgetInput {
 export interface BudgetLine { key: 'fixes' | 'deutes' | 'variables' | 'marge'; label: string; amount: number; pct: number }
 
 export interface BudgetAnalysis {
-  income:        number;
+  income:        number;          // total: sou net + altres ingressos
+  salaryIncome:  number | null;   // part que és el sou net mensual
+  otherIncome:   number;          // altres ingressos mensuals (0 si no n'hi ha)
   lines:         BudgetLine[];
   totalSpending: number;
   freeMargin:    number;           // pot ser negatiu
@@ -62,9 +67,21 @@ export function emergencyMonths(employment?: string): { months: number; basis: s
   }
 }
 
+/**
+ * Ingressos totals al mes = sou net mensual + altres ingressos (extres, lloguers…).
+ * null si no se'n sap cap dels dos (no s'inventa res).
+ */
+export function totalMonthlyIncome(q: Pick<BudgetInput, 'monthlyNetIncome' | 'monthlyOtherIncome'>): number | null {
+  const net = typeof q.monthlyNetIncome === 'number' && Number.isFinite(q.monthlyNetIncome) ? q.monthlyNetIncome : null;
+  const other = typeof q.monthlyOtherIncome === 'number' && Number.isFinite(q.monthlyOtherIncome) ? q.monthlyOtherIncome : null;
+  if (net === null && other === null) return null;
+  return (net ?? 0) + (other ?? 0);
+}
+
 export function analyzeBudget(q: BudgetInput): BudgetAnalysis | null {
-  const income = q.monthlyNetIncome;
-  if (!income || income <= 0) return null;
+  const income = totalMonthlyIncome(q);
+  if (income === null || income <= 0) return null;
+  const otherIncome = q.monthlyOtherIncome && q.monthlyOtherIncome > 0 ? q.monthlyOtherIncome : 0;
 
   // Desglossament només si hi ha fixes I variables: una categoria buida és
   // "no ho sé", no zero. Si falta, es fa servir la despesa total; sense total
@@ -112,7 +129,7 @@ export function analyzeBudget(q: BudgetInput): BudgetAnalysis | null {
     : 'llest-per-invertir';
 
   return {
-    income, lines, totalSpending, freeMargin, savingsRate, hasBreakdown, checks,
+    income, salaryIncome: q.monthlyNetIncome ?? null, otherIncome, lines, totalSpending, freeMargin, savingsRate, hasBreakdown, checks,
     emergency: { monthsTarget: months, targetAmount, current, gap, progressPct, monthsToTarget, basis },
     nextStep,
   };
@@ -126,7 +143,7 @@ export const NEXT_STEP_TEXT: Record<NextStep, { title: string; detail: string }>
 
 /** Camps que pinta "Les meves finances". La resta del qüestionari no s'exposa al portal. */
 export const FINANCE_FIELDS = [
-  'monthlyNetIncome', 'monthlyFixedExpenses', 'monthlyVariableExpenses', 'monthlyDebtPayments',
+  'monthlyNetIncome', 'monthlyOtherIncome', 'monthlyFixedExpenses', 'monthlyVariableExpenses', 'monthlyDebtPayments',
   'monthlyExpenses', 'currentSavings', 'employmentType', 'goals', 'oneOffExpenses',
 ] as const;
 

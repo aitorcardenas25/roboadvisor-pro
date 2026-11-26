@@ -20,6 +20,7 @@ const SHEETS: { name: string; when: string; rows: [string, string][] }[] = [
     rows: [
       ['Sou net anual', 'El que cobres net en tot l\'any, sumant les pagues extres. No el brut del contracte: el net, el que t\'arriba al compte.'],
       ['Ingressos nets mensuals', 'El que et queda a la nòmina cada mes, després d\'impostos. Si cobres 14 pagues, suma-les i divideix per 12.'],
+      ['Altres ingressos mensuals', 'Els diners que cobres cada mes i que no són el sou: un extra d\'entrenar a futbol, un lloguer, classes particulars... Posa la mitjana del que t\'arriba net al mes. Si no en tens, deixa-ho en blanc.'],
       ['Despeses fixes al mes', 'El que pagues cada mes sí o sí: lloguer, factures, menjar, transport, assegurances.'],
       ['Despeses variables al mes', 'El que canvia d\'un mes a l\'altre: oci, roba, sopars, viatges. Una aproximació ja serveix.'],
       ['Estalvis en efectiu', 'Els diners que tens al compte corrent o en comptes d\'estalvi, sense comptar inversions.'],

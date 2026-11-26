@@ -12,7 +12,7 @@
 //   ells, una fila encara pot identificar algú: al TFG s'han de publicar agregats.
 // - Notes internes de l'assessor: no s'exporten.
 import ExcelJS from 'exceljs';
-import { analyzeBudget, pickFinanceFields, type BudgetInput } from './budget';
+import { analyzeBudget, pickFinanceFields, totalMonthlyIncome, type BudgetInput } from './budget';
 import { diagnose, type DiagnosisInput } from './diagnosis';
 import { ADVISOR_STAGE_LABEL, type AdvisorStage } from './onboarding';
 import type { ConsolidatedWealth } from './wealth';
@@ -86,12 +86,13 @@ export const CLIENT_COLUMNS: Col[] = [
   { key: 'advisor',    header: 'Qui li porta els estalvis', width: 13, group: 'Perfil', help: 'Ningú, ell mateix, el banc o un assessor (Excel v3). Útil comercialment.' },
 
   { key: 'annualNet',  header: 'Sou net anual',             width: 13, fmt: EUR, group: 'Pressupost', help: 'Sou net de l\'any amb pagues extres (Excel v4). Hauria de ser entre 12 i 14 vegades els ingressos nets/mes.' },
-  { key: 'income',     header: 'Ingressos nets/mes',        width: 13, fmt: EUR, group: 'Pressupost', help: 'Ingressos nets mensuals.' },
+  { key: 'income',     header: 'Ingressos nets/mes',        width: 13, fmt: EUR, group: 'Pressupost', help: 'Ingressos nets mensuals (el sou).' },
+  { key: 'otherIncome',header: 'Altres ingressos/mes',      width: 13, fmt: EUR, group: 'Pressupost', help: 'Ingressos que no són el sou: extres, lloguers… (Excel v5). Se sumen al sou per calcular el marge i la taxa d\'estalvi.' },
   { key: 'fixed',      header: 'Despeses fixes/mes',        width: 13, fmt: EUR, group: 'Pressupost', help: 'Lloguer, factures, menjar.' },
   { key: 'variable',   header: 'Despeses variables/mes',    width: 13, fmt: EUR, group: 'Pressupost', help: 'Oci, roba, imprevistos.' },
   { key: 'debtPay',    header: 'Quotes de deutes/mes',      width: 13, fmt: EUR, group: 'Pressupost', help: 'Hipoteca, préstecs, targetes.' },
-  { key: 'margin',     header: 'Marge lliure/mes',          width: 13, fmt: EUR, group: 'Pressupost', help: 'Calculat: ingressos − despeses − quotes. Negatiu = gasta més del que ingressa.' },
-  { key: 'savingsRate',header: 'Taxa d\'estalvi',           width: 10, fmt: PCT, group: 'Pressupost', help: 'Calculat: marge lliure / ingressos nets. Referència ≥ 20 %.' },
+  { key: 'margin',     header: 'Marge lliure/mes',          width: 13, fmt: EUR, group: 'Pressupost', help: 'Calculat: ingressos (sou + altres) − despeses − quotes. Negatiu = gasta més del que ingressa.' },
+  { key: 'savingsRate',header: 'Taxa d\'estalvi',           width: 10, fmt: PCT, group: 'Pressupost', help: 'Calculat: marge lliure / ingressos nets totals (sou + altres). Referència ≥ 20 %.' },
   { key: 'consumerDebt', header: 'Deute de consum',         width: 13, fmt: EUR, group: 'Pressupost', help: 'Préstecs personals, cotxe i targetes, sense hipoteca (Excel v3). El deute més car.' },
   { key: 'investable', header: 'Podria invertir/mes',       width: 13, fmt: EUR, group: 'Pressupost', help: 'El que diu que podria invertir cada mes (Excel v3). Compara-ho amb el marge lliure calculat.' },
   { key: 'savings',    header: 'Estalvi en efectiu',        width: 13, fmt: EUR, group: 'Pressupost', help: 'Diners que ja té estalviats.' },
@@ -179,7 +180,7 @@ export function clientAlerts(q: Record<string, unknown> | null | undefined, prop
   const out: string[] = [];
   const qq = q ?? {};
   const b = analyzeBudget(pickFinanceFields(qq) as BudgetInput);
-  const income = num(qq.monthlyNetIncome);
+  const income = totalMonthlyIncome({ monthlyNetIncome: num(qq.monthlyNetIncome) ?? undefined, monthlyOtherIncome: num(qq.monthlyOtherIncome) ?? undefined });
   if (b) {
     if (b.freeMargin <= 0) out.push('Gasta igual o més del que ingressa');
     else if (b.savingsRate < 10) out.push(`Estalvia menys del 10 % (${b.savingsRate} %)`);
@@ -268,6 +269,7 @@ export function buildExportTables(inputs: ExportClientInput[], opts: ExportOptio
 
       annualNet: num(q.annualNetIncome),
       income: num(q.monthlyNetIncome),
+      otherIncome: num(q.monthlyOtherIncome),
       fixed: num(q.monthlyFixedExpenses),
       variable: num(q.monthlyVariableExpenses),
       debtPay: num(q.monthlyDebtPayments),

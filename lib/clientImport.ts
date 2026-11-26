@@ -10,7 +10,7 @@ import ExcelJS from 'exceljs';
 import { isValidIsin, lookupIsin } from './fundUniverse';
 import type { OperationType } from './clientPortfolios';
 
-export const TEMPLATE_VERSION = '4';
+export const TEMPLATE_VERSION = '5';
 
 // ─── Definició de la plantilla ───────────────────────────────────────────────
 
@@ -26,6 +26,9 @@ export const PERSONAL_FIELDS = [
   { key: 'totalDebt',       label: 'Deute total pendent (€)' },
   // v2 — pressupost mensual (fitxa del client de les sessions presencials, 2026)
   { key: 'monthlyNetIncome',        label: 'Ingressos nets mensuals (€)' },
+  // v5 — ingressos que no són la nòmina (p. ex. un extra d'entrenador de futbol, un lloguer).
+  // Se sumen als nets mensuals per calcular el marge i la capacitat d'estalvi.
+  { key: 'monthlyOtherIncome',      label: 'Altres ingressos mensuals, que no són el sou: extres, lloguers... (€)' },
   { key: 'monthlyFixedExpenses',    label: 'Despeses fixes al mes: lloguer, factures, menjar (€)' },
   { key: 'monthlyVariableExpenses', label: 'Despeses variables al mes: oci, roba, imprevistos (€)' },
   { key: 'monthlyDebtPayments',     label: 'Quotes de deutes al mes (€)' },

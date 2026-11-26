@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { analyzeBudget, emergencyMonths } from '@/lib/budget';
+import { analyzeBudget, emergencyMonths, pickFinanceFields } from '@/lib/budget';
 
 describe('analyzeBudget (regla 50/30/20, Warren i Tyagi 2005)', () => {
   it('sense ingressos nets no inventa res', () => {
@@ -70,5 +70,27 @@ describe('pickFinanceFields (portal del client)', () => {
     });
     expect(Object.keys(out).sort()).toEqual(['currentSavings', 'goals', 'monthlyNetIncome']);
     expect(pickFinanceFields(undefined)).toEqual({});
+  });
+});
+
+describe('altres ingressos mensuals (Excel v5)', () => {
+  it('se sumen al sou per al marge i la taxa d\'estalvi', () => {
+    const a = analyzeBudget({ monthlyNetIncome: 1500, monthlyOtherIncome: 300, monthlyFixedExpenses: 900, monthlyVariableExpenses: 300 })!;
+    expect(a.income).toBe(1800);
+    expect(a.salaryIncome).toBe(1500);
+    expect(a.otherIncome).toBe(300);
+    expect(a.freeMargin).toBe(600);
+    expect(a.savingsRate).toBe(33.3);
+  });
+  it('sense altres ingressos, res no canvia', () => {
+    const a = analyzeBudget({ monthlyNetIncome: 1500, monthlyFixedExpenses: 900, monthlyVariableExpenses: 300 })!;
+    expect(a.income).toBe(1500);
+    expect(a.otherIncome).toBe(0);
+  });
+  it('només altres ingressos (sense sou) també es pot calcular', () => {
+    expect(analyzeBudget({ monthlyOtherIncome: 600, monthlyFixedExpenses: 400, monthlyVariableExpenses: 100 })!.freeMargin).toBe(100);
+  });
+  it('"Les meves finances" exposa el camp', () => {
+    expect(pickFinanceFields({ monthlyOtherIncome: 200, notes: 'x' })).toEqual({ monthlyOtherIncome: 200 });
   });
 });

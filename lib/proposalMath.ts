@@ -293,7 +293,10 @@ export function proposalToReportInput(
   // extres prorratejades). Mai el camp antic annualIncome: era el sou BRUT i dividir-lo
   // per 12 mostrava uns "ingressos nets" inflats a l'informe.
   const annualNet = num('annualNetIncome');
-  const monthlyNet = num('monthlyNetIncome') ?? (annualNet != null ? Math.round(annualNet / 12) : undefined);
+  const salaryNet = num('monthlyNetIncome') ?? (annualNet != null ? Math.round(annualNet / 12) : undefined);
+  // + altres ingressos mensuals que no són el sou (Excel v5: extres, lloguers…).
+  const other = num('monthlyOtherIncome');
+  const monthlyNet = salaryNet === undefined && other === undefined ? undefined : (salaryNet ?? 0) + (other ?? 0);
   // Des de «Les meves finances» es desen ingressos nets mensuals i despeses fixes + variables
   // (sense annualIncome ni monthlyExpenses): sense això el PDF amagava tot el perfil financer.
   const fixed = num('monthlyFixedExpenses'), variable = num('monthlyVariableExpenses');

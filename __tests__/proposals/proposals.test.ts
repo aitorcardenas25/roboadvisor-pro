@@ -324,3 +324,11 @@ describe('v4: ingressos i capacitat declarada', () => {
     expect(ok.issues.some(i => /sense patir/.test(i.message))).toBe(false);
   });
 });
+
+describe('v5: altres ingressos mensuals', () => {
+  it('l\'informe suma els altres ingressos al sou net', () => {
+    const p = { profile: 'moderat', objective: '', horizon: 10, initialAmount: 0, monthlyAmount: 0, items: [] } as unknown as Parameters<typeof proposalToReportInput>[0];
+    expect(proposalToReportInput(p, { name: 'X', email: 'x@x' }, { monthlyNetIncome: 1800, monthlyOtherIncome: 300 }).monthlyIncome).toBe(2100);
+    expect(proposalToReportInput(p, { name: 'X', email: 'x@x' }, { annualNetIncome: 24000, monthlyOtherIncome: 250 }).monthlyIncome).toBe(2250);
+  });
+});
