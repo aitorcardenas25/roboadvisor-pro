@@ -97,7 +97,9 @@ export const PROPOSAL_TEMPLATES: ProposalTemplate[] = [
 //  - Renda variable: iShares Developed World (MSCI World, 0,12 %) + iShares
 //    Emerging Markets (MSCI EM, 0,20 %): els fons globals més barats de la llista,
 //    tots dos a MyInvestor i amb preus oficials diaris. Emergents ≈ 10-13 % de la
-//    part de borsa, a prop del pes que tenen al mercat mundial (MSCI ACWI ≈ 11 %).
+//    part de borsa a Prudent i Equilibrada, a prop del pes que tenen al mercat
+//    mundial (MSCI ACWI ≈ 11 %). A la Dinàmica, 20 % per decisió de l'Aitor
+//    (2026-11-26): el doble del pes mundial, més volatilitat.
 //  - Renda fixa: Vanguard Global Short-Term Bond (1-3 anys, poca oscil·lació)
 //    a la prudent; Vanguard Global Bond (bons de tot el món) a l'equilibrada.
 //    Tots dos coberts a euros, 0,15 %.
@@ -163,16 +165,16 @@ export const STARTER_PORTFOLIOS: StarterPortfolio[] = [
     label: 'Dinàmica',
     profile: 'agressiu',
     equity: 100, bonds: 0,
-    description: '100 % borsa mundial en dos fons: 88 % desenvolupats i 12 % emergents.',
+    description: '100 % borsa mundial en dos fons: 80 % desenvolupats i 20 % emergents.',
     forWhom: 'Jove, horitzó de més de 15 anys, ingressos estables i fons d\'emergència complet.',
     why: 'Dos fons cobreixen unes 2.500 empreses de tot el món. És la cartera més senzilla possible: les aportacions noves van al fons que s\'hagi quedat per sota del seu pes. Pot caure un 30-35 % en un any dolent.',
     weights: [
-      { isin: 'IE00BD0NCM55', weight: 88 },   // iShares Developed World Index (MSCI World)
-      { isin: 'IE00BYWYCC39', weight: 12 },   // iShares Emerging Markets Index (MSCI EM)
+      { isin: 'IE00BD0NCM55', weight: 80 },   // iShares Developed World Index (MSCI World)
+      { isin: 'IE00BYWYCC39', weight: 20 },   // iShares Emerging Markets Index (MSCI EM)
     ],
     notes: {
       IE00BD0NCM55: NOTE_WORLD,
-      IE00BYWYCC39: NOTE_EM,
+      IE00BYWYCC39: 'Afegeix els països emergents (Xina, Taiwan, Índia, Corea…), que el MSCI World no inclou. Amb un 20 % pesen gairebé el doble que al mercat mundial: més potencial de creixement i més oscil·lacions.',
     },
   },
 ];

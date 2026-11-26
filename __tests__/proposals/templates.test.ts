@@ -54,13 +54,13 @@ describe('carteres d\'inici', () => {
       expect(t.equity + t.bonds).toBe(100);
     }
   });
-  it('el % de renda variable declarat quadra amb els fons, i emergents fan 10-15 % de la borsa', () => {
+  it('el % de renda variable declarat quadra amb els fons, i emergents fan 10-20 % de la borsa', () => {
     for (const t of STARTER_PORTFOLIOS) {
       const rv = t.weights.filter(w => /^RV/.test(lookupIsin(w.isin)!.category)).reduce((s, w) => s + w.weight, 0);
       expect(rv, t.id).toBe(t.equity);
       const em = t.weights.filter(w => /Emergents/.test(lookupIsin(w.isin)!.category)).reduce((s, w) => s + w.weight, 0);
       expect(em / rv, t.id).toBeGreaterThanOrEqual(0.1);
-      expect(em / rv, t.id).toBeLessThanOrEqual(0.15);
+      expect(em / rv, t.id).toBeLessThanOrEqual(0.2);
     }
   });
   it('només fons indexats, amb TER oficial i que es poden comprar a MyInvestor', () => {
