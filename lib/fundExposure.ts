@@ -40,7 +40,7 @@ export const SECTOR_LABEL: Record<Sector, string> = {
   tecnologia: 'Tecnologia', financer: 'Financer', salut: 'Salut', industria: 'Indústria',
   consum_discrecional: 'Consum discrecional', comunicacions: 'Comunicacions', consum_basic: 'Consum bàsic',
   energia: 'Energia', materials: 'Materials', utilities: 'Electricitat, gas i aigua', immobiliari: 'Immobiliari',
-  altres: 'Altres sectors (no detallat)',
+  altres: 'Altres / no detallat',
 };
 export const SIZE_LABEL: Record<SizeBucket, string> = { gran: 'Grans i mitjanes', petita: 'Petites' };
 export const REGIONS = Object.keys(REGION_LABEL) as Region[];
@@ -54,13 +54,13 @@ const add = (r: Region, names: string) => names.split(',').forEach(n => { COUNTR
 function norm(s: string) {
   return s.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().replace(/[^a-z0-9 ]+/g, ' ').replace(/\s+/g, ' ').trim();
 }
-add('america_nord', 'United States,USA,US,Estados Unidos,EEUU,EE UU,Canada,North America,Norteamerica,America del Norte');
+add('america_nord', 'United States,USA,US,Kanada,Estados Unidos,EEUU,EE UU,Canada,North America,Norteamerica,America del Norte');
 add('iberia', 'Spain,España,Espana,Portugal,Iberia');
-add('europa', 'United Kingdom,UK,Reino Unido,France,Francia,Germany,Alemania,Switzerland,Suiza,Netherlands,Países Bajos,Holanda,Sweden,Suecia,Italy,Italia,Denmark,Dinamarca,Finland,Finlandia,Belgium,Bélgica,Norway,Noruega,Ireland,Irlanda,Austria,Luxembourg,Luxemburgo,Europe,Europa,Eurozone,Eurozona,Europe ex UK,Europa ex Reino Unido,Rest of Europe,Resto de Europa,Europe ex Euro,Faroe Islands,Jersey,Guernsey,Isle of Man');
+add('europa', 'United Kingdom,UK,Reino Unido,France,Francia,Germany,Alemania,Switzerland,Suiza,Netherlands,Países Bajos,Holanda,Sweden,Suecia,Italy,Italia,Denmark,Dinamarca,Finland,Finlandia,Belgium,Bélgica,Norway,Noruega,Ireland,Irlanda,Austria,Luxembourg,Luxemburgo,Europe,Europa,Eurozone,Eurozona,Europe ex UK,Europa ex Reino Unido,Rest of Europe,Resto de Europa,Europe ex Euro,Zona Euro,Gran Bretaña,Großbritannien,Grossbritannien,Frankreich,Deutschland,Faroe Islands,Jersey,Guernsey,Isle of Man');
 add('japo', 'Japan,Japón,Japon');
-add('pacific', 'Australia,Hong Kong,Singapore,Singapur,New Zealand,Nueva Zelanda,Pacific,Pacífico,Pacific ex Japan');
-add('emergents', 'China,Taiwan,Korea,South Korea,Corea,Corea del Sur,India,Brazil,Brasil,South Africa,Sudáfrica,Saudi Arabia,Arabia Saudí,Mexico,México,United Arab Emirates,UAE,Emiratos Árabes Unidos,Poland,Polonia,Indonesia,Thailand,Tailandia,Malaysia,Malasia,Chile,Turkey,Turquía,Qatar,Kuwait,Philippines,Filipinas,Greece,Grecia,Peru,Perú,Hungary,Hungría,Czech Republic,República Checa,Colombia,Egypt,Egipto,Argentina,Kazakhstan,Kazajistán,Vietnam,Emerging Markets,Emergentes,Mercados emergentes,Asia Emergente,Latin America,Latinoamérica,Macau,Macao');
-add('altres', 'Israel,Other,Others,Otros,Resto,Rest,Cash,Liquidez,Bermuda,Cayman Islands');
+add('pacific', 'Australia,Australien,Australasia,Hong Kong,Singapore,Singapur,New Zealand,Nueva Zelanda,Pacific,Pacífico,Pacific ex Japan');
+add('emergents', 'Asia - Emerging,China,Taiwan,Südafrika,Korea,South Korea,Korea South,Korea (South),Corea,Corea del Sur,India,Brazil,Brasil,South Africa,Sudáfrica,Saudi Arabia,Arabia Saudí,Mexico,México,United Arab Emirates,UAE,Emiratos Árabes Unidos,Poland,Polonia,Indonesia,Thailand,Tailandia,Malaysia,Malasia,Chile,Turkey,Turquía,Qatar,Kuwait,Philippines,Filipinas,Greece,Grecia,Peru,Perú,Hungary,Hungría,Czech Republic,República Checa,Colombia,Egypt,Egipto,Argentina,Kazakhstan,Kazajistán,Vietnam,Emerging Markets,Emergentes,Mercados emergentes,Asia Emergente,Latin America,Latinoamérica,LATAM,Macau,Macao');
+add('altres', 'Israel,Other,Others,Otros,Resto del mundo,Sonstiges,Burkina Faso,Middle East,Africa/Middle East,Asia - Developed,Misceláneas,Miscelaneas,Misc,Resto,Rest,Cash,Liquidez,Bermuda,Cayman Islands');
 
 /** Regió d'un país tal com surt a la fitxa (anglès o castellà). */
 export function countryRegion(country: string): Region | undefined {
@@ -70,17 +70,25 @@ export function countryRegion(country: string): Region | undefined {
 // ─── Sectors (GICS i ICB) ─────────────────────────────────────────────────────
 
 const SECTOR_MAP: [RegExp, Sector][] = [
+  // Categories pròpies de gestores que no són un sector (holdings, «TMT», «serveis»)
+  // Categories pròpies de gestores que barregen sectors («Consumo», «Com. y Tec.»): no es poden repartir
+  [/^(holding|holdings|tmt|tech\W*media\W*telecom|servicios|consumo|com\W*y\W*tec\W*)$/i, 'altres'],
+  // Subsectors (Cobas): abans de «tecnolog» perquè «biotecnología» és salut
+  [/farmac|biotec|pharma/i, 'salut'],
   [/information technology|^technology|tecnolog/i, 'tecnologia'],
-  [/financ/i, 'financer'],
+  [/financ|finanz/i, 'financer'],
   [/health|salud|sanidad|salut/i, 'salut'],
   [/industr/i, 'industria'],
-  [/consumer discretionary|consumo discrecional|consumo c[ií]clico|consumer cyclical/i, 'consum_discrecional'],
-  [/communication|telecom|comunicaci/i, 'comunicacions'],
-  [/consumer staples|consumo b[aá]sico|consumo no c[ií]clico|consumer defensive/i, 'consum_basic'],
-  [/energ/i, 'energia'],
+  [/consumer discretionary|con cyclical|consumo discrecional|consumo c[ií]clico|consumer cyclical|cyclical consumer/i, 'consum_discrecional'],
+  [/communication|comm services|telecom|comunicaci/i, 'comunicacions'],
+  [/consumer staples|con defensive|consumo b[aá]sico|consumo no c[ií]clico|consumo estable|consumer defensive|defensive consumer/i, 'consum_basic'],
+  [/energ|oil|petr[oó]le/i, 'energia'],
   [/materials|materiales|basic materials/i, 'materials'],
   [/utilit|servicios p[uú]blicos|suministros/i, 'utilities'],
   [/real estate|inmobiliari|immobiliari/i, 'immobiliari'],
+  [/venta al por menor|retail|autom[oó]vil/i, 'consum_discrecional'],
+  [/miner[ií]a|metales|papel/i, 'materials'],
+  [/ingenier[ií]a|construcci[oó]n|transporte/i, 'industria'],
   [/^(other|others|otros|resto)$/i, 'altres'],
 ];
 export function sectorKey(label: string): Sector | undefined {
