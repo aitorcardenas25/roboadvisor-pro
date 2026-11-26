@@ -211,10 +211,11 @@ export function emergencyCheck(personal: Record<string, unknown> = {}): Emergenc
   const a = analyzeBudget(pickFinanceFields(personal) as BudgetInput);
   const num = (v: unknown) => (typeof v === 'number' && Number.isFinite(v) ? v : null);
   // Sense ingressos analyzeBudget no calcula res; el coixí només necessita estalvi i despeses.
+  // Un desglossament incomplet no compta (com a analyzeBudget): cal el total o bé fixes i variables.
+  const fixed = num(personal.monthlyFixedExpenses), variable = num(personal.monthlyVariableExpenses);
   const spending = a?.totalSpending ?? (
     num(personal.monthlyExpenses)
-    ?? ([personal.monthlyFixedExpenses, personal.monthlyVariableExpenses, personal.monthlyDebtPayments]
-      .map(num).reduce<number | null>((s, v) => v === null ? s : (s ?? 0) + v, null))
+    ?? (fixed !== null && variable !== null ? fixed + variable + (num(personal.monthlyDebtPayments) ?? 0) : null)
   );
   const savings = num(personal.currentSavings);
   const targetMonths = a?.emergency.monthsTarget ?? emergencyMonths(typeof personal.employmentType === 'string' ? personal.employmentType : undefined).months;

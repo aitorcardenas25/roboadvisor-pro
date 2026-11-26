@@ -104,5 +104,7 @@ describe('fons d\'emergència a la proposta', () => {
   it('si falten dades no s\'inventa res', () => {
     expect(emergencyCheck({}).level).toBe('unknown');
     expect(emergencyCheck({ monthlyExpenses: 1000 }).level).toBe('unknown');
+    // Regressió (revisió PR #67): només despeses variables → no es pot dir que el coixí és complet
+    expect(emergencyCheck({ monthlyNetIncome: 2000, monthlyVariableExpenses: 200, currentSavings: 1200 }).level).toBe('unknown');
   });
 });
