@@ -54,13 +54,13 @@ const add = (r: Region, names: string) => names.split(',').forEach(n => { COUNTR
 function norm(s: string) {
   return s.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().replace(/[^a-z0-9 ]+/g, ' ').replace(/\s+/g, ' ').trim();
 }
-add('america_nord', 'United States,USA,US,Estados Unidos,EEUU,EE UU,Canada,North America,Norteamerica,America del Norte');
+add('america_nord', 'United States,USA,US,Kanada,Estados Unidos,EEUU,EE UU,Canada,North America,Norteamerica,America del Norte');
 add('iberia', 'Spain,España,Espana,Portugal,Iberia');
-add('europa', 'United Kingdom,UK,Reino Unido,France,Francia,Germany,Alemania,Switzerland,Suiza,Netherlands,Países Bajos,Holanda,Sweden,Suecia,Italy,Italia,Denmark,Dinamarca,Finland,Finlandia,Belgium,Bélgica,Norway,Noruega,Ireland,Irlanda,Austria,Luxembourg,Luxemburgo,Europe,Europa,Eurozone,Eurozona,Europe ex UK,Europa ex Reino Unido,Rest of Europe,Resto de Europa,Europe ex Euro,Zona Euro,Gran Bretaña,Faroe Islands,Jersey,Guernsey,Isle of Man');
+add('europa', 'United Kingdom,UK,Reino Unido,France,Francia,Germany,Alemania,Switzerland,Suiza,Netherlands,Países Bajos,Holanda,Sweden,Suecia,Italy,Italia,Denmark,Dinamarca,Finland,Finlandia,Belgium,Bélgica,Norway,Noruega,Ireland,Irlanda,Austria,Luxembourg,Luxemburgo,Europe,Europa,Eurozone,Eurozona,Europe ex UK,Europa ex Reino Unido,Rest of Europe,Resto de Europa,Europe ex Euro,Zona Euro,Gran Bretaña,Großbritannien,Grossbritannien,Frankreich,Deutschland,Faroe Islands,Jersey,Guernsey,Isle of Man');
 add('japo', 'Japan,Japón,Japon');
-add('pacific', 'Australia,Hong Kong,Singapore,Singapur,New Zealand,Nueva Zelanda,Pacific,Pacífico,Pacific ex Japan');
-add('emergents', 'China,Taiwan,Korea,South Korea,Korea South,Korea (South),Corea,Corea del Sur,India,Brazil,Brasil,South Africa,Sudáfrica,Saudi Arabia,Arabia Saudí,Mexico,México,United Arab Emirates,UAE,Emiratos Árabes Unidos,Poland,Polonia,Indonesia,Thailand,Tailandia,Malaysia,Malasia,Chile,Turkey,Turquía,Qatar,Kuwait,Philippines,Filipinas,Greece,Grecia,Peru,Perú,Hungary,Hungría,Czech Republic,República Checa,Colombia,Egypt,Egipto,Argentina,Kazakhstan,Kazajistán,Vietnam,Emerging Markets,Emergentes,Mercados emergentes,Asia Emergente,Latin America,Latinoamérica,LATAM,Macau,Macao');
-add('altres', 'Israel,Other,Others,Otros,Resto del mundo,Misceláneas,Miscelaneas,Misc,Resto,Rest,Cash,Liquidez,Bermuda,Cayman Islands');
+add('pacific', 'Australia,Australien,Australasia,Hong Kong,Singapore,Singapur,New Zealand,Nueva Zelanda,Pacific,Pacífico,Pacific ex Japan');
+add('emergents', 'Asia - Emerging,China,Taiwan,Südafrika,Korea,South Korea,Korea South,Korea (South),Corea,Corea del Sur,India,Brazil,Brasil,South Africa,Sudáfrica,Saudi Arabia,Arabia Saudí,Mexico,México,United Arab Emirates,UAE,Emiratos Árabes Unidos,Poland,Polonia,Indonesia,Thailand,Tailandia,Malaysia,Malasia,Chile,Turkey,Turquía,Qatar,Kuwait,Philippines,Filipinas,Greece,Grecia,Peru,Perú,Hungary,Hungría,Czech Republic,República Checa,Colombia,Egypt,Egipto,Argentina,Kazakhstan,Kazajistán,Vietnam,Emerging Markets,Emergentes,Mercados emergentes,Asia Emergente,Latin America,Latinoamérica,LATAM,Macau,Macao');
+add('altres', 'Israel,Other,Others,Otros,Resto del mundo,Sonstiges,Burkina Faso,Middle East,Africa/Middle East,Asia - Developed,Misceláneas,Miscelaneas,Misc,Resto,Rest,Cash,Liquidez,Bermuda,Cayman Islands');
 
 /** Regió d'un país tal com surt a la fitxa (anglès o castellà). */
 export function countryRegion(country: string): Region | undefined {
@@ -79,9 +79,9 @@ const SECTOR_MAP: [RegExp, Sector][] = [
   [/financ|finanz/i, 'financer'],
   [/health|salud|sanidad|salut/i, 'salut'],
   [/industr/i, 'industria'],
-  [/consumer discretionary|consumo discrecional|consumo c[ií]clico|consumer cyclical|cyclical consumer/i, 'consum_discrecional'],
-  [/communication|telecom|comunicaci/i, 'comunicacions'],
-  [/consumer staples|consumo b[aá]sico|consumo no c[ií]clico|consumo estable|consumer defensive|defensive consumer/i, 'consum_basic'],
+  [/consumer discretionary|con cyclical|consumo discrecional|consumo c[ií]clico|consumer cyclical|cyclical consumer/i, 'consum_discrecional'],
+  [/communication|comm services|telecom|comunicaci/i, 'comunicacions'],
+  [/consumer staples|con defensive|consumo b[aá]sico|consumo no c[ií]clico|consumo estable|consumer defensive|defensive consumer/i, 'consum_basic'],
   [/energ|oil|petr[oó]le/i, 'energia'],
   [/materials|materiales|basic materials/i, 'materials'],
   [/utilit|servicios p[uú]blicos|suministros/i, 'utilities'],
