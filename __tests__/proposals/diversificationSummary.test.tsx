@@ -23,6 +23,20 @@ describe('Diversificació a l\'editor de propostes', () => {
     expect(html).not.toMatch(/puntuaci|\d\s*\/\s*10\b(?!\/)/i);
   });
 
+  it('concentració: diu quina part té top-10 i mostra les empreses de la cartera actual encara que la proposta no en tingui', () => {
+    const html = renderToStaticMarkup(React.createElement(DiversificationSummary, {
+      items: [{ isin: 'ES0119199000', weight: 90, name: 'Cobas Internacional' }, { isin: 'IE00B03HD191', weight: 10 }],
+      current: [{ isin: 'IE00B03HD191', weight: 100 }],
+    }));
+    expect(html).toContain('només del 10 % de la RV amb top-10 publicat');
+    const only = renderToStaticMarkup(React.createElement(DiversificationSummary, {
+      items: [{ isin: 'ES0119199000', weight: 100, name: 'Cobas Internacional' }],
+      current: [{ isin: 'IE00B03HD191', weight: 100 }],
+    }));
+    expect(only).toContain('Més pes a la cartera actual');
+    expect(only).toContain('Apple');
+  });
+
   it('una proposta només de renda fixa no mostra res', () => {
     const html = renderToStaticMarkup(React.createElement(DiversificationSummary, { items: [{ isin: 'IE00B18GC888', weight: 100 }] }));
     expect(html).toBe('');

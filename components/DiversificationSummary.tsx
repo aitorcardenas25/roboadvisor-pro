@@ -103,6 +103,10 @@ export default function DiversificationSummary({ items, current, className = '' 
   );
 }
 
+/** Quan no tots els fons publiquen el top-10, la mitjana només és dels que sí. */
+const coverage = (x: ExposureBreakdown) =>
+  x.top10 != null && x.top10Covered < 99.5 ? ` (només del ${pct(x.top10Covered)} de la RV amb top-10 publicat)` : '';
+
 function Concentration({ a, b }: { a: ExposureBreakdown; b?: ExposureBreakdown }) {
   if (a.top10 == null && b?.top10 == null) return null;
   const list = (x: ExposureBreakdown) => x.companies.slice(0, 5);
@@ -111,12 +115,12 @@ function Concentration({ a, b }: { a: ExposureBreakdown; b?: ExposureBreakdown }
       <p className="text-ink-muted text-[11px] mb-1.5">Concentració</p>
       <p className="text-xs text-ink-soft">
         Les 10 primeres posicions de cada fons pesen de mitjana{' '}
-        <span className="text-ink font-semibold">{a.top10 != null ? pct(a.top10) : '—'}</span>
-        {b && <> (cartera actual <span className="text-ink font-semibold">{b.top10 != null ? pct(b.top10) : '—'}</span>)</>}.
+        <span className="text-ink font-semibold">{a.top10 != null ? pct(a.top10) : '—'}</span>{coverage(a)}
+        {b && <> (cartera actual <span className="text-ink font-semibold">{b.top10 != null ? pct(b.top10) : '—'}</span>{coverage(b)})</>}.
       </p>
-      {a.companies.length > 0 && (
-        <div className={`mt-2 grid ${b?.companies.length ? 'grid-cols-2' : 'grid-cols-1'} gap-3`}>
-          <Companies title="Més pes a la proposta" rows={list(a)} />
+      {(a.companies.length > 0 || (b?.companies.length ?? 0) > 0) && (
+        <div className={`mt-2 grid ${a.companies.length && b?.companies.length ? 'grid-cols-2' : 'grid-cols-1'} gap-3`}>
+          {a.companies.length > 0 && <Companies title="Més pes a la proposta" rows={list(a)} />}
           {b && b.companies.length > 0 && <Companies title="Més pes a la cartera actual" rows={list(b)} />}
         </div>
       )}

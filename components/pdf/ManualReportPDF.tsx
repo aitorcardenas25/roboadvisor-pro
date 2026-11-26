@@ -1130,7 +1130,8 @@ function DiversificationPage({ d }: { d: ManualPortfolioInput }) {
           <View style={{ flex: 1 }}>
             <Text style={S.body1}>
               Les 10 primeres posicions de cada fons en pesen, de mitjana, el{' '}
-              <Text style={S.bold}>{b.top10 != null ? fW(b.top10) : 'sense dades'}</Text>.
+              <Text style={S.bold}>{b.top10 != null ? fW(b.top10) : 'sense dades'}</Text>
+              {b.top10 != null && b.top10Covered < 99.5 ? ` (mitjana només dels fons que publiquen el top-10: el ${fW(b.top10Covered)} de la renda variable)` : ''}.
               {' '}Com més alt és aquest percentatge, més depèn el resultat de poques empreses.
             </Text>
           </View>
