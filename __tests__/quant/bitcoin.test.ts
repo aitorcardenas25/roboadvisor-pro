@@ -155,6 +155,16 @@ describe('bitcoin declarat al patrimoni', () => {
     expect(w.warnings.join(' ')).toMatch(/preu diari del bitcoin/);
   });
 
+  it('editar un bitcoin sense preu disponible no el deixa a 0 €', () => {
+    const r = addItem({}, WealthItemInputSchema.parse({ kind: 'bitcoin', name: 'BTC', asOf: TODAY, units: 0.5 }), 'client', new Date(), 70000);
+    if ('error' in r) throw new Error(r.error);
+    const id = listItems(r.next)[0].id;
+    const renamed = updateItem(r.next, id, WealthItemInputSchema.parse({ kind: 'bitcoin', name: 'Ledger', asOf: TODAY, units: 0.5 }), new Date(), null)!;
+    expect(listItems(renamed)[0]).toMatchObject({ name: 'Ledger', value: 35000, units: 0.5 });
+    const more = updateItem(renamed, id, WealthItemInputSchema.parse({ kind: 'bitcoin', name: 'Ledger', asOf: TODAY, units: 1 }), new Date(), null)!;
+    expect(listItems(more)[0].value).toBe(70000);
+  });
+
   it('canviar un bitcoin per un compte treu la quantitat', () => {
     const r = addItem({}, WealthItemInputSchema.parse({ kind: 'bitcoin', name: 'BTC', asOf: TODAY, units: 1 }), 'client', new Date(), 70000);
     if ('error' in r) throw new Error(r.error);

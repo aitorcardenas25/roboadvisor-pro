@@ -110,9 +110,12 @@ export function updateItem(q: Record<string, unknown> | null | undefined, id: st
   const i = items.findIndex(x => x.id === id);
   if (i < 0) return null;
   const next = [...items];
-  const { units: _old, ...prev } = items[i];
+  const { units: oldUnits, ...prev } = items[i];
+  // Sense preu nou, el bitcoin es revalora amb l'últim preu implícit (valor / quantitat)
+  // en lloc de quedar a 0 € (el formulari no envia import per al bitcoin).
+  const implied = isUnitKind(prev.kind) && oldUnits && prev.value > 0 ? prev.value / oldUnits : null;
   next[i] = { ...prev, kind: input.kind as AssetKind | DebtKind, name: input.name, entity: input.entity ?? '',
-    ...unitFields(input, btcPrice), asOf: input.asOf, updatedAt: now.toISOString() };
+    ...unitFields(input, btcPrice ?? implied), asOf: input.asOf, updatedAt: now.toISOString() };
   return { ...(q ?? {}), wealthItems: next };
 }
 
