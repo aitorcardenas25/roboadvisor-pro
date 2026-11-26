@@ -46,7 +46,7 @@ export default function InitialReportPage() {
   const q = useMemo(() => data?.personal ?? {}, [data]);
   const goals: Goal[] = useMemo(() => (Array.isArray(q.goals) ? (q.goals as Goal[]) : []).filter(g => g?.description), [q.goals]);
   const diagnosis = useMemo(() => data ? diagnose({
-    monthlyNetIncome: num(q.monthlyNetIncome), monthlyFixedExpenses: num(q.monthlyFixedExpenses),
+    monthlyNetIncome: num(q.monthlyNetIncome), monthlyOtherIncome: num(q.monthlyOtherIncome), monthlyFixedExpenses: num(q.monthlyFixedExpenses),
     monthlyVariableExpenses: num(q.monthlyVariableExpenses), monthlyDebtPayments: num(q.monthlyDebtPayments),
     monthlyExpenses: num(q.monthlyExpenses), currentSavings: num(q.currentSavings),
     employmentType: typeof q.employmentType === 'string' ? q.employmentType : undefined, goals,
@@ -70,6 +70,7 @@ export default function InitialReportPage() {
   const p = data?.proposal;
   const figures: [string, number | undefined][] = [
     ['Ingressos nets al mes', num(q.monthlyNetIncome)],
+    ['Altres ingressos al mes', num(q.monthlyOtherIncome)],
     ['Despeses al mes', num(q.monthlyExpenses) ?? ((num(q.monthlyFixedExpenses) ?? 0) + (num(q.monthlyVariableExpenses) ?? 0) || undefined)],
     ['Estalvi disponible', num(q.currentSavings)],
     ['Deutes pendents', num(q.totalDebt)],

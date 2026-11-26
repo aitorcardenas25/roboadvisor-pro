@@ -17,6 +17,7 @@ export const GoalSchema = z.object({
 
 export const FinanceUpdateSchema = z.object({
   monthlyNetIncome:        money,
+  monthlyOtherIncome:      money,
   monthlyFixedExpenses:    money,
   monthlyVariableExpenses: money,
   monthlyDebtPayments:     money,

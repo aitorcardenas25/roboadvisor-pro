@@ -24,6 +24,7 @@ export default function BudgetOverview({ data, goalsTitle = 'Objectius', audienc
   const q = data ?? {};
   const input: BudgetInput = {
     monthlyNetIncome:        num(q.monthlyNetIncome),
+    monthlyOtherIncome:      num(q.monthlyOtherIncome),
     monthlyFixedExpenses:    num(q.monthlyFixedExpenses),
     monthlyVariableExpenses: num(q.monthlyVariableExpenses),
     monthlyDebtPayments:     num(q.monthlyDebtPayments),
@@ -72,7 +73,7 @@ function BudgetBlock({ a }: { a: NonNullable<ReturnType<typeof analyzeBudget>> }
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         <div className={card}>
-          <h3 className="text-ink-soft text-xs mb-4">Pressupost mensual · {eur(a.income)} nets</h3>
+          <h3 className="text-ink-soft text-xs mb-4">Pressupost mensual · {eur(a.income)} nets{a.otherIncome > 0 ? ` (inclou ${eur(a.otherIncome)} d'altres ingressos)` : ''}</h3>
           <div className="flex h-3 rounded-full overflow-hidden mb-4" aria-hidden>
             {positive.map(l => <div key={l.key} className={BAR[l.key]} style={{ width: `${(l.amount / barTotal) * 100}%` }} />)}
           </div>

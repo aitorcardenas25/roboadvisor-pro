@@ -15,7 +15,7 @@ import { useClientName } from '@/components/client/ClientPreview';
 const n = (v: unknown) => (typeof v === 'number' && Number.isFinite(v) ? v : undefined);
 function hasBudget(d: Record<string, unknown>): boolean {
   return analyzeBudget({
-    monthlyNetIncome: n(d.monthlyNetIncome), monthlyFixedExpenses: n(d.monthlyFixedExpenses),
+    monthlyNetIncome: n(d.monthlyNetIncome), monthlyOtherIncome: n(d.monthlyOtherIncome), monthlyFixedExpenses: n(d.monthlyFixedExpenses),
     monthlyVariableExpenses: n(d.monthlyVariableExpenses), monthlyExpenses: n(d.monthlyExpenses),
   }) !== null;
 }

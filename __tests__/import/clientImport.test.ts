@@ -238,3 +238,40 @@ describe('plantilla v4: sou net anual', () => {
     expect(r.warnings.some(w => /no quadra/.test(w.message))).toBe(false);
   });
 });
+
+describe('plantilla v5: altres ingressos mensuals', () => {
+  it('la plantilla porta la fila nova just després dels ingressos nets', async () => {
+    const wb = new ExcelJS.Workbook();
+    await wb.xlsx.load(await buildTemplate() as unknown as ArrayBuffer);
+    const keys: string[] = [];
+    wb.getWorksheet('Dades personals')!.eachRow((row, r) => { if (r > 1) keys.push(String(row.getCell(3).value)); });
+    expect(keys.indexOf('monthlyOtherIncome')).toBe(keys.indexOf('monthlyNetIncome') + 1);
+  });
+
+  it('desa els altres ingressos i no els barreja amb el sou', async () => {
+    const buf = await filled(wb => {
+      const per = wb.getWorksheet('Dades personals')!;
+      const set = (key: string, v: unknown) => per.eachRow(row => { if (row.getCell(3).value === key) row.getCell(2).value = v as ExcelJS.CellValue; });
+      set('annualNetIncome', 25200);
+      set('monthlyNetIncome', 1800);
+      set('monthlyOtherIncome', '300');   // extra de futbol
+    });
+    const r = await parseClientWorkbook(buf);
+    expect(r.errors).toEqual([]);
+    expect(r.personal.monthlyNetIncome).toBe(1800);
+    expect(r.personal.monthlyOtherIncome).toBe(300);
+    expect(r.warnings.some(w => /no quadra/.test(w.message))).toBe(false);
+  });
+
+  it('una plantilla v4 (sense la fila) continua important-se', async () => {
+    const buf = await filled(wb => {
+      const per = wb.getWorksheet('Dades personals')!;
+      per.eachRow((row, r) => { if (row.getCell(3).value === 'monthlyOtherIncome') per.spliceRows(r, 1); });
+      per.eachRow(row => { if (row.getCell(3).value === 'monthlyNetIncome') row.getCell(2).value = 1500; });
+    });
+    const r = await parseClientWorkbook(buf);
+    expect(r.errors).toEqual([]);
+    expect(r.personal.monthlyNetIncome).toBe(1500);
+    expect(r.personal.monthlyOtherIncome).toBeUndefined();
+  });
+});

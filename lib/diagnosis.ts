@@ -36,7 +36,7 @@ function monthLabel(now: Date, monthsAhead: number): string {
 
 function missingFields(q: DiagnosisInput): string[] {
   const m: string[] = [];
-  if (!q.monthlyNetIncome) m.push('ingressos nets mensuals');
+  if (!q.monthlyNetIncome && !q.monthlyOtherIncome) m.push('ingressos nets mensuals');
   const hasBreakdown = q.monthlyFixedExpenses !== undefined && q.monthlyVariableExpenses !== undefined;
   if (!hasBreakdown && q.monthlyExpenses === undefined) m.push('despeses mensuals');
   else if (!hasBreakdown) m.push('despeses separades en fixes i variables');

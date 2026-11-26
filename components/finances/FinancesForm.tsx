@@ -9,6 +9,7 @@ interface GoalRow { horizon: Horizon; description: string; amount: string; targe
 
 const MONEY_FIELDS = [
   { key: 'monthlyNetIncome',        label: 'Ingressos nets al mes',        hint: 'El que cobres a final de mes, després d\'impostos.' },
+  { key: 'monthlyOtherIncome',      label: 'Altres ingressos al mes',      hint: 'Diners que no són el sou: un extra (p. ex. d\'entrenar a futbol), un lloguer… Una mitjana. Si no en tens, deixa-ho en blanc.' },
   { key: 'monthlyFixedExpenses',    label: 'Despeses fixes al mes',        hint: 'Lloguer o hipoteca, subministraments, assegurances, transport…' },
   { key: 'monthlyVariableExpenses', label: 'Despeses variables al mes',    hint: 'Menjar fora, oci, compres, viatges… (una mitjana).' },
   { key: 'monthlyDebtPayments',     label: 'Quotes de préstecs al mes',    hint: 'Cotxe, targetes, préstecs personals. Si no en tens, 0.' },

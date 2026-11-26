@@ -63,7 +63,7 @@ const months1 = (n: number) => (Math.floor(n * 10) / 10).toLocaleString('ca-ES')
 
 function budgetInput(q: Record<string, unknown>): BudgetInput {
   return {
-    monthlyNetIncome: num(q.monthlyNetIncome), monthlyFixedExpenses: num(q.monthlyFixedExpenses),
+    monthlyNetIncome: num(q.monthlyNetIncome), monthlyOtherIncome: num(q.monthlyOtherIncome), monthlyFixedExpenses: num(q.monthlyFixedExpenses),
     monthlyVariableExpenses: num(q.monthlyVariableExpenses), monthlyDebtPayments: num(q.monthlyDebtPayments),
     monthlyExpenses: num(q.monthlyExpenses), currentSavings: num(q.currentSavings),
     employmentType: typeof q.employmentType === 'string' ? q.employmentType : undefined,
