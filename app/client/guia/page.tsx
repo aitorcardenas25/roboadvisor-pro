@@ -46,6 +46,7 @@ const SHEETS: { name: string; when: string; rows: [string, string][] }[] = [
     when: 'Només si ja tens fons o ETF. Si no inverteixes, deixa-la buida. Si l\'omples, cada fila necessita ISIN, participacions i preu mitjà.',
     rows: [
       ['ISIN', 'El codi de 12 lletres i números de cada fons (per exemple IE00B42W4L06). Surt a l\'app o a l\'extracte del banc o broker.'],
+      ['Bitcoin', 'No té ISIN: escriu BTC a la columna ISIN i, a Participacions, quants bitcoins tens (per exemple 0,0126). Si només saps quant t\'ha costat, divideix el cost pel preu mitjà. Es valora cada dia amb el preu de mercat i surt a El meu patrimoni.'],
       ['Broker / entitat', 'On el tens: MyInvestor, Renta 4, Indexa, el teu banc...'],
       ['Participacions', 'Quantes participacions tens. Surt al mateix extracte, al costat del fons.'],
       ['Preu mitjà de compra', 'Obligatori. El que et va costar cada participació de mitjana; al broker sol sortir com a "preu mitjà" o "cost mitjà". Si no el trobes, divideix el total que hi has posat entre les participacions.'],

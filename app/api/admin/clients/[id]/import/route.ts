@@ -13,6 +13,8 @@ import {
 import { latestNavs } from '@/lib/fundNavs';
 import { buildTemplate, parseClientWorkbook } from '@/lib/clientImport';
 import { logAuditEvent } from '@/lib/auditLog';
+import { upsertBitcoinItems } from '@/lib/wealth';
+import { loadBtcContext } from '@/lib/cryptoPrices';
 
 type S = { user?: { id?: string; email?: string; role?: string } } | null;
 const MAX_BYTES = 5 * 1024 * 1024;
@@ -153,7 +155,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   // Client donat d'alta des de "Nou client" (sense formulari de contacte): no té
   // fitxa on desar les dades personals. Se'n crea una, ja vinculada al client,
   // perquè les dades de l'Excel no es perdin.
-  if (!lead && (Object.keys(result.personal).length || result.goals.length)) {
+  if (!lead && (Object.keys(result.personal).length || result.goals.length || result.crypto.length)) {
     try {
       lead = await createLead({ name: user.name, email: user.email, interest: 'finances', source: 'admin-import' });
       await updateLeadLinks(lead.id, id, portfolio.id);
@@ -161,18 +163,21 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
       console.error('[import] no s\'ha pogut crear la fitxa del client:', err instanceof Error ? err.message : err);
     }
   }
-  if (lead && (Object.keys(result.personal).length || result.goals.length)) {
-    personalSaved = await saveLeadQuestionnaire(lead.id, {
+  if (lead && (Object.keys(result.personal).length || result.goals.length || result.crypto.length)) {
+    let q: Record<string, unknown> = {
       ...(lead.questionnaireData ?? {}), ...result.personal,
       ...(result.goals.length ? { goals: result.goals } : {}),
-    });
+    };
+    // Bitcoin: al patrimoni declarat (quantitat × preu diari), mai a la cartera de fons
+    if (result.crypto.length) q = upsertBitcoinItems(q, result.crypto, 'admin', (await loadBtcContext())?.price);
+    personalSaved = await saveLeadQuestionnaire(lead.id, q);
   }
 
   logAuditEvent('portfolio.imported', {
     userId: session.user?.id, userEmail: session.user?.email, resource: portfolio.id,
     metadata: {
       clientId: id, file: file.name, replace,
-      holdings: result.holdings.length, transactions: result.transactions.length,
+      holdings: result.holdings.length, transactions: result.transactions.length, bitcoin: result.crypto.length,
       personalFields: Object.keys(result.personal).length, goals: result.goals.length, personalSaved, pricesUpdated,
     },
     ip: req.headers.get('x-forwarded-for')?.split(',')[0] ?? undefined,
@@ -180,7 +185,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
 
   return NextResponse.json({
     ok: true, portfolioId: portfolio.id,
-    imported: { holdings: result.holdings.length, transactions: result.transactions.length },
+    imported: { holdings: result.holdings.length, transactions: result.transactions.length, bitcoin: result.crypto.length },
     personalSaved, pricesUpdated, warnings: result.warnings,
   });
 }

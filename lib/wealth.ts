@@ -119,6 +119,24 @@ export function updateItem(q: Record<string, unknown> | null | undefined, id: st
   return { ...(q ?? {}), wealthItems: next };
 }
 
+/**
+ * Bitcoin importat de l'Excel (pestanya Posicions, ISIN "BTC"): si ja hi ha un
+ * bitcoin declarat a la mateixa entitat, se n'actualitza la quantitat; si no, se n'afegeix un.
+ */
+export function upsertBitcoinItems(q: Record<string, unknown> | null | undefined,
+  rows: { name: string; broker: string; units: number }[], by: 'client' | 'admin', btcPrice: number | null | undefined,
+  now = new Date()): Record<string, unknown> {
+  let next: Record<string, unknown> = { ...(q ?? {}) };
+  const today = now.toISOString().slice(0, 10);
+  for (const r of rows) {
+    const input = WealthItemInputSchema.parse({ kind: 'bitcoin', name: r.name.slice(0, 80) || 'Bitcoin', entity: r.broker.slice(0, 60), asOf: today, units: r.units });
+    const same = listItems(next).find(x => isUnitKind(x.kind) && x.entity.trim().toLowerCase() === r.broker.trim().toLowerCase());
+    if (same) next = updateItem(next, same.id, input, now, btcPrice) ?? next;
+    else { const res = addItem(next, input, by, now, btcPrice); if (!('error' in res)) next = res.next; }
+  }
+  return next;
+}
+
 export function removeItem(q: Record<string, unknown> | null | undefined, id: string): Record<string, unknown> | null {
   const items = listItems(q);
   if (!items.some(x => x.id === id)) return null;

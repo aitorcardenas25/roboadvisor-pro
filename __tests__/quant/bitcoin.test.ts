@@ -183,3 +183,15 @@ describe('bitcoin declarat al patrimoni', () => {
     expect(ADVISOR_FUNDS.some(f => /bitcoin|btc|crypto|cripto/i.test(`${f.name} ${f.isin}`))).toBe(false);
   });
 });
+
+describe('bitcoin importat de l\'Excel', () => {
+  it('afegeix el bitcoin i, en tornar a importar, actualitza la quantitat de la mateixa entitat', async () => {
+    const { upsertBitcoinItems } = await import('@/lib/wealth');
+    const q1 = upsertBitcoinItems({ age: 25 }, [{ name: 'BITCOIN', broker: 'KRAKEN PRO', units: 0.0126 }], 'admin', 55000);
+    expect(listItems(q1)).toEqual([expect.objectContaining({ kind: 'bitcoin', entity: 'KRAKEN PRO', units: 0.0126, value: 693, addedBy: 'admin' })]);
+    expect(q1.age).toBe(25);
+    const q2 = upsertBitcoinItems(q1, [{ name: 'BITCOIN', broker: 'Kraken Pro', units: 0.02 }], 'admin', 55000);
+    expect(listItems(q2)).toHaveLength(1);
+    expect(listItems(q2)[0]).toMatchObject({ units: 0.02, value: 1100 });
+  });
+});
