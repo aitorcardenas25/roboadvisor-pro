@@ -15,7 +15,7 @@ import { computeMetrics, isSoldOut } from '@/lib/clientPortfolios';
 import { aggregatePeriods, type Valuation, type Period } from '@/lib/portfolioValuation';
 import TaxReportView from '@/components/TaxReportView';
 import PortfolioExcelButton from '@/components/PortfolioExcelButton';
-import MixHistoryPanel from '@/components/client/MixHistoryPanel';
+import MixHistoryPanel, { type ProposalMix } from '@/components/client/MixHistoryPanel';
 import type { MixHistory } from '@/lib/mixHistory';
 import { DataSourceBadge } from '@/components/DataSourceBadge';
 import { DataSourcePanel } from '@/components/DataSourcePanel';
@@ -359,7 +359,9 @@ const EvolutionChart = memo(function EvolutionChart({
         <div>
           <h3 className="text-ink font-semibold text-sm">Evolució patrimonial</h3>
           <p className="text-ink-muted text-xs mt-0.5">
-            {fromNavs ? `Valor ${desc}, amb els valors liquidatius oficials dels fons` : 'Snapshots registrats per l\u2019assessor'}
+            {fromNavs ? `Valor ${desc}, amb els valors liquidatius oficials dels fons`
+              : valuation?.points.length === 1 ? 'Amb els valors liquidatius oficials dels fons'
+              : 'Snapshots registrats per l\u2019assessor'}
           </p>
         </div>
         {fromNavs && (
@@ -422,7 +424,11 @@ const EvolutionChart = memo(function EvolutionChart({
           </AreaChart>
         </ResponsiveContainer>
       ) : (
-        <EmptyChart text="El gràfic apareixerà quan hi hagi preus oficials de tots els fons o l'assessor registri snapshots de la cartera" />
+        <EmptyChart text={valuation?.points.length === 1
+          // Posicions entrades sense compres amb data (p. ex. Excel sense la fulla «Moviments»):
+          // la cartera es comença a seguir el dia que es registra, i encara no hi ha un segon dia.
+          ? `La cartera es comença a seguir el ${new Date(valuation.points[0].date + 'T00:00:00').toLocaleDateString('ca-ES', { day: 'numeric', month: 'long' })}. El gràfic es dibuixarà sol amb els valors liquidatius dels propers dies. Si vols veure-la des del dia de la compra, l'assessor ha de registrar les compres amb la seva data.`
+          : 'El gràfic apareixerà quan hi hagi preus oficials de tots els fons o l\'assessor registri snapshots de la cartera'} />
       )}
 
       {fromNavs && (
@@ -745,6 +751,38 @@ interface ReportItem {
   id: string; periodStart: string; periodEnd: string; createdAt: string; sentAt?: string;
 }
 
+interface ProposalVersion { version: number; sharedAt?: string; appliedAt?: string }
+interface PendingProposal { version: number; sharedAt?: string }
+const NOTICE_DAYS = 60;
+
+/**
+ * La cartera mostra el que el client té comprat. Si l'assessor li ha enviat una
+ * proposta que encara no s'ha aplicat a la cartera, cal dir-ho: si no, sembla que
+ * el canvi no s'ha fet. L'avís desapareix en aplicar-la o passats 60 dies.
+ */
+function pendingProposal(versions: ProposalVersion[], today = Date.now()): PendingProposal | null {
+  const latest = versions[0];
+  if (!latest || latest.appliedAt || !latest.sharedAt) return null;
+  if ((today - new Date(latest.sharedAt).getTime()) / 86_400_000 > NOTICE_DAYS) return null;
+  return { version: latest.version, sharedAt: latest.sharedAt };
+}
+
+function NewProposalNotice({ p }: { p: PendingProposal }) {
+  const when = p.sharedAt ? new Date(p.sharedAt).toLocaleDateString('ca-ES', { day: 'numeric', month: 'long' }) : '';
+  return (
+    <a href="/client/informe-inicial"
+      className="mb-5 flex flex-wrap items-center justify-between gap-3 rounded-lg border border-accent/40 bg-accent/5 px-4 py-3 hover:border-accent transition-colors">
+      <div>
+        <p className="text-ink text-sm font-medium">L&apos;assessor t&apos;ha enviat una proposta nova (versió {p.version}{when ? `, ${when}` : ''})</p>
+        <p className="text-ink-muted text-xs mt-0.5">
+          Aquí continues veient els fons que tens ara. Quan es facin les compres i vendes de la proposta, la cartera s&apos;actualitzarà.
+        </p>
+      </div>
+      <span className="text-accent text-xs font-semibold whitespace-nowrap">Veure la proposta nova</span>
+    </a>
+  );
+}
+
 /** L'informe inicial (proposta aprovada: punt de partida, objectius i cartera) sempre a dalt de tot. */
 function InitialReportCard() {
   return (
@@ -896,21 +934,29 @@ export default function ClientCarteraPage() {
   const [valuation, setValuation] = useState<Valuation | null>(null);
   const [period, setPeriod]       = useState<Period>('month');   // agrupació del gràfic i de l'Excel
   const [history, setHistory]     = useState<Record<string, MixHistory | null> | null>(null);
+  const [proposalMix, setProposalMix] = useState<ProposalMix | null>(null);
   const [drawdowns, setDrawdowns] = useState<{ items: FundDD[]; profile: string | null }>({ items: [], profile: null });
+  const [newProposal, setNewProposal] = useState<PendingProposal | null>(null);
 
   useEffect(() => {
     if (status === 'unauthenticated') { router.push('/login'); return; }
     if (status === 'authenticated') {
       fetch('/api/client/portfolio')
         .then(r => r.json())
-        .then((d: { portfolio: ClientPortfolio | null; valuation?: Valuation | null; history?: Record<string, MixHistory | null> | null; drawdowns?: FundDD[]; profile?: string | null }) => {
+        .then((d: { portfolio: ClientPortfolio | null; valuation?: Valuation | null; history?: Record<string, MixHistory | null> | null; proposalHistory?: ProposalMix | null; drawdowns?: FundDD[]; profile?: string | null }) => {
           setPortfolio(d.portfolio ?? null);
           setValuation(d.valuation ?? null);
           setHistory(d.history ?? null);
+          setProposalMix(d.proposalHistory ?? null);
           setDrawdowns({ items: d.drawdowns ?? [], profile: d.profile ?? null });
           setLoading(false);
         })
         .catch(() => setLoading(false));
+      // Hi ha una proposta enviada més nova que la que segueix la cartera? (avís a dalt)
+      fetch('/api/client/initial-report?summary=1', { cache: 'no-store' })
+        .then(r => (r.ok ? r.json() : null))
+        .then((d: { versions?: ProposalVersion[] } | null) => setNewProposal(pendingProposal(d?.versions ?? [])))
+        .catch(() => {});
     }
   }, [status, router]);
 
@@ -963,6 +1009,8 @@ export default function ClientCarteraPage() {
 
       <div className="max-w-5xl mx-auto px-4 py-6 sm:py-8">
 
+        {newProposal && <NewProposalNotice p={newProposal} />}
+
         {/* ── Hero ── */}
         <HeroSection portfolio={portfolio} metrics={metrics} name={name} valuation={valuation} />
 
@@ -1006,7 +1054,7 @@ export default function ClientCarteraPage() {
               </div>
             </div>
 
-            <MixHistoryPanel history={history} />
+            <MixHistoryPanel history={history} proposal={proposalMix} />
 
             <FundDrawdowns items={drawdowns.items} defaultOpen={showDrawdownsByDefault(drawdowns.profile)}
               title="Caigudes històriques dels teus fons" />

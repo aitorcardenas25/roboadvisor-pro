@@ -69,6 +69,30 @@ export async function getMonthEndNavs(): Promise<NavPoint[]> {
   return out;
 }
 
+/**
+ * Últim preu de cada mes d'uns fons concrets des de `since` (per simular carteres
+ * a 10 anys sense llegir milers de preus diaris). L'últim punt és l'últim preu desat.
+ */
+export async function getMonthEndNavsFor(isins: string[], since?: string): Promise<NavPoint[]> {
+  if (!isins.length) return [];
+  const db = getDb();
+  if (!db) return monthEndsOf((await getNavs()).filter(p => isins.includes(p.isin) && (!since || p.date >= since)));
+  const out: NavPoint[] = [];
+  for (let from = 0; ; from += PAGE) {
+    let q = db.from('fund_nav_month_ends').select('isin,nav_date,nav,currency,fund_name')
+      .in('isin', isins).order('isin').order('nav_date').range(from, from + PAGE - 1);
+    if (since) q = q.gte('nav_date', since);
+    const { data, error } = await q;
+    if (error) {
+      console.warn('[fundNavs] sense la vista fund_nav_month_ends:', error.message);
+      return monthEndsOf((await Promise.all(isins.map(i => getNavs(i, since)))).flat());
+    }
+    out.push(...(data ?? []).map(r => rowToPoint(r as Record<string, unknown>)));
+    if (!data || data.length < PAGE) break;
+  }
+  return out;
+}
+
 export function monthEndsOf(points: NavPoint[]): NavPoint[] {
   const by = new Map<string, NavPoint>();
   for (const p of points) by.set(`${p.isin}|${p.date.slice(0, 7)}`, p);   // ordenats per data: es queda l'últim

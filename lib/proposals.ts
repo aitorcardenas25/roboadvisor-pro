@@ -3,7 +3,7 @@
 // Tipus i càlculs: lib/proposalMath.ts.
 
 import { getDb } from './supabase';
-import { validateForApproval, type ClientProposal, type ProposalItem, type ProposalParams, type ProposalStatus, type ProposalSuitability } from './proposalMath';
+import { validateForApproval, withKnownTer, type ClientProposal, type ProposalItem, type ProposalParams, type ProposalStatus, type ProposalSuitability } from './proposalMath';
 
 export * from './proposalMath';
 
@@ -16,6 +16,7 @@ function rowToProposal(r: Record<string, unknown>): ClientProposal {
   const d = (r.data ?? {}) as Omit<ClientProposal, 'id' | 'clientId' | 'version' | 'status' | 'createdAt' | 'updatedAt' | 'approvedAt' | 'approvedBy'>;
   return {
     ...d,
+    items: withKnownTer(d.items ?? []),
     id: r.id as string, clientId: r.client_id as string, version: Number(r.version),
     status: r.status as ProposalStatus,
     createdAt: r.created_at as string, updatedAt: r.updated_at as string,

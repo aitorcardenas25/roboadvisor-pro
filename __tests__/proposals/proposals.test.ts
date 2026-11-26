@@ -332,3 +332,21 @@ describe('v5: altres ingressos mensuals', () => {
     expect(proposalToReportInput(p, { name: 'X', email: 'x@x' }, { annualNetIncome: 24000, monthlyOtherIncome: 250 }).monthlyIncome).toBe(2250);
   });
 });
+
+describe('TER oficial de la llista de l\'assessor', () => {
+  it('omple el TER que faltava (0) i no toca el que ja hi era', async () => {
+    const { withKnownTer, officialTer } = await import('@/lib/proposalMath');
+    // Cas real (captura 26/11/2026): Vanguard Eurozone, Amundi EM i DWS Gold desats amb TER 0
+    const items = withKnownTer([
+      { isin: 'IE0008248803', ter: 0 }, { isin: 'LU0996177134', ter: 0 }, { isin: 'LU0273159177', ter: 0 },
+      { isin: 'LU0996182563', ter: 0.25 }, { isin: 'XX0000000000', ter: 0 },
+    ]);
+    expect(items.map(i => i.ter)).toEqual([0.12, 0.45, 1.61, 0.25, 0]);
+    expect(officialTer('IE0008248803')).toBe(0.12);
+  });
+
+  it('un fons nou del catàleg agafa el TER amb font i no el del catàleg', async () => {
+    const { fundToItem } = await import('@/lib/proposalMath');
+    expect(fundToItem('LU0996182563')?.ter).toBe(0.3);
+  });
+});
