@@ -95,7 +95,7 @@ export default function DiversificationSummary({ items, current, className = '' 
       </div>
       <p className="text-ink-muted text-[11px] mt-3">
         Percentatges sobre la part en renda variable de cada cartera, segons la fitxa oficial de cada fons
-        {asOfLabel(a) ? ` (dades ${asOfLabel(a)})` : ''}. «No detallat»: la fitxa només publica els països o sectors principals.
+        {asOfLabel(a) ? ` (dades ${asOfLabel(a)})` : ''}. «No detallat»: la fitxa només publica els països o sectors principals, o fa servir categories pròpies (holding, TMT).
         {a.missingFunds.length > 0 && ` Sense fitxa carregada: ${a.missingFunds.join(', ')}.`}
         {compare && b!.missingFunds.length > 0 && ` Cartera actual sense fitxa: ${b!.missingFunds.join(', ')}.`}
       </p>
