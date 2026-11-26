@@ -243,10 +243,60 @@ export const FUND_EXPOSURE: Record<string, FundExposure> = {
   },
   ES0159201013: {
     fund: 'Magallanes Iberian Equity FI', asOf: '2026-10-31',
-    source: 'Magallanes Value Investors, fitxa mensual (dades a 31/10/2026; només posicions principals)',
+    source: 'Magallanes Value Investors, fitxa mensual (dades a 31/10/2026)',
     basis: 93.5,
+    countries: kv('España=65.4;Portugal=14.7;Reino Unido=9.4;Alemania=3.9'),
+    sectors: kv('Industrial=35.9;Consumo Cíclico=20.8;Servicios=8.3;Tech/Media/Telecom=7.8;Inmobiliario=5.9;Financiero=5.3;Holding=3.5;Salud=3.0;Consumo Estable=2.9'),
+    // Per estàndards internacionals (MSCI), per sota d'uns 3.000 M€ ja és empresa petita
+    size: { gran: 34.5, petita: 45.1 + 13.8 },
+    sizeSource: 'Fitxa de la gestora: >3.000 M€ 34,5 %, 500-3.000 M€ 45,1 %, <500 M€ 13,8 % (les de 500-3.000 M€ es compten com a petites)',
     top10: t10('Atalaya Mining=5.3;Meliá Hotels=5.1;Acerinox=4.9;Amadeus=4.6;Zegona=4.1'),
     top10Total: 43.0,
+  },
+  ES0159202011: {
+    fund: 'Magallanes Microcaps Europe FI', asOf: '2026-10-31',
+    source: 'Magallanes Value Investors, fitxa mensual (dades a 31/10/2026)',
+    basis: 92.2,
+    countries: kv('Reino Unido=23.2;Italia=20.2;Alemania=15.6;España=10.9;Portugal=8.2;Francia=5.8;Bélgica=2.9;Suecia=2.4;Suiza=2.1;Otros=1.0'),
+    sectors: kv('Industrial=43.8;Consumo Cíclico=18.9;Holding=8.4;Consumo Estable=5.8;Servicios=5.2;Tech/Media/Telecom=4.2;Financiero=3.6;Salud=1.9;Inmobiliario=0.4'),
+    size: { petita: 100 }, sizeSource: 'Fons de microempreses europees (índex de referència MSCI Europe Micro Cap)',
+    top10: t10('Atalaya Mining=6.9;Travis Perkins=5.3;SOL=4.9;CIR=4.6;KSB=4.2'),
+    top10Total: 45.5,
+  },
+  ES0114638036: {
+    fund: 'Bestinver Internacional FI', asOf: '2026-10-31', source: 'Bestinver, fitxa mensual (dades a 31/10/2026; posicions principals a 30/09/2026)',
+    basis: 96.1,
+    countries: kv('Europa=61.8;EEUU=26.9;Resto del mundo=7.4'),
+    // «Consumo» i «Com. y Tec.» barregen sectors: surten com a no detallat
+    sectors: kv('Industria=38.8;Com. y Tec.=25.7;Consumo=17.8;Finanzas=13.8'),
+    top10: t10('Meta Platforms=4.94;Barclays=3.29;Taiwan Semiconductor Manufacturing=3.19;Saint-Gobain=3.16;Philips=3.06'),
+  },
+  ES0114561006: {
+    fund: 'Bestinver Grandes Compañías FI', asOf: '2026-10-31', source: 'Bestinver, fitxa mensual (dades a 31/10/2026; posicions principals a 30/09/2026)',
+    basis: 91.3,
+    countries: kv('Europa=44.9;EEUU=34.2;Iberia=3.7;Resto del mundo=8.4'),
+    sectors: kv('Com. y Tec.=33;Industria=25.8;Consumo=25.3;Finanzas=7.2'),
+    top10: t10('Taiwan Semiconductor Manufacturing=4.51;NVIDIA=4.39;Deutsche Börse=3.99;Inditex=3.93;Microsoft=3.90'),
+  },
+  ES0183793001: {
+    fund: 'Bestinver Megatendencias FI', asOf: '2026-10-31', source: 'Bestinver, fitxa mensual (dades a 31/10/2026; posicions principals a 30/09/2026). La fitxa reparteix per temes, no per sectors',
+    basis: 96.3,
+    countries: kv('Europa=43.1;EEUU=39;Resto del mundo=14.2'),
+    // les 3 primeres de cada tema (no necessàriament les 9 primeres del fons)
+    top10: t10('NVIDIA=5.28;Greencoat UK Wind=3.68;Taiwan Semiconductor Manufacturing=3.39;Alphabet=3.33;Waters=3.00;EDP=2.69;3i Group=2.63;MercadoLibre=2.55;Kingspan=2.53'),
+  },
+  ES0147622031: {
+    fund: 'Bestinver Bolsa FI', asOf: '2026-10-31', source: 'Bestinver, fitxa mensual (dades a 31/10/2026; posicions principals a 30/09/2026)',
+    basis: 92.9,
+    countries: kv('España=73.8;Portugal=9.3;Europa=9.8'),
+    sectors: kv('Consumo=31;Industria=25.4;Finanzas=18.9;Com. y Tec.=17.5'),
+    top10: t10('Banco Santander=7.50;Indra=7.00;BBVA=6.89;Zegona=6.63;Grifols=4.55'),
+  },
+  ES0112763000: {
+    fund: 'Bestinver Norteamérica FI', asOf: '2026-10-31', source: 'Bestinver, fitxa mensual (dades a 31/10/2026; posicions principals a 30/09/2026). La fitxa no dona repartiment geogràfic',
+    basis: 95.5,
+    sectors: kv('Com. y Tec.=37.3;Consumo=25;Industria=18.3;Finanzas=14.9'),
+    top10: t10('NVIDIA=8.70;Microsoft=5.37;Amazon.com=4.89;Alphabet=4.79;Meta Platforms=4.49'),
   },
   ES0146309002: {
     fund: 'Horos Value Internacional FI', asOf: '2026-09-30',
@@ -270,10 +320,46 @@ export const FUND_EXPOSURE: Record<string, FundExposure> = {
     top10Total: 51.0,
   },
   ES0119199000: {
-    fund: 'Cobas Internacional FI', asOf: '2026-11-24',
-    source: 'Cobas AM, web del fons consultada el 24/11/2026 (repartiment geogràfic)',
+    fund: 'Cobas Internacional FI', asOf: '2026-11-24', source: 'Cobas AM, web del fons consultada el 24/11/2026 (només publica els 6 subsectors principals)',
     basis: 97.4,
     countries: kv('Rest of Europe=36.4;Eurozone=27.9;United States=18.6'),   // «Àsia» 15,6 % i «altres» 1,5 % no es poden assignar a una regió
+    sectors: kv('Exploración de petróleo y gas=11.2;Transporte y almacenamiento de petróleo y gas=10.8;Conglomerados industriales=10.6;Venta al por menor=10.4;Farmacéutico y biotecnología=7.6;Automóviles y componentes=7.1'),
+  },
+  ES0124037005: {
+    fund: 'Cobas Selección FI', asOf: '2026-11-24', source: 'Cobas AM, web del fons consultada el 24/11/2026 (només publica els 6 subsectors principals)',
+    basis: 97.4,
+    countries: kv('Zona Euro=36.5;Resto de Europa=32.5;Estados Unidos=16.2'),   // «Àsia» 13,6 % i «otros» 1,3 % sense regió
+    sectors: kv('Conglomerados industriales=10.6;Exploración de petróleo y gas=9.7;Transporte y almacenamiento de petróleo y gas=9.4;Venta al por menor=9.0;Farmacéutico y biotecnología=8.2;Automóviles y componentes=6.2'),
+  },
+  ES0113728002: {
+    fund: 'Cobas Grandes Compañías FI', asOf: '2026-11-24', source: 'Cobas AM, web del fons consultada el 24/11/2026 (només publica els 6 subsectors principals)',
+    basis: 97.0,
+    countries: kv('Zona Euro=40.9;Estados Unidos=22.8;Resto de Europa=17.9'),   // «Àsia» 18,5 % i «otros» 1,2 % sense regió
+    sectors: kv('Farmacéutico y biotecnología=13.2;Automóviles y componentes=13.2;Conglomerados industriales=10.9;Transporte y almacenamiento de petróleo y gas=9.6;Equip. y servicios de salud=8.4;Minería y metales=7.7'),
+  },
+  ES0119184002: {
+    fund: 'Cobas Iberia FI', asOf: '2026-11-24', source: 'Cobas AM, web del fons consultada el 24/11/2026 (només publica els 6 subsectors principals)',
+    basis: 97.9,
+    countries: kv('España=80.2;Portugal=9.4;Otros=0.4'),
+    sectors: kv('Minería y metales=16.5;Equip. y servicios de energía=11.7;Ingeniería y construcción=7.9;Farmacéutico y biotecnología=6.9;Papelero=6.9;Transporte=5.5'),
+  },
+  ES0112616000: {
+    fund: 'Azvalor Iberia FI', asOf: '2026-06-30',
+    source: 'Azvalor, informe semestral 1S2026 (cartera a 30/06/2026; només els 3 primers països i sectors)',
+    countries: kv('Spain=59.5;Portugal=16.8;United States=5.0'),
+    sectors: kv('Energy=25.7;Materials=18.3;Industrials=15.3'),
+  },
+  ES0112609005: {
+    fund: 'Azvalor Blue Chips FI', asOf: '2026-06-30',
+    source: 'Azvalor, informe semestral 1S2026 (cartera a 30/06/2026; només els principals països i sectors)',
+    countries: kv('United States=41.5;Gran Bretaña=13.4;Canada=12.2'),
+    sectors: kv('Energy=52;Materials=18.6'),
+  },
+  ES0112602000: {
+    fund: 'Azvalor Managers FI', asOf: '2026-06-30',
+    source: 'Azvalor, informe semestral 1S2026 (cartera a 30/06/2026; només els principals països i sectors)',
+    countries: kv('United States=42;Spain=14.8;Gran Bretaña=8.2;Hong Kong=7.4;China=5.7'),
+    sectors: kv('Energy=15.5;Materiales básicos=12.4;Industrials=11;Financials=9'),
   },
 };
 

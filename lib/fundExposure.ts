@@ -56,11 +56,11 @@ function norm(s: string) {
 }
 add('america_nord', 'United States,USA,US,Estados Unidos,EEUU,EE UU,Canada,North America,Norteamerica,America del Norte');
 add('iberia', 'Spain,España,Espana,Portugal,Iberia');
-add('europa', 'United Kingdom,UK,Reino Unido,France,Francia,Germany,Alemania,Switzerland,Suiza,Netherlands,Países Bajos,Holanda,Sweden,Suecia,Italy,Italia,Denmark,Dinamarca,Finland,Finlandia,Belgium,Bélgica,Norway,Noruega,Ireland,Irlanda,Austria,Luxembourg,Luxemburgo,Europe,Europa,Eurozone,Eurozona,Europe ex UK,Europa ex Reino Unido,Rest of Europe,Resto de Europa,Europe ex Euro,Faroe Islands,Jersey,Guernsey,Isle of Man');
+add('europa', 'United Kingdom,UK,Reino Unido,France,Francia,Germany,Alemania,Switzerland,Suiza,Netherlands,Países Bajos,Holanda,Sweden,Suecia,Italy,Italia,Denmark,Dinamarca,Finland,Finlandia,Belgium,Bélgica,Norway,Noruega,Ireland,Irlanda,Austria,Luxembourg,Luxemburgo,Europe,Europa,Eurozone,Eurozona,Europe ex UK,Europa ex Reino Unido,Rest of Europe,Resto de Europa,Europe ex Euro,Zona Euro,Gran Bretaña,Faroe Islands,Jersey,Guernsey,Isle of Man');
 add('japo', 'Japan,Japón,Japon');
 add('pacific', 'Australia,Hong Kong,Singapore,Singapur,New Zealand,Nueva Zelanda,Pacific,Pacífico,Pacific ex Japan');
 add('emergents', 'China,Taiwan,Korea,South Korea,Korea South,Korea (South),Corea,Corea del Sur,India,Brazil,Brasil,South Africa,Sudáfrica,Saudi Arabia,Arabia Saudí,Mexico,México,United Arab Emirates,UAE,Emiratos Árabes Unidos,Poland,Polonia,Indonesia,Thailand,Tailandia,Malaysia,Malasia,Chile,Turkey,Turquía,Qatar,Kuwait,Philippines,Filipinas,Greece,Grecia,Peru,Perú,Hungary,Hungría,Czech Republic,República Checa,Colombia,Egypt,Egipto,Argentina,Kazakhstan,Kazajistán,Vietnam,Emerging Markets,Emergentes,Mercados emergentes,Asia Emergente,Latin America,Latinoamérica,LATAM,Macau,Macao');
-add('altres', 'Israel,Other,Others,Otros,Misceláneas,Miscelaneas,Misc,Resto,Rest,Cash,Liquidez,Bermuda,Cayman Islands');
+add('altres', 'Israel,Other,Others,Otros,Resto del mundo,Misceláneas,Miscelaneas,Misc,Resto,Rest,Cash,Liquidez,Bermuda,Cayman Islands');
 
 /** Regió d'un país tal com surt a la fitxa (anglès o castellà). */
 export function countryRegion(country: string): Region | undefined {
@@ -71,9 +71,12 @@ export function countryRegion(country: string): Region | undefined {
 
 const SECTOR_MAP: [RegExp, Sector][] = [
   // Categories pròpies de gestores que no són un sector (holdings, «TMT», «serveis»)
-  [/^(holding|holdings|tmt|tech\W*media\W*telecom|servicios)$/i, 'altres'],
+  // Categories pròpies de gestores que barregen sectors («Consumo», «Com. y Tec.»): no es poden repartir
+  [/^(holding|holdings|tmt|tech\W*media\W*telecom|servicios|consumo|com\W*y\W*tec\W*)$/i, 'altres'],
+  // Subsectors (Cobas): abans de «tecnolog» perquè «biotecnología» és salut
+  [/farmac|biotec|pharma/i, 'salut'],
   [/information technology|^technology|tecnolog/i, 'tecnologia'],
-  [/financ/i, 'financer'],
+  [/financ|finanz/i, 'financer'],
   [/health|salud|sanidad|salut/i, 'salut'],
   [/industr/i, 'industria'],
   [/consumer discretionary|consumo discrecional|consumo c[ií]clico|consumer cyclical|cyclical consumer/i, 'consum_discrecional'],
@@ -83,6 +86,9 @@ const SECTOR_MAP: [RegExp, Sector][] = [
   [/materials|materiales|basic materials/i, 'materials'],
   [/utilit|servicios p[uú]blicos|suministros/i, 'utilities'],
   [/real estate|inmobiliari|immobiliari/i, 'immobiliari'],
+  [/venta al por menor|retail|autom[oó]vil/i, 'consum_discrecional'],
+  [/miner[ií]a|metales|papel/i, 'materials'],
+  [/ingenier[ií]a|construcci[oó]n|transporte/i, 'industria'],
   [/^(other|others|otros|resto)$/i, 'altres'],
 ];
 export function sectorKey(label: string): Sector | undefined {
