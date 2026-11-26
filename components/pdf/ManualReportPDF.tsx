@@ -7,6 +7,7 @@ import type { ManualPortfolioInput, ManualAsset } from '@/lib/manualReport';
 import { capmReturn, CAPM_ASSUMPTIONS } from '@/lib/navMath';
 import { DRAWDOWN_DISCLAIMER, dateLabel, fallLabel, frequencyLabel, recoveryLabel, type FundDrawdowns } from '@/lib/drawdowns';
 import { allocationBreakdown, allocationNote, assetTypeLabel, classifyFund, managementLabel } from '@/lib/fundClassification';
+import { exposureBreakdown, exposureNote, asOfLabel, REGIONS, SECTORS, SIZES, REGION_LABEL, SECTOR_LABEL, SIZE_LABEL, type ExposureBreakdown } from '@/lib/fundExposure';
 
 const GOAL_HORIZON: Record<string, string> = { curt: 'Curt termini', mitja: 'Mitjà termini', llarg: 'Llarg termini' };
 
@@ -1062,6 +1063,97 @@ function AssetsPage({ d }: { d: ManualPortfolioInput }) {
   );
 }
 
+
+// ─── DIVERSIFICACIÓ (regió, sector, mida, concentració) ─────────────────────
+// Dades de la fitxa oficial de cada fons (lib/fundExposureData.ts). Només la
+// part en renda variable. Sense puntuacions: percentatges i el que falta.
+function diversificationOf(d: ManualPortfolioInput): ExposureBreakdown {
+  return exposureBreakdown(d.assets.map(a => ({ isin: a.isin, weight: a.weight, category: a.category, name: a.name })));
+}
+
+function DivBars({ title, rows }: { title: string; rows: { label: string; v: number; missing?: boolean }[] }) {
+  return (
+    <View style={{ marginBottom: 12 }} wrap={false}>
+      <Text style={S.subTag}>{title}</Text>
+      {rows.map(r => (
+        <View key={r.label} style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 3.5 }}>
+          <Text style={{ width: 118, fontSize: 7.5, color: r.missing ? C.mutedLt : C.ink }}>{r.label}</Text>
+          <View style={{ flex: 1, height: 5, backgroundColor: C.grayBg }}>
+            <View style={{ width: `${Math.min(100, Math.max(0, r.v))}%`, height: 5, backgroundColor: r.missing ? C.line : C.gold }} />
+          </View>
+          <Text style={{ width: 34, fontSize: 7.5, textAlign: 'right', color: C.ink, fontFamily: 'Helvetica-Bold' }}>{fW(r.v)}</Text>
+        </View>
+      ))}
+    </View>
+  );
+}
+
+function divRows<K extends string>(keys: K[], labels: Record<K, string>, vals: Record<K, number>, missing: number, max = 99) {
+  let rows: { label: string; v: number; missing?: boolean }[] = keys.map(k => ({ label: labels[k] as string, v: vals[k] as number })).filter(r => r.v >= 0.5).sort((a, b) => b.v - a.v);
+  // «No detallat» sempre al final i mai barrejat amb «Resta de sectors»
+  const nd = rows.filter(r => /no detallat/.test(r.label));
+  rows = rows.filter(r => !/no detallat/.test(r.label));
+  if (rows.length > max) {
+    const rest = rows.slice(max - 1);
+    rows = [...rows.slice(0, max - 1), { label: 'Resta de sectors', v: rest.reduce((s, r) => s + r.v, 0) }];
+  }
+  rows = [...rows, ...nd];
+  if (missing >= 0.5) rows.push({ label: 'Sense dades', v: missing, missing: true });
+  return rows;
+}
+
+function DiversificationPage({ d }: { d: ManualPortfolioInput }) {
+  const b = diversificationOf(d);
+  return (
+    <Page size="A4" style={S.page}>
+      <Header section="Diversificació" client={d.clientName} />
+      <Footer />
+      <View style={S.body}>
+        <SectionTitle
+          tag="Diversificació"
+          title="On s'inverteix la renda variable"
+          intro={`Repartiment per regió, sector i mida d'empresa del ${fW(b.equity)} de la cartera invertit en renda variable, segons la fitxa oficial de cada fons${asOfLabel(b) ? ` (dades ${asOfLabel(b)})` : ''}. Estar més repartit no vol dir rendir més: indica de què depèn la cartera.`}
+        />
+        <View style={{ flexDirection: 'row', gap: 22 }}>
+          <View style={{ flex: 1 }}>
+            <DivBars title="Regió" rows={divRows(REGIONS, REGION_LABEL, b.region, b.regionMissing)} />
+            <DivBars title="Mida d'empresa" rows={divRows(SIZES, SIZE_LABEL, b.size, b.sizeMissing)} />
+          </View>
+          <View style={{ flex: 1 }}>
+            <DivBars title="Sector" rows={divRows(SECTORS, SECTOR_LABEL, b.sector, b.sectorMissing, 8)} />
+          </View>
+        </View>
+
+        <View style={S.divider} />
+        <Text style={S.subTag}>Concentració</Text>
+        <View style={{ flexDirection: 'row', gap: 22 }} wrap={false}>
+          <View style={{ flex: 1 }}>
+            <Text style={S.body1}>
+              Les 10 primeres posicions de cada fons en pesen, de mitjana, el{' '}
+              <Text style={S.bold}>{b.top10 != null ? fW(b.top10) : 'sense dades'}</Text>
+              {b.top10 != null && b.top10Covered < 99.5 ? ` (mitjana només dels fons que publiquen el top-10: el ${fW(b.top10Covered)} de la renda variable)` : ''}.
+              {' '}Com més alt és aquest percentatge, més depèn el resultat de poques empreses.
+            </Text>
+          </View>
+          <View style={{ flex: 1 }}>
+            {b.companies.slice(0, 8).map((c, i) => (
+              <View key={c.name} style={[S.tableRow, i % 2 ? S.tableAlt : {}, { paddingVertical: 3 }]}>
+                <Text style={[S.td, { flex: 1, fontSize: 7.5 }]}>{c.name}</Text>
+                <Text style={[S.td, S.bold, { width: 40, textAlign: 'right', fontSize: 7.5 }]}>{fPct(c.pct)}</Text>
+              </View>
+            ))}
+            {b.companies.length > 0 && <Text style={[S.metricSub, { marginTop: 4 }]}>Empreses amb més pes, en % del total de la cartera. És un mínim: només es compta el top-10 de cada fons.</Text>}
+          </View>
+        </View>
+
+        <View style={S.legalBox} wrap={false}>
+          <Text style={S.legalText}>{`${exposureNote(b)} Les regions agrupen països (Corea, Taiwan, la Xina o l'Índia compten com a emergents). Per als fons indexats, la mida d'empresa surt de la definició de l'índex que repliquen.`}</Text>
+        </View>
+      </View>
+    </Page>
+  );
+}
+
 // ─── PAGE 8: IPS ──────────────────────────────────────────────────────────────
 function IPSPage({ d }: { d: ManualPortfolioInput }) {
   const c = compute(d);
@@ -1743,6 +1835,7 @@ export function ManualReportPDF({ data, generatedAt, drawdowns }: Props) {
       <PortfolioPage         d={data} />
       <AssetsPage            d={data} />
       {!!drawdowns?.some(f => f.monthlyPoints > 1) && <DrawdownsPage d={data} items={drawdowns} />}
+      {diversificationOf(data).equity > 0 && <DiversificationPage d={data} />}
       <IPSPage               d={data} />
       <SuitabilityPage       d={data} />
       <CorrelationPage       d={data} />

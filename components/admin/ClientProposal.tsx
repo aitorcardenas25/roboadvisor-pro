@@ -13,6 +13,7 @@ import {
 import { isValidIsin } from '@/lib/fundUniverse';
 import type { RebalanceLine } from '@/lib/portfolioValuation';
 import AllocationSummary from '@/components/AllocationSummary';
+import DiversificationSummary from '@/components/DiversificationSummary';
 import { assetTypeLabel, classifyFund, managementLabel } from '@/lib/fundClassification';
 import { PLATFORMS, PLATFORMS_CHECKED_AT, platformsFor } from '@/lib/fundPlatforms';
 
@@ -24,6 +25,7 @@ interface Data {
   proposals: WithStats[];
   funds:     FundOption[];
   holdings:  number;
+  current?:  { isin: string; name: string; category: string; weight: number }[];
   defaults:  ProposalParams;
   navPerformance?: NavPerformanceMap;
 }
@@ -410,7 +412,9 @@ export default function ClientProposal({ clientId, onApplied }: { clientId: stri
           <Metric label="Escenari favorable" value={stats.complete ? eur(stats.p90) : '—'} />
           <Metric label="Fons" value={String(items.length)} sub={!stats.complete ? `${stats.missing.length} sense dades` : stats.terMissing.length ? `Falta el TER de ${stats.terMissing.length}` : 'Tots amb dades reals'} tone={stats.complete && !stats.terMissing.length ? undefined : 'bad'} />
         </div>
-        <AllocationSummary items={items} className="mt-4 pt-4 border-t border-line" />
+        <AllocationSummary items={items} title={data.current?.length ? 'Proposta' : undefined} className="mt-4 pt-4 border-t border-line" />
+        {!!data.current?.length && <AllocationSummary items={data.current} title="Cartera actual" hideNote className="mt-3" />}
+        <DiversificationSummary items={items} current={data.current} className="mt-4 pt-4 border-t border-line" />
 {stats.complete ? (
           <p className="text-ink-muted text-[11px] mt-4">
             {stats.returnBasis === 'historic'

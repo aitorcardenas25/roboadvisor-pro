@@ -68,6 +68,23 @@ describe('Informe inicial (PDF) sense pàgines en blanc', () => {
     expect(pages).toBe(sections);
   }, 60_000);
 
+  it('amb fons actius sense fitxa de diversificació: una pàgina per secció', async () => {
+    const mixed = [
+      ...items.slice(0, 2).map(x => ({ ...x, weight: 30 })),
+      { ...items[0], isin: 'ES0112611001', name: 'Azvalor Internacional FI', weight: 15 },
+      { ...items[0], isin: 'ES0119199000', name: 'Cobas Internacional FI Clase C', weight: 15 },
+      { ...items[0], isin: 'LU2305834041', name: 'Invesco Continental European Small Cap Equity A EUR Acc', weight: 10 },
+    ];
+    const data = proposalToReportInput({ ...proposal, items: mixed } as ClientProposal, { name: 'Clienta de Prova Exemple', email: 'prova@example.com' }, personal);
+    const props = { data, generatedAt: '25 de novembre de 2026' };
+    const doc = ManualReportPDF(props) as React.ReactElement<{ children: React.ReactNode }>;
+    const sections = React.Children.toArray(doc.props.children).length;
+    const buf = await renderToBuffer(React.createElement(ManualReportPDF, props) as Parameters<typeof renderToBuffer>[0]);
+    if (process.env.SAVE_PDF) (await import('node:fs')).writeFileSync(process.env.SAVE_PDF, buf);
+    const pages = (buf.toString('latin1').match(/\/Type\s*\/Page(?!s)/g) ?? []).length;
+    expect(pages).toBe(sections);
+  }, 60_000);
+
   it('una nota de l\'assessor molt llarga continua a la pàgina següent (no es talla)', async () => {
     const note = Array.from({ length: 100 }, (_, i) => `Línia ${i + 1} de la nota`).join('\n');
     const { pages, sections } = await pagesAndSections('dinamic', false, note);

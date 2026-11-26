@@ -1,6 +1,7 @@
 // components/admin/AdminDashboard.tsx
 'use client';
 
+import ExposureFreshness from '@/components/admin/ExposureFreshness';
 import { useState, useEffect } from 'react';
 import FundsManager       from './FundsManager';
 import ReportsHistory     from './ReportsHistory';
@@ -223,7 +224,7 @@ export default function AdminDashboard({ onLogout }: Props) {
             )}
 
             {activeSection === 'avui' && (
-              <AdminStats stats={stats} onNavigate={navigateLegacy} />
+              <><AdminStats stats={stats} onNavigate={navigateLegacy} /><ExposureFreshness /></>
             )}
 
             {activeSection === 'clients' && selectedClientId && (

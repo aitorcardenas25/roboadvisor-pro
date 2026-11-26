@@ -28,7 +28,9 @@ function Bar({ title, segs }: { title: string; segs: Seg[] }) {
   );
 }
 
-export default function AllocationSummary({ items, breakdown, className = '' }: {
+export default function AllocationSummary({ items, breakdown, title, hideNote, className = '' }: {
+  title?: string;      // p. ex. "Cartera actual" quan se'n mostren dues
+  hideNote?: boolean;
   items?: { isin: string; weight: number; category?: string; name?: string }[];
   breakdown?: AllocationBreakdown;   // ja calculat (p. ex. desat a l'informe mensual)
   className?: string;
@@ -37,6 +39,7 @@ export default function AllocationSummary({ items, breakdown, className = '' }: 
   if (b.equity + b.fixedIncome + b.other + b.unknownAsset <= 0) return null;
   return (
     <div className={className}>
+      {title && <p className="text-ink text-xs font-medium mb-2">{title}</p>}
       <div className="grid sm:grid-cols-2 gap-4">
         <Bar title="Renda variable i renda fixa" segs={[
           { label: 'Renda variable', pct: b.equity, tone: 'bg-accent' },
@@ -50,7 +53,7 @@ export default function AllocationSummary({ items, breakdown, className = '' }: 
           { label: 'Sense classificar', pct: b.unknownStyle, tone: 'bg-line' },
         ]} />
       </div>
-      <p className="text-ink-muted text-[11px] mt-2">{allocationNote(b)}</p>
+      {!hideNote && <p className="text-ink-muted text-[11px] mt-2">{allocationNote(b)}</p>}
     </div>
   );
 }

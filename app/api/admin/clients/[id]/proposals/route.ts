@@ -99,6 +99,12 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
     funds:     fundOptions(navPerformance),
     navPerformance,
     holdings:  ctx.portfolio?.holdings.filter(h => h.quantity > 0).length ?? 0,
+    // Cartera actual (pes per valor de mercat) per comparar-ne la diversificació amb la proposta
+    current:   (() => {
+      const hs = (ctx.portfolio?.holdings ?? []).filter(h => h.quantity > 0 && h.currentPrice > 0);
+      const total = hs.reduce((s, h) => s + h.quantity * h.currentPrice, 0);
+      return total > 0 ? hs.map(h => ({ isin: h.assetIsin, name: h.assetName, category: h.assetCategory, weight: h.quantity * h.currentPrice / total * 100 })) : [];
+    })(),
     defaults: {
       profile:       (PROFILES as readonly string[]).includes(leadProfile ?? '') ? leadProfile : 'moderat',
       objective:     '',
