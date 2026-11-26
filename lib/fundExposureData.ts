@@ -148,6 +148,16 @@ export const FUND_EXPOSURE: Record<string, FundExposure> = {
   IE00BD0NCM55: { fund: 'iShares Developed World Index Fund', source: MSCI_WORLD_SRC, ...MSCI_WORLD_2610 },
   IE00B5BMR087: { fund: 'iShares Core S&P 500 UCITS ETF', source: 'Índex S&P 500 segons la fitxa de Vanguard U.S. 500 Stock Index Fund (31/10/2026)', ...SP500_2610 },
   IE00B4K48X80: { fund: 'iShares Core MSCI Europe UCITS ETF', source: MSCI_EUROPE_SRC, ...MSCI_EUROPE_2609 },
+  IE00BKM4GZ66: {
+    fund: 'iShares Core MSCI EM IMI UCITS ETF', asOf: '2026-11-24',
+    source: 'iShares, web del fons (ishares.com/ch) a 24/11/2026',
+    countries: kv('Taiwan=26.84;China=18.68;Korea South=17.34;India=15.16;Brazil=3.23;South Africa=3.14;Saudi Arabia=2.43;Mexico=1.81;United Arab Emirates=1.52;Poland=1.30;Thailand=1.20;Malaysia=1.17;Other=5.51'),
+    basis: 99.33,
+    sectors: kv('Information Technology=36.56;Financials=21.03;Consumer Discretionary=8.33;Industrials=7.39;Materials=6.04;Communication=5.73;Health Care=3.76;Energy=3.37;Consumer Staples=3.35;Utilities=2.08;Real Estate=1.69'),
+    // MSCI EM IMI inclou grans, mitjanes i petites; la fitxa no en dona el repartiment
+    top10: t10('Taiwan Semiconductor Manufacturing=13.78;Samsung Electronics=6.20;SK hynix=3.94;Tencent=2.21;MediaTek=1.48;Alibaba=1.45;China Construction Bank=0.91;HDFC Bank=0.83;ICICI Bank=0.75'),
+    top10Total: 31.55,
+  },
   IE00BYWYCC39: { fund: 'iShares Emerging Markets Index Fund', source: MSCI_EM_SRC, ...MSCI_EM_2610 },
 
   // Gestió activa (dades de la gestora; normalment semestrals o trimestrals)
