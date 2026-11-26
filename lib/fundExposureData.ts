@@ -264,7 +264,9 @@ export const FUND_EXPOSURE: Record<string, FundExposure> = {
     basis: 87.2,
     countries: kv('Spain=76.1;Portugal=8.4;Other=2.7'),
     sectors: kv('Industrials=20.6;Financials=13.2;Defensive consumer=11.6;Energy=10.3;Cyclical consumer=8.7;Real Estate=5.8;Healthcare=5.7;Other=5.5;Holding=4.6'),
-    top10: t10('Acciona Energía=8.0;Alantra=7.1;Horos Value Internacional=5.5;Meliá Hotels=5.3;Gestamp=4.7;Semapa=4.6;DIA=4.5;Amrest=4.3;Miquel y Costas=3.6;Vidrala=3.4'),
+    // el top-10 publicat inclou un 5,5 % en Horos Value Internacional (un altre fons, no una empresa):
+    // es treu de la llista d'empreses però es manté al pes total del top-10
+    top10: t10('Acciona Energía=8.0;Alantra=7.1;Meliá Hotels=5.3;Gestamp=4.7;Semapa=4.6;DIA=4.5;Amrest=4.3;Miquel y Costas=3.6;Vidrala=3.4'),
     top10Total: 51.0,
   },
   ES0119199000: {

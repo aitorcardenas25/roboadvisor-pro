@@ -125,3 +125,11 @@ describe('Avís trimestral', () => {
     expect(staleExposures(new Date('2027-06-01T00:00:00Z')).length).toBe(Object.keys(FUND_EXPOSURE).length);
   });
 });
+
+describe('Top-10 amb altres fons', () => {
+  it('un fons dins del top-10 no surt com a empresa (Horos Iberia → Horos Internacional)', () => {
+    const b = exposureBreakdown([{ isin: 'ES0146311008', weight: 100 }]);
+    expect(b.companies.some(c => /horos/i.test(c.name))).toBe(false);
+    expect(b.top10).toBeCloseTo(51.0, 6);
+  });
+});
