@@ -10,6 +10,7 @@ import { lookupIsin } from './fundUniverse';
 import { getMonthEndNavs, getNavs, upsertNavs } from './fundNavs';
 import { syncHoldingsToNavs } from './clientPortfolios';
 import type { NavPoint } from './navMath';
+import { updateBtcPrices, type CryptoUpdate } from './cryptoPrices';
 import {
   MANUAL_ONLY, NAV_SOURCES, PROVIDER_LABEL, ecbUsdRates, fetchFeed, usdToEur,
   type FeedContext, type FeedDistribution, type FeedPoint, type FeedSource,
@@ -35,6 +36,8 @@ export interface AutoUpdateSummary {
   funds:      FundUpdate[];
   counts:     Record<FundUpdateStatus, number>;
   holdingsUpdated: number;
+  /** Preu diari del bitcoin (només per valorar el que declaren els clients). Absent en execucions antigues. */
+  crypto?:    CryptoUpdate[];
 }
 
 /** Dies sense preu nou a partir dels quals un fons es considera endarrerit (dies laborables). */
@@ -209,6 +212,8 @@ export async function runNavAutoUpdate(trigger: 'cron' | 'admin', opts: { fetchF
     return updateOne(src, c, last, rates);
   });
   const funds = results.map(r => r.update);
+  // Bitcoin: independent dels fons (si falla no n'atura cap)
+  const crypto = [await updateBtcPrices({ fetchFn: opts.fetchFn, now: opts.now })];
 
   // Fons amb preus a l'app sense font automàtica: cal entrar-los a mà
   const auto = new Set(NAV_SOURCES.map(s => s.isin));
@@ -232,11 +237,12 @@ export async function runNavAutoUpdate(trigger: 'cron' | 'admin', opts: { fetchF
 
   const counts = { updated: 0, up_to_date: 0, stale: 0, failed: 0, manual: 0 } as Record<FundUpdateStatus, number>;
   for (const f of funds) counts[f.status]++;
-  const summary: AutoUpdateSummary = { startedAt, finishedAt: new Date().toISOString(), trigger, today, funds, counts, holdingsUpdated };
+  const summary: AutoUpdateSummary = { startedAt, finishedAt: new Date().toISOString(), trigger, today, funds, counts, holdingsUpdated, crypto };
 
   for (const f of funds) {
     console.log(`[navAutoUpdate] ${f.status.padEnd(10)} ${f.isin} ${f.source} +${f.added} ${f.lastDate ?? '-'} ${f.message ?? ''}`);
   }
+  for (const c of crypto) console.log(`[navAutoUpdate] ${c.status.padEnd(10)} ${c.symbol} ${c.source} +${c.added} ${c.lastDate ?? '-'} ${c.message ?? ''}`);
   await logAuditEventAndWait('fund.navs_auto_update', { resource: 'fund_navs', metadata: summary as unknown as Record<string, unknown> });
   return summary;
 }

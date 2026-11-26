@@ -5,7 +5,7 @@
 // El fa servir el portal del client i la fitxa del client de l'admin.
 import { useCallback, useEffect, useState } from 'react';
 import {
-  ASSET_KINDS, DEBT_KINDS, isDebtKind,
+  ASSET_KINDS, DEBT_KINDS, isDebtKind, isUnitKind,
   type ConsolidatedWealth, type WealthItem, type WealthLine, type WealthGroup,
 } from '@/lib/wealth';
 
@@ -22,6 +22,7 @@ const fDate = (iso: string | null) => {
   return Number.isNaN(d.getTime()) ? iso : d.toLocaleDateString('ca-ES', { day: 'numeric', month: 'short', year: 'numeric', timeZone: 'UTC' });
 };
 const today = () => new Date().toISOString().slice(0, 10);
+const btcFmt = (n: number) => n.toLocaleString('ca-ES', { maximumFractionDigits: 8 });
 
 // Un to per grup (paleta sòbria del portal)
 const GROUP_COLOR: Record<WealthGroup, string> = {
@@ -33,12 +34,14 @@ const GROUP_COLOR: Record<WealthGroup, string> = {
 
 const SOURCE_TEXT: Record<WealthLine['source'], string> = {
   'preus-oficials':    'Valor liquidatiu oficial',
+  'preu-mercat':       'Preu de mercat del dia',
   'declarat-client':   'Valor que has entrat',
   'declarat-assessor': 'Valor entrat per l\'assessor',
   'questionari':       'De les teves dades',
 };
 const SOURCE_TEXT_ADMIN: Record<WealthLine['source'], string> = {
   'preus-oficials':    'VL oficial',
+  'preu-mercat':       'Preu de mercat (tancament diari)',
   'declarat-client':   'Entrat pel client',
   'declarat-assessor': 'Entrat per l\'assessor',
   'questionari':       'Qüestionari / Excel',
@@ -155,6 +158,8 @@ export default function WealthView({ endpoint, audience = 'client' }: {
         </section>
       </div>
 
+      {w.bitcoin && <BitcoinBlock b={w.bitcoin} isAdmin={isAdmin} />}
+
       {/* ── Detall ── */}
       <section className={card} aria-labelledby="wealth-detail">
         <div className="flex flex-wrap items-center justify-between gap-3 px-5 pt-5">
@@ -263,6 +268,11 @@ function LineGroup({ title, total, color, lines, negative, sourceText, onEdit }:
           <li key={l.id ?? `${l.kind}-${i}`} className="flex items-center justify-between gap-3 px-5 py-3">
             <div className="min-w-0">
               <p className="text-ink text-sm truncate">{l.name}</p>
+              {l.units !== undefined && (
+                <p className="text-ink-soft text-xs tabular-nums">
+                  {btcFmt(l.units)} BTC{l.unitPrice ? ` × ${eur(l.unitPrice)}` : ''}
+                </p>
+              )}
               <p className="text-ink-muted text-xs">
                 {[l.label, l.entity, sourceText[l.source], l.asOf ? fDate(l.asOf) : null].filter(Boolean).join(' · ')}
                 {l.stale && <span className="text-warning"> · cal actualitzar</span>}
@@ -290,10 +300,12 @@ function ItemForm({ endpoint, item, onDone, onCancel }: {
   const [name, setName]     = useState(item?.name ?? '');
   const [entity, setEntity] = useState(item?.entity ?? '');
   const [value, setValue]   = useState(item ? String(item.value) : '');
+  const [units, setUnits]   = useState(item?.units !== undefined ? String(item.units) : '');
   const [asOf, setAsOf]     = useState(item?.asOf ?? today());
   const [saving, setSaving] = useState(false);
   const [error, setError]   = useState('');
   const debt = isDebtKind(kind);
+  const btc = isUnitKind(kind);
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
@@ -304,13 +316,18 @@ function ItemForm({ endpoint, item, onDone, onCancel }: {
     const thousands = /^\d{1,3}(\.\d{3})+$/.test(raw);
     const n = Number(raw.includes(',') || thousands ? raw.replace(/\./g, '').replace(',', '.') : raw);
     if (!name.trim()) { setError('Posa-hi un nom.'); return; }
-    if (!Number.isFinite(n) || n < 0) { setError('L\'import ha de ser 0 o més.'); return; }
+    // Bitcoin: quantitat amb fins a 8 decimals ("0,05" o "0.05")
+    const u = Number(units.trim().replace(/\s|btc/gi, '').replace(',', '.'));
+    if (btc && (!Number.isFinite(u) || u <= 0)) { setError('Indica quants bitcoins tens (per exemple 0,05).'); return; }
+    if (!btc && (!Number.isFinite(n) || n < 0)) { setError('L\'import ha de ser 0 o més.'); return; }
     setSaving(true);
     try {
       const url = item ? `${endpoint}?id=${encodeURIComponent(item.id)}` : endpoint;
       const r = await fetch(url, {
         method: item ? 'PUT' : 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ kind, name: name.trim(), entity: entity.trim(), value: n, asOf }),
+        body: JSON.stringify(btc
+          ? { kind, name: name.trim(), entity: entity.trim(), units: u, asOf: today() }
+          : { kind, name: name.trim(), entity: entity.trim(), value: n, asOf }),
       });
       const j = await r.json().catch(() => ({}));
       if (!r.ok) throw new Error(j.error ?? 'No s\'ha pogut desar.');
@@ -344,13 +361,19 @@ function ItemForm({ endpoint, item, onDone, onCancel }: {
         </select></label>
       <label className="block"><span className="text-ink-muted text-xs">Nom</span>
         <input className={input} maxLength={80} value={name} onChange={e => setName(e.target.value)}
-          placeholder={debt ? 'Hipoteca del pis' : 'Compte nòmina'} /></label>
+          placeholder={debt ? 'Hipoteca del pis' : btc ? 'Bitcoin' : 'Compte nòmina'} /></label>
       <label className="block"><span className="text-ink-muted text-xs">Entitat (opcional)</span>
         <input className={input} maxLength={60} value={entity} onChange={e => setEntity(e.target.value)} placeholder="CaixaBank, MyInvestor..." /></label>
-      <label className="block"><span className="text-ink-muted text-xs">{debt ? 'Import pendent (€)' : 'Valor actual (€)'}</span>
-        <input type="text" inputMode="decimal" className={input} value={value} onChange={e => setValue(e.target.value)} placeholder="0" /></label>
-      <label className="block"><span className="text-ink-muted text-xs">A data de</span>
-        <input type="date" className={input} value={asOf} max={today()} onChange={e => setAsOf(e.target.value)} /></label>
+      {btc ? (<>
+        <label className="block"><span className="text-ink-muted text-xs">Quantitat (BTC)</span>
+          <input type="text" inputMode="decimal" className={input} value={units} onChange={e => setUnits(e.target.value)} placeholder="0,05" /></label>
+        <p className="text-ink-muted text-xs sm:self-end sm:pb-2">El valor en euros es calcula sol cada dia amb el preu de tancament del bitcoin.</p>
+      </>) : (<>
+        <label className="block"><span className="text-ink-muted text-xs">{debt ? 'Import pendent (€)' : 'Valor actual (€)'}</span>
+          <input type="text" inputMode="decimal" className={input} value={value} onChange={e => setValue(e.target.value)} placeholder="0" /></label>
+        <label className="block"><span className="text-ink-muted text-xs">A data de</span>
+          <input type="date" className={input} value={asOf} max={today()} onChange={e => setAsOf(e.target.value)} /></label>
+      </>)}
       {error && <p className="text-negative text-xs sm:col-span-2" role="alert">{error}</p>}
       <div className="sm:col-span-2 flex flex-wrap gap-2">
         <button type="submit" disabled={saving} className="px-4 py-2 rounded-md bg-accent text-accent-ink text-sm font-medium disabled:opacity-50">{saving ? 'Desant…' : 'Desar'}</button>
@@ -358,5 +381,34 @@ function ItemForm({ endpoint, item, onDone, onCancel }: {
         {item && <button type="button" onClick={remove} disabled={saving} className="ml-auto px-4 py-2 rounded-md text-negative text-sm hover:bg-negative/10">Esborrar</button>}
       </div>
     </form>
+  );
+}
+
+/** Preu del bitcoin i dades de risc. Descriptiu: no és cap recomanació. */
+function BitcoinBlock({ b, isAdmin }: { b: NonNullable<ConsolidatedWealth['bitcoin']>; isAdmin: boolean }) {
+  const col = (n: number | null) => (n === null ? undefined : n >= 0 ? 'rgb(var(--c-positive))' : 'rgb(var(--c-negative))');
+  return (
+    <section className={`${card} p-5`} aria-labelledby="wealth-btc">
+      <h2 id="wealth-btc" className="text-ink font-semibold text-sm">Bitcoin</h2>
+      <dl className="mt-3 grid grid-cols-2 sm:grid-cols-4 gap-4">
+        <div><dt className="text-ink-muted text-xs">{isAdmin ? 'Té' : 'Tens'}</dt>
+          <dd className="text-ink text-sm font-semibold tabular-nums">{btcFmt(b.units)} BTC</dd>
+          <dd className="text-ink-muted text-xs tabular-nums">{eur(b.value)} · {b.pctOfAssets.toLocaleString('ca-ES', { maximumFractionDigits: 1 })} % dels béns</dd></div>
+        <div><dt className="text-ink-muted text-xs">Preu ({fDate(b.date)})</dt>
+          <dd className="text-ink text-sm font-semibold tabular-nums">{eur(b.price)}</dd>
+          <dd className="text-ink-muted text-xs">Tancament diari · {b.source}</dd></div>
+        <div><dt className="text-ink-muted text-xs">Últims 12 mesos</dt>
+          <dd className="text-sm font-semibold tabular-nums" style={{ color: col(b.change1yPct) }}>{b.change1yPct === null ? 'N/D' : pct(b.change1yPct)}</dd></div>
+        <div><dt className="text-ink-muted text-xs">Pitjor caiguda des del {b.historyFrom?.slice(0, 4)}</dt>
+          <dd className="text-sm font-semibold tabular-nums text-negative">{b.maxDrawdownPct === null ? 'N/D' : pct(b.maxDrawdownPct)}</dd>
+          {b.maxDrawdownPeak && b.maxDrawdownTrough && (
+            <dd className="text-ink-muted text-xs">{fDate(b.maxDrawdownPeak)} → {fDate(b.maxDrawdownTrough)}</dd>
+          )}</div>
+      </dl>
+      <p className="text-warning text-xs mt-4 leading-relaxed">
+        El bitcoin és un actiu molt volàtil: ha perdut més del 70 % del seu valor diverses vegades i no té cap garantia ni
+        regulació com la d&apos;un fons. Es mostra només per veure tot el patrimoni junt. Factor OTC no recomana comprar-ne ni vendre&apos;n.
+      </p>
+    </section>
   );
 }

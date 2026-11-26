@@ -8,7 +8,8 @@ import { getAllLeads } from '@/lib/leads';
 import { getAllProposals } from '@/lib/proposals';
 import { getAllClientPortfolios, computeMetrics } from '@/lib/clientPortfolios';
 import { loadValuation } from '@/lib/portfolioExcel';
-import { consolidateWealth } from '@/lib/wealth';
+import { consolidateWealth, listItems, isUnitKind } from '@/lib/wealth';
+import { loadBtcContext } from '@/lib/cryptoPrices';
 import { getActivitySince, summarizeUsage } from '@/lib/betaActivity';
 import { getConsents } from '@/lib/betaConsent';
 import { advisorStage } from '@/lib/onboarding';
@@ -42,6 +43,10 @@ export async function GET(req: NextRequest) {
   const usage = summarizeUsage(activity, clients.map(u => ({ id: u.id, name: u.name, email: u.email })), {}, now, 5);
   const usageById = new Map(usage.clients.map(c => [c.id, c]));
 
+  // Preu del bitcoin un sol cop (només si algun client n'ha declarat)
+  const anyBtc = leads.some(l => listItems(l.questionnaireData).some(x => isUnitKind(x.kind)));
+  const btc = anyBtc ? await loadBtcContext() : null;
+
   const inputs: ExportClientInput[] = await Promise.all(clients.map(async u => {
     const lead = leads.find(l => l.linkedUserId === u.id) ?? leads.find(l => l.email?.toLowerCase() === u.email.toLowerCase());
     const portfolio = portfolios.find(p => p.clientId === u.id) ?? null;
@@ -56,6 +61,7 @@ export async function GET(req: NextRequest) {
       netContributed: portfolio ? computeMetrics(portfolio).totalInvested : 0,
       valuation,
       questionnaire: lead?.questionnaireData ?? null,
+      btc,
     });
     const us = usageById.get(u.id);
     return {
